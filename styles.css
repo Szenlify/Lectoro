@@ -1,0 +1,851 @@
+/**
+ * Quick Translator – Styles
+ * All CSS for the extension UI components
+ * Prefix: __qt_ (matches JS constant PREFIX = "__qt_")
+ */
+
+/* ═══════════════════════════════════════════════════════════════
+   Icon Toolbar (translate + read buttons)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════
+   Review-due toast notification
+   ═══════════════════════════════════════════════════════════════ */
+
+#__qt_review_toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 2147483647;
+    display: flex;
+    align-items: center;
+    padding: 12px 20px;
+    border-radius: 14px;
+    background: #0f0f23d9;
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.3),
+        0 0 0 1px rgba(129, 140, 248, 0.2) inset;
+    border: 1px solid rgba(129, 140, 248, 0.25);
+    color: rgba(255, 255, 255, 0.92);
+    /* Netflix-specific styles removed (module deleted) */
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.35),
+        0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    opacity: 0;
+    transform: scale(0.6);
+    transition:
+        opacity 0.18s ease,
+        transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+    pointer-events: auto;
+}
+
+#__qt_icon.visible {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.__qt_tb-btn {
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    color: #fff;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0;
+    transition: all 0.2s ease;
+}
+
+.__qt_tb-translate {
+    background: #4a6cf78c;
+}
+
+.__qt_tb-translate:hover {
+    background: #4a6cf7d9;
+    transform: scale(1.08);
+    box-shadow: 0 4px 12px #4a6cf759;
+}
+
+.__qt_tb-read {
+    background: #4ecdc466;
+}
+
+.__qt_tb-read:hover {
+    background: #4ecdc4b3;
+    transform: scale(1.08);
+    box-shadow: 0 4px 12px rgba(78, 205, 196, 0.3);
+}
+
+.__qt_tb-read.reading {
+    background: rgba(78, 205, 196, 0.8);
+    animation: __qt_pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes __qt_pulse {
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(78, 205, 196, 0.4);
+    }
+
+    50% {
+        box-shadow: 0 0 0 6px rgba(78, 205, 196, 0);
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Reading Highlights
+   ═══════════════════════════════════════════════════════════════ */
+
+.__qt_reading-hl {
+    background: rgba(78, 205, 196, 0.2) !important;
+    border-radius: 4px;
+    box-shadow: 0 0 12px rgba(78, 205, 196, 0.15);
+    outline: 1px solid rgba(78, 205, 196, 0.25);
+    outline-offset: 2px;
+    transition:
+        background 0.3s ease,
+        box-shadow 0.3s ease;
+}
+
+::highlight(qt-reading-sentence) {
+    background-color: rgba(78, 205, 196, 0.3);
+}
+
+::highlight(qt-hover-word) {
+    background-color: rgba(74, 108, 247, 0.3);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Tooltip Panel
+   ═══════════════════════════════════════════════════════════════ */
+
+#__qt_tooltip {
+    position: absolute;
+    z-index: 2147483647;
+    max-width: 420px;
+    min-width: 220px;
+    border-radius: 16px;
+    background: rgba(15, 15, 35, 0.75);
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    color: #fff;
+    font:
+        14px/1.5 "Inter",
+        -apple-system,
+        "Segoe UI",
+        Roboto,
+        Helvetica,
+        Arial,
+        sans-serif;
+    pointer-events: auto;
+    user-select: text;
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+    transition:
+        opacity 0.2s ease,
+        transform 0.2s cubic-bezier(0.34, 1.3, 0.64, 1);
+    overflow: hidden;
+}
+
+#__qt_tooltip.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+/* Tooltip inner layout */
+.__qt_header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px 8px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.35);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.__qt_body {
+    padding: 12px 14px 14px;
+}
+
+.__qt_row {
+    display: flex;
+    font-size: 18px;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.__qt_row:last-child {
+    margin-bottom: 0;
+}
+
+.__qt_label {
+    flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: rgba(255, 255, 255, 0.3);
+    padding-top: 3px;
+    min-width: 30px;
+}
+
+.__qt_text {
+    font-size: 14px;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.__qt_translated {
+    color: rgba(255, 255, 255, 0.65);
+}
+
+.__qt_original {
+    color: #4ecdc4;
+    font-weight: 600;
+}
+
+.__qt_speak {
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.__qt_speak:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.__qt_speak.speaking {
+    color: #4ecdc4;
+    border-color: rgba(78, 205, 196, 0.3);
+    background: rgba(78, 205, 196, 0.1);
+}
+
+.__qt_error {
+    color: #ff6b6b;
+    font-size: 13px;
+    padding: 12px 14px;
+}
+
+.__qt_loading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 13px;
+}
+
+.__qt_spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-top-color: #4a6cf7;
+    border-radius: 50%;
+    animation: __qt_spin 0.6s linear infinite;
+}
+
+@keyframes __qt_spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Save Buttons
+   ═══════════════════════════════════════════════════════════════ */
+
+.__qt_save-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.35);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.__qt_save-btn:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.15);
+    transform: scale(1.1);
+}
+
+.__qt_save-btn.saved {
+    color: #4ecdc4;
+    border-color: rgba(78, 205, 196, 0.3);
+    background: rgba(78, 205, 196, 0.1);
+}
+
+.__qt_save-sentence-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.35);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    margin-left: 4px;
+}
+
+.__qt_save-sentence-btn:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.15);
+    transform: scale(1.1);
+}
+
+.__qt_save-sentence-btn.saved {
+    color: #4ecdc4;
+    border-color: rgba(78, 205, 196, 0.3);
+    background: rgba(78, 205, 196, 0.1);
+}
+
+/* ── Save Footer (3-button row) ── */
+.__qt_save-footer {
+    display: flex;
+    gap: 6px;
+    padding: 6px 10px 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    justify-content: center;
+}
+
+.__qt_save-footer-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 11px;
+    font-family:
+        -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.__qt_save-footer-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+}
+
+.__qt_save-footer-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+    transform: none;
+}
+
+.__qt_save-footer-btn.saved {
+    color: #4ecdc4;
+    border-color: rgba(78, 205, 196, 0.3);
+    background: rgba(78, 205, 196, 0.1);
+    pointer-events: none;
+}
+
+.__qt_save-footer-btn svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+.__qt_save-ai-btn {
+    border-color: rgba(168, 85, 247, 0.3);
+    background: rgba(168, 85, 247, 0.08);
+    color: rgba(200, 160, 255, 0.85);
+}
+
+.__qt_save-ai-btn:hover {
+    background: rgba(168, 85, 247, 0.18);
+    border-color: rgba(168, 85, 247, 0.5);
+    color: #d8b4fe;
+}
+
+.__qt_save-ai-btn.saved {
+    color: #a78bfa;
+    border-color: rgba(167, 139, 250, 0.4);
+    background: rgba(167, 139, 250, 0.12);
+}
+
+/* ── AI Result Display ── */
+.__qt_ai-result {
+    padding: 8px 10px;
+    border-top: 1px solid rgba(168, 85, 247, 0.15);
+    background: rgba(168, 85, 247, 0.04);
+}
+
+.__qt_ai-label {
+    font-size: 10px;
+    color: rgba(200, 160, 255, 0.7);
+    margin-bottom: 4px;
+    font-family:
+        -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.__qt_ai-text {
+    font-size: 13px;
+    color: #e0d0ff;
+    line-height: 1.4;
+    margin-bottom: 3px;
+    font-family:
+        -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.__qt_ai-translation {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    font-style: italic;
+    font-family:
+        -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ── Spinner (small, inline) ── */
+.__qt_spinner-small {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid rgba(168, 85, 247, 0.3);
+    border-top-color: #a78bfa;
+    border-radius: 50%;
+    animation: __qt_spin 0.6s linear infinite;
+}
+
+@keyframes __qt_spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   YouTube CC Subtitles
+   ═══════════════════════════════════════════════════════════════ */
+
+.ytp-caption-segment.__qt_clickable {
+    position: relative;
+}
+
+.__qt_yt-word {
+    cursor: pointer !important;
+    display: inline !important;
+    background: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    transition: none !important;
+}
+
+.__qt_yt-word:hover,
+.__qt_yt-word.__qt_yt-word-hover {
+    background: none !important;
+    box-shadow: none !important;
+}
+
+.__qt_yt-sub-hint {
+    position: fixed;
+    z-index: 2147483647;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(74, 108, 247, 0.9);
+    color: #fff;
+    font-size: 12px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    white-space: nowrap;
+}
+
+.__qt_yt-sub-hint.visible {
+    opacity: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   YouTube Reels-style Karaoke Captions (R key toggle)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Hide original YouTube captions when reels mode is active */
+body.__qt_reels-active .ytp-caption-window-container {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    height: 0 !important;
+    overflow: hidden !important;
+}
+
+/* ── Container ── */
+.__qt_reels-container {
+    position: absolute;
+    z-index: 60;
+    bottom: 8%;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    text-align: center;
+    font-family: "YouTube Sans", "Roboto", "Arial", sans-serif;
+    text-shadow:
+        0 0 12px rgba(0, 0, 0, 1),
+        0 2px 8px rgba(0, 0, 0, 0.95),
+        2px 2px 6px rgba(0, 0, 0, 0.95),
+        -2px -2px 6px rgba(0, 0, 0, 0.95),
+        0 0 30px rgba(0, 0, 0, 0.5);
+}
+
+.__qt_reels-container.visible {
+    opacity: 1;
+}
+
+/* ── Big current word (only element) ── */
+.__qt_reels-bigword {
+    font-size: clamp(36px, 5.5vw, 72px);
+    font-weight: 900;
+    color: #ffffff;
+    letter-spacing: 0.03em;
+    line-height: 1;
+    text-transform: uppercase;
+    white-space: nowrap;
+    pointer-events: auto;
+    cursor: pointer;
+    transition: color 0.15s ease;
+    padding: 8px 16px;
+    border-radius: 8px;
+}
+
+.__qt_reels-bigword:hover {
+    color: #4ecdc4;
+}
+
+.__qt_reels-bigword.__qt_reels-pop {
+    animation: __qt_reels-pop 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes __qt_reels-pop {
+    0% {
+        transform: scale(0.5);
+        opacity: 0;
+    }
+
+    60% {
+        transform: scale(1.15);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Netflix CC Subtitles
+   ═══════════════════════════════════════════════════════════════ */
+
+.player-timedtext-text-container {
+    text-align: center !important;
+}
+
+.player-timedtext-text-container > div {
+    display: block !important;
+    text-align: center !important;
+}
+
+.player-timedtext-text-container span {
+    display: inline !important;
+    white-space: normal !important;
+}
+
+.player-timedtext-text-container span.__qt_clickable {
+    position: relative;
+    display: inline !important;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+}
+
+.__qt_nf-word {
+    cursor: pointer !important;
+    display: inline !important;
+    background: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    white-space: normal !important;
+    transition: none !important;
+}
+
+.__qt_nf-word.__qt_nf-word-hover {
+    background: none !important;
+    box-shadow: none !important;
+}
+
+.__qt_nf-sub-hint {
+    position: fixed;
+    z-index: 2147483647;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(74, 108, 247, 0.9);
+    color: #fff;
+    font-size: 12px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    white-space: nowrap;
+}
+
+.__qt_nf-sub-hint.visible {
+    opacity: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   X.com (Twitter)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* X.com (Twitter) styles removed (module deleted) */
+
+/* ═══════════════════════════════════════════════════════════════
+   LookMovie2 – Subtitle Interaction (no visual overrides)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Only enable pointer-events on cues so hover/click translation works */
+.vjs-text-track-cue {
+    pointer-events: auto !important;
+    cursor: text !important;
+    -webkit-user-select: text !important;
+    user-select: text !important;
+}
+
+.vjs-text-track-cue div {
+    pointer-events: auto !important;
+    cursor: text !important;
+    -webkit-user-select: text !important;
+    user-select: text !important;
+}
+
+.__qt_lm-word {
+    cursor: pointer !important;
+    display: inline !important;
+    background: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    white-space: normal !important;
+    transition: none !important;
+}
+
+.__qt_lm-word:hover,
+.__qt_lm-word.__qt_lm-word-hover {
+    background: none !important;
+    box-shadow: none !important;
+}
+
+.__qt_lm-sub-hint {
+    position: fixed;
+    z-index: 2147483647;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(74, 108, 247, 0.9);
+    color: #fff;
+    font-size: 12px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    white-space: nowrap;
+}
+
+.__qt_lm-sub-hint.visible {
+    opacity: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Subtitle In-place Translation (E key)
+   ═══════════════════════════════════════════════════════════════ */
+
+.__qt_sub-overlay {
+    position: fixed;
+    z-index: 2147483647;
+    color: #00ffdd;
+    text-align: start;
+    line-height: 1.3;
+    padding: 4px 10px;
+    background: rgba(0, 0, 0, 0.75);
+    border-radius: 4px;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+    pointer-events: none;
+    white-space: pre-wrap;
+}
+
+.__qt_shimmer-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 4px 0;
+    width: 100%;
+}
+
+.__qt_shimmer-line {
+    height: 20px;
+    width: 85%;
+    border-radius: 6px;
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.06) 25%,
+        rgba(255, 255, 255, 0.18) 50%,
+        rgba(255, 255, 255, 0.06) 75%
+    );
+    background-size: 200% 100%;
+    animation: __qt_shimmer 1.4s ease-in-out infinite;
+}
+
+.__qt_shimmer-short {
+    width: 55%;
+}
+
+@keyframes __qt_shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* Force-hide video.js control bar — only mouse movement removes this class */
+.video-js.__qt_hide-controls .vjs-control-bar {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+.video-js.__qt_hide-controls .vjs-title {
+    display: none !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Word Cloud – per-word translation tooltips (S/↓ key mode)
+   ═══════════════════════════════════════════════════════════════ */
+
+.__qt_word-cloud-container {
+    position: fixed;
+    z-index: 2147483647;
+    pointer-events: none;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.__qt_word-cloud {
+    position: fixed;
+    z-index: 2147483647;
+    pointer-events: none;
+    padding: 2px 5px;
+    border-radius: 10px;
+    background: rgba(15, 15, 35, 0.88);
+    backdrop-filter: blur(16px) saturate(1.4);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    box-shadow:
+        0 4px 16px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+    color: #4ecdc4;
+    font-family:
+        "Inter",
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Helvetica,
+        Arial,
+        sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.3;
+    text-align: center;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateY(6px) scale(0.9);
+    animation: __qt_cloud-in 0.3s cubic-bezier(0.34, 1.3, 0.64, 1) forwards;
+}
+
+/* Downward-pointing arrow */
+.__qt_word-cloud::after {
+    content: "";
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 6px solid rgba(15, 15, 35, 0.88);
+}
+
+@keyframes __qt_cloud-in {
+    0% {
+        opacity: 0;
+        transform: translateY(6px) scale(0.9);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Highlighted word under cloud */
+.__qt_word-cloud-highlight {
+    background: rgba(74, 108, 247, 0.35) !important;
+    box-shadow: 0 0 0 2px rgba(74, 108, 247, 0.25);
+    border-radius: 3px;
+    transition: background 0.2s ease;
+}
