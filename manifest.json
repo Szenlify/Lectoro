@@ -28,8 +28,6 @@
             "js": [
                 "core.js",
                 "content.js",
-                "youtube.js",
-                "lookmovie2.js",
                 "hover.js"
             ],
             "run_at": "document_idle"

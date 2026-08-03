@@ -542,95 +542,62 @@
     });
 
     // ═══════════════════════════════════════════════════════════════
-    //  Keyboard Subtitle Navigation (all video sites)
-    //  A/← = prev sentence, D/→ = next, W/↑ = play/pause,
-    //  S/↓/E/Enter = translate subtitle in-place
+    //  PlayerAdapter & Unified Video/Subtitle Logic
     // ═══════════════════════════════════════════════════════════════
 
-    (function setupSubtitleNavigation() {
-        const FALLBACK_SKIP = 3;
-
-        function getActiveVideo() {
-            const videos = document.querySelectorAll("video");
-            if (videos.length === 0) return null;
-            if (videos.length === 1) return videos[0];
-            for (const v of videos) {
-                if (!v.paused && v.readyState >= 2) return v;
-            }
-            let best = videos[0],
-                bestArea = 0;
-            videos.forEach((v) => {
-                const area =
-                    v.videoWidth * v.videoHeight ||
-                    v.clientWidth * v.clientHeight;
-                if (area > bestArea) {
-                    bestArea = area;
-                    best = v;
-                }
-            });
-            return best;
-        }
-
-        function getAllCues(video) {
-            if (!video?.textTracks) return [];
-            const cues = [];
-            for (let i = 0; i < video.textTracks.length; i++) {
-                const track = video.textTracks[i];
-                if (track.mode === "disabled" || !track.cues) continue;
-                for (let j = 0; j < track.cues.length; j++)
-                    cues.push(track.cues[j]);
-            }
-            const seen = new Set();
-            return cues
-                .filter((c) => {
-                    const key = `${c.startTime.toFixed(3)}-${c.endTime.toFixed(3)}`;
-                    if (seen.has(key)) return false;
-                    seen.add(key);
-                    return true;
-                })
-                .sort((a, b) => a.startTime - b.startTime);
-        }
-
-        function getCurrentCueIndex(cues, time) {
-            let idx = 0;
-            for (let i = cues.length - 1; i >= 0; i--) {
-                if (time >= cues[i].startTime - 0.05) {
-                    idx = i;
-                    break;
-                }
-            }
-            return idx;
-        }
-
-        function getCurrentSubtitleText(video) {
-            // YouTube
-            const ytSegs = document.querySelectorAll(
-                ".ytp-caption-window-container .ytp-caption-segment",
-            );
-            if (ytSegs.length > 0)
-                return Array.from(ytSegs)
-                    .map((s) => s.textContent.trim())
-                    .filter(Boolean)
-                    .join(" ");
-            // Netflix
-            const nfSpans = document.querySelectorAll(
+    const PlayerAdapter = {
+        get type() {
+            if (window.location.hostname.includes("youtube.com"))
+                return "youtube";
+            if (window.location.hostname.includes("lookmovie"))
+                return "lookmovie";
+            return "unknown";
+        },
+        getVideo() {
+            if (this.type === "youtube")
+                return (
+                    document.querySelector("#movie_player video") ||
+                    document.querySelector(".html5-video-player video") ||
+                    document.querySelector("video")
+                );
+            return document.querySelector("video");
+        },
+        getSubtitleContainer() {
+            if (this.type === "youtube")
+                return document.querySelector(".ytp-caption-window-container");
+            if (this.type === "lookmovie")
+                return document.querySelector(".vjs-text-track-display");
+            return null;
+        },
+        getSubtitleElements() {
+            if (this.type === "youtube")
+                return Array.from(
+                    document.querySelectorAll(
+                        ".ytp-caption-window-container .ytp-caption-segment",
+                    ),
+                );
+            if (this.type === "lookmovie")
+                return Array.from(
+                    document.querySelectorAll(".vjs-text-track-cue div"),
+                ).filter(
+                    (d) => d.textContent.trim() && !d.querySelector("div"),
+                );
+            // Fallback (Netflix etc)
+            let els = document.querySelectorAll(
                 ".player-timedtext-text-container span",
             );
-            if (nfSpans.length > 0)
-                return Array.from(nfSpans)
-                    .map((s) => s.textContent.trim())
-                    .filter(Boolean)
-                    .join(" ");
-            // video.js / LookMovie
-            const vjsCues = document.querySelectorAll(
-                ".vjs-text-track-cue div",
-            );
-            if (vjsCues.length > 0)
-                return Array.from(vjsCues)
-                    .map((d) => d.textContent.trim())
+            if (els.length > 0) return Array.from(els);
+            return [];
+        },
+        getCurrentText() {
+            const els = this.getSubtitleElements();
+            if (els.length > 0)
+                return els
+                    .map((e) => e.textContent.trim())
                     .filter(Boolean)
                     .join(" ");
             // Fallback: textTracks API
+            const video = this.getVideo();
             if (video?.textTracks) {
                 for (let i = 0; i < video.textTracks.length; i++) {
                     const track = video.textTracks[i];
@@ -643,611 +610,879 @@
                 }
             }
             return null;
+        },
+    };
+
+    function getAllCues(video) {
+        if (!video?.textTracks) return [];
+        const cues = [];
+        for (let i = 0; i < video.textTracks.length; i++) {
+            const track = video.textTracks[i];
+            if (track.mode === "disabled" || !track.cues) continue;
+            for (let j = 0; j < track.cues.length; j++)
+                cues.push(track.cues[j]);
         }
+        const seen = new Set();
+        return cues
+            .filter((c) => {
+                const key = `${c.startTime.toFixed(3)}-${c.endTime.toFixed(3)}`;
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            })
+            .sort((a, b) => a.startTime - b.startTime);
+    }
 
-        // E-key subtitle translation state
-        let eTranslateActive = false;
-        let eOriginalContents = [];
-        let eWasPlaying = false;
-
-        // Word Cloud mode state
-        let wordCloudActive = false;
-        let wordCloudEls = [];
-        let wordCloudWasPlaying = false;
-        const wordCloudCache = QT.createTranslateCache(300);
-        const SIMPLE_WORDS = new Set([
-            "a",
-            "an",
-            "and",
-            "are",
-            "as",
-            "at",
-            "be",
-            "but",
-            "by",
-            "can",
-            "could",
-            "do",
-            "does",
-            "did",
-            "for",
-            "from",
-            "had",
-            "has",
-            "have",
-            "he",
-            "her",
-            "here",
-            "his",
-            "i",
-            "if",
-            "in",
-            "into",
-            "is",
-            "it",
-            "its",
-            "me",
-            "my",
-            "not",
-            "of",
-            "on",
-            "or",
-            "our",
-            "she",
-            "should",
-            "so",
-            "some",
-            "that",
-            "the",
-            "their",
-            "them",
-            "there",
-            "they",
-            "this",
-            "to",
-            "too",
-            "us",
-            "was",
-            "we",
-            "were",
-            "what",
-            "when",
-            "where",
-            "which",
-            "who",
-            "why",
-            "will",
-            "with",
-            "would",
-            "you",
-            "your",
-            "yours",
-        ]);
-
-        function shouldTranslateWord(rawText) {
-            const text = (rawText || "").trim();
-            if (!text) return false;
-            if (/\d/.test(text)) return false;
-            if (/^[^A-Za-z]+$/.test(text)) return false;
-
-            const lettersOnly = text.replace(/[^A-Za-z]/g, "");
-            if (!lettersOnly) return false;
-            if (lettersOnly.length <= 1) return false;
-
-            return !SIMPLE_WORDS.has(lettersOnly.toLowerCase());
-        }
-
-        function removeWordClouds() {
-            wordCloudEls.forEach((el) => el.remove());
-            wordCloudEls = [];
-            // Remove highlight class from subtitle words
-            document
-                .querySelectorAll("." + PREFIX + "word-cloud-highlight")
-                .forEach((el) => {
-                    el.classList.remove(PREFIX + "word-cloud-highlight");
-                });
-            wordCloudActive = false;
-        }
-
-        async function showWordClouds(video) {
-            const subEls = getSubtitleElements();
-            if (subEls.length === 0) return;
-
-            // Collect all text from subtitle elements
-            const fullText = subEls
-                .map((el) => el.textContent.trim())
-                .filter(Boolean)
-                .join(" ");
-            if (!fullText) return;
-
-            wordCloudWasPlaying = !video.paused;
-            video.pause();
-            wordCloudActive = true;
-
-            // Split each subtitle element into word spans
-            const wordSpans = [];
-            for (const el of subEls) {
-                const text = el.textContent;
-                if (!text.trim()) continue;
-
-                // Save original content
-                const originalHTML = el.innerHTML;
-                eOriginalContents.push({ el, html: originalHTML });
-
-                // Split into word spans
-                QT.splitIntoWordSpans(el, PREFIX + "wc-word");
-
-                // Collect created word spans and skip trivial words
-                el.querySelectorAll("." + PREFIX + "wc-word").forEach(
-                    (span) => {
-                        wordSpans.push(span);
-                        if (shouldTranslateWord(span.textContent)) {
-                            span.classList.add(PREFIX + "word-cloud-highlight");
-                        } else {
-                            span.classList.remove(
-                                PREFIX + "word-cloud-highlight",
-                            );
-                        }
-                    },
-                );
+    function getCurrentCueIndex(cues, time) {
+        let idx = 0;
+        for (let i = cues.length - 1; i >= 0; i--) {
+            if (time >= cues[i].startTime - 0.05) {
+                idx = i;
+                break;
             }
+        }
+        return idx;
+    }
 
-            if (wordSpans.length === 0) {
-                removeWordClouds();
-                if (wordCloudWasPlaying) video.play();
+    // ═══════════════════════════════════════════════════════════════
+    //  Subtitle Word Interactivity (Hover / Click)
+    // ═══════════════════════════════════════════════════════════════
+    const subCache = QT.createTranslateCache(300);
+    let subHoverTimer = null;
+    let isSubHovering = false;
+    let subWasPlaying = false;
+    let subClickLocked = false;
+    let lastHoveredSubWord = null;
+
+    function makeSubtitlesInteractive() {
+        const els = PlayerAdapter.getSubtitleElements();
+        for (const el of els) {
+            if (el.dataset[PREFIX + "bound"]) continue;
+            if (!el.textContent.trim()) continue;
+            // if already split, ignore
+            if (
+                el.querySelector(
+                    `div:not(.${PREFIX}sub-word), span:not(.${PREFIX}sub-word)`,
+                )
+            )
+                continue;
+            el.dataset[PREFIX + "bound"] = "1";
+            QT.splitIntoWordSpans(el, PREFIX + "sub-word");
+        }
+    }
+
+    const subObserver = new MutationObserver(() => makeSubtitlesInteractive());
+    subObserver.observe(document.body, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+    });
+    setInterval(makeSubtitlesInteractive, 500);
+
+    function closeSubTooltip() {
+        if (!isSubHovering) return;
+        isSubHovering = false;
+        QT.hideTooltip();
+        if (subWasPlaying) {
+            const video = PlayerAdapter.getVideo();
+            if (video && video.paused) video.play();
+        }
+    }
+    addDismissHandler(closeSubTooltip);
+
+    document.addEventListener(
+        "mousemove",
+        (e) => {
+            if (QT.hoverClickActive || isReading) return;
+            if (typeof eTranslateActive !== "undefined" && eTranslateActive)
                 return;
-            }
+            if (typeof wordCloudActive !== "undefined" && wordCloudActive)
+                return;
 
-            // Get target language and translate the full sentence for TTS
-            const targetLang = await getTargetLang();
-            let translatedFullText = fullText;
-            try {
-                const translated = await googleTranslate(fullText, targetLang);
-                translatedFullText = translated?.translated || fullText;
-                if (translatedFullText?.trim()) {
-                    speak(translatedFullText, targetLang).catch(() => {});
-                }
-            } catch (err) {
-                console.warn(
-                    "[QT] Subtitle TTS sentence translation failed:",
-                    err,
-                );
-            }
-
-            // Translate all eligible words in parallel
-            const translatableSpans = wordSpans.filter((span) =>
-                shouldTranslateWord(span.textContent),
+            const wordSpan = QT.findWordAtPoint(
+                e.clientX,
+                e.clientY,
+                PREFIX + "sub-word",
             );
 
-            const translations = await Promise.all(
-                translatableSpans.map(async (span) => {
-                    const word = span.textContent
-                        .trim()
-                        .replace(
-                            /[.,!?;:"\u201C\u201D\u2018\u2019'()\[\]{}]/g,
-                            "",
-                        )
-                        .trim();
-                    if (!word || !shouldTranslateWord(word)) return null;
+            if (wordSpan && wordSpan !== lastHoveredSubWord) {
+                if (lastHoveredSubWord)
+                    lastHoveredSubWord.classList.remove(`${PREFIX}word-hover`);
+                lastHoveredSubWord = wordSpan;
+                wordSpan.classList.add(`${PREFIX}word-hover`);
+
+                clearTimeout(subHoverTimer);
+                subHoverTimer = setTimeout(async () => {
+                    const text = wordSpan.textContent.trim();
+                    if (!text) return;
+
+                    isSubHovering = true;
+                    const video = PlayerAdapter.getVideo();
+                    subWasPlaying = video ? !video.paused : false;
+                    if (video && !video.paused) video.pause();
+
+                    const rect = wordSpan.getBoundingClientRect();
+                    QT.showLoading(rect, "top");
+
                     try {
-                        const result = await wordCloudCache.get(
-                            word,
+                        const targetLang = await QT.getTargetLang();
+                        const res = await subCache.get(text, targetLang);
+                        if (!isSubHovering || lastHoveredSubWord !== wordSpan)
+                            return;
+
+                        const html = QT.buildTooltipHtml({
+                            srcLang: res.detectedLang,
                             targetLang,
-                        );
-                        return result.translated;
-                    } catch {
-                        return null;
+                            original: text,
+                            translated: res.translated,
+                        });
+                        QT.showTooltip(html, rect, "top");
+                        QT.attachTooltipHandlers();
+                    } catch (err) {
+                        if (isSubHovering)
+                            QT.showTooltip(
+                                `<div class="${PREFIX}error">⚠ ${QT.escapeHtml(err.message)}</div>`,
+                                rect,
+                                "top",
+                            );
                     }
-                }),
+                }, 300);
+            } else if (!wordSpan && lastHoveredSubWord) {
+                clearTimeout(subHoverTimer);
+                lastHoveredSubWord.classList.remove(`${PREFIX}word-hover`);
+                lastHoveredSubWord = null;
+                if (isSubHovering && !subClickLocked) closeSubTooltip();
+            }
+        },
+        true,
+    );
+
+    document.addEventListener(
+        "click",
+        (e) => {
+            if (isOwnUI(e.target)) return;
+            const wordSpan = QT.findWordAtPoint(
+                e.clientX,
+                e.clientY,
+                PREFIX + "sub-word",
             );
-
-            // Fullscreen-aware parent
-            const parent =
-                document.fullscreenElement ||
-                document.webkitFullscreenElement ||
-                document.body;
-
-            // Create cloud tooltip for each eligible word
-            translatableSpans.forEach((span, i) => {
-                const translated = translations[i];
-                if (!translated) return;
-
-                const rect = span.getBoundingClientRect();
-                if (rect.width === 0 && rect.height === 0) return;
-
-                const cloud = document.createElement("div");
-                cloud.className = PREFIX + "word-cloud";
-                cloud.textContent = translated;
-                // Stagger animation
-                cloud.style.animationDelay = i * 0.05 + "s";
-                parent.appendChild(cloud);
-                wordCloudEls.push(cloud);
-
-                // Position: center above the word
-                const cloudRect = cloud.getBoundingClientRect();
-                let left = rect.left + (rect.width - cloudRect.width) / 2;
-                let top = rect.top - cloudRect.height - 8;
-
-                // Keep within viewport
-                const vpW = window.innerWidth;
-                left = Math.max(4, Math.min(left, vpW - cloudRect.width - 4));
-                if (top < 4) top = rect.bottom + 4;
-
-                cloud.style.left = left + "px";
-                cloud.style.top = top + "px";
-            });
-        }
-
-        function getSubtitleElements() {
-            let els = document.querySelectorAll(
-                ".ytp-caption-window-container .ytp-caption-segment",
-            );
-            if (els.length > 0) return Array.from(els);
-            els = document.querySelectorAll(
-                ".player-timedtext-text-container span",
-            );
-            if (els.length > 0) return Array.from(els);
-            els = document.querySelectorAll(".vjs-text-track-cue div");
-            if (els.length > 0)
-                return Array.from(els).filter(
-                    (d) => d.textContent.trim() && !d.querySelector("div"),
-                );
-            return [];
-        }
-
-        let translationOverlay = null;
-
-        function getSubtitleRect() {
-            const els = getSubtitleElements();
-            if (els.length === 0) return null;
-            let top = Infinity,
-                bottom = -Infinity,
-                left = Infinity,
-                right = -Infinity;
-            for (const el of els) {
-                const r = el.getBoundingClientRect();
-                if (r.width === 0 && r.height === 0) continue;
-                top = Math.min(top, r.top);
-                bottom = Math.max(bottom, r.bottom);
-                left = Math.min(left, r.left);
-                right = Math.max(right, r.right);
-            }
-            if (top === Infinity) return null;
-            return { top, bottom, left, right, width: right - left };
-        }
-
-        function createOverlay() {
-            removeOverlay();
-            translationOverlay = document.createElement("div");
-            translationOverlay.className = PREFIX + "sub-overlay";
-            // Use fullscreen-aware parent so overlay is visible in fullscreen
-            const parent =
-                document.fullscreenElement ||
-                document.webkitFullscreenElement ||
-                document.body;
-            parent.appendChild(translationOverlay);
-            return translationOverlay;
-        }
-
-        function removeOverlay() {
-            if (translationOverlay) {
-                translationOverlay.remove();
-                translationOverlay = null;
-            }
-        }
-
-        function positionOverlay() {
-            if (!translationOverlay) return;
-            const rect = getSubtitleRect();
-            if (!rect) return;
-
-            // Match subtitle font size
-            const subEls = getSubtitleElements();
-            if (subEls.length > 0) {
-                const cs = window.getComputedStyle(subEls[0]);
-                translationOverlay.style.fontSize = cs.fontSize;
-                translationOverlay.style.fontFamily = cs.fontFamily;
-            }
-
-            translationOverlay.style.position = "fixed";
-            translationOverlay.style.left = rect.left + "px";
-            translationOverlay.style.width = rect.width + "px";
-            // Measure after content + font are set
-            const overlayH = translationOverlay.offsetHeight || 40;
-            translationOverlay.style.top = rect.top - overlayH - 4 + "px";
-        }
-
-        function showSubLoading() {
-            const overlay = createOverlay();
-            overlay.innerHTML =
-                `<div class="${PREFIX}shimmer-bar">` +
-                `<div class="${PREFIX}shimmer-line"></div>` +
-                `<div class="${PREFIX}shimmer-line ${PREFIX}shimmer-short"></div>` +
-                `</div>`;
-            positionOverlay();
-        }
-
-        function clearSubLoading() {
-            // overlay will be replaced by translation or removed
-        }
-
-        function applyTranslation(translatedText) {
-            const subEls = getSubtitleElements();
-            if (subEls.length === 0) {
-                removeOverlay();
-                return;
-            }
-
-            const overlay = translationOverlay || createOverlay();
-            const words = translatedText.split(/\s+/).filter(Boolean);
-
-            if (subEls.length <= 1) {
-                overlay.textContent = words.join(" ");
-            } else {
-                // Distribute words proportionally across lines
-                const origLengths = subEls.map(
-                    (el) => el.textContent.trim().length || 1,
-                );
-                const totalOrigLen = origLengths.reduce((a, b) => a + b, 0);
-                const totalWords = words.length;
-                let wordIdx = 0;
-                const lines = [];
-
-                subEls.forEach((el, i) => {
-                    if (i === subEls.length - 1) {
-                        lines.push(words.slice(wordIdx).join(" "));
-                    } else {
-                        const share = Math.max(
-                            1,
-                            Math.round(
-                                (origLengths[i] / totalOrigLen) * totalWords,
-                            ),
-                        );
-                        lines.push(
-                            words.slice(wordIdx, wordIdx + share).join(" "),
-                        );
-                        wordIdx += share;
-                    }
-                });
-
-                overlay.innerHTML = lines
-                    .map((line) => `<div>${line}</div>`)
-                    .join("");
-            }
-
-            positionOverlay();
-            eTranslateActive = true;
-        }
-
-        async function doSentenceTranslation(
-            video,
-            sourceText = null,
-            options = {},
-        ) {
-            const text = sourceText || getCurrentSubtitleText(video);
-            if (!text) return;
-
-            showSubLoading();
-            try {
-                const targetLang = await getTargetLang();
-                const { translated } = await googleTranslate(text, targetLang);
-                const translatedText = translated || text;
-                applyTranslation(translatedText);
-                if (options.speakTranslated) {
-                    await speak(translatedText, targetLang);
-                }
-            } catch (err) {
-                console.warn("[QT] Subtitle sentence translation failed:", err);
-                applyTranslation(text);
-            }
-        }
-
-        function restoreOriginal() {
-            removeOverlay();
-            removeWordClouds();
-            // Restore original HTML of subtitle elements
-            for (const item of eOriginalContents) {
-                if (item.el && item.html !== undefined) {
-                    item.el.innerHTML = item.html;
-                }
-            }
-            eOriginalContents = [];
-            eTranslateActive = false;
-            // Stop any TTS that was reading the translated text
-            window.speechSynthesis.cancel();
-            const audio = getElAudioEl();
-            if (audio) {
-                audio.pause();
-                setElAudioEl(null);
-            }
-        }
-
-        // CSS-based control-bar suppression: add __qt_hide-controls to .video-js
-        // so the control bar is hidden by CSS. Only mousemove temporarily removes it.
-        let _controlBarTimer = null;
-        function ensureControlsHidden() {
-            const vjsEl = document.querySelector(".video-js");
-            if (vjsEl && !vjsEl.classList.contains("__qt_hide-controls")) {
-                vjsEl.classList.add("__qt_hide-controls");
-            }
-        }
-        function initControlBarHide() {
-            const vjsEl = document.querySelector(".video-js");
-            if (!vjsEl || vjsEl.__qtMouseBound) return;
-            vjsEl.__qtMouseBound = true;
-            vjsEl.classList.add("__qt_hide-controls");
-            vjsEl.addEventListener("mousemove", () => {
-                vjsEl.classList.remove("__qt_hide-controls");
-                clearTimeout(_controlBarTimer);
-                _controlBarTimer = setTimeout(() => {
-                    vjsEl.classList.add("__qt_hide-controls");
-                }, 3000);
-            });
-            vjsEl.addEventListener("mouseleave", () => {
-                clearTimeout(_controlBarTimer);
-                vjsEl.classList.add("__qt_hide-controls");
-            });
-        }
-        initControlBarHide();
-        document.addEventListener("fullscreenchange", () =>
-            setTimeout(initControlBarHide, 200),
-        );
-        document.addEventListener("webkitfullscreenchange", () =>
-            setTimeout(initControlBarHide, 200),
-        );
-
-        document.addEventListener(
-            "keydown",
-            (e) => {
-                const tag = e.target.tagName;
-                if (
-                    tag === "INPUT" ||
-                    tag === "TEXTAREA" ||
-                    tag === "SELECT" ||
-                    e.target.isContentEditable
-                )
-                    return;
-
-                const key = e.key;
-                const NAV_KEYS = [
-                    "a",
-                    "A",
-                    "ArrowLeft",
-                    "d",
-                    "D",
-                    "ArrowRight",
-                    "w",
-                    "W",
-                    "ArrowUp",
-                    "s",
-                    "S",
-                    "ArrowDown",
-                    "e",
-                    "E",
-                    "Enter",
-                ];
-                if (!NAV_KEYS.includes(key)) return;
-
-                // In YouTube Reels mode, let youtube.js handle translate keys
-                if (
-                    document.body.classList.contains("__qt_reels-active") &&
-                    ["s", "S", "ArrowDown", "e", "E", "Enter"].includes(key)
-                )
-                    return;
-
-                const video = getActiveVideo();
-                if (!video) return;
-
+            if (wordSpan) {
                 e.preventDefault();
                 e.stopPropagation();
-                e.stopImmediatePropagation();
+                subClickLocked = true;
+                setTimeout(() => {
+                    subClickLocked = false;
+                }, 2000);
+            }
+        },
+        true,
+    );
 
-                // Ensure control bar stays hidden on keyboard nav
-                ensureControlsHidden();
-                clearTimeout(_controlBarTimer);
+    // ═══════════════════════════════════════════════════════════════
+    //  AI Explanations & Reels Mode
+    // ═══════════════════════════════════════════════════════════════
 
-                // If translation overlay or word cloud is active, ANY nav key dismisses it
-                if (eTranslateActive || wordCloudActive) {
-                    const shouldResume = wordCloudActive
-                        ? wordCloudWasPlaying
-                        : eWasPlaying;
-                    restoreOriginal();
-                    if (shouldResume) video.play();
-                    eWasPlaying = false;
-                    wordCloudWasPlaying = false;
-                    return;
+    let aiTooltipActive = false;
+    let aiWasPlaying = false;
+    function closeAiTooltip() {
+        if (!aiTooltipActive) return;
+        aiTooltipActive = false;
+        hideTooltip();
+        if (aiWasPlaying) {
+            aiWasPlaying = false;
+            const video = PlayerAdapter.getVideo();
+            if (video && video.paused) video.play();
+        }
+    }
+    addDismissHandler(closeAiTooltip);
+
+    async function handleAIExplain(video) {
+        const text = PlayerAdapter.getCurrentText();
+        if (!text) return;
+        aiTooltipActive = true;
+        aiWasPlaying = !video.paused;
+        if (aiWasPlaying) video.pause();
+
+        const container = PlayerAdapter.getSubtitleContainer();
+        const rect = container
+            ? container.getBoundingClientRect()
+            : {
+                  left: window.innerWidth / 2 - 100,
+                  top: window.innerHeight - 150,
+                  width: 200,
+                  height: 50,
+              };
+
+        showLoading(rect, "top");
+        try {
+            const targetLang = await getTargetLang();
+            const res = await QT.geminiExplainSentence(text, targetLang);
+            if (!aiTooltipActive) return;
+
+            const translation = res.translation || "";
+            const explanation = res.explanation || res;
+
+            const html = `
+                <div class="${PREFIX}header"><span>✨ AI Wyjaśnia</span></div>
+                <div class="${PREFIX}body">
+                    <div class="${PREFIX}row">
+                        <span class="${PREFIX}label">EN</span>
+                        <span class="${PREFIX}text ${PREFIX}original">${escapeHtml(text)}</span>
+                    </div>
+                    <div class="${PREFIX}row">
+                        <span class="${PREFIX}label">PL</span>
+                        <span class="${PREFIX}text ${PREFIX}translated" >${escapeHtml(translation)}</span>
+                        <button class="${PREFIX}speak" data-text="${escapeAttr(translation)}" data-lang="pl" title="Odczytaj tłumaczenie i wyjaśnienie">${SVG.SPEAKER}</button>
+                    </div>
+                    <div class="${PREFIX}ai-result" style="margin-top:10px;">
+                        <div class="${PREFIX}ai-label">Wyjaśnienie:</div>
+                        <div class="${PREFIX}ai-text">${escapeHtml(explanation)}</div>
+                    </div>
+                </div>`;
+            showTooltip(html, rect, "top");
+            attachTooltipHandlers();
+
+            // Auto-play: read translation then explanation
+            if (aiTooltipActive) {
+                await speak(translation, "pl");
+                if (aiTooltipActive) {
+                    await speak(explanation, "pl");
                 }
+            }
+        } catch (err) {
+            if (aiTooltipActive)
+                showTooltip(
+                    `<div class="${PREFIX}error">⚠ ${escapeHtml(err.message)}</div>`,
+                    rect,
+                    "top",
+                );
+        }
+    }
 
-                // S / ArrowDown / E / Enter = subtitle reading mode
-                if (
-                    key === "s" ||
-                    key === "S" ||
-                    key === "ArrowDown" ||
-                    key === "e" ||
-                    key === "E"
-                ) {
-                    const handleSubtitleAction = (data) => {
-                        const text = getCurrentSubtitleText(video);
-                        if (!text) return;
+    let reelsMode = false;
+    let reelsContainer = null;
+    let reelsBigWord = null;
+    let reelsPrevText = "";
+    let reelsPollTimer = null;
+    let reelsFadeTimer = null;
 
-                        if (data.wordCloudMode) {
-                            showWordClouds(video).catch(() => {
+    function createReelsOverlay() {
+        if (reelsContainer) return;
+        reelsContainer = document.createElement("div");
+        reelsContainer.className = `${PREFIX}reels-container`;
+        reelsBigWord = document.createElement("div");
+        reelsBigWord.className = `${PREFIX}reels-bigword`;
+        reelsContainer.appendChild(reelsBigWord);
+        const parent = PlayerAdapter.getVideo()?.parentElement || document.body;
+        parent.appendChild(reelsContainer);
+    }
+
+    function reelsPoll() {
+        if (!reelsMode) return;
+        const text = PlayerAdapter.getCurrentText();
+        if (!text) {
+            if (reelsContainer) reelsContainer.classList.remove("visible");
+            reelsPrevText = "";
+            return;
+        }
+        if (text === reelsPrevText) return;
+        const words = text.split(/\s+/).filter(Boolean);
+        const word = words[words.length - 1] || "";
+        reelsPrevText = text;
+
+        if (!reelsContainer) createReelsOverlay();
+
+        reelsBigWord.textContent = word;
+        reelsBigWord.classList.remove(`${PREFIX}reels-pop`);
+        void reelsBigWord.offsetWidth;
+        reelsBigWord.classList.add(`${PREFIX}reels-pop`);
+        reelsContainer.classList.add("visible");
+
+        clearTimeout(reelsFadeTimer);
+        reelsFadeTimer = setTimeout(
+            () => reelsContainer?.classList.remove("visible"),
+            4000,
+        );
+    }
+
+    function setReelsMode(on) {
+        reelsMode = on;
+        if (on) {
+            createReelsOverlay();
+            document.body.classList.add(`${PREFIX}reels-active`);
+            clearInterval(reelsPollTimer);
+            reelsPollTimer = setInterval(reelsPoll, 120);
+            QT.createHint("").show("Reels ON 🎬 Enter = Wyjaśnienie AI", 3000);
+        } else {
+            clearInterval(reelsPollTimer);
+            reelsContainer?.remove();
+            reelsContainer = reelsBigWord = null;
+            document.body.classList.remove(`${PREFIX}reels-active`);
+            reelsPrevText = "";
+            QT.createHint("").show("Reels OFF", 2500);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  Speed Overlay
+    // ═══════════════════════════════════════════════════════════════
+    let speedOverlayEl = null;
+    let speedOverlayTimer = null;
+    function showSpeedOverlay(speed) {
+        if (!speedOverlayEl) {
+            speedOverlayEl = document.createElement("div");
+            speedOverlayEl.style.cssText =
+                "position:fixed; top:40px; right:40px; background:rgba(0,0,0,0.8); color:#fff; padding:10px 16px; border-radius:8px; font-family:sans-serif; font-size:16px; font-weight:bold; z-index:2147483647; opacity:0; transition:opacity 0.2s ease; pointer-events:none;";
+            document.body.appendChild(speedOverlayEl);
+        }
+        speedOverlayEl.textContent = `Prędkość: ${speed.toFixed(2)}x`;
+        speedOverlayEl.style.opacity = "1";
+        clearTimeout(speedOverlayTimer);
+        speedOverlayTimer = setTimeout(
+            () => (speedOverlayEl.style.opacity = "0"),
+            2000,
+        );
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  Keyboard Subtitle Navigation (all video sites)
+    // ═══════════════════════════════════════════════════════════════
+
+    let eTranslateActive = false;
+    let eOriginalContents = [];
+    let eWasPlaying = false;
+    let wordCloudActive = false;
+    let wordCloudEls = [];
+    let wordCloudWasPlaying = false;
+    const wordCloudCache = QT.createTranslateCache(300);
+    const SIMPLE_WORDS = new Set([
+        "a",
+        "an",
+        "and",
+        "are",
+        "as",
+        "at",
+        "be",
+        "but",
+        "by",
+        "can",
+        "could",
+        "do",
+        "does",
+        "did",
+        "for",
+        "from",
+        "had",
+        "has",
+        "have",
+        "he",
+        "her",
+        "here",
+        "his",
+        "i",
+        "if",
+        "in",
+        "into",
+        "is",
+        "it",
+        "its",
+        "me",
+        "my",
+        "not",
+        "of",
+        "on",
+        "or",
+        "our",
+        "she",
+        "should",
+        "so",
+        "some",
+        "that",
+        "the",
+        "their",
+        "them",
+        "there",
+        "they",
+        "this",
+        "to",
+        "too",
+        "us",
+        "was",
+        "we",
+        "were",
+        "what",
+        "when",
+        "where",
+        "which",
+        "who",
+        "why",
+        "will",
+        "with",
+        "would",
+        "you",
+        "your",
+        "yours",
+    ]);
+
+    function shouldTranslateWord(rawText) {
+        const text = (rawText || "").trim();
+        if (!text) return false;
+        if (/\d/.test(text)) return false;
+        if (/^[^A-Za-z]+$/.test(text)) return false;
+        const lettersOnly = text.replace(/[^A-Za-z]/g, "");
+        if (!lettersOnly || lettersOnly.length <= 1) return false;
+        return !SIMPLE_WORDS.has(lettersOnly.toLowerCase());
+    }
+
+    function removeWordClouds() {
+        wordCloudEls.forEach((el) => el.remove());
+        wordCloudEls = [];
+        document
+            .querySelectorAll("." + PREFIX + "word-cloud-highlight")
+            .forEach((el) => {
+                el.classList.remove(PREFIX + "word-cloud-highlight");
+            });
+        wordCloudActive = false;
+    }
+
+    async function showWordClouds(video, opts = { skipSpeech: false }) {
+        const subEls = PlayerAdapter.getSubtitleElements();
+        if (subEls.length === 0) return;
+        const fullText = subEls
+            .map((el) => el.textContent.trim())
+            .filter(Boolean)
+            .join(" ");
+        if (!fullText) return;
+
+        wordCloudWasPlaying = !video.paused;
+        video.pause();
+        wordCloudActive = true;
+
+        const wordSpans = [];
+        for (const el of subEls) {
+            if (!el.textContent.trim()) continue;
+            eOriginalContents.push({ el, html: el.innerHTML });
+            QT.splitIntoWordSpans(el, PREFIX + "wc-word");
+            el.querySelectorAll("." + PREFIX + "wc-word").forEach((span) => {
+                wordSpans.push(span);
+                if (shouldTranslateWord(span.textContent))
+                    span.classList.add(PREFIX + "word-cloud-highlight");
+                else span.classList.remove(PREFIX + "word-cloud-highlight");
+            });
+        }
+
+        if (wordSpans.length === 0) {
+            removeWordClouds();
+            if (wordCloudWasPlaying) video.play();
+            return;
+        }
+
+        const targetLang = await getTargetLang();
+        let translatedFullText = fullText;
+        try {
+            const translated = await googleTranslate(fullText, targetLang);
+            translatedFullText = translated?.translated || fullText;
+            if (!opts.skipSpeech && translatedFullText?.trim()) {
+                speak(translatedFullText, targetLang).catch(() => {});
+            }
+        } catch (err) {}
+
+        const translatableSpans = wordSpans.filter((span) =>
+            shouldTranslateWord(span.textContent),
+        );
+        const translations = await Promise.all(
+            translatableSpans.map(async (span) => {
+                const word = span.textContent
+                    .trim()
+                    .replace(/[.,!?;:"\u201C\u201D\u2018\u2019'()\[\]{}]/g, "")
+                    .trim();
+                if (!word || !shouldTranslateWord(word)) return null;
+                try {
+                    const result = await wordCloudCache.get(word, targetLang);
+                    return result.translated;
+                } catch {
+                    return null;
+                }
+            }),
+        );
+
+        const parent =
+            document.fullscreenElement ||
+            document.webkitFullscreenElement ||
+            document.body;
+        translatableSpans.forEach((span, i) => {
+            const translated = translations[i];
+            if (!translated) return;
+            const rect = span.getBoundingClientRect();
+            if (rect.width === 0 && rect.height === 0) return;
+            const cloud = document.createElement("div");
+            cloud.className = PREFIX + "word-cloud";
+            cloud.textContent = translated;
+            cloud.style.animationDelay = i * 0.05 + "s";
+            parent.appendChild(cloud);
+            wordCloudEls.push(cloud);
+            const cloudRect = cloud.getBoundingClientRect();
+            let left = rect.left + (rect.width - cloudRect.width) / 2;
+            let top = rect.top - cloudRect.height + 8;
+            left = Math.max(
+                4,
+                Math.min(left, window.innerWidth - cloudRect.width - 4),
+            );
+            if (top < 4) top = rect.bottom + 4;
+            cloud.style.left = left + "px";
+            cloud.style.top = top + "px";
+        });
+    }
+
+    let translationOverlay = null;
+    function getSubtitleRect() {
+        const els = PlayerAdapter.getSubtitleElements();
+        if (els.length === 0) return null;
+        let top = Infinity,
+            bottom = -Infinity,
+            left = Infinity,
+            right = -Infinity;
+        for (const el of els) {
+            const r = el.getBoundingClientRect();
+            if (r.width === 0 && r.height === 0) continue;
+            top = Math.min(top, r.top);
+            bottom = Math.max(bottom, r.bottom);
+            left = Math.min(left, r.left);
+            right = Math.max(right, r.right);
+        }
+        if (top === Infinity) return null;
+        return { top, bottom, left, right, width: right - left };
+    }
+
+    function createOverlay() {
+        removeOverlay();
+        translationOverlay = document.createElement("div");
+        translationOverlay.className = PREFIX + "sub-overlay";
+        const parent =
+            document.fullscreenElement ||
+            document.webkitFullscreenElement ||
+            document.body;
+        parent.appendChild(translationOverlay);
+        return translationOverlay;
+    }
+
+    function removeOverlay() {
+        if (translationOverlay) {
+            translationOverlay.remove();
+            translationOverlay = null;
+        }
+    }
+
+    function positionOverlay() {
+        if (!translationOverlay) return;
+        const rect = getSubtitleRect();
+        if (!rect) return;
+        const subEls = PlayerAdapter.getSubtitleElements();
+        if (subEls.length > 0) {
+            const cs = window.getComputedStyle(subEls[0]);
+            translationOverlay.style.fontSize = cs.fontSize;
+            translationOverlay.style.fontFamily = cs.fontFamily;
+        }
+        translationOverlay.style.position = "fixed";
+        translationOverlay.style.left = rect.left + "px";
+        translationOverlay.style.width = rect.width + "px";
+        const overlayH = translationOverlay.offsetHeight || 40;
+        translationOverlay.style.top = rect.top - overlayH - 26 + "px";
+    }
+
+    function showSubLoading() {
+        const overlay = createOverlay();
+        overlay.innerHTML = `<div class="${PREFIX}shimmer-bar"><div class="${PREFIX}shimmer-line"></div><div class="${PREFIX}shimmer-line ${PREFIX}shimmer-short"></div></div>`;
+        positionOverlay();
+    }
+
+    function applyTranslation(translatedText) {
+        const subEls = PlayerAdapter.getSubtitleElements();
+        if (subEls.length === 0) {
+            removeOverlay();
+            return;
+        }
+        const overlay = translationOverlay || createOverlay();
+        const words = translatedText.split(/\s+/).filter(Boolean);
+        if (subEls.length <= 1) {
+            overlay.textContent = words.join(" ");
+        } else {
+            const origLengths = subEls.map(
+                (el) => el.textContent.trim().length || 1,
+            );
+            const totalOrigLen = origLengths.reduce((a, b) => a + b, 0);
+            const totalWords = words.length;
+            let wordIdx = 0;
+            const lines = [];
+            subEls.forEach((el, i) => {
+                if (i === subEls.length - 1) {
+                    lines.push(words.slice(wordIdx).join(" "));
+                } else {
+                    const share = Math.max(
+                        1,
+                        Math.round(
+                            (origLengths[i] / totalOrigLen) * totalWords,
+                        ),
+                    );
+                    lines.push(words.slice(wordIdx, wordIdx + share).join(" "));
+                    wordIdx += share;
+                }
+            });
+            overlay.innerHTML = lines
+                .map((line) => `<div style="font-size: 33px;">${line}</div>`)
+                .join("");
+        }
+        positionOverlay();
+        eTranslateActive = true;
+    }
+
+    async function doSentenceTranslation(
+        video,
+        sourceText = null,
+        options = {},
+    ) {
+        const text = sourceText || PlayerAdapter.getCurrentText();
+        if (!text) return;
+        showSubLoading();
+        try {
+            const targetLang = await getTargetLang();
+            const { translated } = await googleTranslate(text, targetLang);
+            const translatedText = translated || text;
+            applyTranslation(translatedText);
+            if (options.speakTranslated)
+                await speak(translatedText, targetLang);
+        } catch (err) {
+            applyTranslation(text);
+        }
+    }
+
+    function restoreOriginal() {
+        removeOverlay();
+        removeWordClouds();
+        for (const item of eOriginalContents) {
+            if (item.el && item.html !== undefined)
+                item.el.innerHTML = item.html;
+        }
+        eOriginalContents = [];
+        eTranslateActive = false;
+        wordCloudActive = false;
+        window.speechSynthesis.cancel();
+        const audio = getElAudioEl();
+        if (audio) {
+            audio.pause();
+            setElAudioEl(null);
+        }
+    }
+
+    let _controlBarTimer = null;
+    function ensureControlsHidden() {
+        const vjsEl = document.querySelector(".video-js");
+        if (vjsEl && !vjsEl.classList.contains("__qt_hide-controls"))
+            vjsEl.classList.add("__qt_hide-controls");
+    }
+    function initControlBarHide() {
+        const vjsEl = document.querySelector(".video-js");
+        if (!vjsEl || vjsEl.__qtMouseBound) return;
+        vjsEl.__qtMouseBound = true;
+        vjsEl.classList.add("__qt_hide-controls");
+        vjsEl.addEventListener("mousemove", () => {
+            vjsEl.classList.remove("__qt_hide-controls");
+            clearTimeout(_controlBarTimer);
+            _controlBarTimer = setTimeout(
+                () => vjsEl.classList.add("__qt_hide-controls"),
+                3000,
+            );
+        });
+        vjsEl.addEventListener("mouseleave", () => {
+            clearTimeout(_controlBarTimer);
+            vjsEl.classList.add("__qt_hide-controls");
+        });
+    }
+    initControlBarHide();
+    document.addEventListener("fullscreenchange", () =>
+        setTimeout(initControlBarHide, 200),
+    );
+    document.addEventListener("webkitfullscreenchange", () =>
+        setTimeout(initControlBarHide, 200),
+    );
+
+    document.addEventListener(
+        "keydown",
+        (e) => {
+            const tag = e.target.tagName;
+            if (
+                tag === "INPUT" ||
+                tag === "TEXTAREA" ||
+                tag === "SELECT" ||
+                e.target.isContentEditable
+            )
+                return;
+
+            const key = e.key;
+            const NAV_KEYS = [
+                "a",
+                "A",
+                "ArrowLeft",
+                "d",
+                "D",
+                "ArrowRight",
+                "w",
+                "W",
+                "ArrowUp",
+                "s",
+                "S",
+                "ArrowDown",
+                "e",
+                "E",
+                "Enter",
+                "q",
+                "Q",
+                "r",
+                "R",
+                "[",
+                "{",
+                "]",
+                "}",
+            ];
+            if (!NAV_KEYS.includes(key)) return;
+
+            const video = PlayerAdapter.getVideo();
+            if (!video) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+
+            // Speed Control
+            if (["[", "{", "]", "}"].includes(key)) {
+                let currentRate = video.playbackRate;
+                if (key === "[" || key === "{")
+                    currentRate = Math.max(0.25, currentRate - 0.05);
+                else currentRate = Math.min(2.0, currentRate + 0.05);
+                currentRate = Math.round(currentRate * 100) / 100;
+                video.playbackRate = currentRate;
+                showSpeedOverlay(currentRate);
+                return;
+            }
+
+            // Reels Mode Toggle
+            if (key === "r" || key === "R") {
+                setReelsMode(!reelsMode);
+                return;
+            }
+
+            // AI Explanation
+            if (key === "Enter" || key === "q" || key === "Q") {
+                if (aiTooltipActive) closeAiTooltip();
+                else handleAIExplain(video);
+                return;
+            }
+
+            ensureControlsHidden();
+            clearTimeout(_controlBarTimer);
+
+            if (eTranslateActive || wordCloudActive) {
+                const shouldResume = eWasPlaying || wordCloudWasPlaying;
+                restoreOriginal();
+                if (shouldResume) video.play();
+                eWasPlaying = false;
+                wordCloudWasPlaying = false;
+                return;
+            }
+
+            if (
+                key === "s" ||
+                key === "S" ||
+                key === "ArrowDown" ||
+                key === "e" ||
+                key === "E"
+            ) {
+                const handleSubtitleAction = (data) => {
+                    const text = PlayerAdapter.getCurrentText();
+                    if (!text) return;
+                    if (data.wordCloudMode && data.subtitleTTS) {
+                        eWasPlaying = !video.paused;
+                        if (eWasPlaying) video.pause();
+                        showWordClouds(video, { skipSpeech: true }).catch(() =>
+                            removeWordClouds(),
+                        );
+                        doSentenceTranslation(video, text, {
+                            speakTranslated: true,
+                        });
+                    } else if (data.wordCloudMode) {
+                        showWordClouds(video, { skipSpeech: false }).catch(
+                            () => {
                                 removeWordClouds();
                                 if (wordCloudWasPlaying) video.play();
-                            });
-                        } else if (data.subtitleTTS) {
-                            eWasPlaying = !video.paused;
-                            if (eWasPlaying) video.pause();
-                            doSentenceTranslation(video, text, {
-                                speakTranslated: true,
-                            });
-                        } else {
-                            doSentenceTranslation(video, text, {
-                                speakTranslated: false,
-                            });
-                        }
-                    };
-
-                    if (chrome?.storage?.sync) {
-                        chrome.storage.sync.get(
-                            { wordCloudMode: false, subtitleTTS: false },
-                            (data) => {
-                                handleSubtitleAction(data);
                             },
                         );
+                    } else if (data.subtitleTTS) {
+                        eWasPlaying = !video.paused;
+                        if (eWasPlaying) video.pause();
+                        doSentenceTranslation(video, text, {
+                            speakTranslated: true,
+                        });
                     } else {
-                        handleSubtitleAction({
-                            wordCloudMode: false,
-                            subtitleTTS: false,
+                        doSentenceTranslation(video, text, {
+                            speakTranslated: false,
                         });
                     }
-                    return;
+                };
+                if (chrome?.storage?.sync) {
+                    chrome.storage.sync.get(
+                        { wordCloudMode: false, subtitleTTS: false },
+                        handleSubtitleAction,
+                    );
+                } else {
+                    handleSubtitleAction({
+                        wordCloudMode: false,
+                        subtitleTTS: false,
+                    });
                 }
+                return;
+            }
 
-                const cues = getAllCues(video);
-                const hasCues = cues.length > 0;
+            const cues = getAllCues(video);
+            const hasCues = cues.length > 0;
+            const FALLBACK_SKIP = 3;
 
-                // W / ArrowUp = play/pause
-                if (key === "w" || key === "W" || key === "ArrowUp") {
-                    video.paused ? video.play() : video.pause();
-                    return;
+            if (key === "w" || key === "W" || key === "ArrowUp") {
+                video.paused ? video.play() : video.pause();
+                return;
+            }
+
+            if (key === "a" || key === "A" || key === "ArrowLeft") {
+                if (hasCues) {
+                    const idx = getCurrentCueIndex(cues, video.currentTime);
+                    video.currentTime =
+                        video.currentTime - cues[idx].startTime > 1.5 &&
+                        idx >= 0
+                            ? cues[idx].startTime
+                            : cues[Math.max(0, idx - 1)].startTime;
+                } else {
+                    video.currentTime = Math.max(
+                        0,
+                        video.currentTime - FALLBACK_SKIP,
+                    );
                 }
+                if (video.paused) video.play();
+                return;
+            }
 
-                // A / ArrowLeft = previous
-                if (key === "a" || key === "A" || key === "ArrowLeft") {
-                    if (hasCues) {
-                        const idx = getCurrentCueIndex(cues, video.currentTime);
-                        video.currentTime =
-                            video.currentTime - cues[idx].startTime > 1.5 &&
-                            idx >= 0
-                                ? cues[idx].startTime
-                                : cues[Math.max(0, idx - 1)].startTime;
-                    } else {
-                        video.currentTime = Math.max(
-                            0,
-                            video.currentTime - FALLBACK_SKIP,
-                        );
-                    }
-                    if (video.paused) video.play();
-                    return;
+            if (key === "d" || key === "D" || key === "ArrowRight") {
+                if (hasCues) {
+                    const idx = getCurrentCueIndex(cues, video.currentTime);
+                    video.currentTime =
+                        cues[Math.min(cues.length - 1, idx + 1)].startTime;
+                } else {
+                    video.currentTime = Math.min(
+                        video.duration || Infinity,
+                        video.currentTime + FALLBACK_SKIP,
+                    );
                 }
-
-                // D / ArrowRight = next
-                if (key === "d" || key === "D" || key === "ArrowRight") {
-                    if (hasCues) {
-                        const idx = getCurrentCueIndex(cues, video.currentTime);
-                        video.currentTime =
-                            cues[Math.min(cues.length - 1, idx + 1)].startTime;
-                    } else {
-                        video.currentTime = Math.min(
-                            video.duration || Infinity,
-                            video.currentTime + FALLBACK_SKIP,
-                        );
-                    }
-                    if (video.paused) video.play();
-                }
-            },
-            true,
-        );
-    })();
+                if (video.paused) video.play();
+            }
+        },
+        true,
+    );
 })();

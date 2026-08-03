@@ -412,7 +412,7 @@
                 utter.lang = lang;
                 const voice = pickBestVoice("", lang);
                 if (voice) utter.voice = voice;
-                utter.rate = 0.95;
+                utter.rate = 1.3;
                 window.speechSynthesis.speak(utter);
                 resolve(utter);
                 return;
@@ -424,7 +424,7 @@
                     elApiKey: "",
                     elVoiceId: "",
                     speechVoice: "",
-                    speechRate: 0.95,
+                    speechRate: 1.3,
                     ttsVolume: 1,
                 },
                 async (data) => {

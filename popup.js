@@ -240,7 +240,7 @@ hoverToggle.addEventListener("change", () => {
     );
 });
 
-// ── Subtitle reading modes (mutually exclusive) ──────────────────
+// ── Subtitle reading modes ───────────────────────────────────────
 const subtitleTTSToggle = document.getElementById("subtitleTTS");
 const wordCloudModeToggle = document.getElementById("wordCloudMode");
 
@@ -254,31 +254,14 @@ function syncSubtitleModeUI() {
     );
 }
 
-function setSubtitleMode(mode) {
-    const next = mode || "none";
-    const payload = {
-        subtitleTTS: next === "subtitleTTS",
-        wordCloudMode: next === "wordCloudMode",
-    };
-    chrome.storage.sync.set(payload, flashSaved);
-}
-
 syncSubtitleModeUI();
 
 subtitleTTSToggle.addEventListener("change", () => {
-    if (subtitleTTSToggle.checked) {
-        setSubtitleMode("subtitleTTS");
-    } else {
-        setSubtitleMode("none");
-    }
+    chrome.storage.sync.set({ subtitleTTS: subtitleTTSToggle.checked }, flashSaved);
 });
 
 wordCloudModeToggle.addEventListener("change", () => {
-    if (wordCloudModeToggle.checked) {
-        setSubtitleMode("wordCloudMode");
-    } else {
-        setSubtitleMode("none");
-    }
+    chrome.storage.sync.set({ wordCloudMode: wordCloudModeToggle.checked }, flashSaved);
 });
 
 // Subtitle Styles UI removed — settings are preserved in storage and
@@ -1006,82 +989,54 @@ function escapeAttr(str) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-//  SPACED REPETITION  –  Step-based intervals (1d→3d→7d→14d→30d→90d)
+//  SPACED REPETITION  –  Anki SM-2 Algorithm (4 grades)
 // ═══════════════════════════════════════════════════════════════════
 
-// ── Interval steps (in days): 12h → 3d → 7d → 14d → 30d → 90d ──
-const SR_STEPS = [0.5, 3, 7, 14, 30, 90];
-
-// ── In-session delays (in minutes) for grades 1-4 ────────────────
-const SESSION_DELAYS = {
-    1: 1, // Nie wiem  → 1 minuta
-    2: 3, // Źle       → 3 minuty
-    3: 10, // Trudne    → 10 minut
-    4: 60, // OK        → 1 godzina
-};
-
 /**
- * Calculate new SR data after rating.
- *
- * Grades 1-4 → short in-session delay (minutes), step goes DOWN or stays.
- *   1 (Nie wiem)  → reset step to 0, come back in 1 min
- *   2 (Źle)       → step - 2 (min 0), come back in 3 min
- *   3 (Trudne)    → step - 1 (min 0), come back in 10 min
- *   4 (OK)        → stay at same step, come back in 1 hour
- *
- * Grade 5 (Łatwe) → advance step, next review in days (1d→3d→7d→…)
+ * Anki SM-2 implementation.
+ * Grade 1: Powtórz (Again)
+ * Grade 2: Trudne (Hard)
+ * Grade 3: Dobre (Good)
+ * Grade 4: Łatwe (Easy)
  */
 function srUpdate(sr, grade) {
-    let step = sr.step;
+    let { interval = 0, reps = 0, easeFactor = 2.5 } = sr;
 
-    if (grade === 5) {
-        // Use current step for interval, then advance for next time
-        const intervalDays = getIntervalForStep(step);
-        step = step + 1;
-        return {
-            step,
-            interval: intervalDays,
-            nextReview: Date.now() + intervalDays * 24 * 60 * 60 * 1000,
-            lastReview: Date.now(),
-        };
-    }
-
-    // Grades 1-4: short delay, adjust step downward
     if (grade === 1) {
-        step = 0;
+        reps = 0;
+        interval = 1 / (24 * 60); // 1 minute
+        easeFactor = Math.max(1.3, easeFactor - 0.2);
     } else if (grade === 2) {
-        step = Math.max(0, step - 2);
+        interval = reps === 0 ? 10 / (24 * 60) : interval * 1.2; // 10 minutes if new, else 20% increase
+        easeFactor = Math.max(1.3, easeFactor - 0.15);
     } else if (grade === 3) {
-        step = Math.max(0, step - 1);
+        if (reps === 0) interval = 10 / (24 * 60); // 10 mins
+        else if (reps === 1) interval = 1; // 1 day
+        else interval = interval * easeFactor;
+        reps++;
+    } else if (grade === 4) {
+        if (reps === 0) interval = 4; // 4 days
+        else interval = interval * easeFactor * 1.3;
+        easeFactor += 0.15;
+        reps++;
     }
-    // grade 4: step stays
 
-    const delayMinutes = SESSION_DELAYS[grade];
     return {
-        step,
-        interval: sr.interval, // keep last long-term interval for reference
-        nextReview: Date.now() + delayMinutes * 60 * 1000,
+        interval,
+        reps,
+        easeFactor,
+        nextReview: Date.now() + interval * 24 * 60 * 60 * 1000,
         lastReview: Date.now(),
     };
 }
 
-/** Get interval in days for a given step */
-function getIntervalForStep(step) {
-    if (step < SR_STEPS.length) return SR_STEPS[step];
-    // Beyond last step: keep growing (90 * 1.5^n)
-    const extra = step - SR_STEPS.length + 1;
-    return Math.round(SR_STEPS[SR_STEPS.length - 1] * Math.pow(1.5, extra));
-}
-
 /** Preview what the next review time label will be for a given grade */
 function previewLabel(sr, grade) {
-    if (grade === 5) {
-        const step = sr.step; // current step (not +1, interval is taken before advancing)
-        const days = getIntervalForStep(step);
-        return formatIntervalDays(days);
-    }
-    const mins = SESSION_DELAYS[grade];
-    return formatIntervalMinutes(mins);
+    const nextSr = srUpdate(sr, grade);
+    const days = nextSr.interval;
+    const mins = Math.round(days * 24 * 60);
+    if (mins < 60) return formatIntervalMinutes(mins);
+    return formatIntervalDays(days);
 }
 
 function formatIntervalDays(days) {
@@ -1118,26 +1073,20 @@ let _reviewSaving = false; // guard: skip storage listener while rating
 function ensureSR(word) {
     if (!word.sr) {
         word.sr = {
-            step: 0,
             interval: 0,
+            reps: 0,
+            easeFactor: 2.5,
             nextReview: 0,
             lastReview: null,
         };
     }
-    // Migrate old SM-2 format → new step format
-    if (word.sr.step === undefined) {
-        // Try to guess step from old interval
-        const oldInterval = word.sr.interval || 0;
-        let step = 0;
-        for (let i = SR_STEPS.length - 1; i >= 0; i--) {
-            if (oldInterval >= SR_STEPS[i]) {
-                step = i;
-                break;
-            }
-        }
+    // Migrate old step-based format → Anki SM-2 format
+    if (word.sr.step !== undefined) {
+        const oldIntervalDays = word.sr.interval || 0;
         word.sr = {
-            step,
-            interval: word.sr.interval || 0,
+            interval: oldIntervalDays,
+            reps: oldIntervalDays > 0 ? 1 : 0, // Roughly guess reps
+            easeFactor: 2.5,
             nextReview: word.sr.nextReview || 0,
             lastReview: word.sr.lastReview || null,
         };
@@ -1485,7 +1434,7 @@ function renderAnswer(w) {
     const aSentence = isReverse ? w.sentence || "" : w.sentenceTranslated || "";
 
     // Preview labels for each grade
-    const labels = [1, 2, 3, 4, 5].map((g) => previewLabel(sr, g));
+    const labels = [1, 2, 3, 4].map((g) => previewLabel(sr, g));
 
     card.innerHTML = `
         <div class="review-question">
@@ -1523,33 +1472,28 @@ function renderAnswer(w) {
         <div class="review-rating">
             <div class="review-rating-label">Jak dobrze znałeś?</div>
             <div class="review-rating-buttons">
-                <button class="review-rate-btn rate-1" data-grade="1" title="Nie pamiętam">
+                <button class="review-rate-btn rate-1" data-grade="1" title="Powtórz (Again)">
                     <span class="rate-key">1</span>
-                    <span class="rate-label">Nie wiem</span>
+                    <span class="rate-label">Powtórz</span>
                     <span class="review-next-info">${labels[0]}</span>
                 </button>
-                <button class="review-rate-btn rate-2" data-grade="2" title="Źle">
+                <button class="review-rate-btn rate-2" data-grade="2" title="Trudne (Hard)">
                     <span class="rate-key">2</span>
-                    <span class="rate-label">Źle</span>
+                    <span class="rate-label">Trudne</span>
                     <span class="review-next-info">${labels[1]}</span>
                 </button>
-                <button class="review-rate-btn rate-3" data-grade="3" title="Trudne">
+                <button class="review-rate-btn rate-3" data-grade="3" title="Dobre (Good)">
                     <span class="rate-key">3</span>
-                    <span class="rate-label">Trudne</span>
+                    <span class="rate-label">Dobre</span>
                     <span class="review-next-info">${labels[2]}</span>
                 </button>
-                <button class="review-rate-btn rate-4" data-grade="4" title="OK">
+                <button class="review-rate-btn rate-4" data-grade="4" title="Łatwe (Easy)">
                     <span class="rate-key">4</span>
-                    <span class="rate-label">OK</span>
+                    <span class="rate-label">Łatwe</span>
                     <span class="review-next-info">${labels[3]}</span>
                 </button>
-                <button class="review-rate-btn rate-5" data-grade="5" title="Łatwe">
-                    <span class="rate-key">5</span>
-                    <span class="rate-label">Łatwe</span>
-                    <span class="review-next-info">${labels[4]}</span>
-                </button>
             </div>
-            <div class="review-hint">Klawisze <kbd>1</kbd>-<kbd>5</kbd> = ocena</div>
+            <div class="review-hint">Klawisze <kbd>1</kbd>-<kbd>4</kbd> = ocena</div>
         </div>
         <div class="review-actions-row">
             <button class="review-edit-btn" id="reviewEditBtn">✏️ Edytuj</button>
@@ -1675,8 +1619,8 @@ function rateWord(grade) {
             words[idx].updatedAt = Date.now();
             chrome.storage.local.set({ savedWords: words }, () => {
                 _reviewSaving = false;
-                if (grade < 5 && w._sessionAttempts < 3) {
-                    // Grades 1-4: re-insert word later in the queue
+                if (grade === 1 && w._sessionAttempts < 3) {
+                    // Grade 1 (Again): re-insert word later in the queue
                     // so it comes back again in this session (max 3 attempts)
                     reviewQueue.splice(reviewIndex, 1);
                     // Insert a few cards later (or at end if queue is short)
@@ -1688,7 +1632,7 @@ function rateWord(grade) {
                     // Don't increment reviewIndex – current index now has next word
                     reviewTotalDue = reviewQueue.length;
                 } else {
-                    // Grade 5 or max attempts reached: word is done, advance
+                    // Grade 2-4 or max attempts reached: word is done, advance
                     reviewIndex++;
                 }
                 reviewAnswerShown = false;
@@ -1704,7 +1648,7 @@ function rateWord(grade) {
     });
 }
 
-// ── Keyboard shortcuts for review (1-5 = rate, Space = reveal) ───
+// ── Keyboard shortcuts for review (1-4 = rate, Space = reveal) ───
 document.addEventListener("keydown", (e) => {
     const reviewTab = document.getElementById("tab-review");
     if (!reviewTab || !reviewTab.classList.contains("active")) return;
@@ -1715,7 +1659,7 @@ document.addEventListener("keydown", (e) => {
         if (!reviewAnswerShown) revealAnswer();
     }
 
-    if (reviewAnswerShown && e.key >= "1" && e.key <= "5") {
+    if (reviewAnswerShown && e.key >= "1" && e.key <= "4") {
         e.preventDefault();
         rateWord(parseInt(e.key));
     }
