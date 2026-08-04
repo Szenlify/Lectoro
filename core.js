@@ -519,14 +519,21 @@
 
             const vw = video.videoWidth || video.clientWidth || 640;
             const vh = video.videoHeight || video.clientHeight || 360;
-            const MAX = 200;
+            const MAX = 640;
             const scale = Math.min(MAX / vw, MAX / vh, 1);
+            const width = Math.round(vw * scale);
+            const height = Math.round(vh * scale);
+            const ratio = window.devicePixelRatio || 1;
             const canvas = document.createElement("canvas");
-            canvas.width = Math.round(vw * scale);
-            canvas.height = Math.round(vh * scale);
+            canvas.width = width * ratio;
+            canvas.height = height * ratio;
+            canvas.style.width = `${width}px`;
+            canvas.style.height = `${height}px`;
             const ctx = canvas.getContext("2d");
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            return canvas.toDataURL("image/jpeg", 0.75);
+            if (!ctx) return null;
+            ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+            ctx.drawImage(video, 0, 0, width, height);
+            return canvas.toDataURL("image/jpeg", 0.9);
         } catch (e) {
             console.warn("[QT] Screenshot capture failed:", e);
             return null;

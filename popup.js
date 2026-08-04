@@ -257,11 +257,17 @@ function syncSubtitleModeUI() {
 syncSubtitleModeUI();
 
 subtitleTTSToggle.addEventListener("change", () => {
-    chrome.storage.sync.set({ subtitleTTS: subtitleTTSToggle.checked }, flashSaved);
+    chrome.storage.sync.set(
+        { subtitleTTS: subtitleTTSToggle.checked },
+        flashSaved,
+    );
 });
 
 wordCloudModeToggle.addEventListener("change", () => {
-    chrome.storage.sync.set({ wordCloudMode: wordCloudModeToggle.checked }, flashSaved);
+    chrome.storage.sync.set(
+        { wordCloudMode: wordCloudModeToggle.checked },
+        flashSaved,
+    );
 });
 
 // Subtitle Styles UI removed — settings are preserved in storage and
@@ -988,6 +994,56 @@ function escapeAttr(str) {
         .replace(/>/g, "&gt;");
 }
 
+function buildReviewSpeakText(word, sentence) {
+    if (!word) return "";
+    return sentence ? `${word}. ${sentence}` : word;
+}
+
+function highlightReviewSentence(sentence, word, className) {
+    if (!sentence) return "";
+    const escapedSentence = escapeHtml(sentence);
+    const escapedWord = escapeHtml(word || "");
+    if (!escapedWord) return escapedSentence;
+    const regex = new RegExp(
+        `(${escapedWord.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")})`,
+        "i",
+    );
+    return escapedSentence.replace(
+        regex,
+        `<span class="${className}">$1</span>`,
+    );
+}
+
+function autoSpeakReviewCard(w, answerVisible = false) {
+    if (!w) return;
+    const srcL = w.srcLang || "en";
+    const tgtL = w.tgtLang || "pl";
+    const isReverse = reviewDirection === "reverse";
+    if (!answerVisible) {
+        const questionWord = isReverse ? w.translated : w.original;
+        const questionSentence = isReverse
+            ? w.sentenceTranslated || ""
+            : w.sentence || "";
+        const questionLang = isReverse ? tgtL : srcL;
+        popupSpeak(
+            buildReviewSpeakText(questionWord, questionSentence),
+            questionLang,
+            { forceVolume: 1 },
+        ).catch(() => {});
+    } else {
+        const answerWord = isReverse ? w.original : w.translated;
+        const answerSentence = isReverse
+            ? w.sentence || ""
+            : w.sentenceTranslated || "";
+        const answerLang = isReverse ? srcL : tgtL;
+        popupSpeak(
+            buildReviewSpeakText(answerWord, answerSentence),
+            answerLang,
+            { forceVolume: 1 },
+        ).catch(() => {});
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════════
 //  SPACED REPETITION  –  Anki SM-2 Algorithm (4 grades)
 // ═══════════════════════════════════════════════════════════════════
@@ -1010,12 +1066,15 @@ function srUpdate(sr, grade) {
         interval = reps === 0 ? 10 / (24 * 60) : interval * 1.2; // 10 minutes if new, else 20% increase
         easeFactor = Math.max(1.3, easeFactor - 0.15);
     } else if (grade === 3) {
-        if (reps === 0) interval = 10 / (24 * 60); // 10 mins
-        else if (reps === 1) interval = 1; // 1 day
+        if (reps === 0)
+            interval = 10 / (24 * 60); // 10 mins
+        else if (reps === 1)
+            interval = 1; // 1 day
         else interval = interval * easeFactor;
         reps++;
     } else if (grade === 4) {
-        if (reps === 0) interval = 4; // 4 days
+        if (reps === 0)
+            interval = 4; // 4 days
         else interval = interval * easeFactor * 1.3;
         easeFactor += 0.15;
         reps++;
@@ -1228,7 +1287,7 @@ function pickPopupVoice(savedVoiceName, lang) {
  * Speak text using the same engine & voice configured in settings.
  * Returns a Promise that resolves with { type: 'utter'|'audio', obj } for end-tracking.
  */
-function popupSpeak(text, lang) {
+function popupSpeak(text, lang, options = {}) {
     window.speechSynthesis.cancel();
     if (popupElAudio) {
         popupElAudio.pause();
@@ -1246,6 +1305,13 @@ function popupSpeak(text, lang) {
                 ttsVolume: 1,
             },
             async (data) => {
+                const volume =
+                    options.forceVolume !== undefined
+                        ? options.forceVolume
+                        : data.ttsVolume !== undefined
+                          ? data.ttsVolume
+                          : 1;
+
                 // ElevenLabs path
                 if (
                     data.ttsMode === "elevenlabs" &&
@@ -1275,8 +1341,7 @@ function popupSpeak(text, lang) {
                         const blob = await res.blob();
                         const url = URL.createObjectURL(blob);
                         popupElAudio = new Audio(url);
-                        popupElAudio.volume =
-                            data.ttsVolume !== undefined ? data.ttsVolume : 1;
+                        popupElAudio.volume = volume;
                         popupElAudio.play();
                         resolve({ type: "audio", obj: popupElAudio });
                     } catch (err) {
@@ -1291,8 +1356,7 @@ function popupSpeak(text, lang) {
                 );
                 utter.lang = lang || "en";
                 utter.rate = data.speechRate;
-                utter.volume =
-                    data.ttsVolume !== undefined ? data.ttsVolume : 1;
+                utter.volume = volume;
                 const voice = pickPopupVoice(data.speechVoice, lang);
                 if (voice) utter.voice = voice;
                 window.speechSynthesis.speak(utter);
@@ -1383,21 +1447,29 @@ function renderReview() {
         const dirLabel = isReverse
             ? `${(w.tgtLang || "?").toUpperCase()} → ${(w.srcLang || "?").toUpperCase()}`
             : `${(w.srcLang || "?").toUpperCase()} → ${(w.tgtLang || "?").toUpperCase()}`;
+        const wordClass = isReverse ? "__qt_translated" : "__qt_original";
+        const sentenceHtml = showSentence
+            ? `
+                <div class="review-context-row">
+                    <span class="review-context">"${highlightReviewSentence(
+                        showSentence,
+                        showWord,
+                        wordClass,
+                    )}"</span>
+                    <button class="review-speak-btn review-speak-sm" data-text="${escapeAttr(
+                        showSentence,
+                    )}" data-lang="${escapeAttr(showLang)}" title="Odczytaj zdanie">${SPEAK_SVG}</button>
+                </div>`
+            : "";
         card.innerHTML = `
             <div class="review-question">
                 <div class="review-word-row">
-                    <span class="review-word">${escapeHtml(showWord)}</span>
-                    <button class="review-speak-btn" data-text="${escapeAttr(showWord)}" data-lang="${escapeAttr(showLang)}" title="Odczytaj">${SPEAK_SVG}</button>
+                    <span class="review-word ${wordClass}">${escapeHtml(showWord)}</span>
+                    <button class="review-speak-btn" data-text="${escapeAttr(
+                        buildReviewSpeakText(showWord, showSentence),
+                    )}" data-lang="${escapeAttr(showLang)}" title="Odczytaj">${SPEAK_SVG}</button>
                 </div>
-                ${
-                    showSentence
-                        ? `
-                <div class="review-context-row">
-                    <span class="review-context">"${escapeHtml(showSentence)}"</span>
-                    <button class="review-speak-btn review-speak-sm" data-text="${escapeAttr(showSentence)}" data-lang="${escapeAttr(showLang)}" title="Odczytaj zdanie">${SPEAK_SVG}</button>
-                </div>`
-                        : ""
-                }
+                ${sentenceHtml}
                 ${w.screenshot ? `<div class="review-screenshot"><img src="${w.screenshot}" alt="Screenshot" class="review-screenshot-img"></div>` : ""}
                 <div class="review-meta">${dirLabel}</div>
             </div>
@@ -1405,6 +1477,7 @@ function renderReview() {
             <div class="review-hint">Naciśnij <kbd>Spacja</kbd> aby odsłonić</div>`;
 
         attachReviewSpeakHandlers(card);
+        autoSpeakReviewCard(w, false);
         document
             .getElementById("revealBtn")
             .addEventListener("click", revealAnswer);
@@ -1432,6 +1505,8 @@ function renderAnswer(w) {
     const aWord = isReverse ? w.original : w.translated;
     const aLang = isReverse ? srcL : tgtL;
     const aSentence = isReverse ? w.sentence || "" : w.sentenceTranslated || "";
+    const qWordClass = isReverse ? "__qt_translated" : "__qt_original";
+    const aWordClass = isReverse ? "__qt_original" : "__qt_translated";
 
     // Preview labels for each grade
     const labels = [1, 2, 3, 4].map((g) => previewLabel(sr, g));
@@ -1439,14 +1514,20 @@ function renderAnswer(w) {
     card.innerHTML = `
         <div class="review-question">
             <div class="review-word-row">
-                <span class="review-word">${escapeHtml(qWord)}</span>
-                <button class="review-speak-btn" data-text="${escapeAttr(qWord)}" data-lang="${escapeAttr(qLang)}" title="Odczytaj">${SPEAK_SVG}</button>
+                <span class="review-word ${qWordClass}">${escapeHtml(qWord)}</span>
+                <button class="review-speak-btn" data-text="${escapeAttr(
+                    buildReviewSpeakText(qWord, qSentence),
+                )}" data-lang="${escapeAttr(qLang)}" title="Odczytaj">${SPEAK_SVG}</button>
             </div>
             ${
                 qSentence
                     ? `
             <div class="review-context-row">
-                <span class="review-context">"${escapeHtml(qSentence)}"</span>
+                <span class="review-context">"${highlightReviewSentence(
+                    qSentence,
+                    qWord,
+                    qWordClass,
+                )}"</span>
                 <button class="review-speak-btn review-speak-sm" data-text="${escapeAttr(qSentence)}" data-lang="${escapeAttr(qLang)}" title="Odczytaj zdanie">${SPEAK_SVG}</button>
             </div>`
                     : ""
@@ -1455,15 +1536,21 @@ function renderAnswer(w) {
         </div>
         <div class="review-answer">
             <div class="review-translation-row">
-                <span class="review-translation">${escapeHtml(aWord)}</span>
-                <button class="review-speak-btn" data-text="${escapeAttr(aWord)}" data-lang="${escapeAttr(aLang)}" title="Odczytaj tłumaczenie">${SPEAK_SVG}</button>
+                <span class="review-translation ${aWordClass}">${escapeHtml(aWord)}</span>
+                <button class="review-speak-btn" data-text="${escapeAttr(
+                    buildReviewSpeakText(aWord, aSentence),
+                )}" data-lang="${escapeAttr(aLang)}" title="Odczytaj tłumaczenie">${SPEAK_SVG}</button>
             </div>
             ${
                 aSentence
                     ? `
             <div class="review-divider"></div>
             <div class="review-sentence-trans-row">
-                <span class="review-sentence-trans">"${escapeHtml(aSentence)}"</span>
+                <span class="review-sentence-trans">"${highlightReviewSentence(
+                    aSentence,
+                    aWord,
+                    aWordClass,
+                )}"</span>
                 <button class="review-speak-btn review-speak-sm" data-text="${escapeAttr(aSentence)}" data-lang="${escapeAttr(aLang)}" title="Odczytaj tłumaczenie zdania">${SPEAK_SVG}</button>
             </div>`
                     : ""
@@ -1502,6 +1589,7 @@ function renderAnswer(w) {
 
     // Attach TTS handlers
     attachReviewSpeakHandlers(card);
+    autoSpeakReviewCard(w, true);
 
     // Attach rating handlers
     card.querySelectorAll(".review-rate-btn").forEach((btn) => {
@@ -1656,7 +1744,23 @@ document.addEventListener("keydown", (e) => {
 
     if (e.key === " " || e.key === "Spacebar") {
         e.preventDefault();
-        if (!reviewAnswerShown) revealAnswer();
+        if (!reviewAnswerShown) {
+            revealAnswer();
+        } else {
+            const w = reviewQueue[reviewIndex];
+            const srcL = w.srcLang || "en";
+            const tgtL = w.tgtLang || "pl";
+            const isReverse = reviewDirection === "reverse";
+            const aWord = isReverse ? w.original : w.translated;
+            const aSentence = isReverse
+                ? w.sentence || ""
+                : w.sentenceTranslated || "";
+            const aLang = isReverse ? srcL : tgtL;
+            const text = buildReviewSpeakText(aWord, aSentence);
+            if (text) {
+                popupSpeak(text, aLang).catch(() => {});
+            }
+        }
     }
 
     if (reviewAnswerShown && e.key >= "1" && e.key <= "4") {
