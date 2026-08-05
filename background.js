@@ -381,8 +381,8 @@ async function checkAndNotify() {
             chrome.notifications.create("reviewReminder", {
                 type: "basic",
                 iconUrl: "icon128.png",
-                title: "Quick Translator – Powtórki",
-                message: `Masz ${dueCount} słów do powtórki! 🧠`,
+                title: "QT Powtórki",
+                message: `Masz ${dueCount} powtórki!`,
                 priority: 1,
             });
         }
