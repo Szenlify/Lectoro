@@ -18,7 +18,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
     padding: 6px;
     border-radius: 14px;
     background: rgba(15, 15, 35, 0.88);
@@ -75,8 +75,8 @@
 }
 
 .__qt_tb-btn {
-    width: 34px;
-    height: 34px;
+    width: 30px;
+    height: 30px;
     display: flex;
     align-items: center;
     justify-content: center;
