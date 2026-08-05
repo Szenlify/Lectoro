@@ -24,6 +24,7 @@
         SAVE_AI: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>`,
         SAVE_AI_CHECK: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#a78bfa" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>`,
         READ: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>`,
+        AI: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 6 6 1-4.5 4.25L17 20l-5-3.75L7 20l.5-6.75L3 9l6-1 3-6z"/><path d="M8 13h8"/><path d="M8 17h8"/></svg>`,
         SPEAKER_FULL: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`,
     };
 
@@ -679,6 +680,63 @@ Respond ONLY in this exact JSON format, nothing else:
         });
     }
 
+    async function geminiMovieTranslate(text, targetLang) {
+        return new Promise((resolve, reject) => {
+            if (!chrome?.storage?.sync) {
+                reject(new Error("Brak klucza Gemini API"));
+                return;
+            }
+            chrome.storage.sync.get({ geminiApiKey: "" }, async (data) => {
+                const key = data.geminiApiKey;
+                if (!key) {
+                    reject(
+                        new Error(
+                            "Wpisz klucz Gemini API w ustawieniach rozszerzenia",
+                        ),
+                    );
+                    return;
+                }
+                try {
+                    const prompt = `You are a movie-style translator. Translate the following text to ${targetLang} as naturally and colloquially as if it were in a film or subtitle. Then provide a short explanation of the sentence in the same target language. Respond ONLY in this exact JSON format, nothing else:\n{"translation":"...", "explanation":"..."}\nText:\n${text}`;
+                    const res = await fetch(
+                        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${encodeURIComponent(key)}`,
+                        {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                contents: [{ parts: [{ text: prompt }] }],
+                                generationConfig: {
+                                    temperature: 0.8,
+                                    maxOutputTokens: 260,
+                                },
+                            }),
+                        },
+                    );
+                    if (!res.ok) {
+                        const errData = await res.json().catch(() => ({}));
+                        throw new Error(
+                            errData?.error?.message ||
+                                `Gemini HTTP ${res.status}`,
+                        );
+                    }
+                    const json = await res.json();
+                    const textResult =
+                        json?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                    const jsonMatch = textResult.match(/\{[\s\S]*\}/);
+                    if (!jsonMatch)
+                        throw new Error("Gemini: brak odpowiedzi JSON");
+                    const parsed = JSON.parse(jsonMatch[0]);
+                    resolve({
+                        translation: parsed.translation || "",
+                        explanation: parsed.explanation || "",
+                    });
+                } catch (err) {
+                    reject(err);
+                }
+            });
+        });
+    }
+
     // ═══════════════════════════════════════════════════════════════
     //  Shared Tooltip HTML Builder
     // ═══════════════════════════════════════════════════════════════
@@ -1158,6 +1216,7 @@ Respond ONLY in this exact JSON format, nothing else:
         // AI & Screenshot
         geminiGenerateSentence,
         geminiExplainSentence,
+        geminiMovieTranslate,
         captureVideoScreenshot,
 
         // Tooltip

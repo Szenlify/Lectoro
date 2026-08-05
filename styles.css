@@ -102,6 +102,16 @@
     background: #4ecdc466;
 }
 
+.__qt_tb-ai {
+    background: #f59e0b88;
+}
+
+.__qt_tb-ai:hover {
+    background: #f59e0bb3;
+    transform: scale(1.08);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
 .__qt_tb-read:hover {
     background: #4ecdc4b3;
     transform: scale(1.08);

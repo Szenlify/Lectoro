@@ -68,8 +68,15 @@
         readBtn.title = "Czytaj na głos";
         readBtn.addEventListener("click", onReadClick);
 
+        const aiBtn = document.createElement("button");
+        aiBtn.className = `${PREFIX}tb-btn ${PREFIX}tb-ai`;
+        aiBtn.innerHTML = SVG.AI;
+        aiBtn.title = "Tłumacz AI";
+        aiBtn.addEventListener("click", onAITranslateClick);
+
         iconEl.appendChild(translateBtn);
         iconEl.appendChild(readBtn);
+        iconEl.appendChild(aiBtn);
         document.body.appendChild(iconEl);
         return iconEl;
     }
@@ -80,9 +87,8 @@
 
         const scrollX = window.scrollX;
         const scrollY = window.scrollY;
-        const ICON_W = 79,
-            ICON_H = 42,
-            GAP = 8;
+        const { width: ICON_W, height: ICON_H } = icon.getBoundingClientRect();
+        const GAP = 8;
         const vpW = document.documentElement.clientWidth;
         const vpH = document.documentElement.clientHeight;
 
@@ -170,6 +176,54 @@
             attachTooltipHandlers();
         } catch (err) {
             console.error("[Quick Translator]", err);
+            showTooltip(
+                `<div class="${PREFIX}error">⚠ ${escapeHtml(err.message)}</div>`,
+                rect,
+            );
+        }
+    }
+
+    async function onAITranslateClick(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        if (!currentText || !currentRect) return;
+
+        const text = currentText;
+        const rect = currentRect;
+        hideIcon();
+        showLoading(rect);
+
+        try {
+            const targetLang = await getTargetLang();
+            const { translation, explanation } = await QT.geminiMovieTranslate(
+                text,
+                targetLang,
+            );
+            const srcLang = "auto";
+            const html = `
+                <div class="${PREFIX}header"><span>AI Tłumaczenie</span></div>
+                <div class="${PREFIX}body">
+                    <div class="${PREFIX}row">
+                        <span class="${PREFIX}label">${srcLang.toUpperCase()}</span>
+                        <span class="${PREFIX}text ${PREFIX}original">${escapeHtml(text)}</span>
+                        <button class="${PREFIX}speak" data-text="${escapeAttr(text)}" data-lang="${escapeAttr(srcLang)}" title="Odczytaj oryginał">${SVG.SPEAKER}</button>
+                    </div>
+                    <div class="${PREFIX}row" style="margin-top:8px;">
+                        <span class="${PREFIX}label">${langTag(targetLang)}</span>
+                        <span class="${PREFIX}text ${PREFIX}translated">${escapeHtml(translation)}</span>
+                        <button class="${PREFIX}speak" data-text="${escapeAttr(translation)}" data-lang="${escapeAttr(targetLang)}" title="Odczytaj tłumaczenie">${SVG.SPEAKER}</button>
+                    </div>
+                    <div class="${PREFIX}ai-result" style="margin-top:10px; display:block;">
+                        <div class="${PREFIX}ai-label">Wyjaśnienie</div>
+                        <div class="${PREFIX}ai-text">${escapeHtml(explanation)}</div>
+                        <button class="${PREFIX}speak" data-text="${escapeAttr(explanation)}" data-lang="${escapeAttr(targetLang)}" title="Odczytaj wyjaśnienie" style="margin-top:6px;">${SVG.SPEAKER}</button>
+                    </div>
+                </div>`;
+            showTooltip(html, rect);
+            attachTooltipHandlers();
+            await QT.speak(explanation, targetLang);
+        } catch (err) {
+            console.error("[Quick Translator AI]", err);
             showTooltip(
                 `<div class="${PREFIX}error">⚠ ${escapeHtml(err.message)}</div>`,
                 rect,
@@ -538,6 +592,24 @@
         if (e.key === "Escape") {
             runDismiss();
             hideAll();
+            return;
+        }
+
+        if (e.key === "Enter" || e.key === "NumpadEnter") {
+            const active = document.activeElement;
+            if (
+                active &&
+                (active.tagName === "INPUT" ||
+                    active.tagName === "TEXTAREA" ||
+                    active.isContentEditable)
+            ) {
+                return;
+            }
+            if (iconEl?.classList.contains("visible")) {
+                e.preventDefault();
+                e.stopPropagation();
+                onAITranslateClick(e);
+            }
         }
     });
 
