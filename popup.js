@@ -1,5 +1,7 @@
 // popup.js – Settings, saved words list, filtering & export (Anki / CSV)
 
+const { escapeHtml, escapeAttr, isDueForReview, countDueWords } = SharedUtils;
+
 // ── Elements ──────────────────────────────────────────────────────
 const select = document.getElementById("targetLang");
 const savedMsg = document.getElementById("saved");
@@ -35,10 +37,7 @@ const volumeValue = document.getElementById("volumeValue");
 chrome.storage.local.get({ savedWords: [] }, (data) => {
     const words = data.savedWords || [];
     const now = Date.now();
-    const dueCount = words.filter((w) => {
-        if (!w.sr) return true;
-        return w.sr.nextReview <= now;
-    }).length;
+    const dueCount = countDueWords(words, now);
     if (dueCount > 0) {
         document
             .querySelectorAll(".tab")
@@ -170,7 +169,7 @@ function renderSyncUI() {
                             },
                         );
                     } catch (e) {
-                        console.error("[QT] Sign in error:", e);
+                        console.error("[Lectoro] Sign in error:", e);
                         btn.textContent =
                             "✗ " + (e.message || "Błąd logowania");
                         btn.disabled = false;
@@ -605,10 +604,7 @@ function deleteAllReviews() {
     chrome.storage.local.get({ savedWords: [] }, (data) => {
         const allWords = data.savedWords || [];
         const now = Date.now();
-        const dueWords = allWords.filter((w) => {
-            if (!w.sr) return true;
-            return w.sr.nextReview <= now;
-        });
+        const dueWords = allWords.filter(w => isDueForReview(w, now));
         if (dueWords.length === 0) return;
 
         const dueSet = new Set(
@@ -980,19 +976,6 @@ function csvCell(str) {
     return str;
 }
 
-function escapeHtml(str) {
-    const d = document.createElement("div");
-    d.textContent = str;
-    return d.innerHTML;
-}
-
-function escapeAttr(str) {
-    return str
-        .replace(/&/g, "&amp;")
-        .replace(/"/g, "&quot;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-}
 
 function buildReviewSpeakText(word, sentence) {
     if (!word) return "";
@@ -1195,10 +1178,7 @@ function loadReviewQueue() {
         const now = Date.now();
 
         reviewQueue = words
-            .filter((w) => {
-                if (!w.sr) return true;
-                return w.sr.nextReview <= now;
-            })
+            .filter(w => isDueForReview(w, now))
             .map(ensureSR);
 
         // Shuffle
@@ -1230,10 +1210,7 @@ function initReviewBadge() {
     chrome.storage.local.get({ savedWords: [] }, (data) => {
         const words = data.savedWords || [];
         const now = Date.now();
-        const dueCount = words.filter((w) => {
-            if (!w.sr) return true;
-            return w.sr.nextReview <= now;
-        }).length;
+        const dueCount = countDueWords(words, now);
         updateReviewTabBadge(dueCount);
     });
 }
@@ -1345,7 +1322,7 @@ function popupSpeak(text, lang, options = {}) {
                         popupElAudio.play();
                         resolve({ type: "audio", obj: popupElAudio });
                     } catch (err) {
-                        console.warn("[QT] ElevenLabs popup TTS failed:", err);
+                        console.warn("[Lectoro] ElevenLabs popup TTS failed:", err);
                         resolve({ type: "none", obj: null });
                     }
                     return;

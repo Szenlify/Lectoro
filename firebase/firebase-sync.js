@@ -99,7 +99,7 @@ const FirebaseSync = (() => {
             );
 
             if (!res.ok) {
-                console.warn("[QT] Token refresh failed:", res.status);
+                console.warn("[Lectoro] Token refresh failed:", res.status);
                 return null;
             }
 
@@ -115,7 +115,7 @@ const FirebaseSync = (() => {
             await setAuthData(updated);
             return updated.idToken;
         } catch (err) {
-            console.warn("[QT] Token refresh error:", err);
+            console.warn("[Lectoro] Token refresh error:", err);
             return null;
         }
     }
@@ -290,7 +290,7 @@ const FirebaseSync = (() => {
 
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
-                console.warn("[QT] Firestore pull failed:", res.status, err);
+                console.warn("[Lectoro] Firestore pull failed:", res.status, err);
                 return null;
             }
 
@@ -341,13 +341,13 @@ const FirebaseSync = (() => {
                 if (!res.ok) {
                     const err = await res.json().catch(() => ({}));
                     console.warn(
-                        "[QT] Firestore batch write failed:",
+                        "[Lectoro] Firestore batch write failed:",
                         res.status,
                         err,
                     );
                 }
             } catch (err) {
-                console.warn("[QT] Firestore batch write error:", err);
+                console.warn("[Lectoro] Firestore batch write error:", err);
             }
         }
     }
@@ -363,10 +363,10 @@ const FirebaseSync = (() => {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (!res.ok && res.status !== 404) {
-                console.warn("[QT] Firestore delete failed:", res.status);
+                console.warn("[Lectoro] Firestore delete failed:", res.status);
             }
         } catch (err) {
-            console.warn("[QT] Firestore delete error:", err);
+            console.warn("[Lectoro] Firestore delete error:", err);
         }
     }
 

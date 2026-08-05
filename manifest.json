@@ -26,6 +26,7 @@
             "matches": ["<all_urls>"],
             "css": ["styles.css"],
             "js": [
+                "shared/utils.js",
                 "core.js",
                 "content.js",
                 "hover.js"

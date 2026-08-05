@@ -9,6 +9,7 @@
     "use strict";
 
     // ── Constants ──────────────────────────────────────────────────
+    const { escapeHtml, escapeAttr } = SharedUtils;
     const PREFIX = "__qt_";
     const ICON_ID = PREFIX + "icon";
     const TOOLTIP_ID = PREFIX + "tooltip";
@@ -93,20 +94,6 @@
     // ═══════════════════════════════════════════════════════════════
     //  Utility Functions
     // ═══════════════════════════════════════════════════════════════
-
-    function escapeHtml(str) {
-        const d = document.createElement("div");
-        d.textContent = str;
-        return d.innerHTML;
-    }
-
-    function escapeAttr(str) {
-        return str
-            .replace(/&/g, "&amp;")
-            .replace(/"/g, "&quot;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;");
-    }
 
     /** Strip [bracketed] content (e.g. [Applause], [Music]) */
     function stripBrackets(text) {
@@ -535,16 +522,16 @@
             ctx.drawImage(video, 0, 0, width, height);
             return canvas.toDataURL("image/jpeg", 0.9);
         } catch (e) {
-            console.warn("[QT] Screenshot capture failed:", e);
+            console.warn("[Lectoro] Screenshot capture failed:", e);
             return null;
         }
     }
 
     // ═══════════════════════════════════════════════════════════════
-    //  Gemini AI – Generate practical everyday sentence
+    //  Gemini AI API Base
     // ═══════════════════════════════════════════════════════════════
 
-    async function geminiGenerateSentence(word, translated, srcLang, tgtLang) {
+    async function geminiRequest(prompt, { temperature = 0.8, maxOutputTokens = 200 } = {}) {
         return new Promise((resolve, reject) => {
             if (!chrome?.storage?.sync) {
                 reject(new Error("Brak klucza Gemini API"));
@@ -561,7 +548,47 @@
                     return;
                 }
                 try {
-                    const prompt = `You are a language learning assistant. The user is learning the word "${word}" (${srcLang}) which translates to "${translated}" (${tgtLang}).
+                    const res = await fetch(
+                        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${encodeURIComponent(key)}`,
+                        {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                contents: [{ parts: [{ text: prompt }] }],
+                                generationConfig: {
+                                    temperature,
+                                    maxOutputTokens,
+                                },
+                            }),
+                        },
+                    );
+                    if (!res.ok) {
+                        const errData = await res.json().catch(() => ({}));
+                        throw new Error(
+                            errData?.error?.message ||
+                                `Gemini HTTP ${res.status}`,
+                        );
+                    }
+                    const json = await res.json();
+                    const text =
+                        json?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                    const jsonMatch = text.match(/\{[\s\S]*\}/);
+                    if (!jsonMatch)
+                        throw new Error("Gemini: brak odpowiedzi JSON");
+                    resolve(JSON.parse(jsonMatch[0]));
+                } catch (err) {
+                    reject(err);
+                }
+            });
+        });
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  Gemini AI – Wrappers
+    // ═══════════════════════════════════════════════════════════════
+
+    async function geminiGenerateSentence(word, translated, srcLang, tgtLang) {
+        const prompt = `You are a language learning assistant. The user is learning the word "${word}" (${srcLang}) which translates to "${translated}" (${tgtLang}).
 
 Generate ONE short, practical, everyday sentence using the word "${word}" in ${srcLang}. The sentence should:
 - Be useful in daily conversation
@@ -574,64 +601,15 @@ Then translate that sentence to ${tgtLang}.
 Respond ONLY in this exact JSON format, nothing else:
 {"sentence": "...", "translation": "..."}`;
 
-                    const res = await fetch(
-                        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${encodeURIComponent(key)}`,
-                        {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                                contents: [{ parts: [{ text: prompt }] }],
-                                generationConfig: {
-                                    temperature: 0.8,
-                                    maxOutputTokens: 200,
-                                },
-                            }),
-                        },
-                    );
-                    if (!res.ok) {
-                        const errData = await res.json().catch(() => ({}));
-                        throw new Error(
-                            errData?.error?.message ||
-                                `Gemini HTTP ${res.status}`,
-                        );
-                    }
-                    const json = await res.json();
-                    const text =
-                        json?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-                    // Extract JSON from response (may have markdown code fence)
-                    const jsonMatch = text.match(/\{[\s\S]*\}/);
-                    if (!jsonMatch)
-                        throw new Error("Gemini: brak odpowiedzi JSON");
-                    const parsed = JSON.parse(jsonMatch[0]);
-                    resolve({
-                        sentence: parsed.sentence || "",
-                        translation: parsed.translation || "",
-                    });
-                } catch (err) {
-                    reject(err);
-                }
-            });
-        });
+        const parsed = await geminiRequest(prompt, { temperature: 0.8, maxOutputTokens: 200 });
+        return {
+            sentence: parsed.sentence || "",
+            translation: parsed.translation || "",
+        };
     }
 
     async function geminiExplainSentence(sentence, targetLang) {
-        return new Promise((resolve, reject) => {
-            if (!chrome?.storage?.sync) {
-                reject(new Error("Brak klucza Gemini API"));
-                return;
-            }
-            chrome.storage.sync.get({ geminiApiKey: "" }, async (data) => {
-                const key = data.geminiApiKey;
-                if (!key) {
-                    reject(
-                        new Error(
-                            "Wpisz klucz Gemini API w ustawieniach rozszerzenia",
-                        ),
-                    );
-                    return;
-                }
-                try {
-                    const prompt = `You are a language learning assistant. The user is watching a video and didn't understand the following sentence:
+        const prompt = `You are a language learning assistant. The user is watching a video and didn't understand the following sentence:
 "${sentence}"
 
 Please explain what this sentence means briefly and concisely. Provide a direct translation to ${targetLang} and a short explanation of any idioms or difficult words if present.
@@ -640,100 +618,21 @@ The explanation must be written in Polish.
 Respond ONLY in this exact JSON format, nothing else:
 {"translation": "...", "explanation": "..."}`;
 
-                    const res = await fetch(
-                        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${encodeURIComponent(key)}`,
-                        {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                                contents: [{ parts: [{ text: prompt }] }],
-                                generationConfig: {
-                                    temperature: 0.7,
-                                    maxOutputTokens: 250,
-                                },
-                            }),
-                        },
-                    );
-                    if (!res.ok) {
-                        const errData = await res.json().catch(() => ({}));
-                        throw new Error(
-                            errData?.error?.message ||
-                                `Gemini HTTP ${res.status}`,
-                        );
-                    }
-                    const json = await res.json();
-                    const text =
-                        json?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-                    const jsonMatch = text.match(/\{[\s\S]*\}/);
-                    if (!jsonMatch)
-                        throw new Error("Gemini: brak odpowiedzi JSON");
-                    const parsed = JSON.parse(jsonMatch[0]);
-                    resolve({
-                        translation: parsed.translation || "",
-                        explanation: parsed.explanation || "",
-                    });
-                } catch (err) {
-                    reject(err);
-                }
-            });
-        });
+        const parsed = await geminiRequest(prompt, { temperature: 0.7, maxOutputTokens: 250 });
+        return {
+            translation: parsed.translation || "",
+            explanation: parsed.explanation || "",
+        };
     }
 
     async function geminiMovieTranslate(text, targetLang) {
-        return new Promise((resolve, reject) => {
-            if (!chrome?.storage?.sync) {
-                reject(new Error("Brak klucza Gemini API"));
-                return;
-            }
-            chrome.storage.sync.get({ geminiApiKey: "" }, async (data) => {
-                const key = data.geminiApiKey;
-                if (!key) {
-                    reject(
-                        new Error(
-                            "Wpisz klucz Gemini API w ustawieniach rozszerzenia",
-                        ),
-                    );
-                    return;
-                }
-                try {
-                    const prompt = `You are a movie-style translator. Translate the following text to ${targetLang} as naturally and colloquially as if it were in a film or subtitle. Then provide a short explanation of the sentence in the same target language. Respond ONLY in this exact JSON format, nothing else:\n{"translation":"...", "explanation":"..."}\nText:\n${text}`;
-                    const res = await fetch(
-                        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${encodeURIComponent(key)}`,
-                        {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                                contents: [{ parts: [{ text: prompt }] }],
-                                generationConfig: {
-                                    temperature: 0.8,
-                                    maxOutputTokens: 260,
-                                },
-                            }),
-                        },
-                    );
-                    if (!res.ok) {
-                        const errData = await res.json().catch(() => ({}));
-                        throw new Error(
-                            errData?.error?.message ||
-                                `Gemini HTTP ${res.status}`,
-                        );
-                    }
-                    const json = await res.json();
-                    const textResult =
-                        json?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-                    const jsonMatch = textResult.match(/\{[\s\S]*\}/);
-                    if (!jsonMatch)
-                        throw new Error("Gemini: brak odpowiedzi JSON");
-                    const parsed = JSON.parse(jsonMatch[0]);
-                    resolve({
-                        translation: parsed.translation || "",
-                        explanation: parsed.explanation || "",
-                    });
-                } catch (err) {
-                    reject(err);
-                }
-            });
-        });
+        const prompt = `You are a movie-style translator. Translate the following text to ${targetLang} as naturally and colloquially as if it were in a film or subtitle. Then provide a short explanation of the sentence in the same target language. Respond ONLY in this exact JSON format, nothing else:\n{"translation":"...", "explanation":"..."}\nText:\n${text}`;
+
+        const parsed = await geminiRequest(prompt, { temperature: 0.8, maxOutputTokens: 260 });
+        return {
+            translation: parsed.translation || "",
+            explanation: parsed.explanation || "",
+        };
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -946,7 +845,7 @@ Respond ONLY in this exact JSON format, nothing else:
                     saveAiBtn.classList.remove("loading");
                     saveAiBtn.classList.add("saved");
                 } catch (err) {
-                    console.error("[QT] Gemini AI error:", err);
+                    console.error("[Lectoro] Gemini AI error:", err);
                     saveAiBtn.classList.remove("loading");
                     saveAiBtn.innerHTML =
                         SVG.SAVE_AI +
@@ -1146,27 +1045,7 @@ Respond ONLY in this exact JSON format, nothing else:
         if (v && v.paused) v.play();
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    //  Subtitle Style Injection (disabled)
-    // ═══════════════════════════════════════════════════════════════
 
-    const SUB_STYLE_ID = PREFIX + "sub-style";
-
-    function clearSubtitleStyles() {
-        const styleEl = document.getElementById(SUB_STYLE_ID);
-        if (styleEl) styleEl.remove();
-    }
-
-    function loadAndApplySubtitleStyles() {
-        clearSubtitleStyles();
-    }
-
-    // Keep subtitles in their original browser/site styling.
-    loadAndApplySubtitleStyles();
-
-    function toggleSubtitleStyles() {
-        clearSubtitleStyles();
-    }
 
     // ═══════════════════════════════════════════════════════════════
     //  Expose Global Namespace
@@ -1238,7 +1117,6 @@ Respond ONLY in this exact JSON format, nothing else:
         pauseVideo,
         resumeVideo,
 
-        // Subtitle styles
-        toggleSubtitleStyles,
+
     };
 })();

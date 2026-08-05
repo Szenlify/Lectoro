@@ -2,10 +2,12 @@
 
 // ── Load Firebase modules (graceful fallback if missing) ──────────
 try {
-    importScripts("firebase-config.js", "firebase-sync.js");
+    importScripts("shared/utils.js", "firebase/firebase-config.js", "firebase/firebase-sync.js");
 } catch (e) {
-    console.warn("[QT] Firebase modules not loaded:", e);
+    console.warn("[Lectoro] Firebase modules not loaded:", e);
 }
+
+const { wordKey, countDueWords, isDueForReview } = SharedUtils;
 
 // ══════════════════════════════════════════════════════════════════
 //  Cross-device sync (chrome.storage.sync, chunked) – FALLBACK
@@ -13,8 +15,28 @@ try {
 const SYNC_CHUNK_MAX = 7000; // chars per chunk (under QUOTA_BYTES_PER_ITEM 8192)
 let _skipSyncPush = false; // flag to prevent push→pull→push loop
 
-function wordKey(w) {
-    return (w.original || "") + "|" + (w.translated || "");
+/** Compare and save words if changed */
+async function mergeAndSaveIfChanged(oldWords, newWords) {
+    if (
+        newWords.length !== oldWords.length ||
+        JSON.stringify(newWords) !== JSON.stringify(oldWords)
+    ) {
+        _skipSyncPush = true;
+        await chrome.storage.local.set({ savedWords: newWords });
+        _skipSyncPush = false;
+        return true;
+    }
+    return false;
+}
+
+/** Helper to get Firebase user and token */
+async function getFirebaseContext() {
+    if (typeof FirebaseSync === "undefined" || !FirebaseSync.isConfigured()) return null;
+    const user = await FirebaseSync.getUser();
+    if (!user) return null;
+    const token = await FirebaseSync.getValidToken();
+    if (!token) return null;
+    return { user, token };
 }
 
 /** Push local savedWords → sync (chunked strings) */
@@ -53,7 +75,7 @@ async function pushWordsToSync(words) {
         await chrome.storage.sync.set(chunks);
     } catch (err) {
         // Quota exceeded or other error – non-fatal
-        console.warn("[QT] Sync push failed (quota?):", err.message || err);
+        console.warn("[Lectoro] Sync push failed (quota?):", err.message || err);
     }
 }
 
@@ -82,7 +104,7 @@ async function pullWordsFromSync() {
             sr: c.sr || null,
         }));
     } catch (err) {
-        console.warn("[QT] Sync pull failed:", err);
+        console.warn("[Lectoro] Sync pull failed:", err);
         return null;
     }
 }
@@ -155,14 +177,7 @@ async function onSyncChanged(changes) {
     const merged = mergeWords(localWords, syncWords);
 
     // Only write if something actually changed
-    if (
-        merged.length !== localWords.length ||
-        JSON.stringify(merged) !== JSON.stringify(localWords)
-    ) {
-        _skipSyncPush = true; // prevent push back
-        await chrome.storage.local.set({ savedWords: merged });
-        _skipSyncPush = false;
-    }
+    await mergeAndSaveIfChanged(localWords, merged);
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -185,14 +200,7 @@ async function initialSync() {
 
     if (syncWords && syncWords.length > 0) {
         const merged = mergeWords(localWords, syncWords);
-        if (
-            merged.length !== localWords.length ||
-            JSON.stringify(merged) !== JSON.stringify(localWords)
-        ) {
-            _skipSyncPush = true;
-            await chrome.storage.local.set({ savedWords: merged });
-            _skipSyncPush = false;
-        }
+        await mergeAndSaveIfChanged(localWords, merged);
     } else if (localWords.length > 0) {
         await pushWordsToSync(localWords);
     }
@@ -204,12 +212,9 @@ async function initialSync() {
 
 /** Full two-way sync with Firestore */
 async function firebaseFullSync() {
-    if (typeof FirebaseSync === "undefined" || !FirebaseSync.isConfigured())
-        return;
-    const user = await FirebaseSync.getUser();
-    if (!user) return;
-    const token = await FirebaseSync.getValidToken();
-    if (!token) return;
+    const ctx = await getFirebaseContext();
+    if (!ctx) return;
+    const { user, token } = ctx;
 
     try {
         const remoteWords = await FirebaseSync.pullWords(user.uid, token);
@@ -220,10 +225,10 @@ async function firebaseFullSync() {
 
         // Build maps for merge
         const localMap = new Map();
-        for (const w of localWords) localMap.set(FirebaseSync.wordKey(w), w);
+        for (const w of localWords) localMap.set(wordKey(w), w);
 
         const remoteMap = new Map();
-        for (const w of remoteWords) remoteMap.set(FirebaseSync.wordKey(w), w);
+        for (const w of remoteWords) remoteMap.set(wordKey(w), w);
 
         const allKeys = new Set([...localMap.keys(), ...remoteMap.keys()]);
         const merged = [];
@@ -260,15 +265,7 @@ async function firebaseFullSync() {
         }
 
         // Update local storage if anything changed
-        const localChanged =
-            merged.length !== localWords.length ||
-            JSON.stringify(merged) !== JSON.stringify(localWords);
-
-        if (localChanged) {
-            _skipSyncPush = true;
-            await chrome.storage.local.set({ savedWords: merged });
-            _skipSyncPush = false;
-        }
+        await mergeAndSaveIfChanged(localWords, merged);
 
         // Push local-only / updated words to Firestore
         if (toPush.length > 0) {
@@ -280,18 +277,15 @@ async function firebaseFullSync() {
             lastFirebaseSync: Date.now(),
         });
     } catch (err) {
-        console.warn("[QT] Firebase full sync error:", err);
+        console.warn("[Lectoro] Firebase full sync error:", err);
     }
 }
 
 /** Push all words to Firestore */
 async function firebasePushWords(words) {
-    if (typeof FirebaseSync === "undefined" || !FirebaseSync.isConfigured())
-        return;
-    const user = await FirebaseSync.getUser();
-    if (!user) return;
-    const token = await FirebaseSync.getValidToken();
-    if (!token) return;
+    const ctx = await getFirebaseContext();
+    if (!ctx) return;
+    const { user, token } = ctx;
 
     try {
         await FirebaseSync.pushWords(user.uid, token, words);
@@ -299,23 +293,20 @@ async function firebasePushWords(words) {
             lastFirebaseSync: Date.now(),
         });
     } catch (err) {
-        console.warn("[QT] Firebase push error:", err);
+        console.warn("[Lectoro] Firebase push error:", err);
     }
 }
 
 /** Delete a single word from Firestore */
 async function firebaseDeleteWord(word) {
-    if (typeof FirebaseSync === "undefined" || !FirebaseSync.isConfigured())
-        return;
-    const user = await FirebaseSync.getUser();
-    if (!user) return;
-    const token = await FirebaseSync.getValidToken();
-    if (!token) return;
+    const ctx = await getFirebaseContext();
+    if (!ctx) return;
+    const { user, token } = ctx;
 
     try {
         await FirebaseSync.deleteWordDoc(user.uid, token, word);
     } catch (err) {
-        console.warn("[QT] Firebase delete error:", err);
+        console.warn("[Lectoro] Firebase delete error:", err);
     }
 }
 
@@ -327,10 +318,7 @@ async function updateBadge() {
         const data = await chrome.storage.local.get({ savedWords: [] });
         const words = data.savedWords || [];
         const now = Date.now();
-        const dueCount = words.filter((w) => {
-            if (!w.sr) return true; // old word without SR data – due
-            return w.sr.nextReview <= now;
-        }).length;
+        const dueCount = countDueWords(words, now);
 
         if (dueCount > 0) {
             chrome.action.setBadgeText({ text: String(dueCount) });
@@ -341,7 +329,7 @@ async function updateBadge() {
         // Always schedule alarm for the next word that becomes due
         scheduleNextDueAlarm(words, now);
     } catch (err) {
-        console.warn("[QT] Badge update error:", err);
+        console.warn("[Lectoro] Badge update error:", err);
     }
 }
 
@@ -372,22 +360,19 @@ async function checkAndNotify() {
         const data = await chrome.storage.local.get({ savedWords: [] });
         const words = data.savedWords || [];
         const now = Date.now();
-        const dueCount = words.filter((w) => {
-            if (!w.sr) return true;
-            return w.sr.nextReview <= now;
-        }).length;
+        const dueCount = countDueWords(words, now);
 
         if (dueCount > 0) {
             chrome.notifications.create("reviewReminder", {
                 type: "basic",
-                iconUrl: "icon128.png",
-                title: "QT Powtórki",
+                iconUrl: "icon48.png",
+                title: "Lectoro Powtórki",
                 message: `Masz ${dueCount} powtórki!`,
                 priority: 1,
             });
         }
     } catch (err) {
-        console.warn("[QT] Notification error:", err);
+        console.warn("[Lectoro] Notification error:", err);
     }
 }
 
