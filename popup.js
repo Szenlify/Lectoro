@@ -1010,7 +1010,6 @@ function autoSpeakReviewCard(w, answerVisible = false) {
         popupSpeak(
             buildReviewSpeakText(questionWord, questionSentence),
             questionLang,
-            { forceVolume: 1 },
         ).catch(() => {});
     } else {
         const answerWord = isReverse ? w.original : w.translated;
@@ -1021,7 +1020,6 @@ function autoSpeakReviewCard(w, answerVisible = false) {
         popupSpeak(
             buildReviewSpeakText(answerWord, answerSentence),
             answerLang,
-            { forceVolume: 1 },
         ).catch(() => {});
     }
 }
@@ -1286,7 +1284,7 @@ function pickPopupVoice(savedVoiceName, lang) {
  * Speak text using the same engine & voice configured in settings.
  * Returns a Promise that resolves with { type: 'utter'|'audio', obj } for end-tracking.
  */
-function popupSpeak(text, lang, options = {}) {
+function popupSpeak(text, lang) {
     window.speechSynthesis.cancel();
     if (popupElAudio) {
         popupElAudio.pause();
@@ -1305,11 +1303,7 @@ function popupSpeak(text, lang, options = {}) {
             },
             async (data) => {
                 const volume =
-                    options.forceVolume !== undefined
-                        ? options.forceVolume
-                        : data.ttsVolume !== undefined
-                          ? data.ttsVolume
-                          : 1;
+                    data.ttsVolume !== undefined ? data.ttsVolume : 1;
 
                 // ElevenLabs path
                 if (
