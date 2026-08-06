@@ -26,6 +26,7 @@
         SAVE_AI_CHECK: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#a78bfa" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>`,
         READ: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>`,
         AI: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 6 6 1-4.5 4.25L17 20l-5-3.75L7 20l.5-6.75L3 9l6-1 3-6z"/><path d="M8 13h8"/><path d="M8 17h8"/></svg>`,
+        IMAGE_SEARCH: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`,
     };
 
     // ── Language Names ─────────────────────────────────────────────
@@ -531,7 +532,10 @@
     //  Gemini AI API Base
     // ═══════════════════════════════════════════════════════════════
 
-    async function geminiRequest(prompt, { temperature = 0.8, maxOutputTokens = 200 } = {}) {
+    async function geminiRequest(
+        prompt,
+        { temperature = 0.8, maxOutputTokens = 200 } = {},
+    ) {
         return new Promise((resolve, reject) => {
             if (!chrome?.storage?.sync) {
                 reject(new Error("Brak klucza Gemini API"));
@@ -601,7 +605,10 @@ Then translate that sentence to ${tgtLang}.
 Respond ONLY in this exact JSON format, nothing else:
 {"sentence": "...", "translation": "..."}`;
 
-        const parsed = await geminiRequest(prompt, { temperature: 0.8, maxOutputTokens: 200 });
+        const parsed = await geminiRequest(prompt, {
+            temperature: 0.8,
+            maxOutputTokens: 200,
+        });
         return {
             sentence: parsed.sentence || "",
             translation: parsed.translation || "",
@@ -618,7 +625,10 @@ The explanation must be written in Polish.
 Respond ONLY in this exact JSON format, nothing else:
 {"translation": "...", "explanation": "..."}`;
 
-        const parsed = await geminiRequest(prompt, { temperature: 0.7, maxOutputTokens: 250 });
+        const parsed = await geminiRequest(prompt, {
+            temperature: 0.7,
+            maxOutputTokens: 250,
+        });
         return {
             translation: parsed.translation || "",
             explanation: parsed.explanation || "",
@@ -628,7 +638,10 @@ Respond ONLY in this exact JSON format, nothing else:
     async function geminiMovieTranslate(text, targetLang) {
         const prompt = `You are a movie-style translator. Translate the following text to ${targetLang} as naturally and colloquially as if it were in a film or subtitle. Then provide a short explanation of the sentence in the same target language. Respond ONLY in this exact JSON format, nothing else:\n{"translation":"...", "explanation":"..."}\nText:\n${text}`;
 
-        const parsed = await geminiRequest(prompt, { temperature: 0.8, maxOutputTokens: 260 });
+        const parsed = await geminiRequest(prompt, {
+            temperature: 0.8,
+            maxOutputTokens: 260,
+        });
         return {
             translation: parsed.translation || "",
             explanation: parsed.explanation || "",
@@ -699,12 +712,18 @@ Respond ONLY in this exact JSON format, nothing else:
                 <div class="${P}row">
                     <span class="${P}label">${langTag(srcLang)}</span>
                     <span class="${P}text ${P}original">${escapeHtml(original)}</span>
-                    <button class="${P}speak" data-text="${escapeAttr(original)}" data-lang="${escapeAttr(srcLang)}" title="Odczytaj oryginał">${SVG.SPEAKER}</button>
+                    <span class="${P}word-actions">
+                        <button class="${P}speak" data-text="${escapeAttr(original)}" data-lang="${escapeAttr(srcLang)}" title="Odczytaj oryginał">${SVG.SPEAKER}</button>
+                        <button class="${P}img-search" data-word="${escapeAttr(original)}" title="Szukaj obrazu w Google (nowa karta)">${SVG.IMAGE_SEARCH}</button>
+                    </span>
                 </div>
                 <div class="${P}row">
                     <span class="${P}label">${langTag(targetLang)}</span>
                     <span class="${P}text ${P}translated">${escapeHtml(translated)}</span>
-                    <button class="${P}speak" data-text="${escapeAttr(translated)}" data-lang="${escapeAttr(targetLang)}" title="Odczytaj tłumaczenie">${SVG.SPEAKER}</button>
+                    <span class="${P}word-actions">
+                        <button class="${P}speak" data-text="${escapeAttr(translated)}" data-lang="${escapeAttr(targetLang)}" title="Odczytaj tłumaczenie">${SVG.SPEAKER}</button>
+                        <button class="${P}img-search" data-word="${escapeAttr(translated)}" title="Szukaj obrazu w Google (nowa karta)">${SVG.IMAGE_SEARCH}</button>
+                    </span>
                 </div>
                 ${fullLineHtml}
             </div>
@@ -745,6 +764,17 @@ Respond ONLY in this exact JSON format, nothing else:
                         result.onerror = onDone;
                     }
                 });
+            });
+        });
+
+        // Google Images search buttons (open in new tab)
+        tooltipEl.querySelectorAll(`.${PREFIX}img-search`).forEach((btn) => {
+            btn.addEventListener("click", (ev) => {
+                ev.stopPropagation();
+                const word = (btn.dataset.word || "").trim();
+                if (!word) return;
+                const url = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(word)}`;
+                window.open(url, "_blank", "noopener,noreferrer");
             });
         });
 
@@ -1045,8 +1075,6 @@ Respond ONLY in this exact JSON format, nothing else:
         if (v && v.paused) v.play();
     }
 
-
-
     // ═══════════════════════════════════════════════════════════════
     //  Expose Global Namespace
     // ═══════════════════════════════════════════════════════════════
@@ -1116,7 +1144,5 @@ Respond ONLY in this exact JSON format, nothing else:
         getVideo,
         pauseVideo,
         resumeVideo,
-
-
     };
 })();
