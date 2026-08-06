@@ -1614,7 +1614,7 @@
             if (eTranslateActive || wordCloudActive) {
                 const shouldResume = eWasPlaying || wordCloudWasPlaying;
                 restoreOriginal();
-                if (shouldResume) video.play();
+                video.play();
                 eWasPlaying = false;
                 wordCloudWasPlaying = false;
                 return;
