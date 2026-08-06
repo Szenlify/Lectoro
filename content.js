@@ -725,6 +725,7 @@
     let subWasPlaying = false;
     let subClickLocked = false;
     let lastHoveredSubWord = null;
+    let subCloseTimer = null;
 
     function makeSubtitlesInteractive() {
         const els = PlayerAdapter.getSubtitleElements();
@@ -754,6 +755,13 @@
     function closeSubTooltip() {
         if (!isSubHovering) return;
         isSubHovering = false;
+        subClickLocked = false;
+        QT.hoverClickActive = false;
+        clearTimeout(subCloseTimer);
+        if (lastHoveredSubWord) {
+            lastHoveredSubWord.classList.remove(`${PREFIX}word-hover`);
+            lastHoveredSubWord = null;
+        }
         QT.hideTooltip();
         if (subWasPlaying) {
             const video = PlayerAdapter.getVideo();
@@ -762,14 +770,32 @@
     }
     addDismissHandler(closeSubTooltip);
 
+    // Delay closing so the cursor can travel from the word onto the tooltip
+    // (which floats above/below it) without the video resuming prematurely.
+    function scheduleCloseSubTooltip() {
+        clearTimeout(subCloseTimer);
+        subCloseTimer = setTimeout(() => {
+            if (QT.getTooltipEl()?.matches(":hover")) return;
+            if (subClickLocked) return;
+            closeSubTooltip();
+        }, 350);
+    }
+
     document.addEventListener(
         "mousemove",
         (e) => {
-            if (QT.hoverClickActive || isReading) return;
+            if (isReading) return;
             if (typeof eTranslateActive !== "undefined" && eTranslateActive)
                 return;
             if (typeof wordCloudActive !== "undefined" && wordCloudActive)
                 return;
+            if (subClickLocked) return;
+
+            // Cursor is over our own tooltip – keep it open, don't chase words.
+            if (isOwnUI(e.target)) {
+                clearTimeout(subCloseTimer);
+                return;
+            }
 
             const wordSpan = QT.findWordAtPoint(
                 e.clientX,
@@ -778,6 +804,7 @@
             );
 
             if (wordSpan && wordSpan !== lastHoveredSubWord) {
+                clearTimeout(subCloseTimer);
                 if (lastHoveredSubWord)
                     lastHoveredSubWord.classList.remove(`${PREFIX}word-hover`);
                 lastHoveredSubWord = wordSpan;
@@ -823,11 +850,77 @@
                 clearTimeout(subHoverTimer);
                 lastHoveredSubWord.classList.remove(`${PREFIX}word-hover`);
                 lastHoveredSubWord = null;
-                if (isSubHovering && !subClickLocked) closeSubTooltip();
+                if (isSubHovering) scheduleCloseSubTooltip();
             }
         },
         true,
     );
+
+    // Click: word translation + the full subtitle line it belongs to
+    async function handleSubWordClick(wordSpan) {
+        clearTimeout(subHoverTimer);
+        clearTimeout(subCloseTimer);
+        subClickLocked = true;
+        QT.hoverClickActive = true;
+        isSubHovering = true;
+
+        if (lastHoveredSubWord && lastHoveredSubWord !== wordSpan)
+            lastHoveredSubWord.classList.remove(`${PREFIX}word-hover`);
+        lastHoveredSubWord = wordSpan;
+        wordSpan.classList.add(`${PREFIX}word-hover`);
+
+        const video = PlayerAdapter.getVideo();
+        subWasPlaying = video ? !video.paused : false;
+        if (video && !video.paused) video.pause();
+
+        const text = wordSpan.textContent.trim();
+        if (!text) {
+            closeSubTooltip();
+            return;
+        }
+
+        const sentence = PlayerAdapter.getCurrentText() || text;
+        const rect = wordSpan.getBoundingClientRect();
+        QT.showLoading(rect, "top");
+
+        try {
+            const targetLang = await QT.getTargetLang();
+            const wordRes = await subCache.get(text, targetLang);
+            const srcLang =
+                typeof wordRes.detectedLang === "string"
+                    ? wordRes.detectedLang
+                    : "auto";
+
+            const showFullLine = sentence && sentence !== text;
+            let fullTranslated = null;
+            if (showFullLine) {
+                fullTranslated = (await subCache.get(sentence, targetLang))
+                    .translated;
+            }
+
+            if (!isSubHovering || lastHoveredSubWord !== wordSpan) return;
+
+            const html = QT.buildTooltipHtml({
+                srcLang,
+                targetLang,
+                original: text,
+                translated: wordRes.translated,
+                fullLine: showFullLine ? sentence : null,
+                fullTranslated,
+                speakFullLine: true,
+            });
+            QT.showTooltip(html, rect, "top");
+            QT.attachTooltipHandlers();
+            QT.speak(text, srcLang);
+        } catch (err) {
+            if (isSubHovering)
+                QT.showTooltip(
+                    `<div class="${PREFIX}error">⚠ ${QT.escapeHtml(err.message)}</div>`,
+                    rect,
+                    "top",
+                );
+        }
+    }
 
     document.addEventListener(
         "click",
@@ -841,10 +934,7 @@
             if (wordSpan) {
                 e.preventDefault();
                 e.stopPropagation();
-                subClickLocked = true;
-                setTimeout(() => {
-                    subClickLocked = false;
-                }, 2000);
+                handleSubWordClick(wordSpan);
             }
         },
         true,
@@ -1346,6 +1436,59 @@
         }
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    //  Save Current Sentence to Review System ("Z" hotkey)
+    // ═══════════════════════════════════════════════════════════════
+
+    let savingSentence = false;
+    async function saveCurrentSentenceToReview() {
+        if (savingSentence) return;
+        const text = PlayerAdapter.getCurrentText();
+        if (!text) {
+            QT.createHint("__qt_yt-sub-hint").show(
+                "Brak napisów do zapisania",
+                2000,
+            );
+            return;
+        }
+
+        savingSentence = true;
+        const hint = QT.createHint("__qt_yt-sub-hint");
+        hint.show("Zapisywanie zdania…", 1500);
+
+        try {
+            const targetLang = await getTargetLang();
+            const { translated, detectedLang } = await googleTranslate(
+                text,
+                targetLang,
+            );
+            const srcLang =
+                typeof detectedLang === "string" ? detectedLang : "auto";
+
+            saveWord({
+                original: text,
+                translated: translated || text,
+                srcLang,
+                tgtLang: targetLang,
+                sentence: text,
+                sentenceTranslated: translated || text,
+                aiSentence: "",
+                aiSentenceTranslated: "",
+                screenshot: QT.captureVideoScreenshot() || "",
+                url: window.location.href,
+                timestamp: Date.now(),
+                downloaded: false,
+            });
+
+            hint.show("✔ Zdanie zapisane do powtórek", 2000);
+        } catch (err) {
+            console.error("[Lectoro] saveCurrentSentence error:", err);
+            hint.show("⚠ Nie udało się zapisać zdania", 2500);
+        } finally {
+            savingSentence = false;
+        }
+    }
+
     let _controlBarTimer = null;
     function ensureControlsHidden() {
         const vjsEl = document.querySelector(".video-js");
@@ -1411,6 +1554,8 @@
                 "Q",
                 "r",
                 "R",
+                "z",
+                "Z",
                 "[",
                 "{",
                 "]",
@@ -1447,6 +1592,12 @@
             if (key === "Enter" || key === "q" || key === "Q") {
                 if (aiTooltipActive) closeAiTooltip();
                 else handleAIExplain(video);
+                return;
+            }
+
+            // Save current subtitle sentence to spaced-repetition review
+            if (key === "z" || key === "Z") {
+                saveCurrentSentenceToReview();
                 return;
             }
 

@@ -1,1 +1,1 @@
-Popraw hover tooltip tak aby jak najade kursorem na slowo pojawil sie tooltip i zebym mogl kursorem najechac na tooltip bo teraz jak kursor zjedzie ze slowa wznawia sie film i chowa sie tooltip
+Popraw system powtorek po zalogowaniu sie w koncie google jak robie powtorki jak jestem zalogowany to powtorki przeskakuja po chwili jak widze jedna karte nie zdarze jej przeczytac i zmienia sie na druga karte samo z automatu a jesli sie wyloguje z konta google to wtedy wszystko jest dobrze
