@@ -1612,7 +1612,6 @@
             clearTimeout(_controlBarTimer);
 
             if (eTranslateActive || wordCloudActive) {
-                const shouldResume = eWasPlaying || wordCloudWasPlaying;
                 restoreOriginal();
                 video.play();
                 eWasPlaying = false;
