@@ -978,6 +978,96 @@
             overflow-y: auto;
         }
 
+        /* ══════════════════════════════════════════
+           HELP / INSTRUCTIONS PANEL
+           ══════════════════════════════════════════ */
+        .help-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            flex: 1;
+            overflow-y: auto;
+            padding: 4px 22px 22px;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.06) transparent;
+        }
+
+        .help-panel::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .help-title {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+            margin-bottom: 7px;
+        }
+
+        .help-card {
+            font-size: 12.5px;
+            line-height: 1.55;
+            color: var(--text-secondary);
+        }
+
+        .help-card p {
+            margin: 0;
+        }
+
+        .help-card ol {
+            margin: 0;
+            padding-left: 18px;
+        }
+
+        .help-card ol li {
+            margin-bottom: 6px;
+        }
+
+        .help-card a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .help-card a:hover {
+            text-decoration: underline;
+        }
+
+        .help-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+
+        .help-table td {
+            padding: 6px 0;
+            border-bottom: 1px solid var(--glass-border);
+            vertical-align: middle;
+        }
+
+        .help-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .help-table td:first-child {
+            white-space: nowrap;
+            padding-right: 14px;
+            width: 1%;
+        }
+
+        .key {
+            display: inline-block;
+            padding: 2px 7px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-primary);
+            background: var(--glass-strong);
+            border: 1px solid var(--glass-border);
+            border-radius: 6px;
+            font-family: 'Inter', monospace;
+        }
+
         /* ── Flashcard container (wraps question + revealed answer) ── */
         .review-flashcard {
             width: 100%;
@@ -1639,12 +1729,13 @@
         <div class="header-icon">
             <img src="/lectoro.png" height="32" width="32" alt="Lectoro Icon">
         </div>
-        <h1><span>Lectoro</span></h1>
+        <h1><span>Lectoro - AI Tutor</span></h1>
     </div>
 
     <!-- Tabs -->
     <div class="tabs">
         <button class="tab active" data-tab="settings">⚙ Ustawienia</button>
+        <button class="tab" data-tab="help">❓ Instrukcja</button>
         <button class="tab" data-tab="words">📚 Słowa</button>
         <button class="tab" data-tab="review" id="tabReview">🧠 Powtórki</button>
     </div>
@@ -1703,7 +1794,7 @@
             <!-- Browser TTS settings -->
             <div id="browserTtsSettings">
                 <div class="setting-group">
-                    <label for="voiceSelect">Głos TTS</label>
+                    <label for="voiceSelect">Głos lektora TTS</label>
                     <select id="voiceSelect">
                         <option value="">🔊 Domyślny</option>
                     </select>
@@ -1720,7 +1811,7 @@
                 </div>
 
                 <div class="setting-group">
-                    <label for="volumeRange">Głośność TTS</label>
+                    <label for="volumeRange">Głośność lektora TTS</label>
                     <div class="glass-card">
                         <div class="slider-row">
                             <input type="range" id="volumeRange" min="0" max="1" step="0.05" value="1">
@@ -1837,6 +1928,90 @@
                     wszystkie</button>
             </div>
             <div class="review-card" id="reviewCard"></div>
+        </div>
+    </div>
+
+    <!-- Help Tab (Instructions) -->
+    <div class="tab-content" id="tab-help">
+        <div class="help-panel">
+            <div class="help-section">
+                <div class="help-title">👋 Czym jest Lectoro?</div>
+                <div class="glass-card help-card">
+                    <p>Lectoro to rozszerzenie do nauki języków podczas przeglądania internetu.
+                        Pozwala błyskawicznie tłumaczyć dowolny tekst na stronie oraz oglądać filmy z
+                        dwujęzycznymi napisami, zapisując napotkane słówka do systemu powtórek
+                        (spaced repetition).</p>
+                </div>
+            </div>
+
+            <div class="help-section">
+                <div class="help-title">🖱️ Tłumaczenie zaznaczonego tekstu</div>
+                <div class="glass-card help-card">
+                    <ol>
+                        <li>Zaznacz dowolne słowo lub zdanie na jakiejkolwiek stronie internetowej.</li>
+                        <li>Obok zaznaczenia pojawi się ikonka tłumacza — kliknij ją.</li>
+                        <li>Zobaczysz tłumaczenie, wymowę (TTS) oraz przykłady użycia, a słowo
+                            automatycznie trafi na listę do powtórek w zakładce 📚 Słowa.</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="help-section">
+                <div class="help-title">🎬 Oglądanie filmów z napisami</div>
+                <div class="glass-card help-card">
+                    <p>Lectoro działa na stronach z wideo i napisami — m.in. na
+                        <a href="https://www.youtube.com" target="_blank">youtube.com</a> oraz
+                        <a href="https://www.lookmovie2.to" target="_blank">lookmovie2.to</a>.
+                        Kliknij lub najedź na napis, aby zobaczyć tłumaczenie, albo użyj skrótów
+                        klawiszowych podczas oglądania:
+                    </p>
+                    <table class="help-table">
+                        <tr>
+                            <td><span class="key">S</span> / <span class="key">↓</span> / <span class="key">E</span>
+                            </td>
+                            <td>Przetłumacz i odczytaj bieżący napis</td>
+                        </tr>
+                        <tr>
+                            <td><span class="key">Z</span></td>
+                            <td>Zapisz bieżące zdanie z napisów do powtórek</td>
+                        </tr>
+                        <tr>
+                            <td><span class="key">Q</span> / <span class="key">Enter</span></td>
+                            <td>Wyjaśnienie zdania od AI (wymaga klucza Gemini)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="key">W</span> / <span class="key">↑</span></td>
+                            <td>Play / Pauza</td>
+                        </tr>
+                        <tr>
+                            <td><span class="key">A</span> / <span class="key">←</span></td>
+                            <td>Poprzedni napis / cofnij</td>
+                        </tr>
+                        <tr>
+                            <td><span class="key">D</span> / <span class="key">→</span></td>
+                            <td>Następny napis / przewiń</td>
+                        </tr>
+                        <tr>
+                            <td><span class="key">R</span></td>
+                            <td>Tryb Reels (pełny ekran napisów)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="key">[</span> / <span class="key">]</span></td>
+                            <td>Zwolnij / przyspiesz odtwarzanie</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="help-section">
+                <div class="help-title">🧠 Nauka i powtórki</div>
+                <div class="glass-card help-card">
+                    <p>Każde przetłumaczone słowo lub zdanie trafia do zakładki 📚 Słowa, skąd
+                        możesz je eksportować do Anki lub Excela. Zakładka 🧠 Powtórki pokazuje
+                        codzienną powtórkę metodą spaced repetition, dzięki której zapamiętasz
+                        słówka na dłużej.</p>
+                </div>
+            </div>
         </div>
     </div>
 
