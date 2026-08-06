@@ -192,14 +192,14 @@ chrome.storage.onChanged.addListener((changes, area) => {
     if (area === "local" && changes.lastFirebaseSync) {
         renderSyncUI();
         loadWords();
-        loadReviewQueue();
+        maybeRefreshReviewQueue();
         initReviewBadge();
     }
     if (area === "local" && changes.savedWords) {
         // Refresh review queue whenever words change (e.g. synced SR data)
         // But skip if the change came from rating a word in the current session
         if (!_reviewSaving) {
-            loadReviewQueue();
+            maybeRefreshReviewQueue();
         }
         initReviewBadge();
     }
@@ -604,7 +604,7 @@ function deleteAllReviews() {
     chrome.storage.local.get({ savedWords: [] }, (data) => {
         const allWords = data.savedWords || [];
         const now = Date.now();
-        const dueWords = allWords.filter(w => isDueForReview(w, now));
+        const dueWords = allWords.filter((w) => isDueForReview(w, now));
         if (dueWords.length === 0) return;
 
         const dueSet = new Set(
@@ -976,7 +976,6 @@ function csvCell(str) {
     return str;
 }
 
-
 function buildReviewSpeakText(word, sentence) {
     if (!word) return "";
     return sentence ? `${word}. ${sentence}` : word;
@@ -1110,6 +1109,7 @@ let reviewIndex = 0;
 let reviewAnswerShown = false;
 let reviewTotalDue = 0;
 let _reviewSaving = false; // guard: skip storage listener while rating
+let _reviewQueueStale = false; // set when a background sync happens mid-session
 
 // ── Default SR data for words that don't have it ──────────────────
 function ensureSR(word) {
@@ -1177,9 +1177,7 @@ function loadReviewQueue() {
         const words = data.savedWords || [];
         const now = Date.now();
 
-        reviewQueue = words
-            .filter(w => isDueForReview(w, now))
-            .map(ensureSR);
+        reviewQueue = words.filter((w) => isDueForReview(w, now)).map(ensureSR);
 
         // Shuffle
         for (let i = reviewQueue.length - 1; i > 0; i--) {
@@ -1190,8 +1188,32 @@ function loadReviewQueue() {
         reviewTotalDue = reviewQueue.length;
         reviewIndex = 0;
         reviewAnswerShown = false;
+        _reviewQueueStale = false;
         renderReview();
     });
+}
+
+// ── Refresh the review queue without interrupting an active session ──
+// Background/Firebase sync can update `savedWords` at any time (every few
+// seconds after rating a card, or on a periodic timer). If we naively
+// reload+reshuffle the queue on every such change, the card the user is
+// currently reading gets yanked out from under them. Instead, defer the
+// reload until it's actually safe: when the review tab isn't open, or the
+// current session has already finished.
+function maybeRefreshReviewQueue() {
+    const reviewTabActive = document
+        .getElementById("tab-review")
+        ?.classList.contains("active");
+    const sessionInProgress =
+        reviewTabActive &&
+        reviewQueue.length > 0 &&
+        reviewIndex < reviewQueue.length;
+
+    if (sessionInProgress) {
+        _reviewQueueStale = true;
+        return;
+    }
+    loadReviewQueue();
 }
 
 // ── Badge on review tab ───────────────────────────────────────────
@@ -1322,7 +1344,10 @@ function popupSpeak(text, lang, options = {}) {
                         popupElAudio.play();
                         resolve({ type: "audio", obj: popupElAudio });
                     } catch (err) {
-                        console.warn("[Lectoro] ElevenLabs popup TTS failed:", err);
+                        console.warn(
+                            "[Lectoro] ElevenLabs popup TTS failed:",
+                            err,
+                        );
                         resolve({ type: "none", obj: null });
                     }
                     return;
@@ -1396,6 +1421,13 @@ function renderReview() {
     if (deleteAllBtn) deleteAllBtn.style.display = "";
 
     if (reviewIndex >= reviewQueue.length) {
+        // Session just finished – now it's safe to pull in any words that
+        // synced in while the user was reviewing, without disrupting them.
+        if (_reviewQueueStale) {
+            _reviewQueueStale = false;
+            loadReviewQueue();
+            return;
+        }
         countEl.textContent = `${reviewTotalDue}/${reviewTotalDue}`;
         progressBar.style.width = "100%";
         card.innerHTML = `
