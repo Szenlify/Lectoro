@@ -225,20 +225,6 @@ select.addEventListener("change", () => {
     chrome.storage.sync.set({ targetLang: select.value }, flashSaved);
 });
 
-// ── Hover Translate toggle ────────────────────────────────────────
-const hoverToggle = document.getElementById("hoverTranslate");
-
-chrome.storage.sync.get({ hoverTranslate: false }, (data) => {
-    hoverToggle.checked = data.hoverTranslate;
-});
-
-hoverToggle.addEventListener("change", () => {
-    chrome.storage.sync.set(
-        { hoverTranslate: hoverToggle.checked },
-        flashSaved,
-    );
-});
-
 // ── Subtitle reading modes ───────────────────────────────────────
 const subtitleTTSToggle = document.getElementById("subtitleTTS");
 const wordCloudModeToggle = document.getElementById("wordCloudMode");
@@ -1561,7 +1547,7 @@ function renderAnswer(w) {
             </div>
         </div>
         <div class="review-rating">
-            <div class="review-rating-label">Jak dobrze znałeś?</div>
+            <div class="review-rating-label">Jak dobrze zrozumiałeś?</div>
             <div class="review-rating-buttons">
                 <button class="review-rate-btn rate-1" data-grade="1" title="Powtórz (Again)">
                     <span class="rate-key">1</span>
@@ -1584,7 +1570,7 @@ function renderAnswer(w) {
                     <span class="review-next-info">${labels[3]}</span>
                 </button>
             </div>
-            <div class="review-hint">Klawisze <kbd>1</kbd>-<kbd>4</kbd> = ocena</div>
+            <div class="review-hint">Klawisze od <kbd>1</kbd>-<kbd>4</kbd> = ocena</div>
         </div>
         <div class="review-actions-row">
             <button class="review-edit-btn" id="reviewEditBtn">✏️ Edytuj</button>
