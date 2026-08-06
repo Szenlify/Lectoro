@@ -892,7 +892,15 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            margin-bottom: 14px;
+            margin-bottom: 10px;
+        }
+
+        .review-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 16px;
         }
 
         .review-icon {
@@ -935,17 +943,21 @@
         }
 
         .review-count {
-            font-size: 12px;
-            color: var(--text-muted);
+            font-size: 11px;
+            color: var(--text-secondary);
             font-weight: 700;
             font-variant-numeric: tabular-nums;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
         }
 
         .review-progress {
             height: 3px;
             background: rgba(255, 255, 255, 0.04);
             border-radius: 3px;
-            margin-bottom: 20px;
+            margin-bottom: 14px;
             overflow: hidden;
         }
 
@@ -966,10 +978,44 @@
             overflow-y: auto;
         }
 
+        /* ── Flashcard container (wraps question + revealed answer) ── */
+        .review-flashcard {
+            width: 100%;
+            padding: 26px 22px 22px;
+            margin-bottom: 16px;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-xl);
+            backdrop-filter: blur(var(--blur));
+            -webkit-backdrop-filter: blur(var(--blur));
+            box-shadow:
+                0 1px 0 0 rgba(255, 255, 255, 0.03) inset,
+                0 8px 32px rgba(0, 0, 0, 0.12);
+            animation: cardIn .3s cubic-bezier(.4, 0, .2, 1);
+        }
+
+        @keyframes cardIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px) scale(.98);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .review-divider-main {
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--glass-border) 20%, var(--glass-border) 80%, transparent);
+            margin: 20px 0;
+        }
+
         /* ── Question side ── */
         .review-question {
             text-align: center;
-            margin-bottom: 18px;
             width: 100%;
         }
 
@@ -1069,15 +1115,6 @@
             text-decoration: underline;
         }
 
-        .review-meta {
-            font-size: 10px;
-            color: var(--text-ghost);
-            margin-top: 10px;
-            font-weight: 700;
-            letter-spacing: 1.2px;
-            text-transform: uppercase;
-        }
-
         .review-screenshot {
             margin-top: 14px;
             text-align: center;
@@ -1128,19 +1165,22 @@
         }
 
         /* ── Answer side ── */
-        .review-answer {
+        .review-answer-inline {
             text-align: center;
-            margin-bottom: 20px;
-            padding: 18px 22px;
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-xl);
             width: 100%;
-            backdrop-filter: blur(var(--blur));
-            -webkit-backdrop-filter: blur(var(--blur));
-            box-shadow:
-                0 1px 0 0 rgba(255, 255, 255, 0.03) inset,
-                0 8px 32px rgba(0, 0, 0, 0.1);
+            animation: answerIn .35s cubic-bezier(.4, 0, .2, 1);
+        }
+
+        @keyframes answerIn {
+            from {
+                opacity: 0;
+                transform: translateY(-4px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .review-translation-row {
@@ -1207,24 +1247,24 @@
         }
 
         .review-rating-buttons {
-            display: flex;
-            gap: 6px;
-            justify-content: center;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
         }
 
         .review-rate-btn {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 3px;
-            padding: 10px 4px 8px;
+            gap: 4px;
+            padding: 12px 4px 10px;
             border-radius: var(--radius-md);
             border: 1px solid var(--glass-border);
             background: var(--glass);
             cursor: pointer;
             transition: all .25s cubic-bezier(.4, 0, .2, 1);
             font-family: inherit;
-            min-width: 52px;
+            width: 100%;
             position: relative;
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
@@ -1376,10 +1416,13 @@
         }
 
         .review-next-info {
-            font-size: 9.5px;
-            color: var(--text-ghost);
-            margin-top: 4px;
-            font-weight: 500;
+            font-size: 9px;
+            color: var(--text-muted);
+            margin-top: 2px;
+            font-weight: 600;
+            padding: 1px 7px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.04);
         }
 
         /* ── Review Edit Mode ── */
@@ -1794,14 +1837,16 @@
             <div class="review-header">
                 <span class="review-icon">🧠</span>
                 <span class="review-title">Powtórka dnia</span>
-                <button class="review-dir-btn" id="reviewDirBtn" title="Zmień kierunek powtórek">EN <span
-                        class="dir-arrow">→</span> PL</button>
                 <span class="review-count" id="reviewCount"></span>
-                <button class="review-delete-all-btn" id="reviewDeleteAll" title="Usuń wszystkie powtórki">🗑 Usuń
-                    wszystkie</button>
             </div>
             <div class="review-progress" id="reviewProgress">
                 <div class="review-progress-bar" id="reviewProgressBar" style="width: 0%"></div>
+            </div>
+            <div class="review-toolbar">
+                <button class="review-dir-btn" id="reviewDirBtn" title="Zmień kierunek powtórek">EN <span
+                        class="dir-arrow">→</span> PL</button>
+                <button class="review-delete-all-btn" id="reviewDeleteAll" title="Usuń wszystkie powtórki">🗑 Usuń
+                    wszystkie</button>
             </div>
             <div class="review-card" id="reviewCard"></div>
         </div>

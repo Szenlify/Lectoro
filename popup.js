@@ -207,7 +207,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 // ── Settings: load & save language ────────────────────────────────
 chrome.storage.sync.get(
-    { targetLang: "pl", speechVoice: "", speechRate: 0.95, ttsVolume: 1 },
+    { targetLang: "pl", speechVoice: "", speechRate: 1.3, ttsVolume: 1 },
     (data) => {
         select.value = data.targetLang;
         rateRange.value = data.speechRate;
@@ -1298,7 +1298,6 @@ function popupSpeak(text, lang) {
                 elApiKey: "",
                 elVoiceId: "",
                 speechVoice: "",
-                speechRate: 0.95,
                 ttsVolume: 1,
             },
             async (data) => {
@@ -1351,7 +1350,8 @@ function popupSpeak(text, lang) {
                     cleanTextForPopupTTS(text),
                 );
                 utter.lang = lang || "en";
-                utter.rate = data.speechRate;
+                // Review TTS always speaks at normal speed, regardless of the rate setting
+                utter.rate = 1;
                 utter.volume = volume;
                 const voice = pickPopupVoice(data.speechVoice, lang);
                 if (voice) utter.voice = voice;
@@ -1447,9 +1447,6 @@ function renderReview() {
         const showSentence = isReverse
             ? w.sentenceTranslated || ""
             : w.sentence || "";
-        const dirLabel = isReverse
-            ? `${(w.tgtLang || "?").toUpperCase()} → ${(w.srcLang || "?").toUpperCase()}`
-            : `${(w.srcLang || "?").toUpperCase()} → ${(w.tgtLang || "?").toUpperCase()}`;
         const wordClass = isReverse ? "__qt_translated" : "__qt_original";
         const sentenceHtml = showSentence
             ? `
@@ -1465,16 +1462,17 @@ function renderReview() {
                 </div>`
             : "";
         card.innerHTML = `
-            <div class="review-question">
-                <div class="review-word-row">
-                    <span class="review-word ${wordClass}">${escapeHtml(showWord)}</span>
-                    <button class="review-speak-btn" data-text="${escapeAttr(
-                        buildReviewSpeakText(showWord, showSentence),
-                    )}" data-lang="${escapeAttr(showLang)}" title="Odczytaj">${SPEAK_SVG}</button>
+            <div class="review-flashcard">
+                <div class="review-question">
+                    <div class="review-word-row">
+                        <span class="review-word ${wordClass}">${escapeHtml(showWord)}</span>
+                        <button class="review-speak-btn" data-text="${escapeAttr(
+                            buildReviewSpeakText(showWord, showSentence),
+                        )}" data-lang="${escapeAttr(showLang)}" title="Odczytaj">${SPEAK_SVG}</button>
+                    </div>
+                    ${sentenceHtml}
+                    ${w.screenshot ? `<div class="review-screenshot"><img src="${w.screenshot}" alt="Screenshot" class="review-screenshot-img"></div>` : ""}
                 </div>
-                ${sentenceHtml}
-                ${w.screenshot ? `<div class="review-screenshot"><img src="${w.screenshot}" alt="Screenshot" class="review-screenshot-img"></div>` : ""}
-                <div class="review-meta">${dirLabel}</div>
             </div>
             <button class="review-reveal-btn" id="revealBtn">▸ Pokaż odpowiedź</button>
             <div class="review-hint">Naciśnij <kbd>Spacja</kbd> aby odsłonić</div>`;
@@ -1515,49 +1513,52 @@ function renderAnswer(w) {
     const labels = [1, 2, 3, 4].map((g) => previewLabel(sr, g));
 
     card.innerHTML = `
-        <div class="review-question">
-            <div class="review-word-row">
-                <span class="review-word ${qWordClass}">${escapeHtml(qWord)}</span>
-                <button class="review-speak-btn" data-text="${escapeAttr(
-                    buildReviewSpeakText(qWord, qSentence),
-                )}" data-lang="${escapeAttr(qLang)}" title="Odczytaj">${SPEAK_SVG}</button>
+        <div class="review-flashcard">
+            <div class="review-question">
+                <div class="review-word-row">
+                    <span class="review-word ${qWordClass}">${escapeHtml(qWord)}</span>
+                    <button class="review-speak-btn" data-text="${escapeAttr(
+                        buildReviewSpeakText(qWord, qSentence),
+                    )}" data-lang="${escapeAttr(qLang)}" title="Odczytaj">${SPEAK_SVG}</button>
+                </div>
+                ${
+                    qSentence
+                        ? `
+                <div class="review-context-row">
+                    <span class="review-context">"${highlightReviewSentence(
+                        qSentence,
+                        qWord,
+                        qWordClass,
+                    )}"</span>
+                    <button class="review-speak-btn review-speak-sm" data-text="${escapeAttr(qSentence)}" data-lang="${escapeAttr(qLang)}" title="Odczytaj zdanie">${SPEAK_SVG}</button>
+                </div>`
+                        : ""
+                }
+                ${w.screenshot ? `<div class="review-screenshot"><img src="${w.screenshot}" alt="Screenshot" class="review-screenshot-img"></div>` : ""}
             </div>
-            ${
-                qSentence
-                    ? `
-            <div class="review-context-row">
-                <span class="review-context">"${highlightReviewSentence(
-                    qSentence,
-                    qWord,
-                    qWordClass,
-                )}"</span>
-                <button class="review-speak-btn review-speak-sm" data-text="${escapeAttr(qSentence)}" data-lang="${escapeAttr(qLang)}" title="Odczytaj zdanie">${SPEAK_SVG}</button>
-            </div>`
-                    : ""
-            }
-            ${w.screenshot ? `<div class="review-screenshot"><img src="${w.screenshot}" alt="Screenshot" class="review-screenshot-img"></div>` : ""}
-        </div>
-        <div class="review-answer">
-            <div class="review-translation-row">
-                <span class="review-translation ${aWordClass}">${escapeHtml(aWord)}</span>
-                <button class="review-speak-btn" data-text="${escapeAttr(
-                    buildReviewSpeakText(aWord, aSentence),
-                )}" data-lang="${escapeAttr(aLang)}" title="Odczytaj tłumaczenie">${SPEAK_SVG}</button>
+            <div class="review-divider-main"></div>
+            <div class="review-answer-inline">
+                <div class="review-translation-row">
+                    <span class="review-translation ${aWordClass}">${escapeHtml(aWord)}</span>
+                    <button class="review-speak-btn" data-text="${escapeAttr(
+                        buildReviewSpeakText(aWord, aSentence),
+                    )}" data-lang="${escapeAttr(aLang)}" title="Odczytaj tłumaczenie">${SPEAK_SVG}</button>
+                </div>
+                ${
+                    aSentence
+                        ? `
+                <div class="review-divider"></div>
+                <div class="review-sentence-trans-row">
+                    <span class="review-sentence-trans">"${highlightReviewSentence(
+                        aSentence,
+                        aWord,
+                        aWordClass,
+                    )}"</span>
+                    <button class="review-speak-btn review-speak-sm" data-text="${escapeAttr(aSentence)}" data-lang="${escapeAttr(aLang)}" title="Odczytaj tłumaczenie zdania">${SPEAK_SVG}</button>
+                </div>`
+                        : ""
+                }
             </div>
-            ${
-                aSentence
-                    ? `
-            <div class="review-divider"></div>
-            <div class="review-sentence-trans-row">
-                <span class="review-sentence-trans">"${highlightReviewSentence(
-                    aSentence,
-                    aWord,
-                    aWordClass,
-                )}"</span>
-                <button class="review-speak-btn review-speak-sm" data-text="${escapeAttr(aSentence)}" data-lang="${escapeAttr(aLang)}" title="Odczytaj tłumaczenie zdania">${SPEAK_SVG}</button>
-            </div>`
-                    : ""
-            }
         </div>
         <div class="review-rating">
             <div class="review-rating-label">Jak dobrze znałeś?</div>
