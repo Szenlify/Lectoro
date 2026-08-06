@@ -1655,12 +1655,12 @@
                 };
                 if (chrome?.storage?.sync) {
                     chrome.storage.sync.get(
-                        { wordCloudMode: false, subtitleTTS: false },
+                        { wordCloudMode: true, subtitleTTS: false },
                         handleSubtitleAction,
                     );
                 } else {
                     handleSubtitleAction({
-                        wordCloudMode: false,
+                        wordCloudMode: true,
                         subtitleTTS: false,
                     });
                 }

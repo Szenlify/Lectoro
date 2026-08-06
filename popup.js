@@ -231,7 +231,7 @@ const wordCloudModeToggle = document.getElementById("wordCloudMode");
 
 function syncSubtitleModeUI() {
     chrome.storage.sync.get(
-        { subtitleTTS: false, wordCloudMode: false },
+        { subtitleTTS: false, wordCloudMode: true },
         (data) => {
             subtitleTTSToggle.checked = !!data.subtitleTTS;
             wordCloudModeToggle.checked = !!data.wordCloudMode;
