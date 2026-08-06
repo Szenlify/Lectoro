@@ -1465,13 +1465,15 @@
             const srcLang =
                 typeof detectedLang === "string" ? detectedLang : "auto";
 
+            // No separate sentence fields: original/translated already hold the
+            // full sentence, avoids showing it twice in the review card.
             saveWord({
                 original: text,
                 translated: translated || text,
                 srcLang,
                 tgtLang: targetLang,
-                sentence: text,
-                sentenceTranslated: translated || text,
+                sentence: "",
+                sentenceTranslated: "",
                 aiSentence: "",
                 aiSentenceTranslated: "",
                 screenshot: QT.captureVideoScreenshot() || "",
