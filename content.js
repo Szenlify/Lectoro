@@ -1268,6 +1268,10 @@
             }),
         );
 
+        const subFontSizePx =
+            parseFloat(window.getComputedStyle(subEls[0]).fontSize) || 16;
+        const cloudFontSize = Math.max(11, Math.min(22, subFontSizePx * 0.35));
+
         const parent =
             document.fullscreenElement ||
             document.webkitFullscreenElement ||
@@ -1280,6 +1284,7 @@
             const cloud = document.createElement("div");
             cloud.className = PREFIX + "word-cloud";
             cloud.textContent = translated;
+            cloud.style.fontSize = cloudFontSize + "px";
             cloud.style.animationDelay = i * 0.05 + "s";
             parent.appendChild(cloud);
             wordCloudEls.push(cloud);
@@ -1391,7 +1396,7 @@
                 }
             });
             overlay.innerHTML = lines
-                .map((line) => `<div style="font-size: 33px;">${line}</div>`)
+                .map((line) => `<div>${line}</div>`)
                 .join("");
         }
         positionOverlay();
