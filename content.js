@@ -1021,67 +1021,20 @@
         }
     }
 
+    // Reels Mode only restyles the existing subtitles (no separate overlay):
+    // moves them ~30% above the bottom edge and makes them white with a
+    // black outline on a transparent background, so they stay readable
+    // over bright video backgrounds.
     let reelsMode = false;
-    let reelsContainer = null;
-    let reelsBigWord = null;
-    let reelsPrevText = "";
-    let reelsPollTimer = null;
-    let reelsFadeTimer = null;
-
-    function createReelsOverlay() {
-        if (reelsContainer) return;
-        reelsContainer = document.createElement("div");
-        reelsContainer.className = `${PREFIX}reels-container`;
-        reelsBigWord = document.createElement("div");
-        reelsBigWord.className = `${PREFIX}reels-bigword`;
-        reelsContainer.appendChild(reelsBigWord);
-        const parent = PlayerAdapter.getVideo()?.parentElement || document.body;
-        parent.appendChild(reelsContainer);
-    }
-
-    function reelsPoll() {
-        if (!reelsMode) return;
-        const text = PlayerAdapter.getCurrentText();
-        if (!text) {
-            if (reelsContainer) reelsContainer.classList.remove("visible");
-            reelsPrevText = "";
-            return;
-        }
-        if (text === reelsPrevText) return;
-        const words = text.split(/\s+/).filter(Boolean);
-        const word = words[words.length - 1] || "";
-        reelsPrevText = text;
-
-        if (!reelsContainer) createReelsOverlay();
-
-        reelsBigWord.textContent = word;
-        reelsBigWord.classList.remove(`${PREFIX}reels-pop`);
-        void reelsBigWord.offsetWidth;
-        reelsBigWord.classList.add(`${PREFIX}reels-pop`);
-        reelsContainer.classList.add("visible");
-
-        clearTimeout(reelsFadeTimer);
-        reelsFadeTimer = setTimeout(
-            () => reelsContainer?.classList.remove("visible"),
-            4000,
-        );
-    }
 
     function setReelsMode(on) {
         reelsMode = on;
         if (on) {
-            createReelsOverlay();
             document.body.classList.add(`${PREFIX}reels-active`);
-            clearInterval(reelsPollTimer);
-            reelsPollTimer = setInterval(reelsPoll, 120);
-            QT.createHint("").show("Reels ON 🎬 Enter = Wyjaśnienie AI", 3000);
+            QT.createHint("").show("Reels ON 🎬", 2500);
         } else {
-            clearInterval(reelsPollTimer);
-            reelsContainer?.remove();
-            reelsContainer = reelsBigWord = null;
             document.body.classList.remove(`${PREFIX}reels-active`);
-            reelsPrevText = "";
-            QT.createHint("").show("Reels OFF", 2500);
+            QT.createHint("").show("Reels OFF", 2000);
         }
     }
 

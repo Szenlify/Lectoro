@@ -511,84 +511,30 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   YouTube Reels-style Karaoke Captions (R key toggle)
+   YouTube Reels-style Caption Styling (R key toggle)
+   Only restyles the existing native captions: moved ~30% above the
+   bottom edge, white text with a black outline, transparent background.
    ═══════════════════════════════════════════════════════════════ */
 
-/* Hide original YouTube captions when reels mode is active */
-body.__qt_reels-active .ytp-caption-window-container {
-    opacity: 0 !important;
-    pointer-events: none !important;
-    height: 0 !important;
-    overflow: hidden !important;
+body.__qt_reels-active .caption-window {
+    top: auto !important;
+    bottom: 25% !important;
 }
 
-/* ── Container ── */
-.__qt_reels-container {
-    position: absolute;
-    z-index: 60;
-    bottom: 8%;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.15s ease;
-    text-align: center;
+body.__qt_reels-active .ytp-caption-segment,
+body.__qt_reels-active .captions-text {
+    background-color: transparent !important;
+    background: transparent !important;
+    color: #ffffff !important;
     font-family: "YouTube Sans", "Roboto", "Arial", sans-serif;
+    font-weight: 700;
     text-shadow:
-        0 0 12px rgba(0, 0, 0, 1),
-        0 2px 8px rgba(0, 0, 0, 0.95),
-        2px 2px 6px rgba(0, 0, 0, 0.95),
-        -2px -2px 6px rgba(0, 0, 0, 0.95),
-        0 0 30px rgba(0, 0, 0, 0.5);
-}
-
-.__qt_reels-container.visible {
-    opacity: 1;
-}
-
-/* ── Big current word (only element) ── */
-.__qt_reels-bigword {
-    font-size: clamp(36px, 5.5vw, 72px);
-    font-weight: 900;
-    color: #ffffff;
-    letter-spacing: 0.03em;
-    line-height: 1;
-    text-transform: uppercase;
-    white-space: nowrap;
-    pointer-events: auto;
-    cursor: pointer;
-    transition: color 0.15s ease;
-    padding: 8px 16px;
-    border-radius: 8px;
-}
-
-.__qt_reels-bigword:hover {
-    color: #4ecdc4;
-}
-
-.__qt_reels-bigword.__qt_reels-pop {
-    animation: __qt_reels-pop 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-@keyframes __qt_reels-pop {
-    0% {
-        transform: scale(0.5);
-        opacity: 0;
-    }
-
-    60% {
-        transform: scale(1.15);
-        opacity: 1;
-    }
-
-    100% {
-        transform: scale(1);
-        opacity: 1;
-    }
+        -1.5px -1.5px 0 #000,
+        1.5px -1.5px 0 #000,
+        -1.5px 1.5px 0 #000,
+        1.5px 1.5px 0 #000,
+        0 0 6px rgba(0, 0, 0, 0.9),
+        0 0 14px rgba(0, 0, 0, 0.7);
 }
 
 /* ═══════════════════════════════════════════════════════════════
