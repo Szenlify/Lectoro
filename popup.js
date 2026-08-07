@@ -998,21 +998,46 @@ async function generateQuizWithGemini(words, geminiApiKey) {
         })
         .join("\n");
 
-    const prompt = `Jesteś asystentem do nauki języków. Uczeń uczy się słówek w języku ${srcLangAdj} (kolumna "słowo źródłowe" poniżej), a ich polskie tłumaczenie podano tylko jako pomoc. Stwórz zróżnicowany test/quiz sprawdzający WYŁĄCZNIE znajomość słówek w języku ${srcLangAdj} – każda oczekiwana odpowiedź (luka do uzupełnienia, poprawna opcja w multiple_choice, odpowiedź w translation) MUSI być w języku ${srcLangAdj}, NIGDY po polsku. Treści poleceń/instrukcji i ewentualne opisy znaczeń pisz po polsku, żeby uczeń rozumiał zadanie, ale sama odpowiedź zawsze ma być słowem/zdaniem w języku ${srcLangAdj}.
+    // Random nonce + shuffled type order nudge the model toward a different mix
+    // of section types/questions each time, even for the exact same word list.
+    const nonce = Math.random().toString(36).slice(2, 10);
+    const allTypes = [
+        "multiple_choice",
+        "fill_blank",
+        "matching",
+        "translation",
+        "true_false",
+        "word_order",
+        "error_correction",
+        "odd_one_out",
+    ];
+    const shuffledTypes = [...allTypes].sort(() => Math.random() - 0.5);
+    const sectionCount = 5 + Math.floor(Math.random() * 3); // 5-7 sections
+    const chosenTypes = shuffledTypes.slice(
+        0,
+        Math.min(sectionCount, allTypes.length),
+    );
 
-Użyj RÓŻNYCH stylów pytań w różnych sekcjach, aby jak najlepiej utrwalić słówka:
-- multiple_choice: pytanie po polsku (np. opisujące znaczenie lub kontekst), 4 opcje odpowiedzi w języku ${srcLangAdj} (jedna poprawna).
+    const prompt = `Jesteś asystentem do nauki języków. Uczeń uczy się słówek w języku ${srcLangAdj} (kolumna "słowo źródłowe" poniżej), a ich polskie tłumaczenie podano tylko jako pomoc. Stwórz bardziej rozbudowany, zróżnicowany i wymagający test/quiz sprawdzający WYŁĄCZNIE znajomość słówek w języku ${srcLangAdj} – każda oczekiwana odpowiedź (luka do uzupełnienia, poprawna opcja, odpowiedź w translation/word_order/error_correction) MUSI być w języku ${srcLangAdj}, NIGDY po polsku. Treści poleceń/instrukcji i ewentualne opisy znaczeń pisz po polsku, żeby uczeń rozumiał zadanie, ale sama odpowiedź zawsze ma być słowem/zdaniem w języku ${srcLangAdj}.
+
+WAŻNE — zróżnicowanie między generacjami: token unikalności ${nonce}. Za KAŻDYM razem, nawet dla identycznej listy słówek, wybierz inny zestaw typów sekcji, inną ich kolejność, inne konkretne pytania, przykłady i zdania – quiz nigdy nie powinien wyglądać tak samo dwa razy z rzędu. W tej generacji użyj DOKŁADNIE tych typów sekcji, w tej kolejności: ${chosenTypes.join(", ")}. Mieszaj też poziom trudności pytań w ramach sekcji (część łatwiejszych, część trudniejszych/podchwytliwych).
+
+Opis dostępnych typów sekcji:
+- multiple_choice: pytanie po polsku (np. opisujące znaczenie, synonim lub kontekst użycia), 4 opcje odpowiedzi w języku ${srcLangAdj} (jedna poprawna, pozostałe sensowne dystraktory).
 - fill_blank: zdanie W JĘZYKU ${srcLangAdj} z luką "___" w miejscu słówka; odpowiedź to brakujące słowo w języku ${srcLangAdj}.
 - matching: pary słowo źródłowe (${srcLangAdj}) <-> polskie tłumaczenie, do połączenia (jedyna sekcja, gdzie polski się pojawia, bo to dopasowywanie a nie pisanie odpowiedzi).
 - translation: polecenie po polsku w stylu "Jak powiedzieć po ${srcLangAdj}u: '<polskie słowo>'?"; odpowiedź to słowo w języku ${srcLangAdj}.
 - true_false: stwierdzenie po polsku o znaczeniu słówka w języku ${srcLangAdj} (prawda/fałsz), odpowiedź to tylko true/false.
+- word_order: podaj potasowaną listę pojedynczych wyrazów tworzących poprawne zdanie w języku ${srcLangAdj} zawierające jedno z uczonych słówek (pole "words"); odpowiedź ("answer") to całe poprawnie ułożone zdanie w języku ${srcLangAdj}.
+- error_correction: podaj zdanie w języku ${srcLangAdj} zawierające jeden celowy błąd GRAMATYCZNY dotyczący uczonego słówka (np. zła forma czasownika/czas gramatyczny, zły przyimek, brak/zła forma liczby mnogiej, zły szyk zdania, zły article/rodzajnik, niepoprawna zgoda podmiotu z orzeczeniem) — słowo docelowe MUSI być zapisane poprawnie ortograficznie, błąd nie może polegać na literówce ani zmienionej pojedynczej literze w pisowni. Odpowiedź ("answer") to CAŁE poprawione zdanie w języku ${srcLangAdj}.
+- odd_one_out: podaj 4 słowa w języku ${srcLangAdj} (w tym uczone słówka) z jednej kategorii znaczeniowej + 1 pasujące do innej kategorii (pole "options"); odpowiedź ("answer") to wyraz, który nie pasuje.
 
 Nie używaj wszystkich słówek w każdej sekcji – rozłóż je sensownie pomiędzy sekcje.
 
 Lista słówek:
 ${wordList}
 
-Odpowiedz WYŁĄCZNIE w tym dokładnym formacie JSON, bez żadnego dodatkowego tekstu:
+Odpowiedz WYŁĄCZNIE w tym dokładnym formacie JSON (uwzględnij TYLKO sekcje typów wskazanych powyżej, w podanej kolejności), bez żadnego dodatkowego tekstu:
 {
   "title": "krótki tytuł quizu",
   "sections": [
@@ -1020,7 +1045,10 @@ Odpowiedz WYŁĄCZNIE w tym dokładnym formacie JSON, bez żadnego dodatkowego t
     {"type": "fill_blank", "instructions": "...", "questions": [{"sentence": "... ___ ...", "answer": "..."}]},
     {"type": "matching", "instructions": "...", "pairs": [{"a": "...", "b": "..."}]},
     {"type": "translation", "instructions": "...", "questions": [{"prompt": "...", "answer": "..."}]},
-    {"type": "true_false", "instructions": "...", "questions": [{"statement": "...", "answer": true}]}
+    {"type": "true_false", "instructions": "...", "questions": [{"statement": "...", "answer": true}]},
+    {"type": "word_order", "instructions": "...", "questions": [{"words": ["...","...","..."], "answer": "..."}]},
+    {"type": "error_correction", "instructions": "...", "questions": [{"sentence": "...", "answer": "..."}]},
+    {"type": "odd_one_out", "instructions": "...", "questions": [{"options": ["...","...","...","..."], "answer": "..."}]}
   ]
 }`;
 
@@ -1031,7 +1059,7 @@ Odpowiedz WYŁĄCZNIE w tym dokładnym formacie JSON, bez żadnego dodatkowego t
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { temperature: 0.9, maxOutputTokens: 4000 },
+                generationConfig: { temperature: 1, maxOutputTokens: 4500 },
             }),
         },
     );
@@ -1055,6 +1083,9 @@ function buildQuizHtml(quiz, words) {
         matching: "Dopasuj pary",
         translation: "Przetłumacz",
         true_false: "Prawda czy fałsz",
+        word_order: "Ułóż zdanie",
+        error_correction: "Znajdź i popraw błąd",
+        odd_one_out: "Który wyraz nie pasuje?",
     };
 
     let qNum = 0;
@@ -1062,7 +1093,7 @@ function buildQuizHtml(quiz, words) {
         .map((sec) => {
             const heading = sectionTitles[sec.type] || sec.type;
             let body = "";
-            if (sec.type === "multiple_choice") {
+            if (sec.type === "multiple_choice" || sec.type === "odd_one_out") {
                 body = (sec.questions || [])
                     .map((q) => {
                         qNum++;
@@ -1072,7 +1103,7 @@ function buildQuizHtml(quiz, words) {
                                     `<div class="quiz-option">${String.fromCharCode(65 + i)}) ${escapeHtml(o)}</div>`,
                             )
                             .join("");
-                        return `<div class="quiz-question"><p><b>${qNum}.</b> ${escapeHtml(q.question)}</p><div class="quiz-options">${opts}</div></div>`;
+                        return `<div class="quiz-question"><p><b>${qNum}.</b> ${escapeHtml(q.question || "")}</p><div class="quiz-options">${opts}</div></div>`;
                     })
                     .join("");
             } else if (sec.type === "fill_blank") {
@@ -1108,6 +1139,29 @@ function buildQuizHtml(quiz, words) {
                         return `<div class="quiz-question"><p><b>${qNum}.</b> ${escapeHtml(q.statement)} <span class="quiz-tf">☐ Prawda &nbsp; ☐ Fałsz</span></p></div>`;
                     })
                     .join("");
+            } else if (sec.type === "word_order") {
+                body = (sec.questions || [])
+                    .map((q) => {
+                        qNum++;
+                        const shuffled = [...(q.words || [])].sort(
+                            () => Math.random() - 0.5,
+                        );
+                        const tiles = shuffled
+                            .map(
+                                (w) =>
+                                    `<span class="quiz-tile">${escapeHtml(w)}</span>`,
+                            )
+                            .join(" ");
+                        return `<div class="quiz-question"><p><b>${qNum}.</b> ${tiles}</p><p class="quiz-answer-line">Odpowiedź: ______________________________________</p></div>`;
+                    })
+                    .join("");
+            } else if (sec.type === "error_correction") {
+                body = (sec.questions || [])
+                    .map((q) => {
+                        qNum++;
+                        return `<div class="quiz-question"><p><b>${qNum}.</b> ${escapeHtml(q.sentence)}</p><p class="quiz-answer-line">Poprawka: ______________________________________</p></div>`;
+                    })
+                    .join("");
             }
             return `<section class="quiz-section"><h2>${escapeHtml(heading)}</h2><p class="quiz-instructions">${escapeHtml(sec.instructions || "")}</p>${body}</section>`;
         })
@@ -1116,12 +1170,14 @@ function buildQuizHtml(quiz, words) {
     // Answer key on its own printed page
     const answerKeyHtml = (quiz.sections || [])
         .map((sec) => {
-            if (sec.type === "multiple_choice" || sec.type === "translation") {
-                return (sec.questions || [])
-                    .map((q) => `<li>${escapeHtml(q.answer)}</li>`)
-                    .join("");
-            }
-            if (sec.type === "fill_blank") {
+            if (
+                sec.type === "multiple_choice" ||
+                sec.type === "translation" ||
+                sec.type === "fill_blank" ||
+                sec.type === "word_order" ||
+                sec.type === "error_correction" ||
+                sec.type === "odd_one_out"
+            ) {
                 return (sec.questions || [])
                     .map((q) => `<li>${escapeHtml(q.answer)}</li>`)
                     .join("");
@@ -1160,6 +1216,8 @@ function buildQuizHtml(quiz, words) {
     .quiz-matching { display: flex; gap: 60px; }
     .quiz-match-col { padding-left: 20px; }
     .quiz-tf { margin-left: 10px; white-space: nowrap; }
+    .quiz-tile { display: inline-block; border: 1px solid #999; border-radius: 6px; padding: 3px 9px; margin: 2px 3px; background: #f4f4f4; }
+    .quiz-answer-line { color: #555; margin-top: 6px; }
     .answer-key { page-break-before: always; }
     .answer-key ol { padding-left: 20px; }
     .print-bar { text-align: center; margin: 20px 0; }
@@ -1191,6 +1249,9 @@ function buildInteractiveQuizHtml(quiz, words) {
         matching: "Dopasuj pary",
         translation: "Przetłumacz",
         true_false: "Prawda czy fałsz",
+        word_order: "Ułóż zdanie",
+        error_correction: "Znajdź i popraw błąd",
+        odd_one_out: "Który wyraz nie pasuje?",
     };
 
     let qNum = 0;
@@ -1198,7 +1259,7 @@ function buildInteractiveQuizHtml(quiz, words) {
         .map((sec) => {
             const heading = sectionTitles[sec.type] || sec.type;
             let body = "";
-            if (sec.type === "multiple_choice") {
+            if (sec.type === "multiple_choice" || sec.type === "odd_one_out") {
                 body = (sec.questions || [])
                     .map((q) => {
                         qNum++;
@@ -1209,7 +1270,7 @@ function buildInteractiveQuizHtml(quiz, words) {
                             )
                             .join("");
                         return `<div class="q" data-qtype="choice" data-answer="${escapeAttr(q.answer)}">
-                            <p class="q-text"><b>${qNum}.</b> ${escapeHtml(q.question)}</p>
+                            <p class="q-text"><b>${qNum}.</b> ${escapeHtml(q.question || "")}</p>
                             <div class="opts">${opts}</div>
                             <div class="q-feedback"></div>
                         </div>`;
@@ -1221,7 +1282,10 @@ function buildInteractiveQuizHtml(quiz, words) {
                         qNum++;
                         return `<div class="q" data-qtype="text" data-answer="${escapeAttr(q.answer)}">
                             <p class="q-text"><b>${qNum}.</b> ${escapeHtml(q.sentence)}</p>
-                            <input type="text" class="q-input" placeholder="Twoja odpowiedź…">
+                            <div class="input-row">
+                                <input type="text" class="q-input" placeholder="Twoja odpowiedź… (Enter = sprawdź)" onkeydown="if(event.key==='Enter'){event.preventDefault();gradeQuestion(this.closest('.q'));}">
+                                <button type="button" class="btn-mini" onclick="gradeQuestion(this.closest('.q'))">✓</button>
+                            </div>
                             <div class="q-feedback"></div>
                         </div>`;
                     })
@@ -1244,7 +1308,7 @@ function buildInteractiveQuizHtml(quiz, words) {
                                 .join("");
                             return `<div class="q match-row" data-qtype="select" data-answer="${escapeAttr(p.b)}">
                                 <span class="match-left">${escapeHtml(p.a)}</span>
-                                <select class="q-select"><option value="">— wybierz —</option>${opts}</select>
+                                <select class="q-select" onchange="gradeQuestion(this.closest('.q'))"><option value="">— wybierz —</option>${opts}</select>
                                 <span class="q-feedback"></span>
                             </div>`;
                         })
@@ -1256,7 +1320,10 @@ function buildInteractiveQuizHtml(quiz, words) {
                         qNum++;
                         return `<div class="q" data-qtype="text" data-answer="${escapeAttr(q.answer)}">
                             <p class="q-text"><b>${qNum}.</b> ${escapeHtml(q.prompt)}</p>
-                            <input type="text" class="q-input" placeholder="Twoja odpowiedź…">
+                            <div class="input-row">
+                                <input type="text" class="q-input" placeholder="Twoja odpowiedź… (Enter = sprawdź)" onkeydown="if(event.key==='Enter'){event.preventDefault();gradeQuestion(this.closest('.q'));}">
+                                <button type="button" class="btn-mini" onclick="gradeQuestion(this.closest('.q'))">✓</button>
+                            </div>
                             <div class="q-feedback"></div>
                         </div>`;
                     })
@@ -1270,6 +1337,43 @@ function buildInteractiveQuizHtml(quiz, words) {
                             <div class="opts">
                                 <button type="button" class="opt" onclick="selectOpt(this)">Prawda</button>
                                 <button type="button" class="opt" onclick="selectOpt(this)">Fałsz</button>
+                            </div>
+                            <div class="q-feedback"></div>
+                        </div>`;
+                    })
+                    .join("");
+            } else if (sec.type === "word_order") {
+                body = (sec.questions || [])
+                    .map((q) => {
+                        qNum++;
+                        const shuffled = [...(q.words || [])].sort(
+                            () => Math.random() - 0.5,
+                        );
+                        const tiles = shuffled
+                            .map(
+                                (w) =>
+                                    `<span class="tile">${escapeHtml(w)}</span>`,
+                            )
+                            .join(" ");
+                        return `<div class="q" data-qtype="text" data-answer="${escapeAttr(q.answer)}">
+                            <p class="q-text"><b>${qNum}.</b> ${tiles}</p>
+                            <div class="input-row">
+                                <input type="text" class="q-input" placeholder="Ułóż zdanie… (Enter = sprawdź)" onkeydown="if(event.key==='Enter'){event.preventDefault();gradeQuestion(this.closest('.q'));}">
+                                <button type="button" class="btn-mini" onclick="gradeQuestion(this.closest('.q'))">✓</button>
+                            </div>
+                            <div class="q-feedback"></div>
+                        </div>`;
+                    })
+                    .join("");
+            } else if (sec.type === "error_correction") {
+                body = (sec.questions || [])
+                    .map((q) => {
+                        qNum++;
+                        return `<div class="q" data-qtype="text" data-answer="${escapeAttr(q.answer)}">
+                            <p class="q-text"><b>${qNum}.</b> ${escapeHtml(q.sentence)}</p>
+                            <div class="input-row">
+                                <input type="text" class="q-input" placeholder="Popraw zdanie… (Enter = sprawdź)" onkeydown="if(event.key==='Enter'){event.preventDefault();gradeQuestion(this.closest('.q'));}">
+                                <button type="button" class="btn-mini" onclick="gradeQuestion(this.closest('.q'))">✓</button>
                             </div>
                             <div class="q-feedback"></div>
                         </div>`;
@@ -1304,6 +1408,12 @@ function buildInteractiveQuizHtml(quiz, words) {
     .match-row { display: flex; align-items: center; gap: 12px; }
     .match-left { flex: 1; font-size: 14px; }
     .match-row .q-select { flex: 1; }
+    .tile { display: inline-block; border: 1px solid var(--border); border-radius: 6px; padding: 3px 9px; margin: 2px 3px; background: #f1f1f4; font-size: 13px; }
+    .input-row { display: flex; gap: 8px; }
+    .input-row .q-input { flex: 1; }
+    .btn-mini { flex: 0 0 auto; background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 0 16px; font-size: 14px; font-weight: 700; cursor: pointer; }
+    .opt.opt-correct { background: rgba(22, 163, 74, 0.15) !important; border-color: #16a34a !important; color: #16a34a !important; }
+    .opt.opt-incorrect { background: rgba(220, 38, 38, 0.15) !important; border-color: #dc2626 !important; color: #dc2626 !important; }
     .q-feedback { margin-top: 8px; font-size: 12.5px; font-weight: 600; }
     .q.correct { border-color: #16a34a; }
     .q.correct .q-feedback { color: #16a34a; }
@@ -1324,7 +1434,7 @@ function buildInteractiveQuizHtml(quiz, words) {
     <p class="subtitle">${words.length} słówek • quiz interaktywny AI (Gemini) • ${dateTag()}</p>
     ${sectionsHtml}
     <div class="actions">
-        <button type="button" class="btn-check" onclick="checkAllAnswers()">✅ Sprawdź odpowiedzi</button>
+        <button type="button" class="btn-check" onclick="checkAllAnswers()">✅ Sprawdź wszystko i pokaż wynik</button>
         <button type="button" class="btn-reset" onclick="resetQuiz()">🔄 Zacznij od nowa</button>
     </div>
     <div id="scoreBox" class="score-box" style="display:none;"></div>
@@ -1336,34 +1446,49 @@ function buildInteractiveQuizHtml(quiz, words) {
         btn.classList.add('selected');
         var q = parent.closest('.q');
         q.dataset.selected = btn.textContent.trim();
+        gradeQuestion(q); // instant feedback the moment an option is picked
     }
     function normalize(s) {
-        return (s || '').toString().trim().toLowerCase().replace(/[.,!?;:]+$/, '');
+        return (s || '').toString().trim().toLowerCase().replace(/\s+/g, ' ').replace(/[.,!?;:]+$/, '');
+    }
+    // Grades a single .q element on the spot (called from per-question
+    // Enter/✓-button/auto-select triggers as well as the global "check all").
+    function gradeQuestion(q) {
+        if (!q) return false;
+        var type = q.dataset.qtype;
+        var answer = q.dataset.answer;
+        var userVal = '';
+        if (type === 'choice') {
+            userVal = q.dataset.selected || '';
+        } else if (type === 'text') {
+            var input = q.querySelector('.q-input');
+            userVal = input ? input.value : '';
+        } else if (type === 'select') {
+            var sel = q.querySelector('.q-select');
+            userVal = sel ? sel.value : '';
+        }
+        var isCorrect = normalize(userVal) === normalize(answer);
+        q.classList.remove('correct', 'incorrect');
+        q.classList.add(isCorrect ? 'correct' : 'incorrect');
+        var fb = q.querySelector('.q-feedback');
+        if (fb) fb.textContent = isCorrect ? '✓ Poprawnie' : ('✗ Poprawna odpowiedź: ' + answer);
+        if (type === 'choice') {
+            var opts = q.querySelectorAll('.opt');
+            for (var i = 0; i < opts.length; i++) {
+                opts[i].classList.remove('opt-correct', 'opt-incorrect');
+                var optText = opts[i].textContent.trim();
+                if (optText === userVal) opts[i].classList.add(isCorrect ? 'opt-correct' : 'opt-incorrect');
+                else if (!isCorrect && normalize(optText) === normalize(answer)) opts[i].classList.add('opt-correct');
+            }
+        }
+        return isCorrect;
     }
     function checkAllAnswers() {
         var qs = document.querySelectorAll('.q');
         var total = 0, correct = 0;
         for (var i = 0; i < qs.length; i++) {
-            var q = qs[i];
             total++;
-            var type = q.dataset.qtype;
-            var answer = q.dataset.answer;
-            var userVal = '';
-            if (type === 'choice') {
-                userVal = q.dataset.selected || '';
-            } else if (type === 'text') {
-                var input = q.querySelector('.q-input');
-                userVal = input ? input.value : '';
-            } else if (type === 'select') {
-                var sel = q.querySelector('.q-select');
-                userVal = sel ? sel.value : '';
-            }
-            var isCorrect = normalize(userVal) === normalize(answer);
-            q.classList.remove('correct', 'incorrect');
-            q.classList.add(isCorrect ? 'correct' : 'incorrect');
-            var fb = q.querySelector('.q-feedback');
-            if (fb) fb.textContent = isCorrect ? '✓ Poprawnie' : ('✗ Poprawna odpowiedź: ' + answer);
-            if (isCorrect) correct++;
+            if (gradeQuestion(qs[i])) correct++;
         }
         var box = document.getElementById('scoreBox');
         var pct = total ? Math.round((correct / total) * 100) : 0;
@@ -1374,7 +1499,7 @@ function buildInteractiveQuizHtml(quiz, words) {
     }
     function resetQuiz() {
         var opts = document.querySelectorAll('.opt');
-        for (var i = 0; i < opts.length; i++) { opts[i].classList.remove('selected'); }
+        for (var i = 0; i < opts.length; i++) { opts[i].classList.remove('selected', 'opt-correct', 'opt-incorrect'); }
         var inputs = document.querySelectorAll('.q-input');
         for (var j = 0; j < inputs.length; j++) { inputs[j].value = ''; }
         var selects = document.querySelectorAll('.q-select');
