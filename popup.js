@@ -2280,4 +2280,9 @@ document.addEventListener("keydown", (e) => {
         e.preventDefault();
         rateWord(parseInt(e.key));
     }
+
+    if (e.key === "r" || e.key === "R") {
+        e.preventDefault();
+        autoSpeakReviewCard(reviewQueue[reviewIndex], reviewAnswerShown);
+    }
 });
