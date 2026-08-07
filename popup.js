@@ -11,6 +11,7 @@ const statsEl = document.getElementById("stats");
 // ── Tab switching ─────────────────────────────────────────────────
 document.querySelectorAll(".tab").forEach((tab) => {
     tab.addEventListener("click", () => {
+        if (typeof stopPopupSpeak === "function") stopPopupSpeak();
         document
             .querySelectorAll(".tab")
             .forEach((t) => t.classList.remove("active"));
@@ -560,6 +561,7 @@ function deleteWord(original, timestamp) {
 // ── Delete single review word (from review tab) ──────────────────
 function deleteReviewWord(w) {
     if (!confirm(`Usunąć "${w.original}" z bazy danych?`)) return;
+    stopPopupSpeak();
     chrome.storage.local.get({ savedWords: [] }, (data) => {
         const words = data.savedWords.filter(
             (x) =>
@@ -1266,11 +1268,27 @@ function pickPopupVoice(savedVoiceName, lang) {
     return langVoices.find((v) => !v.localService) || langVoices[0];
 }
 
+// Monotonic token: lets an in-flight (async) popupSpeak call detect that a
+// newer call has superseded it, so a stale card's audio never starts after
+// the user already moved on to a different card.
+let popupSpeakSeq = 0;
+
+/** Immediately stop any in-progress popup TTS (utterance or audio). */
+function stopPopupSpeak() {
+    popupSpeakSeq++;
+    window.speechSynthesis.cancel();
+    if (popupElAudio) {
+        popupElAudio.pause();
+        popupElAudio = null;
+    }
+}
+
 /**
  * Speak text using the same engine & voice configured in settings.
  * Returns a Promise that resolves with { type: 'utter'|'audio', obj } for end-tracking.
  */
 function popupSpeak(text, lang) {
+    const mySeq = ++popupSpeakSeq;
     window.speechSynthesis.cancel();
     if (popupElAudio) {
         popupElAudio.pause();
@@ -1287,6 +1305,10 @@ function popupSpeak(text, lang) {
                 ttsVolume: 1,
             },
             async (data) => {
+                if (mySeq !== popupSpeakSeq) {
+                    resolve({ type: "none", obj: null });
+                    return;
+                }
                 const volume =
                     data.ttsVolume !== undefined ? data.ttsVolume : 1;
 
@@ -1317,6 +1339,10 @@ function popupSpeak(text, lang) {
                         );
                         if (!res.ok) throw new Error(`HTTP ${res.status}`);
                         const blob = await res.blob();
+                        if (mySeq !== popupSpeakSeq) {
+                            resolve({ type: "none", obj: null });
+                            return;
+                        }
                         const url = URL.createObjectURL(blob);
                         popupElAudio = new Audio(url);
                         popupElAudio.volume = volume;
@@ -1676,6 +1702,7 @@ function showReviewEditForm(w) {
 
 // ── Rate word & update storage ────────────────────────────────────
 function rateWord(grade) {
+    stopPopupSpeak(); // cut off any card audio immediately, don't wait for the save round-trip
     const w = reviewQueue[reviewIndex];
     ensureSR(w);
 
