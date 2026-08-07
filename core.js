@@ -1012,7 +1012,9 @@ Respond ONLY in this exact JSON format, nothing else:
     function createHint(className, getParent) {
         let el = null;
         let timer = null;
-        const parentFn = getParent || (() => document.body);
+        // Default to the fullscreen-aware overlay parent so hints stay
+        // visible even when the page/video is in native fullscreen mode.
+        const parentFn = getParent || getOverlayParent;
 
         return {
             show(msg, duration = 4000) {

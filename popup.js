@@ -112,7 +112,7 @@ function renderSyncUI() {
                             setTimeout(() => {
                                 renderSyncUI();
                                 loadWords();
-                                loadReviewQueue();
+                                maybeRefreshReviewQueue();
                                 initReviewBadge();
                             }, 1200);
                         } catch (e) {
@@ -160,7 +160,7 @@ function renderSyncUI() {
                                 if (response?.ok) {
                                     renderSyncUI();
                                     loadWords();
-                                    loadReviewQueue();
+                                    maybeRefreshReviewQueue();
                                     initReviewBadge();
                                 } else if (response?.error) {
                                     btn.textContent = "✗ " + response.error;
@@ -1631,8 +1631,19 @@ function highlightReviewSentence(sentence, word, className) {
     );
 }
 
+// Only speak automatically when the user is actually looking at the
+// Review tab. Without this guard, any background refresh of the review
+// queue (e.g. after a Firebase sync completes on the Sync tab) would
+// still render the next due card and read it aloud, even though the
+// user never opened the Review tab.
+function isReviewTabActive() {
+    return !!document
+        .getElementById("tab-review")
+        ?.classList.contains("active");
+}
+
 function autoSpeakReviewCard(w, answerVisible = false) {
-    if (!w) return;
+    if (!w || !isReviewTabActive()) return;
     const srcL = w.srcLang || "en";
     const tgtL = w.tgtLang || "pl";
     const isReverse = reviewDirection === "reverse";

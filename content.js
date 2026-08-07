@@ -1396,9 +1396,114 @@
 
     // ═══════════════════════════════════════════════════════════════
     //  Save Current Sentence to Review System ("Z" hotkey)
+    //  Rich, fullscreen-safe feedback: a camera-style flash confirms the
+    //  screenshot capture, a saving → success/error toast shows exactly
+    //  what was saved (text, translation, thumbnail), and the video is
+    //  auto-paused for the duration so nothing is missed, then resumed.
     // ═══════════════════════════════════════════════════════════════
 
     let savingSentence = false;
+    let saveToastEl = null;
+    let saveToastHideTimer = null;
+    let saveResumeTimer = null;
+    let pausedForSave = false;
+    let wasPlayingBeforeSave = false;
+
+    function flashCapture() {
+        const parent = QT.getOverlayParent();
+        const flash = document.createElement("div");
+        flash.className = "__qt_capture_flash";
+        parent.appendChild(flash);
+        requestAnimationFrame(() => {
+            flash.style.opacity = "0.35";
+            setTimeout(() => (flash.style.opacity = "0"), 90);
+        });
+        setTimeout(() => flash.remove(), 500);
+    }
+
+    function getSaveToastEl() {
+        const parent = QT.getOverlayParent();
+        if (!saveToastEl) {
+            saveToastEl = document.createElement("div");
+            saveToastEl.id = "__qt_save_toast";
+            saveToastEl.title = "Kliknij, aby zamknąć i wznowić odtwarzanie";
+            saveToastEl.addEventListener("click", dismissSaveToastNow);
+            parent.appendChild(saveToastEl);
+        } else if (saveToastEl.parentElement !== parent) {
+            parent.appendChild(saveToastEl);
+        }
+        return saveToastEl;
+    }
+
+    function hideSaveToast() {
+        clearTimeout(saveToastHideTimer);
+        if (saveToastEl) saveToastEl.classList.remove("visible");
+    }
+
+    function showSaveToast(
+        state,
+        { text = "", translated = "", thumb = "", duration = 2400 } = {},
+    ) {
+        const el = getSaveToastEl();
+        clearTimeout(saveToastHideTimer);
+        el.className = `__qt_${state}`;
+
+        let iconHtml;
+        let title;
+        let bodyHtml;
+        let thumbHtml = "";
+
+        if (state === "saving") {
+            iconHtml = `<div class="__qt_spinner"></div>`;
+            title = "Zapisywanie zdania…";
+            bodyHtml = `<div class="__qt_save_toast_text">${escapeHtml(text)}</div>`;
+        } else if (state === "success") {
+            iconHtml = `<div class="__qt_check_pop">${SVG.SAVE_SENTENCE_CHECK}</div>`;
+            title = "✔ Zapisano do powtórek";
+            bodyHtml = `
+                <div class="__qt_save_toast_text">${escapeHtml(text)}</div>
+                ${
+                    translated && translated !== text
+                        ? `<div class="__qt_save_toast_sub">${escapeHtml(translated)}</div>`
+                        : ""
+                }
+            `;
+            if (thumb)
+                thumbHtml = `<img class="__qt_save_toast_thumb" src="${thumb}" alt="" />`;
+        } else {
+            iconHtml = `<div class="__qt_error_mark">!</div>`;
+            title = "⚠ Nie udało się zapisać";
+            bodyHtml = `<div class="__qt_save_toast_text">${escapeHtml(text)}</div>`;
+        }
+
+        el.innerHTML = `
+            <div class="__qt_save_toast_icon">${iconHtml}</div>
+            <div class="__qt_save_toast_body">
+                <div class="__qt_save_toast_title">${title}</div>
+                ${bodyHtml}
+            </div>
+            ${thumbHtml}
+            <div class="__qt_save_toast_bar" style="animation-duration:${duration}ms"></div>
+        `;
+
+        requestAnimationFrame(() => el.classList.add("visible"));
+        saveToastHideTimer = setTimeout(hideSaveToast, duration);
+    }
+
+    function resumeAfterSave() {
+        pausedForSave = false;
+        if (wasPlayingBeforeSave) {
+            const video = PlayerAdapter.getVideo();
+            if (video && video.paused) video.play().catch(() => {});
+        }
+    }
+
+    function dismissSaveToastNow() {
+        clearTimeout(saveResumeTimer);
+        hideSaveToast();
+        if (pausedForSave) resumeAfterSave();
+    }
+
     async function saveCurrentSentenceToReview() {
         if (savingSentence) return;
         const text = PlayerAdapter.getCurrentText();
@@ -1411,8 +1516,21 @@
         }
 
         savingSentence = true;
-        const hint = QT.createHint("__qt_yt-sub-hint");
-        hint.show("Zapisywanie zdania…", 1500);
+        clearTimeout(saveResumeTimer);
+
+        // Pause the video for a moment so the user clearly sees what got
+        // saved, even in fullscreen. The original play state is remembered
+        // so playback resumes automatically once the toast disappears.
+        const video = PlayerAdapter.getVideo();
+        if (!pausedForSave) {
+            wasPlayingBeforeSave = !!(video && !video.paused);
+            if (wasPlayingBeforeSave) video.pause();
+            pausedForSave = true;
+        }
+
+        flashCapture();
+        const screenshot = QT.captureVideoScreenshot() || "";
+        showSaveToast("saving", { text });
 
         try {
             const targetLang = await getTargetLang();
@@ -1434,16 +1552,28 @@
                 sentenceTranslated: "",
                 aiSentence: "",
                 aiSentenceTranslated: "",
-                screenshot: QT.captureVideoScreenshot() || "",
+                screenshot,
                 url: window.location.href,
                 timestamp: Date.now(),
                 downloaded: false,
             });
 
-            hint.show("✔ Zdanie zapisane do powtórek", 2000);
+            const duration = 2800;
+            showSaveToast("success", {
+                text,
+                translated: translated || text,
+                thumb: screenshot,
+                duration,
+            });
+            saveResumeTimer = setTimeout(resumeAfterSave, duration);
         } catch (err) {
             console.error("[Lectoro] saveCurrentSentence error:", err);
-            hint.show("⚠ Nie udało się zapisać zdania", 2500);
+            const duration = 2200;
+            showSaveToast("error", {
+                text: "Nie udało się zapisać zdania",
+                duration,
+            });
+            saveResumeTimer = setTimeout(resumeAfterSave, duration);
         } finally {
             savingSentence = false;
         }
