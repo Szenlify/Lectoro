@@ -1253,6 +1253,13 @@ function buildInteractiveQuizHtml(quiz, words) {
         error_correction: "Znajdź i popraw błąd",
         odd_one_out: "Który wyraz nie pasuje?",
     };
+    const srcLang = words[0]?.srcLang || "en";
+    // Speak icon for on-page TTS (Google Translate voice) — only ever attached to visible text, never to data-answer.
+    const ttsIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`;
+    const ttsBtn = (text, lang) =>
+        text
+            ? `<button type="button" class="tts-btn" data-tts-text="${escapeAttr(text)}" data-tts-lang="${escapeAttr(lang)}" onclick="qtSpeak(this)" title="Odczytaj na głos">${ttsIcon}</button>`
+            : "";
 
     let qNum = 0;
     const sectionsHtml = (quiz.sections || [])
@@ -1266,7 +1273,7 @@ function buildInteractiveQuizHtml(quiz, words) {
                         const opts = (q.options || [])
                             .map(
                                 (o) =>
-                                    `<button type="button" class="opt" onclick="selectOpt(this)">${escapeHtml(o)}</button>`,
+                                    `<span class="opt-row"><button type="button" class="opt" onclick="selectOpt(this)">${escapeHtml(o)}</button>${ttsBtn(o, srcLang)}</span>`,
                             )
                             .join("");
                         return `<div class="q" data-qtype="choice" data-answer="${escapeAttr(q.answer)}">
@@ -1281,7 +1288,7 @@ function buildInteractiveQuizHtml(quiz, words) {
                     .map((q) => {
                         qNum++;
                         return `<div class="q" data-qtype="text" data-answer="${escapeAttr(q.answer)}">
-                            <p class="q-text"><b>${qNum}.</b> ${escapeHtml(q.sentence)}</p>
+                            <div class="q-text-row"><p class="q-text"><b>${qNum}.</b> ${escapeHtml(q.sentence)}</p>${ttsBtn(q.sentence, srcLang)}</div>
                             <div class="input-row">
                                 <input type="text" class="q-input" placeholder="Twoja odpowiedź… (Enter = sprawdź)" onkeydown="if(event.key==='Enter'){event.preventDefault();gradeQuestion(this.closest('.q'));}">
                                 <button type="button" class="btn-mini" onclick="gradeQuestion(this.closest('.q'))">✓</button>
@@ -1307,7 +1314,7 @@ function buildInteractiveQuizHtml(quiz, words) {
                                 )
                                 .join("");
                             return `<div class="q match-row" data-qtype="select" data-answer="${escapeAttr(p.b)}">
-                                <span class="match-left">${escapeHtml(p.a)}</span>
+                                <span class="match-left">${escapeHtml(p.a)}</span>${ttsBtn(p.a, srcLang)}
                                 <select class="q-select" onchange="gradeQuestion(this.closest('.q'))"><option value="">— wybierz —</option>${opts}</select>
                                 <span class="q-feedback"></span>
                             </div>`;
@@ -1319,7 +1326,7 @@ function buildInteractiveQuizHtml(quiz, words) {
                     .map((q) => {
                         qNum++;
                         return `<div class="q" data-qtype="text" data-answer="${escapeAttr(q.answer)}">
-                            <p class="q-text"><b>${qNum}.</b> ${escapeHtml(q.prompt)}</p>
+                            <div class="q-text-row"><p class="q-text"><b>${qNum}.</b> ${escapeHtml(q.prompt)}</p>${ttsBtn(q.prompt, "pl")}</div>
                             <div class="input-row">
                                 <input type="text" class="q-input" placeholder="Twoja odpowiedź… (Enter = sprawdź)" onkeydown="if(event.key==='Enter'){event.preventDefault();gradeQuestion(this.closest('.q'));}">
                                 <button type="button" class="btn-mini" onclick="gradeQuestion(this.closest('.q'))">✓</button>
@@ -1333,7 +1340,7 @@ function buildInteractiveQuizHtml(quiz, words) {
                     .map((q) => {
                         qNum++;
                         return `<div class="q" data-qtype="choice" data-answer="${q.answer ? "Prawda" : "Fałsz"}">
-                            <p class="q-text"><b>${qNum}.</b> ${escapeHtml(q.statement)}</p>
+                            <div class="q-text-row"><p class="q-text"><b>${qNum}.</b> ${escapeHtml(q.statement)}</p>${ttsBtn(q.statement, "pl")}</div>
                             <div class="opts">
                                 <button type="button" class="opt" onclick="selectOpt(this)">Prawda</button>
                                 <button type="button" class="opt" onclick="selectOpt(this)">Fałsz</button>
@@ -1356,7 +1363,7 @@ function buildInteractiveQuizHtml(quiz, words) {
                             )
                             .join(" ");
                         return `<div class="q" data-qtype="text" data-answer="${escapeAttr(q.answer)}">
-                            <p class="q-text"><b>${qNum}.</b> ${tiles}</p>
+                            <div class="q-text-row"><p class="q-text"><b>${qNum}.</b> ${tiles}</p>${ttsBtn(shuffled.join(" "), srcLang)}</div>
                             <div class="input-row">
                                 <input type="text" class="q-input" placeholder="Ułóż zdanie… (Enter = sprawdź)" onkeydown="if(event.key==='Enter'){event.preventDefault();gradeQuestion(this.closest('.q'));}">
                                 <button type="button" class="btn-mini" onclick="gradeQuestion(this.closest('.q'))">✓</button>
@@ -1370,7 +1377,7 @@ function buildInteractiveQuizHtml(quiz, words) {
                     .map((q) => {
                         qNum++;
                         return `<div class="q" data-qtype="text" data-answer="${escapeAttr(q.answer)}">
-                            <p class="q-text"><b>${qNum}.</b> ${escapeHtml(q.sentence)}</p>
+                            <div class="q-text-row"><p class="q-text"><b>${qNum}.</b> ${escapeHtml(q.sentence)}</p>${ttsBtn(q.sentence, srcLang)}</div>
                             <div class="input-row">
                                 <input type="text" class="q-input" placeholder="Popraw zdanie… (Enter = sprawdź)" onkeydown="if(event.key==='Enter'){event.preventDefault();gradeQuestion(this.closest('.q'));}">
                                 <button type="button" class="btn-mini" onclick="gradeQuestion(this.closest('.q'))">✓</button>
@@ -1427,6 +1434,14 @@ function buildInteractiveQuizHtml(quiz, words) {
     .score-box.good { background: rgba(22, 163, 74, 0.1); color: #16a34a; }
     .score-box.mid { background: rgba(217, 119, 6, 0.1); color: #d97706; }
     .score-box.bad { background: rgba(220, 38, 38, 0.1); color: #dc2626; }
+    .q-text-row { display: flex; align-items: flex-start; gap: 6px; }
+    .q-text-row .q-text { flex: 1; }
+    .opt-row { display: inline-flex; align-items: center; gap: 2px; }
+    .tts-btn { flex: 0 0 auto; background: none; border: none; color: var(--accent); cursor: pointer; padding: 4px; border-radius: 6px; display: inline-flex; align-items: center; opacity: .75; }
+    .tts-btn svg { width: 16px; height: 16px; }
+    .tts-btn:hover { opacity: 1; background: rgba(109, 40, 217, 0.1); }
+    .tts-btn.tts-loading { opacity: 1; animation: tts-pulse 1s ease-in-out infinite; }
+    @keyframes tts-pulse { 0%, 100% { opacity: .4; } 50% { opacity: 1; } }
 </style>
 </head>
 <body>
@@ -1440,13 +1455,24 @@ function buildInteractiveQuizHtml(quiz, words) {
     <div id="scoreBox" class="score-box" style="display:none;"></div>
     <script>
     function selectOpt(btn) {
-        var parent = btn.parentElement;
-        var opts = parent.querySelectorAll('.opt');
+        var q = btn.closest('.q');
+        var opts = q.querySelectorAll('.opt');
         for (var i = 0; i < opts.length; i++) { opts[i].classList.remove('selected'); }
         btn.classList.add('selected');
-        var q = parent.closest('.q');
         q.dataset.selected = btn.textContent.trim();
         gradeQuestion(q); // instant feedback the moment an option is picked
+    }
+    function qtSpeak(btn) {
+        var text = btn.getAttribute('data-tts-text');
+        var lang = btn.getAttribute('data-tts-lang') || 'en';
+        if (!text) return;
+        btn.classList.add('tts-loading');
+        var url = 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=' + encodeURIComponent(lang) + '&q=' + encodeURIComponent(text);
+        var audio = new Audio(url);
+        var stop = function () { btn.classList.remove('tts-loading'); };
+        audio.addEventListener('ended', stop);
+        audio.addEventListener('error', stop);
+        audio.play().catch(stop);
     }
     function normalize(s) {
         return (s || '').toString().trim().toLowerCase().replace(/\s+/g, ' ').replace(/[.,!?;:]+$/, '');
@@ -1662,7 +1688,11 @@ function srUpdate(sr, grade) {
         else interval = interval * easeFactor;
         reps++;
     } else if (grade === 4) {
-        if (reps === 0)
+        // Easy always graduates immediately (like grade 3 does at reps 0/1),
+        // never falls back to interval*easeFactor while still in early
+        // learning steps — otherwise it could yield a *shorter* interval than
+        // "Dobre" when the stored interval from a prior review was still tiny.
+        if (reps <= 1)
             interval = 4; // 4 days
         else interval = interval * easeFactor * 1.3;
         easeFactor += 0.15;
