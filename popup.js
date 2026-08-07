@@ -2228,6 +2228,19 @@ function renderAnswer(w) {
     attachReviewSpeakHandlers(card);
     autoSpeakReviewCard(w, true);
 
+    // Scroll straight to the answer so it's visible even when a screenshot
+    // pushes it below the fold (re-run once the screenshot finishes loading,
+    // since its height isn't known until then).
+    const scrollToAnswer = () => {
+        const answerEl = card.querySelector(".review-answer-inline");
+        if (answerEl) answerEl.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+    requestAnimationFrame(scrollToAnswer);
+    const shotImg = card.querySelector(".review-screenshot-img");
+    if (shotImg && !shotImg.complete) {
+        shotImg.addEventListener("load", scrollToAnswer, { once: true });
+    }
+
     // Attach rating handlers
     card.querySelectorAll(".review-rate-btn").forEach((btn) => {
         btn.addEventListener("click", () => {
