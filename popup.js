@@ -2233,7 +2233,8 @@ function renderAnswer(w) {
     // since its height isn't known until then).
     const scrollToAnswer = () => {
         const answerEl = card.querySelector(".review-answer-inline");
-        if (answerEl) answerEl.scrollIntoView({ behavior: "smooth", block: "start" });
+        if (answerEl)
+            answerEl.scrollIntoView({ behavior: "smooth", block: "start" });
     };
     requestAnimationFrame(scrollToAnswer);
     const shotImg = card.querySelector(".review-screenshot-img");
