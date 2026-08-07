@@ -1,0 +1,121 @@
+[
+    {
+        "title": "Toy Story",
+        "genre": "Animacja",
+        "level": "beginner",
+        "image": "https://www.lookmovie2.to/images/p/w400/c33e29d0de15f3bd8885a66084c3aba5.webp",
+        "note": "Proste słownictwo, wolne tempo mówienia — świetne na start."
+    },
+    {
+        "title": "Finding Nemo",
+        "genre": "Animacja",
+        "level": "beginner",
+        "image": "https://www.lookmovie2.to/images/p/w400/cdcd3dd229b589b4f4e95fb8570fa802.webp",
+        "note": "Wyraźna dykcja, krótkie zdania, słownictwo codzienne."
+    },
+    {
+        "title": "Shrek",
+        "genre": "Animacja",
+        "level": "beginner",
+        "image": "https://www.lookmovie2.to/images/p/w400/851208a6569211b7678865c80d069b58.webp",
+        "note": "Potoczny język, przydatne idiomy, gry słowne oraz różnorodne akcenty (brytyjski i amerykański)."
+    },
+    {
+        "title": "Zootopia",
+        "genre": "Animacja",
+        "level": "beginner",
+        "image": "https://www.lookmovie2.to/images/p/w400/0e9a344638eb244d875f35ed5a3713b7.webp",
+        "note": "Czysta wymowa i gry słowne — dobre dla początkujących."
+    },
+    {
+        "title": "Inside Out",
+        "genre": "Animacja",
+        "level": "beginner",
+        "image": "https://www.lookmovie2.to/images/p/w400/c8ceec0068f99f02c18b3c95ff214260.webp",
+        "note": "Emocjonalne słownictwo, proste konstrukcje zdań."
+    },
+    {
+        "title": "Paddington",
+        "genre": "Animacja/Komedia",
+        "level": "beginner",
+        "image": "https://www.lookmovie2.to/images/p/w400/72c369efccdc0e9fe765af5ff14b7884.webp",
+        "note": "Wyraźny brytyjski akcent, spokojne tempo i uprzejmy, codzienny język."
+    },
+    {
+        "title": "The Terminal",
+        "genre": "Dramat/Komedia",
+        "level": "beginner",
+        "image": "https://www.lookmovie2.to/images/p/w400/583d7eee6e1a18401e26640966b9d3be.webp",
+        "note": "Główny bohater uczy się języka od podstaw — proste słownictwo i powolne tempo."
+    },
+    {
+        "title": "Legally Blonde",
+        "genre": "Komedia",
+        "level": "intermediate",
+        "image": "https://www.lookmovie2.to/images/p/w400/aef12d5d5da360718ddcd924c7151f2c.webp",
+        "note": "Żywy, potoczny amerykański angielski."
+    },
+    {
+        "title": "The Devil Wears Prada",
+        "genre": "Komedia/Dramat",
+        "level": "intermediate",
+        "image": "https://www.lookmovie2.to/images/p/w400/5f461826a7992593dd9d15ee52931195.webp",
+        "note": "Słownictwo biurowe i codzienne rozmowy."
+    },
+    {
+        "title": "Notting Hill",
+        "genre": "Romans",
+        "level": "intermediate",
+        "image": "https://www.lookmovie2.to/images/p/w400/ecd02ccb8b14c36becd5533d39fe3faa.webp",
+        "note": "Naturalny brytyjski angielski, umiarkowane tempo."
+    },
+    {
+        "title": "La La Land",
+        "genre": "Musical/Dramat",
+        "level": "intermediate",
+        "image": "https://www.lookmovie2.to/images/p/w400/c8299c563fb41ebca925bdd9f84d55d2.webp",
+        "note": "Współczesny, wyraźny amerykański angielski."
+    },
+    {
+        "title": "Julie & Julia",
+        "genre": "Dramat/Komedia",
+        "level": "intermediate",
+        "image": "https://www.lookmovie2.to/images/p/w400/e796969baf7d7ecd5584632265774fa2.webp",
+        "note": "Rozmowy codzienne, słownictwo kulinarne."
+    },
+    {
+        "title": "Forrest Gump",
+        "genre": "Dramat",
+        "level": "intermediate",
+        "image": "https://www.lookmovie2.to/images/p/w400/27283e1009b46e47a8446361f3ffb48a.webp",
+        "note": "Wolna narracja, ikoniczne dialogi, południowy akcent."
+    },
+    {
+        "title": "The Social Network",
+        "genre": "Dramat",
+        "level": "advanced",
+        "image": "https://www.lookmovie2.to/images/p/w400/fef4ae7a1a766648e2bea50c5f3645d2.webp",
+        "note": "Szybkie dialogi, słownictwo technologiczne i prawnicze."
+    },
+    {
+        "title": "The King's Speech",
+        "genre": "Dramat",
+        "level": "advanced",
+        "image": "https://www.lookmovie2.to/images/p/w400/71a0ec9eea4fb53c49dd858631bba220.webp",
+        "note": "Formalny brytyjski angielski, świetna wymowa."
+    },
+    {
+        "title": "Little Women",
+        "genre": "Dramat",
+        "level": "advanced",
+        "image": "https://www.lookmovie2.to/images/p/w400/3b214b4fbe5520be017a366147d537c7.webp",
+        "note": "Bogate słownictwo, angielski z epoki."
+    },
+    {
+        "title": "Sherlock",
+        "genre": "Kryminał/Dramat",
+        "level": "advanced",
+        "image": "https://www.lookmovie2.to/images/p/w400/bfce1d9be1d97d338d437e09bba4e4b3.webp",
+        "note": "Bardzo szybkie dialogi, wyrafinowane słownictwo i brytyjski slang."
+    }
+]

@@ -40,7 +40,7 @@
         }
 
         body {
-            width: 560px;
+            width: 690px;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background: var(--bg-deep);
             color: var(--text-secondary);
@@ -2014,6 +2014,339 @@
             background: rgba(248, 113, 113, 0.06);
             border-color: rgba(248, 113, 113, 0.12);
         }
+
+        /* ══════════════════════════════════════════
+           LIBRARY PANEL
+           ══════════════════════════════════════════ */
+        .library-panel {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            overflow: hidden;
+            padding: 2px 22px 22px;
+        }
+
+        .library-intro {
+            font-size: 12px;
+            line-height: 1.55;
+            color: var(--text-secondary);
+            margin-bottom: 14px;
+        }
+
+        .library-filters {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .library-filter-btn {
+            padding: 7px 14px;
+            font-size: 10.5px;
+            font-weight: 600;
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--glass-border);
+            background: var(--glass);
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all .25s cubic-bezier(.4, 0, .2, 1);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            letter-spacing: .2px;
+        }
+
+        .library-filter-btn:hover {
+            border-color: rgba(129, 140, 248, 0.2);
+            color: var(--text-secondary);
+            background: var(--glass-hover);
+        }
+
+        .library-filter-btn.active {
+            background: var(--accent-dim);
+            border-color: rgba(129, 140, 248, 0.3);
+            color: var(--accent);
+            box-shadow:
+                0 2px 12px var(--accent-glow),
+                0 1px 0 0 rgba(255, 255, 255, 0.04) inset;
+        }
+
+        .library-search {
+            width: 100%;
+            padding: 11px 15px;
+            margin-bottom: 12px;
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            background: var(--glass);
+            backdrop-filter: blur(var(--blur));
+            -webkit-backdrop-filter: blur(var(--blur));
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 12.5px;
+            font-weight: 500;
+            outline: none;
+            transition: all .2s ease;
+            box-sizing: border-box;
+        }
+
+        .library-search:focus {
+            border-color: rgba(129, 140, 248, 0.4);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        .library-search::placeholder {
+            color: var(--text-ghost);
+        }
+
+        .library-grid {
+            flex: 1;
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            align-content: start;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.06) transparent;
+        }
+
+        .library-empty {
+            grid-column: 1 / -1;
+        }
+
+        .library-grid::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .library-grid::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 3px;
+        }
+
+        .library-card {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 2 / 3;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            cursor: pointer;
+            background: var(--accent-dim);
+            border: 1px solid var(--glass-border);
+            transition: all .25s cubic-bezier(.4, 0, .2, 1);
+        }
+
+        .library-card:hover {
+            border-color: rgba(129, 140, 248, 0.35);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4);
+        }
+
+        .library-poster {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .library-poster img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .library-poster-fallback {
+            display: none;
+            font-size: 34px;
+        }
+
+        .library-poster.no-image .library-poster-fallback {
+            display: flex;
+        }
+
+        .library-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 46px;
+            z-index: 1;
+            background: linear-gradient(to bottom, rgba(6, 6, 10, 0.75) 0%, rgba(6, 6, 10, 0) 100%);
+            pointer-events: none;
+        }
+
+        .library-level-badge {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            z-index: 4;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            font-size: 9px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 10px;
+            text-transform: uppercase;
+            letter-spacing: .3px;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        .library-level-badge.lvl-beginner {
+            background: rgba(52, 211, 153, 0.22);
+            color: var(--mint);
+        }
+
+        .library-level-badge.lvl-intermediate {
+            background: rgba(251, 191, 36, 0.22);
+            color: var(--amber);
+        }
+
+        .library-level-badge.lvl-advanced {
+            background: rgba(248, 113, 113, 0.22);
+            color: #f87171;
+        }
+
+        .library-genre-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            z-index: 4;
+            font-size: 9px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 10px;
+            background: rgba(10, 10, 16, 0.55);
+            color: #fff;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            max-width: 60%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .library-card-info {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 4;
+            padding: 26px 10px 10px;
+            background: linear-gradient(to top, rgba(6, 6, 10, 0.95) 0%, rgba(6, 6, 10, 0.85) 45%, rgba(6, 6, 10, 0) 100%);
+            color: #fff;
+        }
+
+        .library-card-title {
+            font-size: 12.5px;
+            font-weight: 700;
+            color: #fff;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            line-height: 1.3;
+            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .library-card-note {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.78);
+            margin-top: 4px;
+            line-height: 1.35;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .library-poster-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            background: rgba(10, 10, 16, 0.68);
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+            color: #fff;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: .3px;
+            opacity: 0;
+            transition: opacity .2s ease;
+            pointer-events: none;
+        }
+
+        .library-card:hover .library-poster-overlay {
+            opacity: 1;
+        }
+
+        .library-open-btn {
+            width: 100%;
+            background: var(--accent-dim);
+            border: 1px solid rgba(129, 140, 248, 0.2);
+            border-radius: var(--radius-sm);
+            color: var(--accent);
+            font-size: 10.5px;
+            font-weight: 600;
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: all .2s ease;
+            white-space: nowrap;
+            font-family: inherit;
+            box-sizing: border-box;
+            display: none;
+        }
+
+        .library-open-btn:hover {
+            background: var(--accent-mid);
+            border-color: rgba(129, 140, 248, 0.4);
+        }
+
+        .library-empty {
+            text-align: center;
+            padding: 44px 24px;
+            color: var(--text-ghost);
+            font-size: 12.5px;
+            font-weight: 500;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .library-empty-icon {
+            font-size: 30px;
+            opacity: .35;
+            margin-bottom: 6px;
+        }
+
+        .library-empty-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-secondary);
+        }
+
+        .library-empty-sub {
+            font-size: 12px;
+            color: var(--text-ghost);
+            line-height: 1.5;
+            max-width: 280px;
+            margin-bottom: 10px;
+        }
+
+        .library-empty-search-btn {
+            display: inline-flex;
+            width: auto;
+            padding: 11px 18px;
+            font-size: 11.5px;
+        }
     </style>
 </head>
 
@@ -2030,6 +2363,7 @@
     <div class="tabs">
         <button class="tab active" data-tab="settings">⚙ Ustawienia</button>
         <button class="tab" data-tab="help">❓ Instrukcja</button>
+        <button class="tab" data-tab="library">📼 Biblioteka</button>
         <button class="tab" data-tab="words">📚 Słowa</button>
         <button class="tab" data-tab="review" id="tabReview">🧠 Powtórki</button>
     </div>
@@ -2226,6 +2560,23 @@
                     </button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Library Tab (curated titles for English learners) -->
+    <div class="tab-content" id="tab-library">
+        <div class="library-panel">
+            <p class="library-intro">Wybrane filmy i seriale, w których angielski jest wyraźny i przystępny do
+                nauki. Znajdź tytuł w wyszukiwarce, wejdź na jego stronę na lookmovie2.to, a dwujęzyczne napisy
+                Lectoro włączą się automatycznie.</p>
+            <div class="library-filters">
+                <button class="library-filter-btn active" data-level="all">Wszystkie</button>
+                <button class="library-filter-btn" data-level="beginner">🟢 Początkujący</button>
+                <button class="library-filter-btn" data-level="intermediate">🟡 Średni</button>
+                <button class="library-filter-btn" data-level="advanced">🔴 Zaawansowany</button>
+            </div>
+            <input type="text" id="librarySearch" class="library-search" placeholder="Szukaj tytułu, gatunku...">
+            <div class="library-grid" id="libraryGrid"></div>
         </div>
     </div>
 

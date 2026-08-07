@@ -164,8 +164,7 @@
 #__qt_tooltip {
     position: absolute;
     z-index: 2147483647;
-    max-width: 420px;
-    min-width: 220px;
+    max-width: 520px;
     border-radius: 16px;
     background: rgba(15, 15, 35, 0.75);
     backdrop-filter: blur(20px) saturate(1.4);
