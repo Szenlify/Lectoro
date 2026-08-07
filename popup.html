@@ -868,16 +868,22 @@
             margin: 0 22px 16px;
             padding: 12px 14px;
             display: flex;
+            flex-direction: column;
+            gap: 8px;
+            border-radius: var(--radius-lg);
+            border: 1px solid rgba(216, 180, 254, 0.14);
+            background: rgba(255, 255, 255, 0.045);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.02) inset;
+        }
+
+        .quiz-export-top {
+            display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 10px;
             flex-wrap: wrap;
-            border-radius: var(--radius-lg);
-            border: 1px solid rgba(216, 180, 254, 0.14);
-            background: rgba(216, 180, 254, 0.045);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.02) inset;
         }
 
         .quiz-export-label {
@@ -888,6 +894,36 @@
             font-weight: 700;
             color: #d8b4fe;
             white-space: nowrap;
+        }
+
+        .quiz-mode-toggle {
+            display: flex;
+            gap: 6px;
+        }
+
+        .quiz-mode-btn {
+            padding: 6px 10px;
+            font-size: 10px;
+            font-weight: 600;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--glass-border);
+            background: var(--glass);
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all .2s ease;
+            font-family: inherit;
+            white-space: nowrap;
+        }
+
+        .quiz-mode-btn:hover {
+            background: var(--glass-hover);
+            color: var(--text-secondary);
+        }
+
+        .quiz-mode-btn.active {
+            background: rgba(216, 180, 254, 0.16);
+            border-color: rgba(216, 180, 254, 0.4);
+            color: #d8b4fe;
         }
 
         .quiz-export-label .quiz-export-sub {
@@ -1983,7 +2019,16 @@
                 </button>
             </div>
             <div class="quiz-export-row">
-                <div class="quiz-export-label">🧠 Quiz PDF <span class="quiz-export-sub">AI</span></div>
+                <div class="quiz-export-top">
+                    <div class="quiz-export-label">🧠 Quiz <span class="quiz-export-sub">AI</span></div>
+                    <div class="quiz-mode-toggle">
+                        <button type="button" class="quiz-mode-btn active" id="quizModePdf" data-mode="pdf"
+                            title="Statyczna strona do wydruku / zapisu jako PDF">📄 PDF</button>
+                        <button type="button" class="quiz-mode-btn" id="quizModeInteractive" data-mode="interactive"
+                            title="Interaktywna strona - zaznaczasz odpowiedzi i sprawdzasz wynik na miejscu">🖱️
+                            Interaktywny</button>
+                    </div>
+                </div>
                 <div class="quiz-export-controls">
                     <select class="quiz-scope-select" id="quizScope" title="Ile słówek uwzględnić w quizie">
                         <option value="5">5 najnowszych</option>
@@ -1992,7 +2037,7 @@
                         <option value="all">Wszystkie</option>
                     </select>
                     <button class="export-btn export-quiz" id="exportQuiz"
-                        title="Wygeneruj quiz PDF za pomocą AI (wymaga klucza Gemini)">
+                        title="Wygeneruj quiz za pomocą AI (wymaga klucza Gemini)">
                         ✨ Generuj
                     </button>
                 </div>

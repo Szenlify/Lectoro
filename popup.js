@@ -897,7 +897,20 @@ document.getElementById("exportCsv").addEventListener("click", () => {
     });
 });
 
-// ── Export: AI-generated Quiz (PDF via print) ──────────────────────
+// ── Export: AI-generated Quiz (PDF or interactive) ─────────────────
+let quizOutputMode = "pdf";
+const quizModePdfBtn = document.getElementById("quizModePdf");
+const quizModeInteractiveBtn = document.getElementById("quizModeInteractive");
+function setQuizMode(mode) {
+    quizOutputMode = mode;
+    quizModePdfBtn.classList.toggle("active", mode === "pdf");
+    quizModeInteractiveBtn.classList.toggle("active", mode === "interactive");
+}
+quizModePdfBtn?.addEventListener("click", () => setQuizMode("pdf"));
+quizModeInteractiveBtn?.addEventListener("click", () =>
+    setQuizMode("interactive"),
+);
+
 document.getElementById("exportQuiz").addEventListener("click", async () => {
     const btn = document.getElementById("exportQuiz");
     const origText = btn.innerHTML;
@@ -935,7 +948,10 @@ document.getElementById("exportQuiz").addEventListener("click", async () => {
     btn.innerHTML = "⏳ Generuję quiz…";
     try {
         const quiz = await generateQuizWithGemini(quizWords, geminiApiKey);
-        const html = buildQuizHtml(quiz, quizWords);
+        const html =
+            quizOutputMode === "interactive"
+                ? buildInteractiveQuizHtml(quiz, quizWords)
+                : buildQuizHtml(quiz, quizWords);
         // A data: URL (not a blob: URL) so the page still loads even after
         // the extension popup closes (which happens as soon as the new tab gets focus).
         const dataUrl =
@@ -1160,6 +1176,219 @@ function buildQuizHtml(quiz, words) {
         <h2>Klucz odpowiedzi</h2>
         <ol>${answerKeyHtml}</ol>
     </section>
+</body>
+</html>`;
+}
+
+/** Render the quiz JSON as a self-contained interactive HTML page: the user
+ * picks/types answers in the browser tab and clicks "Sprawdź" to grade them
+ * on the spot (no printing needed). */
+function buildInteractiveQuizHtml(quiz, words) {
+    const title = escapeHtml(quiz.title || "Quiz językowy");
+    const sectionTitles = {
+        multiple_choice: "Wielokrotny wybór",
+        fill_blank: "Uzupełnij luki",
+        matching: "Dopasuj pary",
+        translation: "Przetłumacz",
+        true_false: "Prawda czy fałsz",
+    };
+
+    let qNum = 0;
+    const sectionsHtml = (quiz.sections || [])
+        .map((sec) => {
+            const heading = sectionTitles[sec.type] || sec.type;
+            let body = "";
+            if (sec.type === "multiple_choice") {
+                body = (sec.questions || [])
+                    .map((q) => {
+                        qNum++;
+                        const opts = (q.options || [])
+                            .map(
+                                (o) =>
+                                    `<button type="button" class="opt" onclick="selectOpt(this)">${escapeHtml(o)}</button>`,
+                            )
+                            .join("");
+                        return `<div class="q" data-qtype="choice" data-answer="${escapeAttr(q.answer)}">
+                            <p class="q-text"><b>${qNum}.</b> ${escapeHtml(q.question)}</p>
+                            <div class="opts">${opts}</div>
+                            <div class="q-feedback"></div>
+                        </div>`;
+                    })
+                    .join("");
+            } else if (sec.type === "fill_blank") {
+                body = (sec.questions || [])
+                    .map((q) => {
+                        qNum++;
+                        return `<div class="q" data-qtype="text" data-answer="${escapeAttr(q.answer)}">
+                            <p class="q-text"><b>${qNum}.</b> ${escapeHtml(q.sentence)}</p>
+                            <input type="text" class="q-input" placeholder="Twoja odpowiedź…">
+                            <div class="q-feedback"></div>
+                        </div>`;
+                    })
+                    .join("");
+            } else if (sec.type === "matching") {
+                const rightOptions = (sec.pairs || []).map((p) => p.b);
+                body =
+                    `<div class="matching-grid">` +
+                    (sec.pairs || [])
+                        .map((p) => {
+                            qNum++;
+                            const shuffled = [...rightOptions].sort(
+                                () => Math.random() - 0.5,
+                            );
+                            const opts = shuffled
+                                .map(
+                                    (b) =>
+                                        `<option value="${escapeAttr(b)}">${escapeHtml(b)}</option>`,
+                                )
+                                .join("");
+                            return `<div class="q match-row" data-qtype="select" data-answer="${escapeAttr(p.b)}">
+                                <span class="match-left">${escapeHtml(p.a)}</span>
+                                <select class="q-select"><option value="">— wybierz —</option>${opts}</select>
+                                <span class="q-feedback"></span>
+                            </div>`;
+                        })
+                        .join("") +
+                    `</div>`;
+            } else if (sec.type === "translation") {
+                body = (sec.questions || [])
+                    .map((q) => {
+                        qNum++;
+                        return `<div class="q" data-qtype="text" data-answer="${escapeAttr(q.answer)}">
+                            <p class="q-text"><b>${qNum}.</b> ${escapeHtml(q.prompt)}</p>
+                            <input type="text" class="q-input" placeholder="Twoja odpowiedź…">
+                            <div class="q-feedback"></div>
+                        </div>`;
+                    })
+                    .join("");
+            } else if (sec.type === "true_false") {
+                body = (sec.questions || [])
+                    .map((q) => {
+                        qNum++;
+                        return `<div class="q" data-qtype="choice" data-answer="${q.answer ? "Prawda" : "Fałsz"}">
+                            <p class="q-text"><b>${qNum}.</b> ${escapeHtml(q.statement)}</p>
+                            <div class="opts">
+                                <button type="button" class="opt" onclick="selectOpt(this)">Prawda</button>
+                                <button type="button" class="opt" onclick="selectOpt(this)">Fałsz</button>
+                            </div>
+                            <div class="q-feedback"></div>
+                        </div>`;
+                    })
+                    .join("");
+            }
+            return `<section class="quiz-section"><h2>${escapeHtml(heading)}</h2><p class="instructions">${escapeHtml(sec.instructions || "")}</p>${body}</section>`;
+        })
+        .join("");
+
+    return `<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<title>${title}</title>
+<style>
+    :root { --bg: #f7f7f8; --card: #ffffff; --border: #e2e2e6; --text: #1f2126; --muted: #74767d; --accent: #6d28d9; }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; max-width: 760px; margin: 0 auto; padding: 30px 20px 60px; background: var(--bg); color: var(--text); line-height: 1.5; }
+    h1 { font-size: 24px; margin: 0 0 4px; }
+    .subtitle { color: var(--muted); font-size: 13px; margin: 0 0 24px; }
+    h2 { font-size: 16px; margin: 0 0 4px; color: var(--accent); }
+    .instructions { font-style: italic; color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+    .quiz-section { margin-bottom: 28px; }
+    .q { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; transition: border-color .2s; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+    .q-text { margin: 0 0 10px; font-size: 14px; }
+    .opts { display: flex; flex-wrap: wrap; gap: 8px; }
+    .opt { background: #f1f1f4; border: 1px solid var(--border); color: var(--text); padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; font-family: inherit; transition: all .15s; }
+    .opt:hover { border-color: var(--accent); }
+    .opt.selected { background: rgba(109, 40, 217, 0.1); border-color: var(--accent); color: var(--accent); }
+    .q-input, .q-select { width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border); background: #f1f1f4; color: var(--text); font-size: 13px; font-family: inherit; }
+    .match-row { display: flex; align-items: center; gap: 12px; }
+    .match-left { flex: 1; font-size: 14px; }
+    .match-row .q-select { flex: 1; }
+    .q-feedback { margin-top: 8px; font-size: 12.5px; font-weight: 600; }
+    .q.correct { border-color: #16a34a; }
+    .q.correct .q-feedback { color: #16a34a; }
+    .q.incorrect { border-color: #dc2626; }
+    .q.incorrect .q-feedback { color: #dc2626; }
+    .actions { display: flex; gap: 10px; margin: 24px 0; }
+    .actions button { font-size: 14px; font-weight: 700; padding: 12px 22px; border-radius: 10px; border: none; cursor: pointer; font-family: inherit; }
+    .btn-check { background: var(--accent); color: #ffffff; }
+    .btn-reset { background: #ffffff; color: var(--text); border: 1px solid var(--border) !important; }
+    .score-box { padding: 16px; border-radius: 12px; font-size: 16px; font-weight: 700; text-align: center; }
+    .score-box.good { background: rgba(22, 163, 74, 0.1); color: #16a34a; }
+    .score-box.mid { background: rgba(217, 119, 6, 0.1); color: #d97706; }
+    .score-box.bad { background: rgba(220, 38, 38, 0.1); color: #dc2626; }
+</style>
+</head>
+<body>
+    <h1>${title}</h1>
+    <p class="subtitle">${words.length} słówek • quiz interaktywny AI (Gemini) • ${dateTag()}</p>
+    ${sectionsHtml}
+    <div class="actions">
+        <button type="button" class="btn-check" onclick="checkAllAnswers()">✅ Sprawdź odpowiedzi</button>
+        <button type="button" class="btn-reset" onclick="resetQuiz()">🔄 Zacznij od nowa</button>
+    </div>
+    <div id="scoreBox" class="score-box" style="display:none;"></div>
+    <script>
+    function selectOpt(btn) {
+        var parent = btn.parentElement;
+        var opts = parent.querySelectorAll('.opt');
+        for (var i = 0; i < opts.length; i++) { opts[i].classList.remove('selected'); }
+        btn.classList.add('selected');
+        var q = parent.closest('.q');
+        q.dataset.selected = btn.textContent.trim();
+    }
+    function normalize(s) {
+        return (s || '').toString().trim().toLowerCase().replace(/[.,!?;:]+$/, '');
+    }
+    function checkAllAnswers() {
+        var qs = document.querySelectorAll('.q');
+        var total = 0, correct = 0;
+        for (var i = 0; i < qs.length; i++) {
+            var q = qs[i];
+            total++;
+            var type = q.dataset.qtype;
+            var answer = q.dataset.answer;
+            var userVal = '';
+            if (type === 'choice') {
+                userVal = q.dataset.selected || '';
+            } else if (type === 'text') {
+                var input = q.querySelector('.q-input');
+                userVal = input ? input.value : '';
+            } else if (type === 'select') {
+                var sel = q.querySelector('.q-select');
+                userVal = sel ? sel.value : '';
+            }
+            var isCorrect = normalize(userVal) === normalize(answer);
+            q.classList.remove('correct', 'incorrect');
+            q.classList.add(isCorrect ? 'correct' : 'incorrect');
+            var fb = q.querySelector('.q-feedback');
+            if (fb) fb.textContent = isCorrect ? '✓ Poprawnie' : ('✗ Poprawna odpowiedź: ' + answer);
+            if (isCorrect) correct++;
+        }
+        var box = document.getElementById('scoreBox');
+        var pct = total ? Math.round((correct / total) * 100) : 0;
+        box.style.display = 'block';
+        box.textContent = 'Wynik: ' + correct + ' / ' + total + ' (' + pct + '%)';
+        box.className = 'score-box ' + (pct >= 70 ? 'good' : pct >= 40 ? 'mid' : 'bad');
+        box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    function resetQuiz() {
+        var opts = document.querySelectorAll('.opt');
+        for (var i = 0; i < opts.length; i++) { opts[i].classList.remove('selected'); }
+        var inputs = document.querySelectorAll('.q-input');
+        for (var j = 0; j < inputs.length; j++) { inputs[j].value = ''; }
+        var selects = document.querySelectorAll('.q-select');
+        for (var k = 0; k < selects.length; k++) { selects[k].value = ''; }
+        var qs = document.querySelectorAll('.q');
+        for (var m = 0; m < qs.length; m++) {
+            qs[m].classList.remove('correct', 'incorrect');
+            qs[m].dataset.selected = '';
+            var fb = qs[m].querySelector('.q-feedback');
+            if (fb) fb.textContent = '';
+        }
+        document.getElementById('scoreBox').style.display = 'none';
+    }
+    </script>
 </body>
 </html>`;
 }
