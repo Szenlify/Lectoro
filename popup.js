@@ -897,6 +897,273 @@ document.getElementById("exportCsv").addEventListener("click", () => {
     });
 });
 
+// ── Export: AI-generated Quiz (PDF via print) ──────────────────────
+document.getElementById("exportQuiz").addEventListener("click", async () => {
+    const btn = document.getElementById("exportQuiz");
+    const origText = btn.innerHTML;
+
+    const data = await new Promise((r) =>
+        chrome.storage.local.get({ savedWords: [] }, r),
+    );
+    const words = filterWords(data.savedWords || []);
+    if (words.length === 0) {
+        alert("Brak słów do wygenerowania quizu.");
+        return;
+    }
+
+    const { geminiApiKey } = await new Promise((r) =>
+        chrome.storage.sync.get({ geminiApiKey: "" }, r),
+    );
+    if (!geminiApiKey) {
+        alert(
+            "Aby wygenerować quiz AI, wpisz najpierw klucz Gemini API w zakładce ⚙️ Ustawienia.",
+        );
+        return;
+    }
+
+    // Word scope: newest N, or all (respecting the active list filter above)
+    const scope = document.getElementById("quizScope").value;
+    const sorted = [...words].sort(
+        (a, b) => (b.timestamp || 0) - (a.timestamp || 0),
+    );
+    const quizWords =
+        scope === "all"
+            ? sorted.slice(0, 60)
+            : sorted.slice(0, parseInt(scope, 10));
+
+    btn.disabled = true;
+    btn.innerHTML = "⏳ Generuję quiz…";
+    try {
+        const quiz = await generateQuizWithGemini(quizWords, geminiApiKey);
+        const html = buildQuizHtml(quiz, quizWords);
+        // A data: URL (not a blob: URL) so the page still loads even after
+        // the extension popup closes (which happens as soon as the new tab gets focus).
+        const dataUrl =
+            "data:text/html;charset=utf-8," + encodeURIComponent(html);
+        chrome.tabs.create({ url: dataUrl });
+        markAsDownloaded(quizWords, data.savedWords);
+    } catch (err) {
+        console.error("Quiz export error:", err);
+        alert("Błąd generowania quizu: " + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = origText;
+    }
+});
+
+/** Ask Gemini to build a varied quiz (multiple choice, fill-in-the-blank,
+ * matching, translation, true/false) from the saved word list. */
+async function generateQuizWithGemini(words, geminiApiKey) {
+    const LANG_ADJ = {
+        en: "angielskim",
+        es: "hiszpańskim",
+        de: "niemieckim",
+        fr: "francuskim",
+        it: "włoskim",
+        pt: "portugalskim",
+        ru: "rosyjskim",
+        pl: "polskim",
+        uk: "ukraińskim",
+        ja: "japońskim",
+        ko: "koreańskim",
+        zh: "chińskim",
+        nl: "niderlandzkim",
+        sv: "szwedzkim",
+        tr: "tureckim",
+    };
+    const srcLang = words[0]?.srcLang || "en";
+    const srcLangAdj = LANG_ADJ[srcLang] || srcLang.toUpperCase();
+
+    const wordList = words
+        .map((w, i) => {
+            const parts = [`${i + 1}. "${w.original}" = "${w.translated}"`];
+            if (w.sentence) parts.push(`(przykład: ${w.sentence})`);
+            return parts.join(" ");
+        })
+        .join("\n");
+
+    const prompt = `Jesteś asystentem do nauki języków. Uczeń uczy się słówek w języku ${srcLangAdj} (kolumna "słowo źródłowe" poniżej), a ich polskie tłumaczenie podano tylko jako pomoc. Stwórz zróżnicowany test/quiz sprawdzający WYŁĄCZNIE znajomość słówek w języku ${srcLangAdj} – każda oczekiwana odpowiedź (luka do uzupełnienia, poprawna opcja w multiple_choice, odpowiedź w translation) MUSI być w języku ${srcLangAdj}, NIGDY po polsku. Treści poleceń/instrukcji i ewentualne opisy znaczeń pisz po polsku, żeby uczeń rozumiał zadanie, ale sama odpowiedź zawsze ma być słowem/zdaniem w języku ${srcLangAdj}.
+
+Użyj RÓŻNYCH stylów pytań w różnych sekcjach, aby jak najlepiej utrwalić słówka:
+- multiple_choice: pytanie po polsku (np. opisujące znaczenie lub kontekst), 4 opcje odpowiedzi w języku ${srcLangAdj} (jedna poprawna).
+- fill_blank: zdanie W JĘZYKU ${srcLangAdj} z luką "___" w miejscu słówka; odpowiedź to brakujące słowo w języku ${srcLangAdj}.
+- matching: pary słowo źródłowe (${srcLangAdj}) <-> polskie tłumaczenie, do połączenia (jedyna sekcja, gdzie polski się pojawia, bo to dopasowywanie a nie pisanie odpowiedzi).
+- translation: polecenie po polsku w stylu "Jak powiedzieć po ${srcLangAdj}u: '<polskie słowo>'?"; odpowiedź to słowo w języku ${srcLangAdj}.
+- true_false: stwierdzenie po polsku o znaczeniu słówka w języku ${srcLangAdj} (prawda/fałsz), odpowiedź to tylko true/false.
+
+Nie używaj wszystkich słówek w każdej sekcji – rozłóż je sensownie pomiędzy sekcje.
+
+Lista słówek:
+${wordList}
+
+Odpowiedz WYŁĄCZNIE w tym dokładnym formacie JSON, bez żadnego dodatkowego tekstu:
+{
+  "title": "krótki tytuł quizu",
+  "sections": [
+    {"type": "multiple_choice", "instructions": "...", "questions": [{"question": "...", "options": ["...","...","...","..."], "answer": "..."}]},
+    {"type": "fill_blank", "instructions": "...", "questions": [{"sentence": "... ___ ...", "answer": "..."}]},
+    {"type": "matching", "instructions": "...", "pairs": [{"a": "...", "b": "..."}]},
+    {"type": "translation", "instructions": "...", "questions": [{"prompt": "...", "answer": "..."}]},
+    {"type": "true_false", "instructions": "...", "questions": [{"statement": "...", "answer": true}]}
+  ]
+}`;
+
+    const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${encodeURIComponent(geminiApiKey)}`,
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: { temperature: 0.9, maxOutputTokens: 4000 },
+            }),
+        },
+    );
+    if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData?.error?.message || `Gemini HTTP ${res.status}`);
+    }
+    const json = await res.json();
+    const text = json?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("Gemini: brak odpowiedzi JSON");
+    return JSON.parse(jsonMatch[0]);
+}
+
+/** Render the quiz JSON as a print-ready HTML document (questions, then answer key). */
+function buildQuizHtml(quiz, words) {
+    const title = escapeHtml(quiz.title || "Quiz językowy");
+    const sectionTitles = {
+        multiple_choice: "Wielokrotny wybór",
+        fill_blank: "Uzupełnij luki",
+        matching: "Dopasuj pary",
+        translation: "Przetłumacz",
+        true_false: "Prawda czy fałsz",
+    };
+
+    let qNum = 0;
+    const sectionsHtml = (quiz.sections || [])
+        .map((sec) => {
+            const heading = sectionTitles[sec.type] || sec.type;
+            let body = "";
+            if (sec.type === "multiple_choice") {
+                body = (sec.questions || [])
+                    .map((q) => {
+                        qNum++;
+                        const opts = (q.options || [])
+                            .map(
+                                (o, i) =>
+                                    `<div class="quiz-option">${String.fromCharCode(65 + i)}) ${escapeHtml(o)}</div>`,
+                            )
+                            .join("");
+                        return `<div class="quiz-question"><p><b>${qNum}.</b> ${escapeHtml(q.question)}</p><div class="quiz-options">${opts}</div></div>`;
+                    })
+                    .join("");
+            } else if (sec.type === "fill_blank") {
+                body = (sec.questions || [])
+                    .map((q) => {
+                        qNum++;
+                        return `<div class="quiz-question"><p><b>${qNum}.</b> ${escapeHtml(q.sentence)}</p></div>`;
+                    })
+                    .join("");
+            } else if (sec.type === "matching") {
+                const aList = (sec.pairs || [])
+                    .map((p, i) => `<li>${i + 1}. ${escapeHtml(p.a)}</li>`)
+                    .join("");
+                const bList = [...(sec.pairs || [])]
+                    .sort(() => Math.random() - 0.5)
+                    .map(
+                        (p, i) =>
+                            `<li>${String.fromCharCode(65 + i)}. ${escapeHtml(p.b)}</li>`,
+                    )
+                    .join("");
+                body = `<div class="quiz-matching"><ol class="quiz-match-col">${aList}</ol><ol class="quiz-match-col" type="A">${bList}</ol></div>`;
+            } else if (sec.type === "translation") {
+                body = (sec.questions || [])
+                    .map((q) => {
+                        qNum++;
+                        return `<div class="quiz-question"><p><b>${qNum}.</b> ${escapeHtml(q.prompt)}</p></div>`;
+                    })
+                    .join("");
+            } else if (sec.type === "true_false") {
+                body = (sec.questions || [])
+                    .map((q) => {
+                        qNum++;
+                        return `<div class="quiz-question"><p><b>${qNum}.</b> ${escapeHtml(q.statement)} <span class="quiz-tf">☐ Prawda &nbsp; ☐ Fałsz</span></p></div>`;
+                    })
+                    .join("");
+            }
+            return `<section class="quiz-section"><h2>${escapeHtml(heading)}</h2><p class="quiz-instructions">${escapeHtml(sec.instructions || "")}</p>${body}</section>`;
+        })
+        .join("");
+
+    // Answer key on its own printed page
+    const answerKeyHtml = (quiz.sections || [])
+        .map((sec) => {
+            if (sec.type === "multiple_choice" || sec.type === "translation") {
+                return (sec.questions || [])
+                    .map((q) => `<li>${escapeHtml(q.answer)}</li>`)
+                    .join("");
+            }
+            if (sec.type === "fill_blank") {
+                return (sec.questions || [])
+                    .map((q) => `<li>${escapeHtml(q.answer)}</li>`)
+                    .join("");
+            }
+            if (sec.type === "true_false") {
+                return (sec.questions || [])
+                    .map((q) => `<li>${q.answer ? "Prawda" : "Fałsz"}</li>`)
+                    .join("");
+            }
+            if (sec.type === "matching") {
+                return (sec.pairs || [])
+                    .map(
+                        (p) =>
+                            `<li>${escapeHtml(p.a)} → ${escapeHtml(p.b)}</li>`,
+                    )
+                    .join("");
+            }
+            return "";
+        })
+        .join("");
+
+    return `<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<title>${title}</title>
+<style>
+    body { font-family: Georgia, 'Times New Roman', serif; max-width: 800px; margin: 30px auto; padding: 0 24px; color: #1a1a1a; line-height: 1.5; }
+    h1 { font-size: 24px; border-bottom: 3px solid #333; padding-bottom: 8px; }
+    h2 { font-size: 17px; margin-top: 28px; color: #333; }
+    .quiz-instructions { font-style: italic; color: #555; margin-bottom: 12px; }
+    .quiz-section { page-break-inside: avoid; }
+    .quiz-question { margin: 10px 0 14px; }
+    .quiz-options { margin-left: 18px; }
+    .quiz-option { margin: 3px 0; }
+    .quiz-matching { display: flex; gap: 60px; }
+    .quiz-match-col { padding-left: 20px; }
+    .quiz-tf { margin-left: 10px; white-space: nowrap; }
+    .answer-key { page-break-before: always; }
+    .answer-key ol { padding-left: 20px; }
+    .print-bar { text-align: center; margin: 20px 0; }
+    .print-bar button { font-size: 14px; padding: 8px 16px; cursor: pointer; }
+    @media print { .print-bar { display: none; } }
+</style>
+</head>
+<body>
+    <div class="print-bar"><button onclick="window.print()">🖨️ Drukuj / Zapisz jako PDF</button></div>
+    <h1>${title}</h1>
+    <p>${words.length} słówek • wygenerowano przez AI (Gemini) • ${dateTag()}</p>
+    ${sectionsHtml}
+    <section class="answer-key">
+        <h2>Klucz odpowiedzi</h2>
+        <ol>${answerKeyHtml}</ol>
+    </section>
+</body>
+</html>`;
+}
+
 // ── Clear visible words ───────────────────────────────────────────
 document.getElementById("clearAll").addEventListener("click", () => {
     if (!confirm("Usunąć widoczne słowa?")) return;
