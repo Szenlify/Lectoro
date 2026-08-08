@@ -64,33 +64,87 @@ Respond ONLY in this exact JSON format, nothing else:
 
 WAŻNE — zróżnicowanie między generacjami: token unikalności ${nonce}. Za KAŻDYM razem, nawet dla identycznej listy słówek, wybierz inny zestaw typów sekcji, inną ich kolejność, inne konkretne pytania, przykłady i zdania – quiz nigdy nie powinien wyglądać tak samo dwa razy z rzędu. W tej generacji użyj DOKŁADNIE tych typów sekcji, w tej kolejności: ${chosenTypes.join(", ")}. Mieszaj też poziom trudności pytań w ramach sekcji (część łatwiejszych, część trudniejszych/podchwytliwych).
 
+KRYTYCZNE — dokładna struktura JSON: dla KAŻDEGO typu sekcji użyj DOKŁADNIE takich samych nazw pól jak w przykładzie na końcu (np. "prompt", "pairs", "hint" itd.) — inne/brakujące nazwy pól sprawiają, że pytanie wyświetla się jako PUSTE w aplikacji. Każda sekcja MUSI zawierać przynajmniej 3-4 wypełnione pytania (lub pary dla "matching") — nigdy nie zwracaj pustej tablicy "questions"/"pairs".
+
 Opis dostępnych typów sekcji:
-- multiple_choice: pytanie po polsku (np. opisujące znaczenie, synonim lub kontekst użycia), 4 opcje odpowiedzi w języku ${srcLangAdj} (jedna poprawna, pozostałe sensowne dystraktory).
-- fill_blank: zdanie W JĘZYKU ${srcLangAdj} z luką "___" w miejscu słówka; odpowiedź to brakujące słowo w języku ${srcLangAdj}.
-- matching: pary słowo źródłowe (${srcLangAdj}) <-> polskie tłumaczenie, do połączenia (jedyna sekcja, gdzie polski się pojawia, bo to dopasowywanie a nie pisanie odpowiedzi).
-- translation: polecenie po polsku w stylu "Jak powiedzieć po ${srcLangAdj}u: '<polskie słowo>'?"; odpowiedź to słowo w języku ${srcLangAdj}.
-- true_false: stwierdzenie po polsku o znaczeniu słówka w języku ${srcLangAdj} (prawda/fałsz), odpowiedź to tylko true/false.
-- word_order: podaj potasowaną listę pojedynczych wyrazów tworzących poprawne zdanie w języku ${srcLangAdj} zawierające jedno z uczonych słówek (pole "words"); odpowiedź ("answer") to całe poprawnie ułożone zdanie w języku ${srcLangAdj}.
-- error_correction: podaj zdanie w języku ${srcLangAdj} zawierające jeden celowy błąd GRAMATYCZNY dotyczący uczonego słówka (np. zła forma czasownika/czas gramatyczny, zły przyimek, brak/zła forma liczby mnogiej, zły szyk zdania, zły article/rodzajnik, niepoprawna zgoda podmiotu z orzeczeniem) — słowo docelowe MUSI być zapisane poprawnie ortograficznie, błąd nie może polegać na literówce ani zmienionej pojedynczej literze w pisowni. Odpowiedź ("answer") to CAŁE poprawione zdanie w języku ${srcLangAdj}.
-- odd_one_out: podaj 4 słowa w języku ${srcLangAdj} (w tym uczone słówka) z jednej kategorii znaczeniowej + 1 pasujące do innej kategorii (pole "options"); odpowiedź ("answer") to wyraz, który nie pasuje.
+- multiple_choice: pole "questions", każde pytanie ma "question" (po polsku, np. opisujące znaczenie, synonim lub kontekst użycia), "options" (4 opcje w języku ${srcLangAdj}, jedna poprawna + sensowne dystraktory), "answer" (poprawna opcja w języku ${srcLangAdj}).
+- fill_blank: pole "questions", każde pytanie ma "sentence" (zdanie W JĘZYKU ${srcLangAdj} z luką "___" w miejscu słówka), "hint" (polskie tłumaczenie DOKŁADNIE brakującego słowa – krótka podpowiedź, NIGDY całe zdanie), "answer" (brakujące słowo w języku ${srcLangAdj}, dokładnie pasujące do luki).
+- matching: pole "pairs" (NIE "questions"!) – tablica 4-6 obiektów, każdy ma "a" (słowo źródłowe w języku ${srcLangAdj}) i "b" (jego polskie tłumaczenie). To jedyna sekcja, gdzie polski pojawia się jako część pytania, bo to dopasowywanie, a nie pisanie odpowiedzi.
+- translation: pole "questions", każde pytanie ma "prompt" (polecenie PO POLSKU w stylu "Jak powiedzieć po ${srcLangAdj}u: 'słowo'?" – MUSI zawierać konkretne polskie słowo do przetłumaczenia, nigdy nie zostawiaj pustego polecenia) i "answer" (tłumaczenie tego słowa w języku ${srcLangAdj}).
+- true_false: pole "questions", każde pytanie ma "statement" (stwierdzenie po polsku o znaczeniu słówka w języku ${srcLangAdj}) i "answer" jako SUROWĄ wartość logiczną JSON true/false (bez cudzysłowów!).
+- word_order: pole "questions", każde pytanie ma "words" (potasowana lista pojedynczych wyrazów tworzących poprawne zdanie w języku ${srcLangAdj} zawierające jedno z uczonych słówek) i "answer" (całe poprawnie ułożone zdanie w języku ${srcLangAdj}).
+- error_correction: pole "questions", każde pytanie ma "sentence" (zdanie w języku ${srcLangAdj} z jednym celowym błędem GRAMATYCZNYM dotyczącym uczonego słówka – np. zła forma czasownika/czas gramatyczny, zły przyimek, brak/zła forma liczby mnogiej, zły szyk zdania, zły article/rodzajnik, niepoprawna zgoda podmiotu z orzeczeniem; słowo docelowe MUSI być zapisane poprawnie ortograficznie, błąd nie może polegać na literówce) i "answer" (CAŁE poprawione zdanie w języku ${srcLangAdj}).
+- odd_one_out: pole "questions", każde pytanie ma "options" (4 słowa w języku ${srcLangAdj}, w tym uczone słówka, z jednej kategorii znaczeniowej + 1 pasujące do innej kategorii) i "answer" (wyraz, który nie pasuje).
 
 Nie używaj wszystkich słówek w każdej sekcji – rozłóż je sensownie pomiędzy sekcje.
 
 Lista słówek:
 ${wordList}
 
-Odpowiedz WYŁĄCZNIE w tym dokładnym formacie JSON (uwzględnij TYLKO sekcje typów wskazanych powyżej, w podanej kolejności), bez żadnego dodatkowego tekstu:
+Odpowiedz WYŁĄCZNIE w tym dokładnym formacie JSON (uwzględnij TYLKO sekcje typów wskazanych powyżej, w podanej kolejności, zachowując dokładnie te same nazwy pól), bez żadnego dodatkowego tekstu:
 {
-  "title": "krótki tytuł quizu",
+  "title": "Szybka powtórka słownictwa",
   "sections": [
-    {"type": "multiple_choice", "instructions": "...", "questions": [{"question": "...", "options": ["...","...","...","..."], "answer": "..."}]},
-    {"type": "fill_blank", "instructions": "...", "questions": [{"sentence": "... ___ ...", "answer": "..."}]},
-    {"type": "matching", "instructions": "...", "pairs": [{"a": "...", "b": "..."}]},
-    {"type": "translation", "instructions": "...", "questions": [{"prompt": "...", "answer": "..."}]},
-    {"type": "true_false", "instructions": "...", "questions": [{"statement": "...", "answer": true}]},
-    {"type": "word_order", "instructions": "...", "questions": [{"words": ["...","...","..."], "answer": "..."}]},
-    {"type": "error_correction", "instructions": "...", "questions": [{"sentence": "...", "answer": "..."}]},
-    {"type": "odd_one_out", "instructions": "...", "questions": [{"options": ["...","...","...","..."], "answer": "..."}]}
+    {
+      "type": "multiple_choice",
+      "instructions": "Wybierz poprawne słowo pasujące do opisu.",
+      "questions": [
+        { "question": "Które słowo oznacza 'szybko'?", "options": ["fast", "slow", "car", "dog"], "answer": "fast" }
+      ]
+    },
+    {
+      "type": "fill_blank",
+      "instructions": "Uzupełnij lukę brakującym słowem. Podpowiedź w nawiasie to polskie tłumaczenie szukanego słowa.",
+      "questions": [
+        { "sentence": "The list of chores seemed ___, never-ending.", "hint": "niekończąca się / żmudna", "answer": "endless" }
+      ]
+    },
+    {
+      "type": "matching",
+      "instructions": "Połącz słowo źródłowe z jego polskim tłumaczeniem.",
+      "pairs": [
+        { "a": "fast", "b": "szybko" },
+        { "a": "slow", "b": "wolno" },
+        { "a": "car", "b": "samochód" },
+        { "a": "dog", "b": "pies" }
+      ]
+    },
+    {
+      "type": "translation",
+      "instructions": "Podaj tłumaczenie podanego polskiego słowa.",
+      "questions": [
+        { "prompt": "Jak powiedzieć po angielsku: 'szybko'?", "answer": "fast" }
+      ]
+    },
+    {
+      "type": "true_false",
+      "instructions": "Zaznacz, czy stwierdzenie jest prawdziwe.",
+      "questions": [
+        { "statement": "Słowo 'fast' oznacza 'wolno'.", "answer": false }
+      ]
+    },
+    {
+      "type": "word_order",
+      "instructions": "Ułóż wyrazy w poprawnej kolejności, tworząc zdanie.",
+      "questions": [
+        { "words": ["is", "This", "fast", "car", "a"], "answer": "This is a fast car" }
+      ]
+    },
+    {
+      "type": "error_correction",
+      "instructions": "Znajdź i popraw błąd gramatyczny.",
+      "questions": [
+        { "sentence": "He go to school every day.", "answer": "He goes to school every day." }
+      ]
+    },
+    {
+      "type": "odd_one_out",
+      "instructions": "Wskaż słowo, które nie pasuje do pozostałych.",
+      "questions": [
+        { "options": ["apple", "banana", "car", "orange"], "answer": "car" }
+      ]
+    }
+    // ... uwzględnij TYLKO sekcje typów z chosenTypes, w podanej kolejności, z realną treścią dla uczonych słówek
   ]
 }`;
     },
