@@ -39,8 +39,11 @@
             box-sizing: border-box;
         }
 
+        html {
+            height: 600px;
+        }
+
         body {
-            width: 690px;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background: var(--bg-deep);
             color: var(--text-secondary);
@@ -50,6 +53,8 @@
             position: relative;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+            width: 480px;
+            height: 600px;
         }
 
         /* ── Ambient light layer ── */
@@ -117,20 +122,22 @@
         /* ── Tabs ── */
         .tabs {
             display: flex;
-            gap: 3px;
-            padding: 0 22px 16px;
+            gap: 4px;
+            padding: 0 14px 16px;
             position: relative;
             z-index: 1;
         }
 
         .tab {
             flex: 1;
-            padding: 10px 0;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding: 9px 2px 8px;
             text-align: center;
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: .8px;
             color: var(--text-muted);
             cursor: pointer;
             border: 1px solid transparent;
@@ -138,6 +145,23 @@
             transition: all .25s cubic-bezier(.4, 0, .2, 1);
             background: transparent;
             position: relative;
+        }
+
+        .tab-icon {
+            font-size: 16px;
+            line-height: 1;
+        }
+
+        .tab-label {
+            font-size: 8.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .3px;
+            line-height: 1;
+            white-space: nowrap;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .tab:hover {
@@ -175,6 +199,19 @@
            ══════════════════════════════════════════ */
         .settings {
             padding: 2px 22px 22px;
+            flex: 1;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.06) transparent;
+        }
+
+        .settings::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .settings::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 3px;
         }
 
         .settings label {
@@ -642,6 +679,35 @@
             overflow: hidden;
         }
 
+        /* Word search */
+        .word-search {
+            width: 100%;
+            padding: 11px 15px;
+            margin: 4px 22px 10px;
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            background: var(--glass);
+            backdrop-filter: blur(var(--blur));
+            -webkit-backdrop-filter: blur(var(--blur));
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 12.5px;
+            font-weight: 500;
+            outline: none;
+            transition: all .2s ease;
+            box-sizing: border-box;
+            width: calc(100% - 44px);
+        }
+
+        .word-search:focus {
+            border-color: rgba(129, 140, 248, 0.4);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        .word-search::placeholder {
+            color: var(--text-ghost);
+        }
+
         /* Filters */
         .filters {
             display: flex;
@@ -823,9 +889,7 @@
         }
 
         .export-btn {
-            flex: 1;
-            min-width: 80px;
-            padding: 10px 14px;
+            padding: 10px 10px;
             font-size: 11px;
             font-weight: 600;
             border-radius: var(--radius-md);
@@ -865,19 +929,24 @@
             box-shadow: 0 4px 16px rgba(147, 197, 253, 0.08);
         }
 
-        /* AI Quiz export row */
+        /* AI Quiz export card — two-tier layout for a calmer, clearer
+           visual hierarchy: title+mode toggle on top, scope+CTA below. */
         .quiz-export-row {
-            margin: 0 22px 16px;
-            padding: 12px 14px;
+            margin: 0 22px 14px;
+            padding: 14px 16px 16px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 12px;
             border-radius: var(--radius-lg);
-            border: 1px solid rgba(216, 180, 254, 0.14);
-            background: rgba(255, 255, 255, 0.045);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.02) inset;
+            border: 1px solid rgba(216, 180, 254, 0.16);
+            background:
+                radial-gradient(ellipse 140px 90px at 100% 0%, rgba(216, 180, 254, 0.08), transparent 70%),
+                rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            box-shadow:
+                0 1px 0 0 rgba(255, 255, 255, 0.03) inset,
+                0 6px 20px rgba(0, 0, 0, 0.14);
         }
 
         .quiz-export-top {
@@ -885,31 +954,64 @@
             align-items: center;
             justify-content: space-between;
             gap: 10px;
-            flex-wrap: wrap;
         }
 
         .quiz-export-label {
             display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .quiz-icon-badge {
+            width: 26px;
+            height: 26px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            border-radius: 9px;
+            background: rgba(216, 180, 254, 0.14);
+            border: 1px solid rgba(216, 180, 254, 0.22);
+        }
+
+        .quiz-export-text {
+            display: flex;
             align-items: baseline;
-            gap: 6px;
-            font-size: 12px;
+            gap: 5px;
+            font-size: 12.5px;
             font-weight: 700;
-            color: #d8b4fe;
+            color: #e9d5ff;
             white-space: nowrap;
+        }
+
+        .quiz-export-label .quiz-export-sub {
+            font-size: 9px;
+            font-weight: 700;
+            color: rgba(216, 180, 254, 0.6);
+            text-transform: uppercase;
+            letter-spacing: .6px;
         }
 
         .quiz-mode-toggle {
             display: flex;
-            gap: 6px;
+            gap: 4px;
+            flex-shrink: 0;
+            padding: 3px;
+            border-radius: var(--radius-md);
+            background: rgba(0, 0, 0, 0.15);
+            border: 1px solid var(--glass-border);
         }
 
         .quiz-mode-btn {
             padding: 6px 10px;
-            font-size: 10px;
+            font-size: 10.5px;
+            line-height: 1;
             font-weight: 600;
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--glass-border);
-            background: var(--glass);
+            border-radius: 9px;
+            border: 1px solid transparent;
+            background: transparent;
             color: var(--text-muted);
             cursor: pointer;
             transition: all .2s ease;
@@ -918,39 +1020,26 @@
         }
 
         .quiz-mode-btn:hover {
-            background: var(--glass-hover);
             color: var(--text-secondary);
         }
 
         .quiz-mode-btn.active {
-            background: rgba(216, 180, 254, 0.16);
-            border-color: rgba(216, 180, 254, 0.4);
-            color: #d8b4fe;
+            background: rgba(216, 180, 254, 0.18);
+            border-color: rgba(216, 180, 254, 0.3);
+            color: #e9d5ff;
+            box-shadow: 0 2px 8px rgba(216, 180, 254, 0.1);
         }
 
-        .quiz-export-label .quiz-export-sub {
-            font-size: 9px;
-            font-weight: 700;
-            color: var(--text-ghost);
-            text-transform: uppercase;
-            letter-spacing: .6px;
-        }
-
-        .quiz-export-controls {
+        .quiz-export-bottom {
             display: flex;
-            align-items: center;
+            align-items: stretch;
             gap: 8px;
-            flex: 1;
-            justify-content: flex-end;
-            flex-wrap: wrap;
         }
 
         .quiz-scope-select {
-            flex: 1;
-            min-width: 118px;
-            max-width: 160px;
-            padding: 9px 10px;
-            font-size: 10.5px;
+            flex: 0 0 92px;
+            padding: 9px 24px 9px 12px;
+            font-size: 11px;
             font-weight: 600;
             border-radius: var(--radius-md);
             border: 1px solid var(--glass-border);
@@ -971,18 +1060,22 @@
         }
 
         .export-quiz {
-            flex: 0 0 auto;
-            min-width: 0;
-            padding: 9px 16px;
-            background: rgba(216, 180, 254, 0.1);
-            border-color: rgba(216, 180, 254, 0.22);
-            color: #d8b4fe;
+            flex: 1;
+            padding: 10px 14px;
+            font-size: 11.5px;
+            font-weight: 700;
+            background: linear-gradient(135deg, rgba(216, 180, 254, 0.22), rgba(129, 140, 248, 0.16));
+            border: 1px solid rgba(216, 180, 254, 0.32);
+            color: #f3e8ff;
+            letter-spacing: .2px;
+            box-shadow: 0 2px 10px rgba(216, 180, 254, 0.08);
         }
 
         .export-quiz:hover {
-            background: rgba(216, 180, 254, 0.18);
-            border-color: rgba(216, 180, 254, 0.35);
-            box-shadow: 0 4px 16px rgba(216, 180, 254, 0.12);
+            background: linear-gradient(135deg, rgba(216, 180, 254, 0.32), rgba(129, 140, 248, 0.24));
+            border-color: rgba(216, 180, 254, 0.5);
+            box-shadow: 0 6px 20px rgba(216, 180, 254, 0.18);
+            transform: translateY(-1px);
         }
 
         .export-quiz:disabled {
@@ -1630,7 +1723,8 @@
 
         /* ── Rating buttons ── */
         .review-rating {
-            width: 100%;
+            width: 92%;
+            max-width: 360px;
         }
 
         .review-rating-label {
@@ -1646,15 +1740,15 @@
         .review-rating-buttons {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 6px;
+            gap: 8px;
         }
 
         .review-rate-btn {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 2px;
-            padding: 7px 4px 6px;
+            gap: 3px;
+            padding: 9px 4px 8px;
             border-radius: var(--radius-sm);
             border: 1px solid var(--glass-border);
             background: var(--glass);
@@ -1954,17 +2048,23 @@
         }
 
         .tab-badge {
-            display: inline-block;
-            background: var(--accent-mid);
+            position: absolute;
+            top: 4px;
+            right: 6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--accent);
             color: #fff;
-            font-size: 9.5px;
+            font-size: 8.5px;
             font-weight: 700;
-            padding: 2px 7px;
-            border-radius: 12px;
-            margin-left: 5px;
-            min-width: 18px;
+            padding: 1px 5px;
+            border-radius: 10px;
+            min-width: 15px;
+            height: 15px;
             text-align: center;
-            letter-spacing: .2px;
+            letter-spacing: 0;
+            box-shadow: 0 2px 6px rgba(129, 140, 248, 0.4);
         }
 
         /* ── Cloud Sync ── */
@@ -2022,21 +2122,75 @@
             display: flex;
             flex-direction: column;
             flex: 1;
+            min-height: 0;
             overflow: hidden;
-            padding: 2px 22px 22px;
+            padding: 2px 20px 20px;
+        }
+
+        /* ── Search bar: lives outside the scrollable area below, so it
+           always stays pinned at the top of the tab while the intro
+           text, level filters and poster grid scroll away underneath. ── */
+        .library-search {
+            width: 100%;
+            flex-shrink: 0;
+            padding: 11px 15px;
+            margin-bottom: 12px;
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            background: var(--glass);
+            backdrop-filter: blur(var(--blur));
+            -webkit-backdrop-filter: blur(var(--blur));
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 12.5px;
+            font-weight: 500;
+            outline: none;
+            transition: all .2s ease;
+            box-sizing: border-box;
+        }
+
+        .library-search:focus {
+            border-color: rgba(129, 140, 248, 0.4);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        .library-search::placeholder {
+            color: var(--text-ghost);
+        }
+
+        /* ── Scrollable region: intro text, level filters and the
+           poster grid all scroll together underneath the sticky search
+           bar above. ── */
+        .library-scroll {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 2px 4px 6px 2px;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+        }
+
+        .library-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .library-scroll::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
         }
 
         .library-intro {
             font-size: 12px;
             line-height: 1.55;
             color: var(--text-secondary);
-            margin-bottom: 14px;
+            margin-bottom: 12px;
         }
 
         .library-filters {
             display: flex;
-            gap: 5px;
-            margin-bottom: 10px;
+            gap: 6px;
+            margin-bottom: 12px;
             flex-wrap: wrap;
         }
 
@@ -2070,73 +2224,49 @@
                 0 1px 0 0 rgba(255, 255, 255, 0.04) inset;
         }
 
-        .library-search {
-            width: 100%;
-            padding: 11px 15px;
-            margin-bottom: 12px;
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-md);
-            background: var(--glass);
-            backdrop-filter: blur(var(--blur));
-            -webkit-backdrop-filter: blur(var(--blur));
-            color: var(--text-primary);
-            font-family: inherit;
-            font-size: 12.5px;
-            font-weight: 500;
-            outline: none;
-            transition: all .2s ease;
-            box-sizing: border-box;
-        }
-
-        .library-search:focus {
-            border-color: rgba(129, 140, 248, 0.4);
-            box-shadow: 0 0 0 3px var(--accent-glow);
-        }
-
-        .library-search::placeholder {
-            color: var(--text-ghost);
-        }
-
+        /* ── Poster grid: fixed 2-column layout so posters render nice
+           and large inside the fixed-size popup, instead of shrinking
+           into a cramped 3-column grid. ── */
         .library-grid {
-            flex: 1;
-            overflow-y: auto;
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
             align-content: start;
-            scrollbar-width: thin;
-            scrollbar-color: rgba(255, 255, 255, 0.06) transparent;
         }
 
         .library-empty {
             grid-column: 1 / -1;
         }
 
-        .library-grid::-webkit-scrollbar {
-            width: 3px;
-        }
-
-        .library-grid::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.08);
-            border-radius: 3px;
-        }
-
         .library-card {
             position: relative;
             width: 100%;
-            aspect-ratio: 2 / 3;
+            height: 300px;
             border-radius: var(--radius-lg);
             overflow: hidden;
             cursor: pointer;
-            background: var(--accent-dim);
+            background:
+                linear-gradient(160deg, rgba(129, 140, 248, 0.18), rgba(110, 231, 183, 0.08));
             border: 1px solid var(--glass-border);
-            transition: all .25s cubic-bezier(.4, 0, .2, 1);
+            box-shadow:
+                0 1px 0 0 rgba(255, 255, 255, 0.04) inset,
+                0 6px 18px rgba(0, 0, 0, 0.28);
+            transition: transform .28s cubic-bezier(.4, 0, .2, 1),
+                box-shadow .28s cubic-bezier(.4, 0, .2, 1),
+                border-color .28s cubic-bezier(.4, 0, .2, 1);
         }
 
         .library-card:hover {
-            border-color: rgba(129, 140, 248, 0.35);
-            transform: translateY(-2px);
-            box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4);
+            border-color: rgba(129, 140, 248, 0.45);
+            transform: translateY(-4px);
+            box-shadow:
+                0 1px 0 0 rgba(255, 255, 255, 0.06) inset,
+                0 16px 32px rgba(0, 0, 0, 0.45),
+                0 0 0 1px rgba(129, 140, 248, 0.15);
+        }
+
+        .library-card:active {
+            transform: translateY(-1px);
         }
 
         .library-poster {
@@ -2145,6 +2275,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            background: linear-gradient(160deg, rgba(129, 140, 248, 0.16), rgba(6, 6, 12, 0.4));
         }
 
         .library-poster img {
@@ -2152,76 +2283,84 @@
             height: 100%;
             object-fit: cover;
             display: block;
+            transition: transform .4s cubic-bezier(.4, 0, .2, 1);
+        }
+
+        .library-card:hover .library-poster img {
+            transform: scale(1.05);
         }
 
         .library-poster-fallback {
             display: none;
-            font-size: 34px;
+            font-size: 40px;
+            filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.4));
         }
 
         .library-poster.no-image .library-poster-fallback {
             display: flex;
         }
 
+        /* Soft top scrim so badges stay legible over bright posters */
         .library-card::before {
             content: "";
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
-            height: 46px;
+            height: 56px;
             z-index: 1;
-            background: linear-gradient(to bottom, rgba(6, 6, 10, 0.75) 0%, rgba(6, 6, 10, 0) 100%);
+            background: linear-gradient(to bottom, rgba(4, 4, 8, 0.65) 0%, rgba(4, 4, 8, 0) 100%);
             pointer-events: none;
         }
 
         .library-level-badge {
             position: absolute;
-            top: 8px;
-            left: 8px;
+            top: 9px;
+            right: 9px;
             z-index: 4;
             display: flex;
             align-items: center;
             gap: 3px;
             font-size: 9px;
             font-weight: 700;
-            padding: 3px 8px;
-            border-radius: 10px;
+            padding: 4px 9px;
+            border-radius: 20px;
             text-transform: uppercase;
             letter-spacing: .3px;
+            color: #06120c;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
         }
 
         .library-level-badge.lvl-beginner {
-            background: rgba(52, 211, 153, 0.22);
-            color: var(--mint);
+            background: #6ee7b7;
         }
 
         .library-level-badge.lvl-intermediate {
-            background: rgba(251, 191, 36, 0.22);
-            color: var(--amber);
+            background: #fbbf24;
         }
 
         .library-level-badge.lvl-advanced {
-            background: rgba(248, 113, 113, 0.22);
-            color: #f87171;
+            background: #f87171;
+            color: #1a0505;
         }
 
         .library-genre-badge {
             position: absolute;
-            top: 8px;
-            right: 8px;
+            top: 9px;
+            left: 9px;
             z-index: 4;
             font-size: 9px;
-            font-weight: 600;
-            padding: 3px 8px;
-            border-radius: 10px;
-            background: rgba(10, 10, 16, 0.55);
+            font-weight: 700;
+            padding: 4px 9px;
+            border-radius: 20px;
+            background: rgba(10, 10, 18, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.14);
             color: #fff;
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            max-width: 60%;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            max-width: 58%;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -2233,13 +2372,13 @@
             right: 0;
             bottom: 0;
             z-index: 4;
-            padding: 26px 10px 10px;
-            background: linear-gradient(to top, rgba(6, 6, 10, 0.95) 0%, rgba(6, 6, 10, 0.85) 45%, rgba(6, 6, 10, 0) 100%);
+            padding: 30px 11px 11px;
+            background: linear-gradient(to top, rgba(3, 3, 7, 0.97) 0%, rgba(3, 3, 7, 0.88) 40%, rgba(3, 3, 7, 0) 100%);
             color: #fff;
         }
 
         .library-card-title {
-            font-size: 12.5px;
+            font-size: 14.5px;
             font-weight: 700;
             color: #fff;
             display: -webkit-box;
@@ -2248,14 +2387,15 @@
             -webkit-box-orient: vertical;
             overflow: hidden;
             line-height: 1.3;
+            letter-spacing: -0.1px;
             text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
         }
 
         .library-card-note {
-            font-size: 10px;
-            color: rgba(255, 255, 255, 0.78);
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.7);
             margin-top: 4px;
-            line-height: 1.35;
+            line-height: 1.4;
             display: -webkit-box;
             -webkit-line-clamp: 2;
             line-clamp: 2;
@@ -2270,21 +2410,36 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
-            background: rgba(10, 10, 16, 0.68);
-            backdrop-filter: blur(2px);
-            -webkit-backdrop-filter: blur(2px);
-            color: #fff;
-            font-size: 13px;
-            font-weight: 700;
-            letter-spacing: .3px;
+            background: rgba(6, 6, 12, 0.5);
+            backdrop-filter: blur(1px);
+            -webkit-backdrop-filter: blur(1px);
             opacity: 0;
-            transition: opacity .2s ease;
+            transition: opacity .25s ease;
             pointer-events: none;
+        }
+
+        .library-poster-overlay span {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.94);
+            color: #16162a;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: .2px;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+            transform: translateY(4px) scale(.94);
+            transition: transform .25s cubic-bezier(.4, 0, .2, 1);
         }
 
         .library-card:hover .library-poster-overlay {
             opacity: 1;
+        }
+
+        .library-card:hover .library-poster-overlay span {
+            transform: translateY(0) scale(1);
         }
 
         .library-open-btn {
@@ -2361,11 +2516,16 @@
 
     <!-- Tabs -->
     <div class="tabs">
-        <button class="tab active" data-tab="settings">⚙ Ustawienia</button>
-        <button class="tab" data-tab="help">❓ Instrukcja</button>
-        <button class="tab" data-tab="library">📼 Biblioteka</button>
-        <button class="tab" data-tab="words">📚 Słowa</button>
-        <button class="tab" data-tab="review" id="tabReview">🧠 Powtórki</button>
+        <button class="tab active" data-tab="settings"><span class="tab-icon">⚙️</span><span
+                class="tab-label">Ustawienia</span></button>
+        <button class="tab" data-tab="help"><span class="tab-icon">🚨</span><span
+                class="tab-label">Instrukcja</span></button>
+        <button class="tab" data-tab="library"><span class="tab-icon">🗂️</span><span
+                class="tab-label">Biblioteka</span></button>
+        <button class="tab" data-tab="words"><span class="tab-icon">📚</span><span
+                class="tab-label">Słowa</span></button>
+        <button class="tab" data-tab="review" id="tabReview"><span class="tab-icon">🧠</span><span
+                class="tab-label">Powtórki</span></button>
     </div>
 
     <!-- Settings Tab -->
@@ -2511,6 +2671,8 @@
     <!-- Words Tab -->
     <div class="tab-content" id="tab-words">
         <div class="words-panel">
+
+
             <!-- Filters -->
             <div class="filters">
                 <button class="filter-btn active" data-filter="all">Wszystkie</button>
@@ -2519,6 +2681,9 @@
                 <button class="filter-btn" data-filter="month">Miesiąc</button>
                 <button class="filter-btn" data-filter="new">🆕 Niepobrane</button>
             </div>
+            <!-- Search -->
+            <input type="text" id="wordSearch" class="word-search"
+                placeholder="Szukaj słowa, tłumaczenia lub zdania...">
             <div class="stats" id="stats"></div>
 
             <!-- Word list -->
@@ -2538,25 +2703,28 @@
             </div>
             <div class="quiz-export-row">
                 <div class="quiz-export-top">
-                    <div class="quiz-export-label">🧠 Quiz <span class="quiz-export-sub">AI</span></div>
+                    <div class="quiz-export-label">
+                        <span class="quiz-icon-badge">🧠</span>
+                        <span class="quiz-export-text">Quiz <span class="quiz-export-sub">AI</span></span>
+                    </div>
                     <div class="quiz-mode-toggle">
                         <button type="button" class="quiz-mode-btn active" id="quizModePdf" data-mode="pdf"
                             title="Statyczna strona do wydruku / zapisu jako PDF">📄 PDF</button>
                         <button type="button" class="quiz-mode-btn" id="quizModeInteractive" data-mode="interactive"
                             title="Interaktywna strona - zaznaczasz odpowiedzi i sprawdzasz wynik na miejscu">🖱️
-                            Interaktywny</button>
+                            WEB</button>
                     </div>
                 </div>
-                <div class="quiz-export-controls">
+                <div class="quiz-export-bottom">
                     <select class="quiz-scope-select" id="quizScope" title="Ile słówek uwzględnić w quizie">
-                        <option value="5">5 najnowszych</option>
-                        <option value="10">10 najnowszych</option>
-                        <option value="20" selected>20 najnowszych</option>
+                        <option value="5">5 słów</option>
+                        <option value="10">10 słów</option>
+                        <option value="20" selected>20 słów</option>
                         <option value="all">Wszystkie</option>
                     </select>
                     <button class="export-btn export-quiz" id="exportQuiz"
                         title="Wygeneruj quiz za pomocą AI (wymaga klucza Gemini)">
-                        ✨ Generuj
+                        ✨ Generuj quiz
                     </button>
                 </div>
             </div>
@@ -2566,17 +2734,20 @@
     <!-- Library Tab (curated titles for English learners) -->
     <div class="tab-content" id="tab-library">
         <div class="library-panel">
-            <p class="library-intro">Wybrane filmy i seriale, w których angielski jest wyraźny i przystępny do
-                nauki. Znajdź tytuł w wyszukiwarce, wejdź na jego stronę na lookmovie2.to, a dwujęzyczne napisy
-                Lectoro włączą się automatycznie.</p>
-            <div class="library-filters">
-                <button class="library-filter-btn active" data-level="all">Wszystkie</button>
-                <button class="library-filter-btn" data-level="beginner">🟢 Początkujący</button>
-                <button class="library-filter-btn" data-level="intermediate">🟡 Średni</button>
-                <button class="library-filter-btn" data-level="advanced">🔴 Zaawansowany</button>
+
+            <div class="library-scroll">
+                <p class="library-intro help-card">Znajdź tytuł w wyszukiwarce lub wejdź na stronę <a
+                        href="https://lookmovie2.to" target="_blank" rel="noopener noreferrer">lookmovie2.to</a>,
+                    włącz napisy CC</p>
+                <div class="library-filters">
+                    <button class="library-filter-btn active" data-level="all">Wszystkie</button>
+                    <button class="library-filter-btn" data-level="beginner">🟢 A1/A2</button>
+                    <button class="library-filter-btn" data-level="intermediate">🟡 B1/B2</button>
+                    <button class="library-filter-btn" data-level="advanced">🔴 C1/C2</button>
+                </div>
+                <input type="text" id="librarySearch" class="library-search" placeholder="Szukaj tytułu, gatunku...">
+                <div class="library-grid" id="libraryGrid"></div>
             </div>
-            <input type="text" id="librarySearch" class="library-search" placeholder="Szukaj tytułu, gatunku...">
-            <div class="library-grid" id="libraryGrid"></div>
         </div>
     </div>
 
@@ -2586,17 +2757,16 @@
             <div class="review-header">
                 <span class="review-icon">🧠</span>
                 <span class="review-title">Powtórka dnia</span>
+                <button class="review-dir-btn" id="reviewDirBtn" title="Zmień kierunek powtórek">EN <span
+                        class="dir-arrow">→</span> PL</button>
                 <span class="review-count" id="reviewCount"></span>
             </div>
             <div class="review-progress" id="reviewProgress">
                 <div class="review-progress-bar" id="reviewProgressBar" style="width: 0%"></div>
             </div>
-            <div class="review-toolbar">
-                <button class="review-dir-btn" id="reviewDirBtn" title="Zmień kierunek powtórek">EN <span
-                        class="dir-arrow">→</span> PL</button>
-                <button class="review-delete-all-btn" id="reviewDeleteAll" title="Usuń wszystkie powtórki">🗑 Usuń
-                    wszystkie</button>
-            </div>
+
+
+
             <div class="review-card" id="reviewCard"></div>
         </div>
     </div>
@@ -2730,6 +2900,7 @@
     </div>
 
     <script src="shared/utils.js"></script>
+    <script src="shared/ai-prompts.js"></script>
     <script src="firebase/firebase-config.js"></script>
     <script src="firebase/firebase-sync.js"></script>
     <script src="popup.js"></script>

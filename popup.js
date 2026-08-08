@@ -416,6 +416,7 @@ geminiApiKeyInput.addEventListener("input", () => {
 
 // ── Filter state ──────────────────────────────────────────────────
 let currentFilter = "all";
+let wordSearchQuery = "";
 
 document.querySelectorAll(".filter-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -426,6 +427,12 @@ document.querySelectorAll(".filter-btn").forEach((btn) => {
         currentFilter = btn.dataset.filter;
         loadWords();
     });
+});
+
+const wordSearchInput = document.getElementById("wordSearch");
+wordSearchInput?.addEventListener("input", (e) => {
+    wordSearchQuery = e.target.value;
+    loadWords();
 });
 
 // ── Time helpers ──────────────────────────────────────────────────
@@ -449,18 +456,37 @@ function startOfMonth() {
 
 // ── Filter words ──────────────────────────────────────────────────
 function filterWords(words) {
+    let result;
     switch (currentFilter) {
         case "today":
-            return words.filter((w) => w.timestamp >= startOfDay());
+            result = words.filter((w) => w.timestamp >= startOfDay());
+            break;
         case "week":
-            return words.filter((w) => w.timestamp >= startOfWeek());
+            result = words.filter((w) => w.timestamp >= startOfWeek());
+            break;
         case "month":
-            return words.filter((w) => w.timestamp >= startOfMonth());
+            result = words.filter((w) => w.timestamp >= startOfMonth());
+            break;
         case "new":
-            return words.filter((w) => !w.downloaded);
+            result = words.filter((w) => !w.downloaded);
+            break;
         default:
-            return words;
+            result = words;
     }
+
+    const q = wordSearchQuery.trim().toLowerCase();
+    if (q) {
+        result = result.filter((w) => {
+            return (
+                (w.original || "").toLowerCase().includes(q) ||
+                (w.translated || "").toLowerCase().includes(q) ||
+                (w.sentence || "").toLowerCase().includes(q) ||
+                (w.sentenceTranslated || "").toLowerCase().includes(q)
+            );
+        });
+    }
+
+    return result;
 }
 
 // ── Load & render words ───────────────────────────────────────────
@@ -1019,39 +1045,7 @@ async function generateQuizWithGemini(words, geminiApiKey) {
         Math.min(sectionCount, allTypes.length),
     );
 
-    const prompt = `Jesteś asystentem do nauki języków. Uczeń uczy się słówek w języku ${srcLangAdj} (kolumna "słowo źródłowe" poniżej), a ich polskie tłumaczenie podano tylko jako pomoc. Stwórz bardziej rozbudowany, zróżnicowany i wymagający test/quiz sprawdzający WYŁĄCZNIE znajomość słówek w języku ${srcLangAdj} – każda oczekiwana odpowiedź (luka do uzupełnienia, poprawna opcja, odpowiedź w translation/word_order/error_correction) MUSI być w języku ${srcLangAdj}, NIGDY po polsku. Treści poleceń/instrukcji i ewentualne opisy znaczeń pisz po polsku, żeby uczeń rozumiał zadanie, ale sama odpowiedź zawsze ma być słowem/zdaniem w języku ${srcLangAdj}.
-
-WAŻNE — zróżnicowanie między generacjami: token unikalności ${nonce}. Za KAŻDYM razem, nawet dla identycznej listy słówek, wybierz inny zestaw typów sekcji, inną ich kolejność, inne konkretne pytania, przykłady i zdania – quiz nigdy nie powinien wyglądać tak samo dwa razy z rzędu. W tej generacji użyj DOKŁADNIE tych typów sekcji, w tej kolejności: ${chosenTypes.join(", ")}. Mieszaj też poziom trudności pytań w ramach sekcji (część łatwiejszych, część trudniejszych/podchwytliwych).
-
-Opis dostępnych typów sekcji:
-- multiple_choice: pytanie po polsku (np. opisujące znaczenie, synonim lub kontekst użycia), 4 opcje odpowiedzi w języku ${srcLangAdj} (jedna poprawna, pozostałe sensowne dystraktory).
-- fill_blank: zdanie W JĘZYKU ${srcLangAdj} z luką "___" w miejscu słówka; odpowiedź to brakujące słowo w języku ${srcLangAdj}.
-- matching: pary słowo źródłowe (${srcLangAdj}) <-> polskie tłumaczenie, do połączenia (jedyna sekcja, gdzie polski się pojawia, bo to dopasowywanie a nie pisanie odpowiedzi).
-- translation: polecenie po polsku w stylu "Jak powiedzieć po ${srcLangAdj}u: '<polskie słowo>'?"; odpowiedź to słowo w języku ${srcLangAdj}.
-- true_false: stwierdzenie po polsku o znaczeniu słówka w języku ${srcLangAdj} (prawda/fałsz), odpowiedź to tylko true/false.
-- word_order: podaj potasowaną listę pojedynczych wyrazów tworzących poprawne zdanie w języku ${srcLangAdj} zawierające jedno z uczonych słówek (pole "words"); odpowiedź ("answer") to całe poprawnie ułożone zdanie w języku ${srcLangAdj}.
-- error_correction: podaj zdanie w języku ${srcLangAdj} zawierające jeden celowy błąd GRAMATYCZNY dotyczący uczonego słówka (np. zła forma czasownika/czas gramatyczny, zły przyimek, brak/zła forma liczby mnogiej, zły szyk zdania, zły article/rodzajnik, niepoprawna zgoda podmiotu z orzeczeniem) — słowo docelowe MUSI być zapisane poprawnie ortograficznie, błąd nie może polegać na literówce ani zmienionej pojedynczej literze w pisowni. Odpowiedź ("answer") to CAŁE poprawione zdanie w języku ${srcLangAdj}.
-- odd_one_out: podaj 4 słowa w języku ${srcLangAdj} (w tym uczone słówka) z jednej kategorii znaczeniowej + 1 pasujące do innej kategorii (pole "options"); odpowiedź ("answer") to wyraz, który nie pasuje.
-
-Nie używaj wszystkich słówek w każdej sekcji – rozłóż je sensownie pomiędzy sekcje.
-
-Lista słówek:
-${wordList}
-
-Odpowiedz WYŁĄCZNIE w tym dokładnym formacie JSON (uwzględnij TYLKO sekcje typów wskazanych powyżej, w podanej kolejności), bez żadnego dodatkowego tekstu:
-{
-  "title": "krótki tytuł quizu",
-  "sections": [
-    {"type": "multiple_choice", "instructions": "...", "questions": [{"question": "...", "options": ["...","...","...","..."], "answer": "..."}]},
-    {"type": "fill_blank", "instructions": "...", "questions": [{"sentence": "... ___ ...", "answer": "..."}]},
-    {"type": "matching", "instructions": "...", "pairs": [{"a": "...", "b": "..."}]},
-    {"type": "translation", "instructions": "...", "questions": [{"prompt": "...", "answer": "..."}]},
-    {"type": "true_false", "instructions": "...", "questions": [{"statement": "...", "answer": true}]},
-    {"type": "word_order", "instructions": "...", "questions": [{"words": ["...","...","..."], "answer": "..."}]},
-    {"type": "error_correction", "instructions": "...", "questions": [{"sentence": "...", "answer": "..."}]},
-    {"type": "odd_one_out", "instructions": "...", "questions": [{"options": ["...","...","...","..."], "answer": "..."}]}
-  ]
-}`;
+    const prompt = AIPrompts.quiz({ srcLangAdj, wordList, nonce, chosenTypes });
 
     const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${encodeURIComponent(geminiApiKey)}`,
@@ -1869,11 +1863,11 @@ function maybeRefreshReviewQueue() {
 function updateReviewTabBadge(count) {
     const tab = document.getElementById("tabReview");
     if (!tab) return;
-    if (count > 0) {
-        tab.innerHTML = `🧠 Powtórki <span class="tab-badge">${count}</span>`;
-    } else {
-        tab.textContent = "🧠 Powtórki";
-    }
+    const badge =
+        count > 0
+            ? `<span class="tab-badge">${count > 99 ? "99+" : count}</span>`
+            : "";
+    tab.innerHTML = `<span class="tab-icon">🧠</span><span class="tab-label">Powtórki</span>${badge}`;
 }
 
 // ── On popup open → load badge count ──────────────────────────────
@@ -2550,9 +2544,9 @@ function renderLibraryGrid() {
         return;
     }
     const levelLabel = {
-        beginner: "Początkujący",
-        intermediate: "Średni",
-        advanced: "Zaawansowany",
+        beginner: "A1/A2",
+        intermediate: "B1/B2",
+        advanced: "C1/C2",
     };
     const levelIcon = { beginner: "🟢", intermediate: "🟡", advanced: "🔴" };
 
@@ -2569,12 +2563,12 @@ function renderLibraryGrid() {
                 <span class="library-poster-fallback">${levelIcon[item.level]}</span>
             </div>
             <span class="library-level-badge lvl-${item.level}">${levelIcon[item.level]} ${levelLabel[item.level]}</span>
-            <span class="library-genre-badge">${escapeHtml(item.genre)}</span>
             <div class="library-card-info">
+            <span class="library-genre-badge">${escapeHtml(item.genre)}</span>
                 <div class="library-card-title">${escapeHtml(item.title)}</div>
                 <div class="library-card-note">${escapeHtml(item.note)}</div>
             </div>
-            <div class="library-poster-overlay">▶ Oglądaj</div>
+            <div class="library-poster-overlay"><span>▶ Oglądaj</span></div>
         </div>`;
         })
         .join("");

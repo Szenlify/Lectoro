@@ -592,18 +592,12 @@
     // ═══════════════════════════════════════════════════════════════
 
     async function geminiGenerateSentence(word, translated, srcLang, tgtLang) {
-        const prompt = `You are a language learning assistant. The user is learning the word "${word}" (${srcLang}) which translates to "${translated}" (${tgtLang}).
-
-Generate ONE short, practical, everyday sentence using the word "${word}" in ${srcLang}. The sentence should:
-- Be useful in daily conversation
-- Be natural and commonly used
-- Be 5-15 words long
-- Show the word in a clear, memorable context
-
-Then translate that sentence to ${tgtLang}.
-
-Respond ONLY in this exact JSON format, nothing else:
-{"sentence": "...", "translation": "..."}`;
+        const prompt = AIPrompts.sentenceExample(
+            word,
+            translated,
+            srcLang,
+            tgtLang,
+        );
 
         const parsed = await geminiRequest(prompt, {
             temperature: 0.8,
@@ -616,14 +610,7 @@ Respond ONLY in this exact JSON format, nothing else:
     }
 
     async function geminiExplainSentence(sentence, targetLang) {
-        const prompt = `You are a language learning assistant. The user is watching a video and didn't understand the following sentence:
-"${sentence}"
-
-Please explain what this sentence means briefly and concisely. Provide a direct translation to ${targetLang} and a short explanation of any idioms or difficult words if present.
-
-The explanation must be written in Polish.
-Respond ONLY in this exact JSON format, nothing else:
-{"translation": "...", "explanation": "..."}`;
+        const prompt = AIPrompts.explainSentence(sentence, targetLang);
 
         const parsed = await geminiRequest(prompt, {
             temperature: 0.7,
@@ -636,7 +623,7 @@ Respond ONLY in this exact JSON format, nothing else:
     }
 
     async function geminiMovieTranslate(text, targetLang) {
-        const prompt = `You are a movie-style translator. Translate the following text to ${targetLang} as naturally and colloquially as if it were in a film or subtitle. Then provide a short explanation of the sentence in the same target language. Respond ONLY in this exact JSON format, nothing else:\n{"translation":"...", "explanation":"..."}\nText:\n${text}`;
+        const prompt = AIPrompts.movieTranslate(text, targetLang);
 
         const parsed = await geminiRequest(prompt, {
             temperature: 0.8,

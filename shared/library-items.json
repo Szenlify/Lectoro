@@ -49,6 +49,20 @@
         "note": "Główny bohater uczy się języka od podstaw — proste słownictwo i powolne tempo."
     },
     {
+        "title": "Up",
+        "genre": "Animacja",
+        "level": "beginner",
+        "image": "https://www.lookmovie2.to/images/p/w400/335d2b3336348b9c9793f02f3b4b2598.webp",
+        "note": "Wiele scen opartych na przekazie wizualnym, proste zdania oraz bardzo przejrzyste dialogi."
+    },
+    {
+        "title": "Moana",
+        "genre": "Animacja",
+        "level": "beginner",
+        "image": "https://www.lookmovie2.to/images/p/w400/74289b84b0624f5defc31f429c29ace8.webp",
+        "note": "Wpadające w ucho piosenki pomagają zapamiętywać frazy, bardzo wyrazista artykulacja postaci."
+    },
+    {
         "title": "Legally Blonde",
         "genre": "Komedia",
         "level": "intermediate",
@@ -91,6 +105,20 @@
         "note": "Wolna narracja, ikoniczne dialogi, południowy akcent."
     },
     {
+        "title": "The Truman Show",
+        "genre": "Dramat/Komedia",
+        "level": "intermediate",
+        "image": "https://www.lookmovie2.to/images/p/w400/1f9f919c906ff6242011d00ac0e50fcf.webp",
+        "note": "Autentyczny język codzienny, zwroty stosowane w mediach i powszednich konwersacjach."
+    },
+    {
+        "title": "The Intern",
+        "genre": "Komedia/Dramat",
+        "level": "intermediate",
+        "image": "https://www.lookmovie2.to/images/p/w400/0972fa21b2adbed13e4cd3b66b76dbef.webp",
+        "note": "Współczesny język biznesowy i potoczny, idealny do nauki zwrotów używanych w pracy."
+    },
+    {
         "title": "The Social Network",
         "genre": "Dramat",
         "level": "advanced",
@@ -117,5 +145,19 @@
         "level": "advanced",
         "image": "https://www.lookmovie2.to/images/p/w400/bfce1d9be1d97d338d437e09bba4e4b3.webp",
         "note": "Bardzo szybkie dialogi, wyrafinowane słownictwo i brytyjski slang."
+    },
+    {
+        "title": "Dead Poets Society",
+        "genre": "Dramat",
+        "level": "advanced",
+        "image": "https://www.lookmovie2.to/images/p/w400/544e62462683be56aa1603eb9ae34bf9.webp",
+        "note": "Literacki język angielski, wyrafinowane konstrukcje gramatyczne i bogate słownictwo."
+    },
+    {
+        "title": "Inception",
+        "genre": "Sci-Fi/Akcja",
+        "level": "advanced",
+        "image": "https://www.lookmovie2.to/images/p/w400/7b7cd824a913e459a4b9d0b8f01ba731.webp",
+        "note": "Szybkie tempo dynamicznych dialogów, skomplikowana terminologia i abstrakcyjne pojęcia."
     }
 ]
