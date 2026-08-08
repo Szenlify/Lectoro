@@ -946,10 +946,52 @@
 
     let aiTooltipActive = false;
     let aiWasPlaying = false;
+    let aiShimmerEl = null;
+
+    /** "AI thinking" loader placed exactly above the current subtitle
+     *  line(s) — a pulsing orbiting orb + bouncing dots make it obvious a
+     *  click registered and the AI response is on its way, without
+     *  covering/altering the subtitle text itself. */
+    function showAiShimmer(rect) {
+        removeAiShimmer();
+        const parent =
+            document.fullscreenElement ||
+            document.webkitFullscreenElement ||
+            document.body;
+        aiShimmerEl = document.createElement("div");
+        aiShimmerEl.className = `${PREFIX}ai-loader`;
+        aiShimmerEl.innerHTML = `
+            <span class="${PREFIX}ai-loader-orb">
+                <span class="${PREFIX}ai-loader-ring"></span>
+                <span class="${PREFIX}ai-loader-ring ${PREFIX}ai-loader-ring2"></span>
+                <span class="${PREFIX}ai-loader-core">✨</span>
+            </span>
+            <span class="${PREFIX}ai-loader-label">AI analizuje</span>
+            <span class="${PREFIX}ai-loader-dots"><i></i><i></i><i></i></span>`;
+        parent.appendChild(aiShimmerEl);
+
+        const loaderRect = aiShimmerEl.getBoundingClientRect();
+        let left = rect.left + (rect.width - loaderRect.width) / 2;
+        left = Math.max(
+            4,
+            Math.min(left, window.innerWidth - loaderRect.width - 4),
+        );
+        aiShimmerEl.style.left = left + "px";
+        aiShimmerEl.style.top = rect.top - loaderRect.height - 10 + "px";
+    }
+    function removeAiShimmer() {
+        if (aiShimmerEl) {
+            aiShimmerEl.remove();
+            aiShimmerEl = null;
+        }
+    }
+    addCleanup(removeAiShimmer);
+
     function closeAiTooltip() {
         if (!aiTooltipActive) return;
         aiTooltipActive = false;
         hideTooltip();
+        removeAiShimmer();
         if (aiWasPlaying) {
             aiWasPlaying = false;
             const video = PlayerAdapter.getVideo();
@@ -958,28 +1000,87 @@
     }
     addDismissHandler(closeAiTooltip);
 
+    /** Wire the "save to review" button inside the AI-explain tooltip:
+     *  stores the original + translated sentence together with a video
+     *  screenshot in the spaced-repetition deck. */
+    function wireAiExplainSaveButton(
+        text,
+        translation,
+        explanation,
+        targetLang,
+    ) {
+        const tooltipNode = document.getElementById(PREFIX + "tooltip");
+        const saveBtn = tooltipNode?.querySelector(
+            `.${PREFIX}ai-explain-save-btn`,
+        );
+        if (!saveBtn) return;
+        saveBtn.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            if (saveBtn.classList.contains("saved")) return;
+            const screenshot = QT.captureVideoScreenshot() || "";
+            saveWord({
+                original: text,
+                translated: translation || text,
+                // Subtitles shown by this feature are always English (see
+                // the hardcoded "EN" label above) — storing the real code
+                // here (not "auto") matters because the review popup's TTS
+                // picks its Google voice by matching this language code;
+                // "auto" matched no voice, silently falling back to
+                // whatever non-Google voice the browser/OS had installed.
+                srcLang: "en",
+                tgtLang: targetLang,
+                sentence: "",
+                sentenceTranslated: "",
+                aiSentence: explanation || "",
+                aiSentenceTranslated: "",
+                screenshot,
+                url: window.location.href,
+                timestamp: Date.now(),
+                downloaded: false,
+            });
+            saveBtn.innerHTML = `${SVG.SAVE_SENTENCE_CHECK} <span>Zapisano!</span>`;
+            saveBtn.classList.add("saved");
+        });
+    }
+
     async function handleAIExplain(video) {
         const text = PlayerAdapter.getCurrentText();
         if (!text) return;
+
+        // Exit any active in-place translation/word-cloud mode first so it
+        // doesn't fight over the same subtitle DOM.
+        if (eTranslateActive || wordCloudActive) {
+            restoreOriginal();
+        }
+
         aiTooltipActive = true;
         aiWasPlaying = !video.paused;
         if (aiWasPlaying) video.pause();
 
-        const container = PlayerAdapter.getSubtitleContainer();
-        const rect = container
-            ? container.getBoundingClientRect()
-            : {
-                  left: window.innerWidth / 2 - 100,
-                  top: window.innerHeight - 150,
-                  width: 200,
-                  height: 50,
-              };
+        // Prefer the exact rect of the currently rendered subtitle text so the
+        // shimmer + tooltip always line up with what's actually on screen —
+        // above the subtitles, not pinned to the top of the page — no matter
+        // the site/player or window width.
+        const rect =
+            getSubtitleRect() ||
+            (() => {
+                const container = PlayerAdapter.getSubtitleContainer();
+                return container
+                    ? container.getBoundingClientRect()
+                    : {
+                          left: window.innerWidth / 2 - 100,
+                          top: window.innerHeight - 150,
+                          width: 200,
+                          height: 50,
+                      };
+            })();
 
-        showLoading(rect, "top");
+        showAiShimmer(rect);
         try {
             const targetLang = await getTargetLang();
             const res = await QT.geminiExplainSentence(text, targetLang);
             if (!aiTooltipActive) return;
+            removeAiShimmer();
 
             const translation = res.translation || "";
             const explanation = res.explanation || res;
@@ -1000,9 +1101,15 @@
                         <div class="${PREFIX}ai-label">Wyjaśnienie:</div>
                         <div class="${PREFIX}ai-text">${escapeHtml(explanation)}</div>
                     </div>
+                </div>
+                <div class="${PREFIX}save-footer">
+                    <button class="${PREFIX}ai-explain-save-btn ${PREFIX}save-footer-btn" title="Zapisz zdanie razem ze zdjęciem do powtórek">
+                        ${SVG.SAVE_SENTENCE} <span>Zapisz do powtórek</span>
+                    </button>
                 </div>`;
             showTooltip(html, rect, "top");
             attachTooltipHandlers();
+            wireAiExplainSaveButton(text, translation, explanation, targetLang);
 
             // Auto-play: read translation then explanation
             if (aiTooltipActive) {
@@ -1012,6 +1119,7 @@
                 }
             }
         } catch (err) {
+            removeAiShimmer();
             if (aiTooltipActive)
                 showTooltip(
                     `<div class="${PREFIX}error">⚠ ${escapeHtml(err.message)}</div>`,

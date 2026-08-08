@@ -1285,35 +1285,31 @@ function cleanTextForPopupTTS(text) {
         .trim();
 }
 
+// Mirrors core.js's pickBestVoice: the settings UI (voiceSelect) only ever
+// lists Google voices, so the fallback here must also be restricted to
+// Google voices — otherwise, if the saved name doesn't match (e.g. voices
+// not loaded yet on this page) or "Domyślny" is selected, this used to fall
+// back to whatever random system/Microsoft voice was installed, which
+// sounded completely different from the Google voice heard during video
+// playback and in the settings preview.
 function pickPopupVoice(savedVoiceName, lang) {
     const voices = window.speechSynthesis.getVoices();
     if (!voices.length) return null;
+
+    const googleVoices = voices.filter((v) => /google/i.test(v.name));
+
     if (savedVoiceName) {
-        const exact = voices.find((v) => v.name === savedVoiceName);
+        const exact = googleVoices.find((v) => v.name === savedVoiceName);
         if (exact) return exact;
     }
+
     const baseLang = (lang || "en").split("-")[0].toLowerCase();
-    const langVoices = voices.filter((v) =>
+    const langVoices = googleVoices.filter((v) =>
         v.lang.toLowerCase().startsWith(baseLang),
     );
     if (!langVoices.length) return null;
-    const patterns = [
-        /microsoft\s+(aria|jenny).*natural/i,
-        /microsoft\s+(aria|jenny)/i,
-        /natural/i,
-        /neural/i,
-        /online/i,
-        /enhanced/i,
-        /premium/i,
-        /microsoft.*(guy|ana|christopher|eric|michelle|steffan)/i,
-        /google\s+u[sk]/i,
-        /google/i,
-    ];
-    for (const p of patterns) {
-        const m = langVoices.find((v) => p.test(v.name));
-        if (m) return m;
-    }
-    return langVoices.find((v) => !v.localService) || langVoices[0];
+
+    return langVoices[0];
 }
 
 // Monotonic token: lets an in-flight (async) popupSpeak call detect that a
@@ -1410,7 +1406,11 @@ function popupSpeak(text, lang) {
                     cleanTextForPopupTTS(text),
                 );
                 utter.lang = lang || "en";
-                // Review TTS always speaks at normal speed, regardless of the rate setting
+                // Review TTS always speaks at normal speed (1.0), regardless
+                // of the Settings speed slider — that slider only affects
+                // in-video subtitle TTS. Voice and volume still follow
+                // Settings so the review card sounds like the same voice
+                // the user picked, just always at a natural pace.
                 utter.rate = 1;
                 utter.volume = volume;
                 const voice = pickPopupVoice(data.speechVoice, lang);
@@ -1499,17 +1499,26 @@ function renderReview() {
     progressBar.style.width = `${Math.round((reviewIndex / reviewTotalDue) * 100)}%`;
 
     if (!reviewAnswerShown) {
-        const srcL = w.srcLang || "en";
-        const tgtL = w.tgtLang || "pl";
-        const isReverse = reviewDirection === "reverse";
-        const showWord = isReverse ? w.translated : w.original;
-        const showLang = isReverse ? tgtL : srcL;
-        const showSentence = isReverse
-            ? w.sentenceTranslated || ""
-            : w.sentence || "";
-        const wordClass = isReverse ? "__qt_translated" : "__qt_original";
-        const sentenceHtml = showSentence
-            ? `
+        renderQuestion(w);
+    } else {
+        renderAnswer(w);
+    }
+}
+
+// ── Question (front) side ──────────────────────────────────────────
+function renderQuestion(w) {
+    const card = document.getElementById("reviewCard");
+    const srcL = w.srcLang || "en";
+    const tgtL = w.tgtLang || "pl";
+    const isReverse = reviewDirection === "reverse";
+    const showWord = isReverse ? w.translated : w.original;
+    const showLang = isReverse ? tgtL : srcL;
+    const showSentence = isReverse
+        ? w.sentenceTranslated || ""
+        : w.sentence || "";
+    const wordClass = isReverse ? "__qt_translated" : "__qt_original";
+    const sentenceHtml = showSentence
+        ? `
                 <div class="review-context-row">
                     <span class="review-context">"${highlightReviewSentence(
                         showSentence,
@@ -1520,8 +1529,8 @@ function renderReview() {
                         showSentence,
                     )}" data-lang="${escapeAttr(showLang)}" title="Odczytaj zdanie">${SPEAK_SVG}</button>
                 </div>`
-            : "";
-        card.innerHTML = `
+        : "";
+    card.innerHTML = `
             <div class="review-flashcard">
                 <div class="review-question">
                     <div class="review-word-row">
@@ -1535,35 +1544,181 @@ function renderReview() {
                 </div>
             </div>
             <button class="review-reveal-btn" id="revealBtn">▸ Pokaż odpowiedź</button>
-            <div class="review-hint">Naciśnij <kbd>Spacja</kbd> aby odsłonić</div>`;
+            <div class="review-hint"><kbd>↓</kbd>/<kbd>S</kbd> odwróć &nbsp; <kbd>↑</kbd>/<kbd>W</kbd> czytaj &nbsp; <kbd>←</kbd>/<kbd>A</kbd> nie znam &nbsp; <kbd>→</kbd>/<kbd>D</kbd> znam &nbsp; <kbd>Enter</kbd> tłumacz AI</div>`;
 
-        attachReviewSpeakHandlers(card);
-        autoSpeakReviewCard(w, false);
-        document
-            .getElementById("revealBtn")
-            .addEventListener("click", revealAnswer);
+    attachReviewSpeakHandlers(card);
+    autoSpeakReviewCard(w, false);
+    document.getElementById("revealBtn").addEventListener("click", flipCard);
 
-        // Always scroll so the question word/sentence is fully visible —
-        // mirrors the answer-side scroll below, since the previous card
-        // may have left the panel scrolled down after revealing an answer.
-        const scrollToQuestion = () => {
-            const wordRow = card.querySelector(".review-word-row");
-            if (wordRow)
-                wordRow.scrollIntoView({ behavior: "smooth", block: "start" });
-        };
-        requestAnimationFrame(scrollToQuestion);
-        const qShotImg = card.querySelector(".review-screenshot-img");
-        if (qShotImg && !qShotImg.complete) {
-            qShotImg.addEventListener("load", scrollToQuestion, { once: true });
-        }
-    } else {
-        renderAnswer(w);
+    // Every new card must always start fully scrolled to the top — force
+    // the scrollable card container itself back to 0 rather than relying
+    // on scrollIntoView, which (due to the flex "safe center" alignment)
+    // could leave a small residual offset instead of a true top position.
+    const scrollToTop = () => {
+        card.scrollTop = 0;
+    };
+    scrollToTop();
+    requestAnimationFrame(scrollToTop);
+    const qShotImg = card.querySelector(".review-screenshot-img");
+    if (qShotImg && !qShotImg.complete) {
+        qShotImg.addEventListener("load", scrollToTop, { once: true });
     }
 }
 
+/**
+ * Flip the flashcard in place — toggles between question (front) and
+ * answer (back) every time it's called, exactly like flipping a real
+ * paper flashcard back and forth as many times as you want, instead of
+ * only ever revealing the answer once.
+ */
+function flipCard() {
+    const card = document.getElementById("reviewCard");
+    const flashcard = card?.querySelector(".review-flashcard");
+    const w = reviewQueue[reviewIndex];
+    if (!w) return;
+
+    const showNext = () => {
+        reviewAnswerShown = !reviewAnswerShown;
+        if (reviewAnswerShown) {
+            renderAnswer(w);
+        } else {
+            renderQuestion(w);
+        }
+        const newFlashcard = card.querySelector(".review-flashcard");
+        newFlashcard?.classList.add("qt-flip-in");
+    };
+
+    // Real flashcard "flip" feel: rotate the current face away, then swap
+    // in the other side's content rotated in from the opposite direction.
+    if (flashcard) {
+        flashcard.classList.add("qt-flip-out");
+        setTimeout(showNext, 150);
+    } else {
+        showNext();
+    }
+}
+
+// Backwards-compatible alias (kept in case anything still calls it by name).
 function revealAnswer() {
-    reviewAnswerShown = true;
-    renderAnswer(reviewQueue[reviewIndex]);
+    flipCard();
+}
+
+/** Swipe the current card off-screen (like a real flashcard being tossed
+ * left/right) before applying the grade and loading the next card. */
+function animateSwipeAndRate(grade) {
+    const card = document.getElementById("reviewCard");
+    const flashcard = card?.querySelector(".review-flashcard");
+    const rating = card?.querySelector(".review-rating");
+    const actions = card?.querySelector(".review-actions-row");
+
+    if (flashcard) {
+        flashcard.classList.add(
+            grade === 1 ? "qt-swipe-left" : "qt-swipe-right",
+        );
+        rating?.classList.add("qt-fade-out");
+        actions?.classList.add("qt-fade-out");
+        setTimeout(() => rateWord(grade), 200);
+    } else {
+        rateWord(grade);
+    }
+}
+
+/**
+ * On-demand AI translate ('Enter' shortcut) — fetches a fresh, plain/accurate
+ * translation of the currently shown word + sentence via Gemini and shows it
+ * inline, without flipping or rating the card. Independent of reveal state.
+ */
+async function aiTranslateReviewCard() {
+    const card = document.getElementById("reviewCard");
+    if (!card || reviewIndex >= reviewQueue.length) return;
+    const w = reviewQueue[reviewIndex];
+    if (!w) return;
+
+    const srcL = w.srcLang || "en";
+    const tgtL = w.tgtLang || "pl";
+    const isReverse = reviewDirection === "reverse";
+    const qWord = isReverse ? w.translated : w.original;
+    const qLang = isReverse ? tgtL : srcL;
+    const qSentence = isReverse ? w.sentenceTranslated || "" : w.sentence || "";
+    const aLang = isReverse ? srcL : tgtL;
+    if (!qWord) return;
+
+    const flashcard = card.querySelector(".review-flashcard");
+    let panel = card.querySelector("#reviewAiTranslate");
+    if (!panel) {
+        panel = document.createElement("div");
+        panel.id = "reviewAiTranslate";
+        panel.className = "review-ai-translate";
+        (flashcard || card).appendChild(panel);
+    }
+    panel.innerHTML = `<div class="review-ai-translate-loading"><span class="review-ai-spinner"></span>Tłumaczę (AI)…</div>`;
+
+    const { geminiApiKey } = await new Promise((r) =>
+        chrome.storage.sync.get({ geminiApiKey: "" }, r),
+    );
+    if (!geminiApiKey) {
+        panel.innerHTML = `<div class="review-ai-translate-error">Ustaw klucz Gemini API w zakładce ⚙️ Ustawienia.</div>`;
+        return;
+    }
+
+    try {
+        const prompt = AIPrompts.standardTranslate(
+            qWord,
+            qSentence,
+            qLang,
+            aLang,
+        );
+        const res = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${encodeURIComponent(geminiApiKey)}`,
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: {
+                        temperature: 0.3,
+                        maxOutputTokens: 300,
+                    },
+                }),
+            },
+        );
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(
+                errData?.error?.message || `Gemini HTTP ${res.status}`,
+            );
+        }
+        const json = await res.json();
+        const text = json?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+        const wordTr = parsed.word_translation || "";
+        const sentTr = parsed.sentence_translation || "";
+
+        // Bail out silently if the user already moved to a different card
+        // while the request was in flight.
+        if (reviewQueue[reviewIndex] !== w) return;
+        if (!document.body.contains(panel)) return;
+
+        panel.innerHTML = `
+            <div class="review-ai-translate-label">🤖 Tłumaczenie AI</div>
+            <div class="review-ai-translate-word">${escapeHtml(wordTr || "—")}</div>
+            ${sentTr ? `<div class="review-ai-translate-sentence">"${escapeHtml(sentTr)}"</div>` : ""}
+        `;
+
+        // Read the AI translation aloud too, just like every other card
+        // face — cuts off whatever was speaking before (question/answer
+        // auto-speak) so the two don't overlap.
+        const speakText = buildReviewSpeakText(wordTr, sentTr);
+        if (speakText) {
+            stopPopupSpeak();
+            popupSpeak(speakText, aLang).catch(() => {});
+        }
+    } catch (err) {
+        if (reviewQueue[reviewIndex] !== w) return;
+        if (!document.body.contains(panel)) return;
+        panel.innerHTML = `<div class="review-ai-translate-error">Błąd AI: ${escapeHtml(err.message)}</div>`;
+    }
 }
 
 function renderAnswer(w) {
@@ -1574,91 +1729,58 @@ function renderAnswer(w) {
     const isReverse = reviewDirection === "reverse";
 
     // In reverse mode: question=translated, answer=original
-    const qWord = isReverse ? w.translated : w.original;
-    const qLang = isReverse ? tgtL : srcL;
-    const qSentence = isReverse ? w.sentenceTranslated || "" : w.sentence || "";
     const aWord = isReverse ? w.original : w.translated;
     const aLang = isReverse ? srcL : tgtL;
     const aSentence = isReverse ? w.sentence || "" : w.sentenceTranslated || "";
-    const qWordClass = isReverse ? "__qt_translated" : "__qt_original";
     const aWordClass = isReverse ? "__qt_original" : "__qt_translated";
 
     // Preview labels for each grade
     const labels = [1, 2, 3, 4].map((g) => previewLabel(sr, g));
 
+    // Same layout as the question side (review-word-row / review-context-row
+    // / screenshot) so the answer visually *replaces* the original word in
+    // the exact same spot — true flashcard flip — instead of stacking a
+    // second "translation" block below it.
     card.innerHTML = `
         <div class="review-flashcard">
             <div class="review-question">
                 <div class="review-word-row">
-                    <span class="review-word ${qWordClass}">${escapeHtml(qWord)}</span>
+                    <span class="review-word ${aWordClass}">${escapeHtml(aWord)}</span>
                     <button class="review-speak-btn" data-text="${escapeAttr(
-                        buildReviewSpeakText(qWord, qSentence),
-                    )}" data-lang="${escapeAttr(qLang)}" title="Odczytaj">${SPEAK_SVG}</button>
+                        buildReviewSpeakText(aWord, aSentence),
+                    )}" data-lang="${escapeAttr(aLang)}" title="Odczytaj">${SPEAK_SVG}</button>
                 </div>
                 ${
-                    qSentence
+                    aSentence
                         ? `
                 <div class="review-context-row">
                     <span class="review-context">"${highlightReviewSentence(
-                        qSentence,
-                        qWord,
-                        qWordClass,
+                        aSentence,
+                        aWord,
+                        aWordClass,
                     )}"</span>
-                    <button class="review-speak-btn review-speak-sm" data-text="${escapeAttr(qSentence)}" data-lang="${escapeAttr(qLang)}" title="Odczytaj zdanie">${SPEAK_SVG}</button>
+                    <button class="review-speak-btn review-speak-sm" data-text="${escapeAttr(aSentence)}" data-lang="${escapeAttr(aLang)}" title="Odczytaj zdanie">${SPEAK_SVG}</button>
                 </div>`
                         : ""
                 }
                 ${w.screenshot ? `<div class="review-screenshot"><img src="${w.screenshot}" alt="Screenshot" class="review-screenshot-img"></div>` : ""}
             </div>
-            <div class="review-divider-main"></div>
-            <div class="review-answer-inline">
-                <div class="review-translation-row">
-                    <span class="review-translation ${aWordClass}">${escapeHtml(aWord)}</span>
-                    <button class="review-speak-btn" data-text="${escapeAttr(
-                        buildReviewSpeakText(aWord, aSentence),
-                    )}" data-lang="${escapeAttr(aLang)}" title="Odczytaj tłumaczenie">${SPEAK_SVG}</button>
-                </div>
-                ${
-                    aSentence
-                        ? `
-                <div class="review-divider"></div>
-                <div class="review-sentence-trans-row">
-                    <span class="review-sentence-trans">"${highlightReviewSentence(
-                        aSentence,
-                        aWord,
-                        aWordClass,
-                    )}"</span>
-                    <button class="review-speak-btn review-speak-sm" data-text="${escapeAttr(aSentence)}" data-lang="${escapeAttr(aLang)}" title="Odczytaj tłumaczenie zdania">${SPEAK_SVG}</button>
-                </div>`
-                        : ""
-                }
-            </div>
         </div>
         <div class="review-rating">
-            <div class="review-rating-label">Jak dobrze zrozumiałeś?</div>
-            <div class="review-rating-buttons">
-                <button class="review-rate-btn rate-1" data-grade="1" title="Powtórz (Again)">
-                    <span class="rate-key">1</span>
-                    <span class="rate-label">Powtórz</span>
+            <div class="review-rating-label">Znałeś odpowiedź?</div>
+            <div class="review-rating-buttons review-rating-buttons-2">
+                <button class="review-rate-btn rate-no" data-grade="1" title="Nie znam (←)">
+                    <span class="rate-key">←</span>
+                    <span class="rate-label">Nie znam</span>
                     <span class="review-next-info">${labels[0]}</span>
                 </button>
-                <button class="review-rate-btn rate-2" data-grade="2" title="Trudne (Hard)">
-                    <span class="rate-key">2</span>
-                    <span class="rate-label">Trudne</span>
-                    <span class="review-next-info">${labels[1]}</span>
-                </button>
-                <button class="review-rate-btn rate-3" data-grade="3" title="Dobre (Good)">
-                    <span class="rate-key">3</span>
-                    <span class="rate-label">Dobre</span>
+                <button class="review-rate-btn rate-yes" data-grade="3" title="Znam (→)">
+                    <span class="rate-key">→</span>
+                    <span class="rate-label">Znam</span>
                     <span class="review-next-info">${labels[2]}</span>
                 </button>
-                <button class="review-rate-btn rate-4" data-grade="4" title="Łatwe (Easy)">
-                    <span class="rate-key">4</span>
-                    <span class="rate-label">Łatwe</span>
-                    <span class="review-next-info">${labels[3]}</span>
-                </button>
             </div>
-            <div class="review-hint">Klawisze od <kbd>1</kbd>-<kbd>4</kbd> = ocena</div>
+            <div class="review-hint"><kbd>←</kbd>/<kbd>A</kbd> nie znam &nbsp; <kbd>→</kbd>/<kbd>D</kbd> znam &nbsp; <kbd>↑</kbd>/<kbd>W</kbd> czytaj &nbsp; <kbd>↓</kbd>/<kbd>S</kbd> odwróć &nbsp; <kbd>Enter</kbd> tłumacz AI</div>
         </div>
         <div class="review-actions-row">
             <button class="review-edit-btn" id="reviewEditBtn">✏️ Edytuj</button>
@@ -1669,24 +1791,24 @@ function renderAnswer(w) {
     attachReviewSpeakHandlers(card);
     autoSpeakReviewCard(w, true);
 
-    // Scroll straight to the answer so it's visible even when a screenshot
-    // pushes it below the fold (re-run once the screenshot finishes loading,
-    // since its height isn't known until then).
-    const scrollToAnswer = () => {
-        const answerEl = card.querySelector(".review-answer-inline");
-        if (answerEl)
-            answerEl.scrollIntoView({ behavior: "smooth", block: "start" });
+    // Same as the question side: always force a full scroll back to the
+    // top of the card container (re-run once the screenshot finishes
+    // loading, since its height isn't known until then and could push
+    // the container's scroll position back down).
+    const scrollToTop = () => {
+        card.scrollTop = 0;
     };
-    requestAnimationFrame(scrollToAnswer);
+    scrollToTop();
+    requestAnimationFrame(scrollToTop);
     const shotImg = card.querySelector(".review-screenshot-img");
     if (shotImg && !shotImg.complete) {
-        shotImg.addEventListener("load", scrollToAnswer, { once: true });
+        shotImg.addEventListener("load", scrollToTop, { once: true });
     }
 
     // Attach rating handlers
     card.querySelectorAll(".review-rate-btn").forEach((btn) => {
         btn.addEventListener("click", () => {
-            rateWord(parseInt(btn.dataset.grade));
+            animateSwipeAndRate(parseInt(btn.dataset.grade));
         });
     });
 
@@ -1829,41 +1951,53 @@ function rateWord(grade) {
     });
 }
 
-// ── Keyboard shortcuts for review (1-4 = rate, Space = reveal) ───
+// ── Keyboard shortcuts for review — flashcard-style controls ──────
+//   ↑ / W   → read word + sentence aloud (current side)
+//   ↓ / S   → flip the card in place to reveal the answer
+//   ← / A   → "Nie znam" (Again) — works from either side, front or back
+//   → / D   → "Znam" (Good)      — works from either side, front or back
+//   Enter   → fetch a fresh, on-demand standard AI translation
 document.addEventListener("keydown", (e) => {
     const reviewTab = document.getElementById("tab-review");
     if (!reviewTab || !reviewTab.classList.contains("active")) return;
     if (reviewIndex >= reviewQueue.length || reviewQueue.length === 0) return;
 
-    if (e.key === " " || e.key === "Spacebar") {
-        e.preventDefault();
-        if (!reviewAnswerShown) {
-            revealAnswer();
-        } else {
-            const w = reviewQueue[reviewIndex];
-            const srcL = w.srcLang || "en";
-            const tgtL = w.tgtLang || "pl";
-            const isReverse = reviewDirection === "reverse";
-            const aWord = isReverse ? w.original : w.translated;
-            const aSentence = isReverse
-                ? w.sentence || ""
-                : w.sentenceTranslated || "";
-            const aLang = isReverse ? srcL : tgtL;
-            const text = buildReviewSpeakText(aWord, aSentence);
-            if (text) {
-                popupSpeak(text, aLang).catch(() => {});
-            }
-        }
-    }
+    // Don't hijack WASD/arrows/Enter while the user is typing in the
+    // inline edit form (e.g. editing the word's spelling).
+    const activeTag = document.activeElement?.tagName;
+    if (activeTag === "INPUT" || activeTag === "TEXTAREA") return;
 
-    if (reviewAnswerShown && e.key >= "1" && e.key <= "4") {
-        e.preventDefault();
-        rateWord(parseInt(e.key));
-    }
+    const key = e.key;
+    const lowerKey = key.length === 1 ? key.toLowerCase() : key;
 
-    if (e.key === "r" || e.key === "R") {
+    if (key === "ArrowUp" || lowerKey === "w") {
         e.preventDefault();
         autoSpeakReviewCard(reviewQueue[reviewIndex], reviewAnswerShown);
+        return;
+    }
+
+    if (key === "ArrowDown" || lowerKey === "s") {
+        e.preventDefault();
+        flipCard();
+        return;
+    }
+
+    if (key === "ArrowLeft" || lowerKey === "a") {
+        e.preventDefault();
+        animateSwipeAndRate(1);
+        return;
+    }
+
+    if (key === "ArrowRight" || lowerKey === "d") {
+        e.preventDefault();
+        animateSwipeAndRate(3);
+        return;
+    }
+
+    if (key === "Enter" || key === "NumpadEnter") {
+        e.preventDefault();
+        aiTranslateReviewCard();
+        return;
     }
 });
 

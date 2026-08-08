@@ -1201,6 +1201,75 @@
                slightly hidden behind the fold. */
             justify-content: safe center;
             overflow-y: auto;
+            /* Real card feel: gives the flip/swipe 3D transforms below some
+               depth instead of looking like a flat squash. */
+            perspective: 1200px;
+        }
+
+        /* ── Flashcard gesture animations (flip to reveal, swipe to grade) ── */
+        .review-flashcard.qt-flip-out {
+            animation: qtFlipOut .15s ease-in forwards;
+        }
+
+        .review-flashcard.qt-flip-in {
+            animation: qtFlipIn .3s cubic-bezier(.34, 1.56, .64, 1);
+        }
+
+        @keyframes qtFlipOut {
+            from {
+                transform: rotateY(0deg) scale(1);
+                opacity: 1;
+            }
+
+            to {
+                transform: rotateY(90deg) scale(.94);
+                opacity: .15;
+            }
+        }
+
+        @keyframes qtFlipIn {
+            from {
+                transform: rotateY(-90deg) scale(.94);
+                opacity: .15;
+            }
+
+            to {
+                transform: rotateY(0deg) scale(1);
+                opacity: 1;
+            }
+        }
+
+        .review-flashcard.qt-swipe-left {
+            animation: qtSwipeLeft .22s ease-in forwards;
+        }
+
+        .review-flashcard.qt-swipe-right {
+            animation: qtSwipeRight .22s ease-in forwards;
+        }
+
+        @keyframes qtSwipeLeft {
+            to {
+                transform: translateX(-160%) rotate(-16deg);
+                opacity: 0;
+            }
+        }
+
+        @keyframes qtSwipeRight {
+            to {
+                transform: translateX(160%) rotate(16deg);
+                opacity: 0;
+            }
+        }
+
+        .qt-fade-out {
+            animation: qtFadeOut .18s ease-in forwards;
+        }
+
+        @keyframes qtFadeOut {
+            to {
+                opacity: 0;
+                transform: translateY(6px);
+            }
         }
 
         /* ══════════════════════════════════════════
@@ -1748,6 +1817,56 @@
             gap: 8px;
         }
 
+        /* ── Binary Znam / Nie znam layout (2 big buttons) ── */
+        .review-rating-buttons-2 {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .review-rating-buttons-2 .review-rate-btn {
+            padding: 16px 8px 14px;
+        }
+
+        .review-rating-buttons-2 .rate-key {
+            font-size: 22px;
+        }
+
+        .review-rating-buttons-2 .rate-label {
+            font-size: 10.5px;
+        }
+
+        .rate-no {
+            border-color: rgba(248, 113, 113, 0.18);
+            background: rgba(248, 113, 113, 0.04);
+        }
+
+        .rate-no:hover {
+            background: rgba(248, 113, 113, 0.12);
+            border-color: rgba(248, 113, 113, 0.35);
+            box-shadow: 0 8px 24px rgba(248, 113, 113, 0.1);
+        }
+
+        .rate-no .rate-key,
+        .rate-no .rate-label {
+            color: #f87171;
+        }
+
+        .rate-yes {
+            border-color: rgba(110, 231, 183, 0.18);
+            background: rgba(110, 231, 183, 0.04);
+        }
+
+        .rate-yes:hover {
+            background: rgba(110, 231, 183, 0.12);
+            border-color: rgba(110, 231, 183, 0.35);
+            box-shadow: 0 8px 24px rgba(110, 231, 183, 0.1);
+        }
+
+        .rate-yes .rate-key,
+        .rate-yes .rate-label {
+            color: #6ee7b7;
+        }
+
         .review-rate-btn {
             display: flex;
             flex-direction: column;
@@ -1882,6 +2001,69 @@
             background: var(--glass);
             color: var(--text-muted);
             font-weight: 600;
+        }
+
+        /* ── On-demand AI translate panel ('Enter' shortcut) ── */
+        .review-ai-translate {
+            width: 100%;
+            margin-top: 14px;
+            padding: 10px 14px;
+            border-radius: var(--radius-md);
+            border: 1px solid rgba(129, 140, 248, 0.2);
+            background: var(--accent-dim);
+            text-align: center;
+            animation: answerIn .25s cubic-bezier(.4, 0, .2, 1);
+        }
+
+        .review-ai-translate-loading {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11.5px;
+            color: var(--text-secondary);
+        }
+
+        .review-ai-spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid rgba(129, 140, 248, 0.25);
+            border-top-color: var(--accent);
+            animation: qtSpin .7s linear infinite;
+        }
+
+        @keyframes qtSpin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .review-ai-translate-label {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .8px;
+            color: var(--accent);
+            margin-bottom: 4px;
+        }
+
+        .review-ai-translate-word {
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .review-ai-translate-sentence {
+            font-size: 12.5px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .review-ai-translate-error {
+            font-size: 11.5px;
+            color: #f87171;
+            font-weight: 500;
         }
 
         .review-empty,

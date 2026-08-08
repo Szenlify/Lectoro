@@ -51,6 +51,24 @@ Respond ONLY in this exact JSON format, nothing else:
     },
 
     /**
+     * Used by popup.js (aiTranslateReviewCard) for the flashcard "Enter"
+     * shortcut in the Review tab — a plain, accurate, dictionary-style AI
+     * translation of the currently shown word/sentence (as opposed to the
+     * colloquial "movie style" translation used elsewhere), so the user can
+     * double-check the meaning on demand without flipping/rating the card.
+     */
+    standardTranslate(word, sentence, srcLang, tgtLang) {
+        const sentencePart = sentence
+            ? `\nZdanie z kontekstem: "${sentence}"`
+            : "";
+        return `Jesteś precyzyjnym tłumaczem słownikowym. Przetłumacz DOKŁADNIE i standardowo (bez stylizacji potocznej/filmowej) poniższe słowo z języka ${srcLang} na język ${tgtLang}.
+Słowo: "${word}"${sentencePart}
+
+Podaj najbardziej trafne, standardowe tłumaczenie słowa (uwzględniając kontekst zdania, jeśli podane), a jeśli zdanie zostało podane, przetłumacz też całe zdanie na ${tgtLang}. Odpowiedz WYŁĄCZNIE w tym dokładnym formacie JSON, bez żadnego dodatkowego tekstu:
+{"word_translation": "...", "sentence_translation": "..."}`;
+    },
+
+    /**
      * Used by popup.js (generateQuizWithGemini) to build the full,
      * multi-section vocabulary quiz from the user's saved word list.
      * @param {Object} opts
