@@ -78,23 +78,31 @@ Podaj najbardziej trafne, standardowe tłumaczenie słowa (uwzględniając konte
      * @param {string[]} opts.chosenTypes - ordered list of section types to include this generation
      */
     quiz({ srcLangAdj, wordList, nonce, chosenTypes }) {
-        return `Jesteś asystentem do nauki języków. Uczeń uczy się słówek w języku ${srcLangAdj} (kolumna "słowo źródłowe" poniżej), a ich polskie tłumaczenie podano tylko jako pomoc. Stwórz bardziej rozbudowany, zróżnicowany i wymagający test/quiz sprawdzający WYŁĄCZNIE znajomość słówek w języku ${srcLangAdj} – każda oczekiwana odpowiedź (luka do uzupełnienia, poprawna opcja, odpowiedź w translation/word_order/error_correction) MUSI być w języku ${srcLangAdj}, NIGDY po polsku. Treści poleceń/instrukcji i ewentualne opisy znaczeń pisz po polsku, żeby uczeń rozumiał zadanie, ale sama odpowiedź zawsze ma być słowem/zdaniem w języku ${srcLangAdj}.
+        return `Jesteś doświadczonym egzaminatorem językowym tworzącym PRAWDZIWY sprawdzian szkolny (na poziomie solidnego testu z języka ${srcLangAdj}), a nie luźny quiz zabawowy. Uczeń uczy się słówek w języku ${srcLangAdj} (kolumna "słowo źródłowe" poniżej), a ich polskie tłumaczenie podano tylko jako pomoc. Stwórz OBSZERNY, rozbudowany, zróżnicowany i wymagający sprawdzian, który RZETELNIE sprawdza rozumienie i poprawne użycie słówek w języku ${srcLangAdj} – każda oczekiwana odpowiedź (luka do uzupełnienia, poprawna opcja, odpowiedź w translation/correct_form/word_from_definition) MUSI być w języku ${srcLangAdj}, NIGDY po polsku. Treści poleceń/instrukcji i ewentualne opisy znaczeń pisz po polsku, żeby uczeń rozumiał zadanie, ale sama odpowiedź zawsze ma być słowem/zdaniem w języku ${srcLangAdj}.
 
-WAŻNE — zróżnicowanie między generacjami: token unikalności ${nonce}. Za KAŻDYM razem, nawet dla identycznej listy słówek, wybierz inny zestaw typów sekcji, inną ich kolejność, inne konkretne pytania, przykłady i zdania – quiz nigdy nie powinien wyglądać tak samo dwa razy z rzędu. W tej generacji użyj DOKŁADNIE tych typów sekcji, w tej kolejności: ${chosenTypes.join(", ")}. Mieszaj też poziom trudności pytań w ramach sekcji (część łatwiejszych, część trudniejszych/podchwytliwych).
+NAJWAŻNIEJSZA ZASADA JAKOŚCI — zero bezsensownych/sztucznych pytań: każde pytanie musi realnie sprawdzać konkretną, jednoznacznie definiowalną umiejętność językową (słownictwo, gramatykę, użycie w kontekście). Zabronione jest tworzenie pytań, w których "poprawna odpowiedź" różni się od materiału wyjściowego w sposób DOWOLNY/PRZYPADKOWY i niezwiązany z żadną testowalną zasadą – uczeń nie może być karany za coś, czego nie miał prawa się domyślić lub wywnioskować. W szczególności:
+- dla "correct_form": wszystkie "options" MUSZĄ być różnymi formami GRAMATYCZNYMI dokładnie tego samego słowa bazowego podanego w nawiasie w "sentence" (np. różne czasy/formy czasownika, liczba pojedyncza/mnoga rzeczownika, stopniowanie przymiotnika) – żadna opcja nie może być zupełnie innym słowem ani zawierać dodatkowej treści spoza tej jednej odmiany;
+- dla "word_from_definition": "answer" MUSI być dokładnie jednym ze słówek z listy poniżej (dokładnie taką formą, jaka występuje w kolumnie "słowo źródłowe"), a "definition" musi jednoznacznie i WYŁĄCZNIE opisywać znaczenie tego jednego słowa (bez podawania samego słowa ani jego tłumaczenia wprost);
+- dystraktory w multiple_choice/odd_one_out muszą być prawdopodobne i tej samej kategorii gramatycznej/części mowy (nie oczywiste absurdy ułatwiające zgadywanie);
+- "hint" w fill_blank nie może zdradzać całej odpowiedzi ani być z nią identyczny.
+Przykład ŹLE dla "correct_form" (zabronione — opcje to różne słowa, nie formy tego samego słowa): { "sentence": "Yesterday I ___ (go) to the cinema.", "options": ["go", "walk", "run", "drive"], "answer": "went" }
+Przykład DOBRZE (opcje to wyłącznie formy czasownika "go"): { "sentence": "Yesterday I ___ (go) to the cinema.", "options": ["go", "goes", "went", "gone"], "answer": "went" }
 
-KRYTYCZNE — dokładna struktura JSON: dla KAŻDEGO typu sekcji użyj DOKŁADNIE takich samych nazw pól jak w przykładzie na końcu (np. "prompt", "pairs", "hint" itd.) — inne/brakujące nazwy pól sprawiają, że pytanie wyświetla się jako PUSTE w aplikacji. Każda sekcja MUSI zawierać przynajmniej 3-4 wypełnione pytania (lub pary dla "matching") — nigdy nie zwracaj pustej tablicy "questions"/"pairs".
+WAŻNE — zróżnicowanie między generacjami: token unikalności ${nonce}. Za KAŻDYM razem, nawet dla identycznej listy słówek, wybierz inny zestaw typów sekcji, inną ich kolejność, inne konkretne pytania, przykłady i zdania – quiz nigdy nie powinien wyglądać tak samo dwa razy z rzędu. W tej generacji użyj DOKŁADNIE tych typów sekcji, w tej kolejności: ${chosenTypes.join(", ")}. Mieszaj też poziom trudności pytań w ramach sekcji (część łatwiejszych, część trudniejszych/podchwytliwych, na poziomie realnego sprawdzianu szkolnego, nie infantylnego quizu).
+
+ROZMIAR SPRAWDZIANU — ma być OBSZERNY: każda sekcja MUSI zawierać co najmniej 5-6 w pełni wypełnionych, sensownych pytań (dla "matching": co najmniej 5-6 par) — nigdy nie zwracaj pustej ani ubogiej (1-2 pozycje) tablicy "questions"/"pairs". Rozłóż słówka pomiędzy sekcje tak, aby W CAŁYM SPRAWDZIANIE (łącznie, we wszystkich sekcjach) każde słówko z listy pojawiło się przynajmniej raz — najlepiej kilka razy, w różnych sekcjach i różnych formach/kontekstach gramatycznych, żeby dokładnie sprawdzić całą listę, a nie tylko jej wybrany fragment.
+
+KRYTYCZNE — dokładna struktura JSON: dla KAŻDEGO typu sekcji użyj DOKŁADNIE takich samych nazw pól jak w przykładzie na końcu (np. "prompt", "pairs", "hint" itd.) — inne/brakujące nazwy pól sprawiają, że pytanie wyświetla się jako PUSTE w aplikacji.
 
 Opis dostępnych typów sekcji:
-- multiple_choice: pole "questions", każde pytanie ma "question" (po polsku, np. opisujące znaczenie, synonim lub kontekst użycia), "options" (4 opcje w języku ${srcLangAdj}, jedna poprawna + sensowne dystraktory), "answer" (poprawna opcja w języku ${srcLangAdj}).
-- fill_blank: pole "questions", każde pytanie ma "sentence" (zdanie W JĘZYKU ${srcLangAdj} z luką "___" w miejscu słówka), "hint" (polskie tłumaczenie DOKŁADNIE brakującego słowa – krótka podpowiedź, NIGDY całe zdanie), "answer" (brakujące słowo w języku ${srcLangAdj}, dokładnie pasujące do luki).
-- matching: pole "pairs" (NIE "questions"!) – tablica 4-6 obiektów, każdy ma "a" (słowo źródłowe w języku ${srcLangAdj}) i "b" (jego polskie tłumaczenie). To jedyna sekcja, gdzie polski pojawia się jako część pytania, bo to dopasowywanie, a nie pisanie odpowiedzi.
-- translation: pole "questions", każde pytanie ma "prompt" (polecenie PO POLSKU w stylu "Jak powiedzieć po ${srcLangAdj}u: 'słowo'?" – MUSI zawierać konkretne polskie słowo do przetłumaczenia, nigdy nie zostawiaj pustego polecenia) i "answer" (tłumaczenie tego słowa w języku ${srcLangAdj}).
-- true_false: pole "questions", każde pytanie ma "statement" (stwierdzenie po polsku o znaczeniu słówka w języku ${srcLangAdj}) i "answer" jako SUROWĄ wartość logiczną JSON true/false (bez cudzysłowów!).
-- word_order: pole "questions", każde pytanie ma "words" (potasowana lista pojedynczych wyrazów tworzących poprawne zdanie w języku ${srcLangAdj} zawierające jedno z uczonych słówek) i "answer" (całe poprawnie ułożone zdanie w języku ${srcLangAdj}).
-- error_correction: pole "questions", każde pytanie ma "sentence" (zdanie w języku ${srcLangAdj} z jednym celowym błędem GRAMATYCZNYM dotyczącym uczonego słówka – np. zła forma czasownika/czas gramatyczny, zły przyimek, brak/zła forma liczby mnogiej, zły szyk zdania, zły article/rodzajnik, niepoprawna zgoda podmiotu z orzeczeniem; słowo docelowe MUSI być zapisane poprawnie ortograficznie, błąd nie może polegać na literówce) i "answer" (CAŁE poprawione zdanie w języku ${srcLangAdj}).
-- odd_one_out: pole "questions", każde pytanie ma "options" (4 słowa w języku ${srcLangAdj}, w tym uczone słówka, z jednej kategorii znaczeniowej + 1 pasujące do innej kategorii) i "answer" (wyraz, który nie pasuje).
-
-Nie używaj wszystkich słówek w każdej sekcji – rozłóż je sensownie pomiędzy sekcje.
+- multiple_choice: pole "questions", każde pytanie ma "question" (po polsku, np. opisujące znaczenie, synonim lub kontekst użycia — konkretne i jednoznaczne, tak by istniała dokładnie JEDNA poprawna odpowiedź), "options" (4 opcje w języku ${srcLangAdj}, jedna poprawna + 3 sensowne, prawdopodobne dystraktory tej samej kategorii/części mowy — bez oczywistych, śmiesznych odpowiedzi ułatwiających zgadywanie), "answer" (poprawna opcja w języku ${srcLangAdj}, dokładnie zgodna z jedną z "options").
+- fill_blank: pole "questions", każde pytanie ma "sentence" (naturalne, sensowne zdanie W JĘZYKU ${srcLangAdj} z DOKŁADNIE JEDNĄ luką "___" w miejscu słówka, jednoznacznie wskazujące jaki wyraz pasuje z kontekstu), "hint" (krótkie polskie tłumaczenie DOKŁADNIE brakującego słowa – tylko podpowiedź, NIGDY całe zdanie ani synonim zdradzający więcej niż samo słowo), "answer" (brakujące słowo w języku ${srcLangAdj}, dokładnie pasujące gramatycznie i logicznie do luki).
+- matching: pole "pairs" (NIE "questions"!) – tablica co najmniej 5-6 obiektów, każdy ma "a" (słowo źródłowe w języku ${srcLangAdj}) i "b" (jego polskie tłumaczenie, zgodne z listą słówek). To jedyna sekcja, gdzie polski pojawia się jako część pytania, bo to dopasowywanie, a nie pisanie odpowiedzi.
+- translation: pole "questions", każde pytanie ma "prompt" (polecenie PO POLSKU w stylu "Jak powiedzieć po ${srcLangAdj}u: 'słowo lub krótkie zdanie'?" – MUSI zawierać konkretną polską frazę do przetłumaczenia, nigdy nie zostawiaj pustego polecenia) i "answer" (dokładne tłumaczenie tej frazy w języku ${srcLangAdj}).
+- true_false: pole "questions", każde pytanie ma "statement" (konkretne, jednoznaczne stwierdzenie po polsku o znaczeniu lub użyciu słówka w języku ${srcLangAdj} — na tyle precyzyjne, by dało się je jednoznacznie ocenić jako prawdziwe lub fałszywe, unikaj stwierdzeń niejasnych/dyskusyjnych) i "answer" jako SUROWĄ wartość logiczną JSON true/false (bez cudzysłowów!).
+- correct_form: pole "questions", każde pytanie ma "sentence" (naturalne zdanie w języku ${srcLangAdj} z DOKŁADNIE JEDNĄ luką "___", a zaraz po niej – w nawiasie – bazowa/słownikowa forma uczonego słówka, np. "Yesterday I ___ (go) to the cinema."), "options" (3-4 różne formy GRAMATYCZNE TEGO SAMEGO słowa z nawiasu – np. różne czasy/osoby czasownika, liczba pojedyncza/mnoga, stopień przymiotnika – dokładnie jedna z nich poprawnie uzupełnia zdanie) i "answer" (poprawna forma, dokładnie zgodna z jedną z "options"). To zadanie sprawdza znajomość gramatyki/odmiany słówka w realnym kontekście zdania, tak jak w prawdziwym sprawdzianie szkolnym.
+- word_from_definition: pole "questions", każde pytanie ma "definition" (zwięzły, jednoznaczny opis/definicja PO POLSKU znaczenia lub zastosowania jednego konkretnego uczonego słówka – bez podawania samego słowa ani jego tłumaczenia wprost, np. "Uczucie silnej niechęci lub wstrętu do czegoś.") i "answer" (dokładnie to słowo w języku ${srcLangAdj}, TAKIE SAMO jak w kolumnie "słowo źródłowe" listy słówek). To zadanie sprawdza aktywne przypominanie sobie słówka na podstawie jego znaczenia, a nie tylko rozpoznawanie.
+- odd_one_out: pole "questions", każde pytanie ma "options" (4 słowa w języku ${srcLangAdj} tej samej części mowy/kategorii gramatycznej, w tym uczone słówka, z jednej wyraźnej kategorii znaczeniowej + 1 pasujące do innej, jednoznacznie odmiennej kategorii — bez dwuznaczności co do tego, które słowo nie pasuje) i "answer" (wyraz, który nie pasuje).
 
 Lista słówek:
 ${wordList}
@@ -142,17 +150,17 @@ Odpowiedz WYŁĄCZNIE w tym dokładnym formacie JSON (uwzględnij TYLKO sekcje t
       ]
     },
     {
-      "type": "word_order",
-      "instructions": "Ułóż wyrazy w poprawnej kolejności, tworząc zdanie.",
+      "type": "correct_form",
+      "instructions": "Uzupełnij zdanie poprawną formą słowa podanego w nawiasie.",
       "questions": [
-        { "words": ["is", "This", "fast", "car", "a"], "answer": "This is a fast car" }
+        { "sentence": "Yesterday I ___ (go) to the cinema.", "options": ["go", "goes", "went", "gone"], "answer": "went" }
       ]
     },
     {
-      "type": "error_correction",
-      "instructions": "Znajdź i popraw błąd gramatyczny.",
+      "type": "word_from_definition",
+      "instructions": "Odgadnij słowo na podstawie definicji i zapisz je w języku źródłowym.",
       "questions": [
-        { "sentence": "He go to school every day.", "answer": "He goes to school every day." }
+        { "definition": "Uczucie silnej niechęci lub wstrętu do czegoś.", "answer": "hate" }
       ]
     },
     {

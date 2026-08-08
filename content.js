@@ -966,8 +966,7 @@
                 <span class="${PREFIX}ai-loader-ring ${PREFIX}ai-loader-ring2"></span>
                 <span class="${PREFIX}ai-loader-core">✨</span>
             </span>
-            <span class="${PREFIX}ai-loader-label">AI analizuje</span>
-            <span class="${PREFIX}ai-loader-dots"><i></i><i></i><i></i></span>`;
+            <span class="${PREFIX}ai-loader-label">AI analizuje</span>`;
         parent.appendChild(aiShimmerEl);
 
         const loaderRect = aiShimmerEl.getBoundingClientRect();
