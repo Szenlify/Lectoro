@@ -487,7 +487,14 @@
                 }
                 entry.updatedAt = Date.now();
                 words.push(entry);
-                chrome.storage.local.set({ savedWords: words });
+                chrome.storage.local.set({ savedWords: words }, () => {
+                    if (chrome.runtime.lastError) {
+                        console.error(
+                            "[Lectoro] Nie udało się zapisać słowa:",
+                            chrome.runtime.lastError.message,
+                        );
+                    }
+                });
             }
         });
     }

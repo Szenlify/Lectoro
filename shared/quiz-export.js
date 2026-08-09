@@ -115,14 +115,15 @@ function quizGradeFromPercent(pct) {
 }
 
 // ── 1. Quiz mode toggle + export button ────────────────────────────
-let quizOutputMode = "pdf";
+let quizOutputMode = "interactive";
 const quizModePdfBtn = document.getElementById("quizModePdf");
 const quizModeInteractiveBtn = document.getElementById("quizModeInteractive");
 function setQuizMode(mode) {
     quizOutputMode = mode;
-    quizModePdfBtn.classList.toggle("active", mode === "pdf");
-    quizModeInteractiveBtn.classList.toggle("active", mode === "interactive");
+    quizModePdfBtn?.classList.toggle("active", mode === "pdf");
+    quizModeInteractiveBtn?.classList.toggle("active", mode === "interactive");
 }
+setQuizMode(quizOutputMode); // sync button styling with the default on load
 quizModePdfBtn?.addEventListener("click", () => setQuizMode("pdf"));
 quizModeInteractiveBtn?.addEventListener("click", () =>
     setQuizMode("interactive"),
@@ -728,6 +729,7 @@ function buildInteractiveQuizHtml(quiz, words) {
                                 <input type="text" class="q-input" placeholder="Twoja odpowiedź… (Enter = sprawdź)" onkeydown="if(event.key==='Enter'){event.preventDefault();gradeQuestion(this.closest('.q'));}">
                                 <button type="button" class="btn-mini" onclick="gradeQuestion(this.closest('.q'))">✓</button>
                             </div>
+                            <div class="q-match-bar"><div class="q-match-fill"></div><span class="q-match-label"></span></div>
                             <div class="q-feedback"></div>
                         </div>`;
                     })
@@ -767,6 +769,7 @@ function buildInteractiveQuizHtml(quiz, words) {
                                 <input type="text" class="q-input" placeholder="Twoja odpowiedź… (Enter = sprawdź)" onkeydown="if(event.key==='Enter'){event.preventDefault();gradeQuestion(this.closest('.q'));}">
                                 <button type="button" class="btn-mini" onclick="gradeQuestion(this.closest('.q'))">✓</button>
                             </div>
+                            <div class="q-match-bar"><div class="q-match-fill"></div><span class="q-match-label"></span></div>
                             <div class="q-feedback"></div>
                         </div>`;
                     })
@@ -812,6 +815,7 @@ function buildInteractiveQuizHtml(quiz, words) {
                                 <input type="text" class="q-input" placeholder="Twoja odpowiedź… (Enter = sprawdź)" onkeydown="if(event.key==='Enter'){event.preventDefault();gradeQuestion(this.closest('.q'));}">
                                 <button type="button" class="btn-mini" onclick="gradeQuestion(this.closest('.q'))">✓</button>
                             </div>
+                            <div class="q-match-bar"><div class="q-match-fill"></div><span class="q-match-label"></span></div>
                             <div class="q-feedback"></div>
                         </div>`;
                     })
@@ -861,6 +865,14 @@ function buildInteractiveQuizHtml(quiz, words) {
     .q.correct .q-feedback { color: #16a34a; }
     .q.incorrect { border-color: #dc2626; }
     .q.incorrect .q-feedback { color: #dc2626; }
+    .q-feedback .fb-answer-label { color: var(--muted) !important; font-weight: 700; }
+    .q-feedback .fb-answer-diff { font-weight: 800; font-size: 13.5px; letter-spacing: .2px; display: inline-block; margin-top: 2px; }
+    .q-feedback .diff-ok { color: #16a34a !important; }
+    .q-feedback .diff-bad { color: #dc2626 !important; background: rgba(220,38,38,0.13); border-radius: 3px; padding: 0 1px; }
+    .q-match-bar { position: relative; height: 18px; background: #ececf1; border-radius: 999px; margin-top: 8px; overflow: hidden; display: none; }
+    .q-match-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #16a34a, #4ade80); transition: width .35s ease; border-radius: 999px; }
+    .q-match-fill.low { background: linear-gradient(90deg, #dc2626, #f87171); }
+    .q-match-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 10.5px; font-weight: 800; color: #1f2126; text-shadow: 0 1px 0 rgba(255,255,255,.5); }
     .actions { display: flex; gap: 10px; margin: 24px 0; }
     .actions button { font-size: 14px; font-weight: 700; padding: 12px 22px; border-radius: 10px; border: none; cursor: pointer; font-family: inherit; }
     .btn-check { background: var(--accent); color: #ffffff; }
@@ -955,6 +967,76 @@ function buildInteractiveQuizHtml(quiz, words) {
     function normalize(s) {
         return (s || '').toString().trim().toLowerCase().replace(/\s+/g, ' ').replace(/[.,!?;:]+$/, '');
     }
+    function escapeHtmlClient(s) {
+        return (s || '').toString()
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+    // Full Levenshtein DP matrix (not just the distance) so we can backtrack
+    // and figure out, character by character, which parts of the correct
+    // answer the user actually got right vs. wrong/missing.
+    function levenshteinMatrix(a, b) {
+        var m = a.length, n = b.length;
+        var d = [];
+        for (var i = 0; i <= m; i++) d[i] = [i];
+        for (var j = 0; j <= n; j++) d[0][j] = j;
+        for (var i2 = 1; i2 <= m; i2++) {
+            for (var j2 = 1; j2 <= n; j2++) {
+                var cost = a[i2 - 1] === b[j2 - 1] ? 0 : 1;
+                d[i2][j2] = Math.min(
+                    d[i2 - 1][j2] + 1,        // deletion
+                    d[i2][j2 - 1] + 1,        // insertion
+                    d[i2 - 1][j2 - 1] + cost  // substitution / match
+                );
+            }
+        }
+        return d;
+    }
+    // Returns how similar the user's answer is to the expected answer, as a
+    // 0-100 percentage (100 = identical after normalization).
+    function matchPercent(userVal, answer) {
+        var a = normalize(userVal), b = normalize(answer);
+        if (a === b) return 100;
+        var maxLen = Math.max(a.length, b.length);
+        if (maxLen === 0) return 100;
+        var d = levenshteinMatrix(a, b);
+        var dist = d[a.length][b.length];
+        return Math.max(0, Math.round((1 - dist / maxLen) * 100));
+    }
+    // Renders the correct answer as HTML where each character is colored
+    // green if the user typed it correctly (right letter, right place) or
+    // red if it's wrong/missing — so a typo jumps out immediately instead of
+    // making the whole answer red. Comparison is case-insensitive but the
+    // original casing/punctuation of the answer is what gets displayed.
+    function diffAnswerHtml(userVal, answer) {
+        var a = (userVal || '').toString();
+        var b = (answer || '').toString();
+        var al = a.toLowerCase(), bl = b.toLowerCase();
+        var d = levenshteinMatrix(al, bl);
+        var i = al.length, j = bl.length;
+        var marks = [];
+        while (i > 0 || j > 0) {
+            if (i > 0 && j > 0 && al[i - 1] === bl[j - 1] && d[i][j] === d[i - 1][j - 1]) {
+                marks.push({ ch: b[j - 1], ok: true }); i--; j--;
+            } else if (i > 0 && j > 0 && d[i][j] === d[i - 1][j - 1] + 1) {
+                marks.push({ ch: b[j - 1], ok: false }); i--; j--; // substitution
+            } else if (j > 0 && d[i][j] === d[i][j - 1] + 1) {
+                marks.push({ ch: b[j - 1], ok: false }); j--; // missing char
+            } else {
+                i--; // extra char the user typed, not part of the answer
+            }
+        }
+        marks.reverse();
+        var html = '';
+        for (var k = 0; k < marks.length; k++) {
+            html += '<span class="' + (marks[k].ok ? 'diff-ok' : 'diff-bad') + '">' + escapeHtmlClient(marks[k].ch) + '</span>';
+        }
+        return html;
+    }
+    var PASS_THRESHOLD = 90; // % match at/above which a typed answer counts as correct
     // ── Fun extras: sound, streak counter, progress bar, confetti, explosions ──────
     var totalQuestions = document.querySelectorAll('.q').length;
     var answeredIds = {};
@@ -1103,13 +1185,47 @@ function buildInteractiveQuizHtml(quiz, words) {
             userVal = sel ? sel.value : '';
         }
         if (!userVal) return false; // nothing entered yet — don't grade/count as answered
-        var isCorrect = normalize(userVal) === normalize(answer);
+        var pct = null;
+        var isCorrect;
+        if (type === 'text') {
+            // Free-text answers are graded by similarity, not exact equality:
+            // a typed word/sentence that's ≥90% the same as the expected
+            // answer (typos, small differences) still counts as correct.
+            pct = matchPercent(userVal, answer);
+            isCorrect = pct >= PASS_THRESHOLD;
+        } else {
+            isCorrect = normalize(userVal) === normalize(answer);
+        }
         var pts = parseFloat(q.dataset.points) || 1;
         var wasCorrect = q.dataset.wasCorrect === '1';
         q.classList.remove('correct', 'incorrect');
         q.classList.add(isCorrect ? 'correct' : 'incorrect');
         var fb = q.querySelector('.q-feedback');
-        if (fb) fb.textContent = isCorrect ? ('✓ ' + pick(PRAISE)) : ('✗ ' + pick(ENCOURAGE) + ' — Poprawna odpowiedź: ' + answer);
+        if (fb) {
+            var pctSuffix = pct !== null ? (' (zgodność: ' + pct + '%)') : '';
+            if (isCorrect) {
+                fb.innerHTML = '✓ ' + escapeHtmlClient(pick(PRAISE)) + pctSuffix;
+            } else if (type === 'text') {
+                // Show the correct answer with per-letter diff highlighting so
+                // the user can instantly spot exactly where the typo is.
+                var diffHtml = diffAnswerHtml(userVal, answer);
+                fb.innerHTML = '✗ ' + escapeHtmlClient(pick(ENCOURAGE)) + pctSuffix +
+                    '<br><span class="fb-answer-label">Poprawna odpowiedź:</span> <span class="fb-answer-diff">' + diffHtml + '</span>';
+            } else {
+                fb.innerHTML = '✗ ' + escapeHtmlClient(pick(ENCOURAGE)) + ' — <span class="fb-answer-label">Poprawna odpowiedź:</span> ' + escapeHtmlClient(answer);
+            }
+        }
+        if (pct !== null) {
+            var matchBar = q.querySelector('.q-match-bar');
+            var matchFill = q.querySelector('.q-match-fill');
+            var matchLabel = q.querySelector('.q-match-label');
+            if (matchBar && matchFill && matchLabel) {
+                matchBar.style.display = 'block';
+                matchFill.style.width = pct + '%';
+                matchFill.classList.toggle('low', pct < PASS_THRESHOLD);
+                matchLabel.textContent = pct + '% zgodności' + (isCorrect ? ' ✓ zaliczone' : '');
+            }
+        }
         if (type === 'choice') {
             var opts = q.querySelectorAll('.opt');
             for (var i = 0; i < opts.length; i++) {
@@ -1186,6 +1302,12 @@ function buildInteractiveQuizHtml(quiz, words) {
             qs[m].dataset.wasCorrect = '';
             var fb = qs[m].querySelector('.q-feedback');
             if (fb) fb.textContent = '';
+            var matchBar = qs[m].querySelector('.q-match-bar');
+            if (matchBar) matchBar.style.display = 'none';
+            var matchFill = qs[m].querySelector('.q-match-fill');
+            if (matchFill) { matchFill.style.width = '0%'; matchFill.classList.remove('low'); }
+            var matchLabel = qs[m].querySelector('.q-match-label');
+            if (matchLabel) matchLabel.textContent = '';
         }
         document.getElementById('scoreBox').style.display = 'none';
         answeredIds = {};

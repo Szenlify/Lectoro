@@ -570,6 +570,12 @@ function deleteWord(original, timestamp) {
             (w) => !(w.original === original && w.timestamp === timestamp),
         );
         chrome.storage.local.set({ savedWords: words }, () => {
+            if (chrome.runtime.lastError) {
+                console.error(
+                    "[Lectoro] Nie udało się usunąć słowa:",
+                    chrome.runtime.lastError.message,
+                );
+            }
             loadWords();
             // Delete from Firestore (fire-and-forget via background)
             if (wordToDelete) {
@@ -595,6 +601,12 @@ function deleteReviewWord(w) {
                 !(x.original === w.original && x.translated === w.translated),
         );
         chrome.storage.local.set({ savedWords: words }, () => {
+            if (chrome.runtime.lastError) {
+                console.error(
+                    "[Lectoro] Nie udało się usunąć słowa:",
+                    chrome.runtime.lastError.message,
+                );
+            }
             // Delete from Firestore
             chrome.runtime.sendMessage({
                 type: "QT_FIRESTORE_DELETE",
@@ -629,6 +641,12 @@ function deleteAllReviews() {
             (w) => !dueSet.has(w.original + "|" + w.translated),
         );
         chrome.storage.local.set({ savedWords: remaining }, () => {
+            if (chrome.runtime.lastError) {
+                console.error(
+                    "[Lectoro] Nie udało się usunąć słów:",
+                    chrome.runtime.lastError.message,
+                );
+            }
             // Delete from Firestore in batch
             chrome.runtime.sendMessage({
                 type: "QT_FIRESTORE_DELETE_BATCH",
@@ -942,6 +960,12 @@ document.getElementById("clearAll").addEventListener("click", () => {
             (w) => !toRemove.has(w.original + "|" + w.timestamp),
         );
         chrome.storage.local.set({ savedWords: remaining }, () => {
+            if (chrome.runtime.lastError) {
+                console.error(
+                    "[Lectoro] Nie udało się usunąć słów:",
+                    chrome.runtime.lastError.message,
+                );
+            }
             loadWords();
             // Delete from Firestore in batch
             if (visibleWords.length > 0) {
@@ -968,7 +992,15 @@ function markAsDownloaded(exportedWords, allWords) {
         }
         return w;
     });
-    chrome.storage.local.set({ savedWords: updated }, loadWords);
+    chrome.storage.local.set({ savedWords: updated }, () => {
+        if (chrome.runtime.lastError) {
+            console.error(
+                "[Lectoro] Nie udało się zaktualizować słów:",
+                chrome.runtime.lastError.message,
+            );
+        }
+        loadWords();
+    });
 }
 
 // ── Download helper ───────────────────────────────────────────────
@@ -1886,6 +1918,12 @@ function showReviewEditForm(w) {
                 words[idx].sentenceTranslated = newSentenceTr;
                 words[idx].updatedAt = Date.now();
                 chrome.storage.local.set({ savedWords: words }, () => {
+                    if (chrome.runtime.lastError) {
+                        console.error(
+                            "[Lectoro] Nie udało się zapisać edycji:",
+                            chrome.runtime.lastError.message,
+                        );
+                    }
                     renderAnswer(w);
                 });
             } else {
@@ -1922,6 +1960,12 @@ function rateWord(grade) {
             words[idx].updatedAt = Date.now();
             chrome.storage.local.set({ savedWords: words }, () => {
                 _reviewSaving = false;
+                if (chrome.runtime.lastError) {
+                    console.error(
+                        "[Lectoro] Nie udało się zapisać powtórki:",
+                        chrome.runtime.lastError.message,
+                    );
+                }
                 if (grade === 1 && w._sessionAttempts < 3) {
                     // Grade 1 (Again): re-insert word later in the queue
                     // so it comes back again in this session (max 3 attempts)
