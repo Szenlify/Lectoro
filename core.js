@@ -345,6 +345,24 @@
     //  TTS – ElevenLabs
     // ═══════════════════════════════════════════════════════════════
 
+    /** Extract a human-readable reason from an ElevenLabs error response (e.g. quota_exceeded, invalid_api_key). */
+    async function elevenLabsErrorMessage(res) {
+        try {
+            const data = await res.json();
+            const detail = data?.detail;
+            const status =
+                typeof detail === "object" ? detail?.status : undefined;
+            const message =
+                typeof detail === "object" ? detail?.message : detail;
+            if (status === "quota_exceeded")
+                return "skończyły się kredyty ElevenLabs";
+            if (res.status === 401) return "nieprawidłowy klucz API ElevenLabs";
+            return message || `HTTP ${res.status}`;
+        } catch {
+            return `HTTP ${res.status}`;
+        }
+    }
+
     async function speakElevenLabs(text, apiKey, voiceId) {
         try {
             const res = await fetch(
@@ -365,7 +383,7 @@
                     }),
                 },
             );
-            if (!res.ok) throw new Error(`ElevenLabs HTTP ${res.status}`);
+            if (!res.ok) throw new Error(await elevenLabsErrorMessage(res));
             const blob = await res.blob();
             const url = URL.createObjectURL(blob);
             if (elAudioEl) {
@@ -376,7 +394,10 @@
             elAudioEl.play();
             return elAudioEl;
         } catch (err) {
-            console.warn("[QuickTranslator] ElevenLabs TTS failed:", err);
+            console.warn(
+                "[QuickTranslator] ElevenLabs TTS failed:",
+                err.message || err,
+            );
             return null;
         }
     }
@@ -418,20 +439,24 @@
                 async (data) => {
                     const vol =
                         data.ttsVolume !== undefined ? data.ttsVolume : 1;
+                    let audio = null;
                     if (
                         data.ttsMode === "elevenlabs" &&
                         data.elApiKey &&
                         data.elVoiceId
                     ) {
-                        const audio = await speakElevenLabs(
+                        audio = await speakElevenLabs(
                             text,
                             data.elApiKey,
                             data.elVoiceId,
                         );
                         if (audio instanceof HTMLAudioElement)
                             audio.volume = vol;
-                        resolve(audio);
-                    } else {
+                    }
+                    if (!audio) {
+                        // ElevenLabs disabled/not configured, or the request
+                        // failed (e.g. quota exceeded) — fall back to the
+                        // browser voice so playback never goes silent.
                         const utter = new SpeechSynthesisUtterance(
                             cleanTextForTTS(text),
                         );
@@ -442,6 +467,8 @@
                         if (voice) utter.voice = voice;
                         window.speechSynthesis.speak(utter);
                         resolve(utter);
+                    } else {
+                        resolve(audio);
                     }
                 },
             );

@@ -1301,6 +1301,7 @@ function popupSpeak(text, lang) {
                     data.ttsVolume !== undefined ? data.ttsVolume : 1;
 
                 // ElevenLabs path
+                let elFailed = false;
                 if (
                     data.ttsMode === "elevenlabs" &&
                     data.elApiKey &&
@@ -1325,7 +1326,29 @@ function popupSpeak(text, lang) {
                                 }),
                             },
                         );
-                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                        if (!res.ok) {
+                            let reason = `HTTP ${res.status}`;
+                            try {
+                                const errData = await res.json();
+                                const detail = errData?.detail;
+                                const status =
+                                    typeof detail === "object"
+                                        ? detail?.status
+                                        : undefined;
+                                if (status === "quota_exceeded")
+                                    reason = "skończyły się kredyty";
+                                else if (res.status === 401)
+                                    reason = "nieprawidłowy klucz API";
+                                else if (
+                                    typeof detail === "object" &&
+                                    detail?.message
+                                )
+                                    reason = detail.message;
+                            } catch {
+                                /* keep default reason */
+                            }
+                            throw new Error(reason);
+                        }
                         const blob = await res.blob();
                         if (mySeq !== popupSpeakSeq) {
                             resolve({ type: "none", obj: null });
@@ -1336,16 +1359,22 @@ function popupSpeak(text, lang) {
                         popupElAudio.volume = volume;
                         popupElAudio.play();
                         resolve({ type: "audio", obj: popupElAudio });
+                        return;
                     } catch (err) {
                         console.warn(
                             "[Lectoro] ElevenLabs popup TTS failed:",
-                            err,
+                            err.message || err,
                         );
-                        resolve({ type: "none", obj: null });
+                        if (elStatusEl) {
+                            elStatusEl.textContent = `✗ ElevenLabs: ${err.message}`;
+                            elStatusEl.className = "el-status err";
+                        }
+                        elFailed = true;
                     }
-                    return;
                 }
-                // Browser SpeechSynthesis path
+                // Browser SpeechSynthesis path (default, or fallback when
+                // ElevenLabs failed above — never leaves playback silent).
+                if (elFailed) void 0; // fallthrough intentional
                 const utter = new SpeechSynthesisUtterance(
                     cleanTextForPopupTTS(text),
                 );
