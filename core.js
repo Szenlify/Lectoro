@@ -476,6 +476,8 @@
                     (w.aiSentence || "") === (entry.aiSentence || ""),
             );
             if (!exists) {
+                // Stable id so edits/syncs never change this word's identity
+                if (!entry.id) entry.id = SharedUtils.generateId();
                 // Attach spaced-repetition metadata
                 if (!entry.sr) {
                     entry.sr = {

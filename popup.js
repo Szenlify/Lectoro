@@ -1,6 +1,13 @@
 // popup.js – Settings, saved words list, filtering & export (Anki / CSV)
 
 const { escapeHtml, escapeAttr, isDueForReview, countDueWords } = SharedUtils;
+const {
+    update: srUpdate,
+    previewLabel,
+    formatIntervalDays,
+    formatIntervalMinutes,
+    ensure: ensureSR,
+} = SRS; // shared/srs.js
 
 // ── Elements ──────────────────────────────────────────────────────
 const select = document.getElementById("targetLang");
@@ -582,6 +589,7 @@ function deleteWord(original, timestamp) {
                 chrome.runtime.sendMessage({
                     type: "QT_FIRESTORE_DELETE",
                     word: {
+                        id: wordToDelete.id,
                         original: wordToDelete.original,
                         translated: wordToDelete.translated,
                     },
@@ -610,7 +618,11 @@ function deleteReviewWord(w) {
             // Delete from Firestore
             chrome.runtime.sendMessage({
                 type: "QT_FIRESTORE_DELETE",
-                word: { original: w.original, translated: w.translated },
+                word: {
+                    id: w.id,
+                    original: w.original,
+                    translated: w.translated,
+                },
             });
             // Remove from current queue and continue
             reviewQueue.splice(reviewIndex, 1);
@@ -651,6 +663,7 @@ function deleteAllReviews() {
             chrome.runtime.sendMessage({
                 type: "QT_FIRESTORE_DELETE_BATCH",
                 words: dueWords.map((w) => ({
+                    id: w.id,
                     original: w.original,
                     translated: w.translated,
                 })),
@@ -972,6 +985,7 @@ document.getElementById("clearAll").addEventListener("click", () => {
                 chrome.runtime.sendMessage({
                     type: "QT_FIRESTORE_DELETE_BATCH",
                     words: visibleWords.map((w) => ({
+                        id: w.id,
                         original: w.original,
                         translated: w.translated,
                     })),
@@ -1089,85 +1103,8 @@ function autoSpeakReviewCard(w, answerVisible = false) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-//  SPACED REPETITION  –  Anki SM-2 Algorithm (4 grades)
+//  SPACED REPETITION  –  see shared/srs.js for the Anki SM-2 algorithm
 // ═══════════════════════════════════════════════════════════════════
-
-/**
- * Anki SM-2 implementation.
- * Grade 1: Powtórz (Again)
- * Grade 2: Trudne (Hard)
- * Grade 3: Dobre (Good)
- * Grade 4: Łatwe (Easy)
- */
-function srUpdate(sr, grade) {
-    let { interval = 0, reps = 0, easeFactor = 2.5 } = sr;
-
-    if (grade === 1) {
-        reps = 0;
-        interval = 1 / (24 * 60); // 1 minute
-        easeFactor = Math.max(1.3, easeFactor - 0.2);
-    } else if (grade === 2) {
-        interval = reps === 0 ? 10 / (24 * 60) : interval * 1.2; // 10 minutes if new, else 20% increase
-        easeFactor = Math.max(1.3, easeFactor - 0.15);
-    } else if (grade === 3) {
-        if (reps === 0)
-            interval = 10 / (24 * 60); // 10 mins
-        else if (reps === 1)
-            interval = 1; // 1 day
-        else interval = interval * easeFactor;
-        reps++;
-    } else if (grade === 4) {
-        // Easy always graduates immediately (like grade 3 does at reps 0/1),
-        // never falls back to interval*easeFactor while still in early
-        // learning steps — otherwise it could yield a *shorter* interval than
-        // "Dobre" when the stored interval from a prior review was still tiny.
-        if (reps <= 1)
-            interval = 4; // 4 days
-        else interval = interval * easeFactor * 1.3;
-        easeFactor += 0.15;
-        reps++;
-    }
-
-    return {
-        interval,
-        reps,
-        easeFactor,
-        nextReview: Date.now() + interval * 24 * 60 * 60 * 1000,
-        lastReview: Date.now(),
-    };
-}
-
-/** Preview what the next review time label will be for a given grade */
-function previewLabel(sr, grade) {
-    const nextSr = srUpdate(sr, grade);
-    const days = nextSr.interval;
-    const mins = Math.round(days * 24 * 60);
-    if (mins < 60) return formatIntervalMinutes(mins);
-    return formatIntervalDays(days);
-}
-
-function formatIntervalDays(days) {
-    if (days < 1) {
-        const h = Math.round(days * 24);
-        return `${h}h`;
-    }
-    if (days <= 1) return "1 dzień";
-    if (days < 7) return `${days} dni`;
-    if (days === 7) return "1 tydz.";
-    if (days < 30) {
-        const w = Math.round(days / 7);
-        return w === 1 ? "1 tydz." : `${w} tyg.`;
-    }
-    if (days === 30) return "1 mies.";
-    const m = Math.round(days / 30);
-    return m === 1 ? "1 mies." : `${m} mies.`;
-}
-
-function formatIntervalMinutes(mins) {
-    if (mins < 60) return `${mins} min`;
-    const h = Math.round(mins / 60);
-    return h === 1 ? "1 godz." : `${h} godz.`;
-}
 
 // ── Review state ──────────────────────────────────────────────────
 let reviewQueue = [];
@@ -1176,31 +1113,6 @@ let reviewAnswerShown = false;
 let reviewTotalDue = 0;
 let _reviewSaving = false; // guard: skip storage listener while rating
 let _reviewQueueStale = false; // set when a background sync happens mid-session
-
-// ── Default SR data for words that don't have it ──────────────────
-function ensureSR(word) {
-    if (!word.sr) {
-        word.sr = {
-            interval: 0,
-            reps: 0,
-            easeFactor: 2.5,
-            nextReview: 0,
-            lastReview: null,
-        };
-    }
-    // Migrate old step-based format → Anki SM-2 format
-    if (word.sr.step !== undefined) {
-        const oldIntervalDays = word.sr.interval || 0;
-        word.sr = {
-            interval: oldIntervalDays,
-            reps: oldIntervalDays > 0 ? 1 : 0, // Roughly guess reps
-            easeFactor: 2.5,
-            nextReview: word.sr.nextReview || 0,
-            lastReview: word.sr.lastReview || null,
-        };
-    }
-    return word;
-}
 
 // ── Review direction: "normal" = show original, guess translation
 //                      "reverse" = show translation, guess original
@@ -1766,8 +1678,8 @@ function renderAnswer(w) {
     const aSentence = isReverse ? w.sentence || "" : w.sentenceTranslated || "";
     const aWordClass = isReverse ? "__qt_original" : "__qt_translated";
 
-    // Preview labels for each grade
-    const labels = [1, 2, 3, 4].map((g) => previewLabel(sr, g));
+    // Preview labels for each grade (1 = Nie znam, 2 = Znam)
+    const labels = [1, 2].map((g) => previewLabel(sr, g));
 
     // Same layout as the question side (review-word-row / review-context-row
     // / screenshot) so the answer visually *replaces* the original word in
@@ -1806,10 +1718,10 @@ function renderAnswer(w) {
                     <span class="rate-label">Nie znam</span>
                     <span class="review-next-info">${labels[0]}</span>
                 </button>
-                <button class="review-rate-btn rate-yes" data-grade="3" title="Znam (→)">
+                <button class="review-rate-btn rate-yes" data-grade="2" title="Znam (→)">
                     <span class="rate-key">→</span>
                     <span class="rate-label">Znam</span>
-                    <span class="review-next-info">${labels[2]}</span>
+                    <span class="review-next-info">${labels[1]}</span>
                 </button>
             </div>
             <div class="review-hint"><kbd>←</kbd>/<kbd>A</kbd> nie znam &nbsp; <kbd>→</kbd>/<kbd>D</kbd> znam &nbsp; <kbd>↑</kbd>/<kbd>W</kbd> czytaj &nbsp; <kbd>↓</kbd>/<kbd>S</kbd> odwróć &nbsp; <kbd>Enter</kbd> tłumacz AI</div>
@@ -1912,11 +1824,15 @@ function showReviewEditForm(w) {
                     x.translated === oldTranslated,
             );
             if (idx !== -1) {
+                // Assign a stable id on first edit so this doc's identity in
+                // Firestore never changes again, even though its content just did
+                if (!words[idx].id) words[idx].id = SharedUtils.generateId();
                 words[idx].original = newOriginal;
                 words[idx].translated = newTranslated;
                 words[idx].sentence = newSentence;
                 words[idx].sentenceTranslated = newSentenceTr;
                 words[idx].updatedAt = Date.now();
+                w.id = words[idx].id;
                 chrome.storage.local.set({ savedWords: words }, () => {
                     if (chrome.runtime.lastError) {
                         console.error(
@@ -1979,7 +1895,7 @@ function rateWord(grade) {
                     // Don't increment reviewIndex – current index now has next word
                     reviewTotalDue = reviewQueue.length;
                 } else {
-                    // Grade 2-4 or max attempts reached: word is done, advance
+                    // Grade 2 (Good) or max attempts reached: word is done, advance
                     reviewIndex++;
                 }
                 reviewAnswerShown = false;
@@ -2034,7 +1950,7 @@ document.addEventListener("keydown", (e) => {
 
     if (key === "ArrowRight" || lowerKey === "d") {
         e.preventDefault();
-        animateSwipeAndRate(3);
+        animateSwipeAndRate(2);
         return;
     }
 

@@ -20,8 +20,13 @@ const FirebaseSync = (() => {
         );
     }
 
-    /** Deterministic Firestore document ID from word content (SHA-256 hash) */
+    /**
+     * Firestore document ID for a word. Uses the word's stable `id` so a doc
+     * never changes/duplicates when the word's content is edited. Falls back
+     * to a content hash only for legacy words saved before ids existed.
+     */
     async function wordDocId(word) {
+        if (word.id) return word.id;
         const key = `${word.original || ""}|${word.translated || ""}`;
         const data = new TextEncoder().encode(key);
         const hashBuf = await crypto.subtle.digest("SHA-256", data);
@@ -33,7 +38,9 @@ const FirebaseSync = (() => {
     }
 
     function wordKey(w) {
-        return (w.original || "") + "|" + (w.translated || "");
+        return typeof SharedUtils !== "undefined"
+            ? SharedUtils.wordKey(w)
+            : w.id || (w.original || "") + "|" + (w.translated || "");
     }
 
     // ── Auth Storage ─────────────────────────────────────────────
@@ -201,6 +208,7 @@ const FirebaseSync = (() => {
 
     function toFirestoreFields(word) {
         const f = {};
+        f.id = { stringValue: word.id || "" };
         f.original = { stringValue: word.original || "" };
         f.translated = { stringValue: word.translated || "" };
         f.sentence = { stringValue: word.sentence || "" };
@@ -235,6 +243,7 @@ const FirebaseSync = (() => {
         if (!fields) return null;
 
         const word = {
+            id: fields.id?.stringValue || "",
             original: fields.original?.stringValue || "",
             translated: fields.translated?.stringValue || "",
             sentence: fields.sentence?.stringValue || "",
@@ -290,7 +299,11 @@ const FirebaseSync = (() => {
 
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
-                console.warn("[Lectoro] Firestore pull failed:", res.status, err);
+                console.warn(
+                    "[Lectoro] Firestore pull failed:",
+                    res.status,
+                    err,
+                );
                 return null;
             }
 

@@ -2,12 +2,16 @@
 
 // ── Load Firebase modules (graceful fallback if missing) ──────────
 try {
-    importScripts("shared/utils.js", "firebase/firebase-config.js", "firebase/firebase-sync.js");
+    importScripts(
+        "shared/utils.js",
+        "firebase/firebase-config.js",
+        "firebase/firebase-sync.js",
+    );
 } catch (e) {
     console.warn("[Lectoro] Firebase modules not loaded:", e);
 }
 
-const { wordKey, countDueWords, isDueForReview } = SharedUtils;
+const { wordKey, countDueWords, isDueForReview, generateId } = SharedUtils;
 
 // ══════════════════════════════════════════════════════════════════
 //  Cross-device sync (chrome.storage.sync, chunked) – FALLBACK
@@ -31,7 +35,8 @@ async function mergeAndSaveIfChanged(oldWords, newWords) {
 
 /** Helper to get Firebase user and token */
 async function getFirebaseContext() {
-    if (typeof FirebaseSync === "undefined" || !FirebaseSync.isConfigured()) return null;
+    if (typeof FirebaseSync === "undefined" || !FirebaseSync.isConfigured())
+        return null;
     const user = await FirebaseSync.getUser();
     if (!user) return null;
     const token = await FirebaseSync.getValidToken();
@@ -50,6 +55,7 @@ async function pushWordsToSync(words) {
         // Serialize & chunk
         const json = JSON.stringify(
             words.map((w) => ({
+                id: w.id || "",
                 o: w.original,
                 t: w.translated,
                 s: w.sentence || "",
@@ -75,7 +81,10 @@ async function pushWordsToSync(words) {
         await chrome.storage.sync.set(chunks);
     } catch (err) {
         // Quota exceeded or other error – non-fatal
-        console.warn("[Lectoro] Sync push failed (quota?):", err.message || err);
+        console.warn(
+            "[Lectoro] Sync push failed (quota?):",
+            err.message || err,
+        );
     }
 }
 
@@ -92,6 +101,7 @@ async function pullWordsFromSync() {
         }
         const arr = JSON.parse(json);
         return arr.map((c) => ({
+            id: c.id || "",
             original: c.o,
             translated: c.t,
             sentence: c.s || "",
@@ -222,13 +232,62 @@ async function firebaseFullSync() {
 
         const localData = await chrome.storage.local.get({ savedWords: [] });
         const localWords = localData.savedWords || [];
+        const localWordsBefore = JSON.parse(JSON.stringify(localWords));
 
-        // Build maps for merge
+        // ── One-time migration for words saved before stable ids existed ──
+        // Legacy Firestore docs were keyed by a hash of original+translated,
+        // so editing a word left the pre-edit doc behind forever (new
+        // content -> new hash -> new doc, old doc never removed) and it
+        // resurrected as a "new" word on the next sync. Give every such word
+        // a permanent id now, reconciling with any still-legacy remote doc
+        // for the same content instead of creating a second copy, then
+        // delete the old content-keyed doc so it can't come back.
+        const remoteLegacyByContent = new Map();
+        for (const rw of remoteWords) {
+            if (!rw.id) remoteLegacyByContent.set(wordKey(rw), rw);
+        }
+        const legacyDocsToDelete = [];
+        for (const lw of localWords) {
+            if (lw.id) continue;
+            const contentKey = wordKey(lw);
+            const remoteMatch = remoteLegacyByContent.get(contentKey);
+            if (remoteMatch) {
+                const lt =
+                    lw.updatedAt || lw.sr?.lastReview || lw.timestamp || 0;
+                const rt =
+                    remoteMatch.updatedAt ||
+                    remoteMatch.sr?.lastReview ||
+                    remoteMatch.timestamp ||
+                    0;
+                if (rt > lt) Object.assign(lw, remoteMatch);
+                remoteLegacyByContent.delete(contentKey);
+            }
+            legacyDocsToDelete.push({
+                original: lw.original,
+                translated: lw.translated,
+            });
+            lw.id = generateId();
+        }
+        // Any remaining legacy remote-only entries (another device, or a
+        // stale pre-edit duplicate from before this fix) become normal local
+        // words too, so they stop resurrecting on every future sync.
+        for (const rw of remoteLegacyByContent.values()) {
+            legacyDocsToDelete.push({
+                original: rw.original,
+                translated: rw.translated,
+            });
+            rw.id = generateId();
+            localWords.push(rw);
+        }
+
+        // Build maps for merge (every word now carries a stable id)
         const localMap = new Map();
         for (const w of localWords) localMap.set(wordKey(w), w);
 
         const remoteMap = new Map();
-        for (const w of remoteWords) remoteMap.set(wordKey(w), w);
+        for (const w of remoteWords) {
+            if (w.id) remoteMap.set(wordKey(w), w);
+        }
 
         const allKeys = new Set([...localMap.keys(), ...remoteMap.keys()]);
         const merged = [];
@@ -265,11 +324,17 @@ async function firebaseFullSync() {
         }
 
         // Update local storage if anything changed
-        await mergeAndSaveIfChanged(localWords, merged);
+        await mergeAndSaveIfChanged(localWordsBefore, merged);
 
         // Push local-only / updated words to Firestore
         if (toPush.length > 0) {
             await FirebaseSync.pushWords(user.uid, token, toPush);
+        }
+
+        // Clean up now-orphaned legacy (content-hash) docs so they don't
+        // resurrect as duplicates on a future sync
+        for (const legacy of legacyDocsToDelete) {
+            await FirebaseSync.deleteWordDoc(user.uid, token, legacy);
         }
 
         // Store last sync timestamp
