@@ -2046,7 +2046,7 @@ document.addEventListener("keydown", (e) => {
 });
 
 // ── Library tab: curated titles well-suited for learning English ──
-// Static, hand-picked list (title / genre / difficulty / short note), stored
+// Static, hand-picked list (title / difficulty / short note), stored
 // in shared/library-items.json and loaded once when the popup opens.
 // No content is scraped or downloaded from any streaming site – the "Szukaj"
 // button simply opens a web search so the user can find the title themselves.
@@ -2080,6 +2080,18 @@ function libraryOpenSearch(title) {
     window.open(`https://www.lookmovie2.to/movies/search/?q=${q}`, "_blank");
 }
 
+/** Opens the item's own direct "link" (from library-items.json) if one has
+ * been filled in for that title; otherwise falls back to the generic
+ * lookmovie2.to search-by-title behaviour used before this field existed. */
+function libraryOpenItem(title, link) {
+    const trimmed = (link || "").trim();
+    if (trimmed) {
+        window.open(trimmed, "_blank");
+        return;
+    }
+    libraryOpenSearch(title);
+}
+
 function renderLibraryGrid() {
     const grid = document.getElementById("libraryGrid");
     if (!grid) return;
@@ -2097,7 +2109,6 @@ function renderLibraryGrid() {
         if (!q) return true;
         return (
             item.title.toLowerCase().includes(q) ||
-            item.genre.toLowerCase().includes(q) ||
             item.note.toLowerCase().includes(q)
         );
     });
@@ -2140,14 +2151,13 @@ function renderLibraryGrid() {
                 ? `<img src="${escapeAttr(item.image)}" alt="${escapeAttr(item.title)}" loading="lazy" onerror="this.remove(); this.parentElement.classList.add('no-image');">`
                 : "";
             return `
-        <div class="library-card" data-title="${escapeAttr(item.title)}">
+        <div class="library-card" data-title="${escapeAttr(item.title)}" data-link="${escapeAttr(item.link || "")}">
             <div class="library-poster${hasImage ? "" : " no-image"}">
                 ${posterImg}
                 <span class="library-poster-fallback">${levelIcon[item.level]}</span>
             </div>
             <span class="library-level-badge lvl-${item.level}">${levelIcon[item.level]} ${levelLabel[item.level]}</span>
             <div class="library-card-info">
-            <span class="library-genre-badge">${escapeHtml(item.genre)}</span>
                 <div class="library-card-title">${escapeHtml(item.title)}</div>
                 <div class="library-card-note">${escapeHtml(item.note)}</div>
             </div>
@@ -2158,7 +2168,7 @@ function renderLibraryGrid() {
 
     grid.querySelectorAll(".library-card[data-title]").forEach((card) => {
         card.addEventListener("click", () => {
-            libraryOpenSearch(card.dataset.title);
+            libraryOpenItem(card.dataset.title, card.dataset.link);
         });
     });
 }
