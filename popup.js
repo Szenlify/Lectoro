@@ -1674,7 +1674,7 @@ async function aiTranslateReviewCard() {
         if (!document.body.contains(panel)) return;
 
         panel.innerHTML = `
-            <div class="review-ai-translate-label">🤖 Tłumaczenie AI</div>
+            <div class="review-ai-translate-label">Tłumaczenie AI</div>
             <div class="review-ai-translate-word">${escapeHtml(wordTr || "—")}</div>
             ${sentTr ? `<div class="review-ai-translate-sentence">"${escapeHtml(sentTr)}"</div>` : ""}
         `;
