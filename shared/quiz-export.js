@@ -103,6 +103,24 @@ function quizSuggestedMinutes(questionCount) {
     );
 }
 
+/**
+ * Picks the words to quiz on, given a `sorted` list (newest first) and the
+ * requested `count`.
+ *   • source === "recent" — simply the newest `count` words (original behavior).
+ *   • source === "random" — `count` words picked at random from the pool of
+ *     words that are NOT among the newest `count` (i.e. "not from recent"),
+ *     so the quiz targets older/previously-learned vocabulary instead of
+ *     whatever was just added. Falls back to sampling from the full list if
+ *     there aren't enough older words to fill the requested count.
+ */
+function pickQuizWords(sorted, count, source) {
+    if (source !== "random") return sorted.slice(0, count);
+    const excludeCount = Math.min(sorted.length, count);
+    let pool = sorted.slice(excludeCount); // everything past the "recent" window
+    if (pool.length < count) pool = sorted; // not enough older words — sample from all
+    return [...pool].sort(() => Math.random() - 0.5).slice(0, count);
+}
+
 /** Polish school grading scale (1-6), used to turn a raw % score into a
  * report-card-style grade on both the printable and interactive quiz. */
 function quizGradeFromPercent(pct) {
@@ -154,13 +172,12 @@ document.getElementById("exportQuiz").addEventListener("click", async () => {
 
     // Word scope: newest N, or all (respecting the active list filter above)
     const scope = document.getElementById("quizScope").value;
+    const source = document.getElementById("quizSource")?.value || "recent";
     const sorted = [...words].sort(
         (a, b) => (b.timestamp || 0) - (a.timestamp || 0),
     );
-    const quizWords =
-        scope === "all"
-            ? sorted.slice(0, 60)
-            : sorted.slice(0, parseInt(scope, 10));
+    const count = scope === "all" ? 60 : parseInt(scope, 10);
+    const quizWords = pickQuizWords(sorted, count, source);
 
     btn.disabled = true;
     btn.innerHTML = "⏳ Generuję quiz…";
