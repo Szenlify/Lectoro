@@ -9,3 +9,5 @@ edycja powtorek (dobluje sie powtorka z przed edycji i powtorka po edycji) kiedy
 zrob mi nowy folder a w nim wszystko to co potrzebuje razem z instrukcja po polsku co zrobic aby miec ta aplikacje na iphon aplikacje mobilna tylko z powtorkami SRS a w nim abym mogl za pomoca palca swipe robic powtorki design identyczny jaki jest teraz, masz wolna ręke co wybrac jakie frameworki itp ale chce jak najprosciej miec aplikacje na telefonie iphone i zeby robic te same powtorki ktore uzbieram w chrome extension lectoro
 
 cache'owanie audio elevanlabs w Chrome Extension, żeby nie płacić dwa razy za te same fiszki
+
+niech kazdy TTS przestrzega ktora opcja jest ustawiona w ustawieniach i niech mowi dokładnie tym jezykiem ktory jest ustawiony no chyba ze to elevenlabs i skonczyly sie kredyty wtedy wyswietl komunikat i przejdz do zwyklego TTS przegladarkowego google chrome
