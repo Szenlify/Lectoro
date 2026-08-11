@@ -379,7 +379,11 @@ async function loadELVoices(apiKey, selectedVoiceId) {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         const voices = data.voices || [];
-        elVoiceSelect.innerHTML = "";
+
+        // Czyszczenie i dodanie opcji losowania
+        elVoiceSelect.innerHTML =
+            '<option value="random">🎲 Losowy głos</option>';
+
         voices.forEach((v) => {
             const opt = document.createElement("option");
             opt.value = v.voice_id;
@@ -390,10 +394,6 @@ async function loadELVoices(apiKey, selectedVoiceId) {
         });
         elStatusEl.textContent = `✓ Załadowano ${voices.length} głosów`;
         elStatusEl.className = "el-status ok";
-        // Auto-select first if none selected
-        if (!selectedVoiceId && voices.length) {
-            chrome.storage.sync.set({ elVoiceId: voices[0].voice_id });
-        }
     } catch (err) {
         elStatusEl.textContent = `✗ Błąd: ${err.message}`;
         elStatusEl.className = "el-status err";
@@ -1308,8 +1308,38 @@ function popupSpeak(text, lang) {
                     data.elVoiceId
                 ) {
                     try {
+                        let targetVoiceId = data.elVoiceId;
+
+                        // Pobierz listę głosów i wylosuj jeden, jeśli wybrano tryb losowy
+                        if (targetVoiceId === "random") {
+                            const voicesRes = await fetch(
+                                "https://api.elevenlabs.io/v1/voices",
+                                {
+                                    headers: { "xi-api-key": data.elApiKey },
+                                },
+                            );
+                            if (voicesRes.ok) {
+                                const voicesData = await voicesRes.json();
+                                const voices = voicesData.voices || [];
+                                if (voices.length > 0) {
+                                    const randomVoice =
+                                        voices[
+                                            Math.floor(
+                                                Math.random() * voices.length,
+                                            )
+                                        ];
+                                    targetVoiceId = randomVoice.voice_id;
+                                }
+                            }
+                        }
+
+                        if (mySeq !== popupSpeakSeq) {
+                            resolve({ type: "none", obj: null });
+                            return;
+                        }
+
                         const res = await fetch(
-                            `https://api.elevenlabs.io/v1/text-to-speech/${data.elVoiceId}`,
+                            `https://api.elevenlabs.io/v1/text-to-speech/${targetVoiceId}`,
                             {
                                 method: "POST",
                                 headers: {
