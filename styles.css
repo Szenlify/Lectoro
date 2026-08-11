@@ -1021,6 +1021,18 @@ body.__qt_reels-active .captions-text {
     }
 }
 
+/* Zastąp PREFIX odpowiednią nazwą klasy w CSS */
+.lectoro-key-hint {
+    margin-left: 6px;
+    padding: 1px 5px;
+    font-size: 11px;
+    line-height: 1;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.2);
+    display: inline-block;
+}
+
 /* Force-hide video.js control bar — only mouse movement removes this class */
 .video-js.__qt_hide-controls .vjs-control-bar {
     display: none !important;

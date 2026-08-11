@@ -1002,45 +1002,69 @@
     /** Wire the "save to review" button inside the AI-explain tooltip:
      *  stores the original + translated sentence together with a video
      *  screenshot in the spaced-repetition deck. */
-    function wireAiExplainSaveButton(
-        text,
-        translation,
-        explanation,
-        targetLang,
-    ) {
-        const tooltipNode = document.getElementById(PREFIX + "tooltip");
-        const saveBtn = tooltipNode?.querySelector(
-            `.${PREFIX}ai-explain-save-btn`,
-        );
-        if (!saveBtn) return;
-        saveBtn.addEventListener("click", (ev) => {
-            ev.stopPropagation();
-            if (saveBtn.classList.contains("saved")) return;
-            const screenshot = QT.captureVideoScreenshot() || "";
-            saveWord({
-                original: text,
-                translated: translation || text,
-                // Subtitles shown by this feature are always English (see
-                // the hardcoded "EN" label above) — storing the real code
-                // here (not "auto") matters because the review popup's TTS
-                // picks its Google voice by matching this language code;
-                // "auto" matched no voice, silently falling back to
-                // whatever non-Google voice the browser/OS had installed.
-                srcLang: "en",
-                tgtLang: targetLang,
-                sentence: "",
-                sentenceTranslated: "",
-                aiSentence: explanation || "",
-                aiSentenceTranslated: "",
-                screenshot,
-                url: window.location.href,
-                timestamp: Date.now(),
-                downloaded: false,
-            });
-            saveBtn.innerHTML = `${SVG.SAVE_SENTENCE_CHECK} <span>Zapisano!</span>`;
-            saveBtn.classList.add("saved");
-        });
+function wireAiExplainSaveButton(
+    text,
+    translation,
+    explanation,
+    targetLang,
+) {
+    const tooltipNode = document.getElementById(PREFIX + "tooltip");
+    const saveBtn = tooltipNode?.querySelector(
+        `.${PREFIX}ai-explain-save-btn`,
+    );
+    if (!saveBtn) return;
+
+    // 1. UI: Dodanie plakietki z klawiszem "1" do przycisku (jeśli jeszcze nie istnieje)
+    if (!saveBtn.querySelector(`.${PREFIX}key-hint`)) {
+        const hintNode = document.createElement("kbd");
+        hintNode.className = `${PREFIX}key-hint`;
+        hintNode.textContent = "PageDown";
+        saveBtn.appendChild(hintNode);
     }
+
+    // 2. Obsługa zdarzenia kliknięcia
+    saveBtn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        if (saveBtn.classList.contains("saved")) return;
+        const screenshot = QT.captureVideoScreenshot() || "";
+        saveWord({
+            original: text,
+            translated: translation || text,
+            srcLang: "en",
+            tgtLang: targetLang,
+            sentence: "",
+            sentenceTranslated: "",
+            aiSentence: explanation || "",
+            aiSentenceTranslated: "",
+            screenshot,
+            url: window.location.href,
+            timestamp: Date.now(),
+            downloaded: false,
+        });
+        saveBtn.innerHTML = `${SVG.SAVE_SENTENCE_CHECK} <span>Zapisano!</span>`;
+        saveBtn.classList.add("saved");
+    });
+
+    // 3. Obsługa skrótu klawiszowego "PageDown"
+    const handleKeyDown = (ev) => {
+        // Ignoruj wciśnięcie, jeśli użytkownik pisze w jakimś polu tekstowym
+        const isTyping = ["INPUT", "TEXTAREA"].includes(ev.target?.tagName) || ev.target?.isContentEditable;
+        if (isTyping) return;
+
+        if (ev.key === "PageDown") {
+            // Jeśli przycisk nadal istnieje w DOM, wywołaj kliknięcie
+            if (document.contains(saveBtn)) {
+                ev.preventDefault();
+                saveBtn.click();
+            } else {
+                // Czyszczenie listenera, gdy tooltip został usunięty
+                window.removeEventListener("keydown", handleKeyDown);
+            }
+        }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+}
 
     async function handleAIExplain(video) {
         const text = PlayerAdapter.getCurrentText();
@@ -1757,6 +1781,8 @@
                 "{",
                 "]",
                 "}",
+                "Home",
+                "PageUp",
             ];
             if (!NAV_KEYS.includes(key)) return;
 
@@ -1793,7 +1819,7 @@
             }
 
             // Save current subtitle sentence to spaced-repetition review
-            if (key === "z" || key === "Z") {
+            if (key === "z" || key === "Z" || key === "Home" || key === "PageUp") {
                 saveCurrentSentenceToReview();
                 return;
             }
