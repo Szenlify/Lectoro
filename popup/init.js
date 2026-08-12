@@ -98,7 +98,7 @@ function deleteReviewWord(w) {
 
 // ── Delete all due reviews ───────────────────────────────────────
 function deleteAllReviews() {
-    if (!confirm("Usunąć WSZYSTKIE słowa w kolejce powtórek z bazy danych?"))
+    if (!confirm("Usunąć WSZYSTKIE słowa w kolejce powtórek?"))
         return;
     chrome.storage.local.get({ savedWords: [] }, (data) => {
         const allWords = data.savedWords || [];
