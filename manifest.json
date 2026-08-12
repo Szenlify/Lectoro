@@ -33,6 +33,7 @@
             "css": ["styles.css"],
             "js": [
                 "shared/utils.js",
+                "shared/audio-cache.js",
                 "shared/ai-prompts.js",
                 "core.js",
                 "content.js"

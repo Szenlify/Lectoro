@@ -61,4 +61,82 @@ const SharedUtils = {
     countDueWords(words, now = Date.now()) {
         return words.filter((w) => SharedUtils.isDueForReview(w, now)).length;
     },
+
+    cleanTextForTTS(text) {
+        return String(text ?? "")
+            .replace(/<[^>]*>/g, " ")
+            .replace(/[<>]/g, "")
+            .replace(/#/g, "")
+            .replace(/\s{2,}/g, " ")
+            .trim();
+    },
+
+    /**
+     * Highlights a word within a sentence using the given CSS class.
+     */
+    highlightWordInSentence(sentence, word, cssClass) {
+        if (!sentence) return "";
+        const escapedSentence = SharedUtils.escapeHtml(sentence);
+        const escapedWord = SharedUtils.escapeHtml(word || "");
+        if (!escapedWord) return escapedSentence;
+        
+        const regex = new RegExp(
+            `(${escapedWord.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")})`,
+            "i",
+        );
+        return escapedSentence.replace(
+            regex,
+            `<span class="${cssClass}">$1</span>`,
+        );
+    },
+
+    /**
+     * Pick the best available voice.
+     * Priority: user-saved > natural/neural > Google > remote > any
+     */
+    pickBestVoice(savedVoiceName, lang) {
+        const voices = window.speechSynthesis.getVoices();
+        if (!voices.length) return null;
+
+        // Only use Google voices
+        const googleVoices = voices.filter((v) => /google/i.test(v.name));
+
+        if (savedVoiceName) {
+            const exact = googleVoices.find((v) => v.name === savedVoiceName);
+            if (exact) return exact;
+        }
+
+        const baseLang = (lang || "en").split("-")[0].toLowerCase();
+        const langVoices = googleVoices.filter((v) =>
+            v.lang.toLowerCase().startsWith(baseLang),
+        );
+        if (!langVoices.length) return null;
+
+        return langVoices[0];
+    },
+
+    pickRandomBestVoice(savedVoiceName, lang) {
+    const voices = window.speechSynthesis.getVoices();
+    if (!voices.length) return null;
+
+    // Only use Google voices
+    const googleVoices = voices.filter((v) => /google/i.test(v.name));
+
+    if (savedVoiceName) {
+        const exact = googleVoices.find((v) => v.name === savedVoiceName);
+        if (exact) return exact;
+    }
+
+    const baseLang = (lang || "en").split("-")[0].toLowerCase();
+    const langVoices = googleVoices.filter((v) =>
+        v.lang.toLowerCase().startsWith(baseLang),
+    );
+    if (!langVoices.length) return null;
+
+    // Losowanie indeksu z zakresu [0, langVoices.length - 1]
+    const randomIndex = Math.floor(Math.random() * langVoices.length);
+    return langVoices[randomIndex];
+}
+
+    
 };

@@ -9,7 +9,7 @@
     "use strict";
 
     // ── Constants ──────────────────────────────────────────────────
-    const { escapeHtml, escapeAttr } = SharedUtils;
+    const { escapeHtml, escapeAttr,cleanTextForTTS, pickBestVoice } = SharedUtils;
     const PREFIX = "__qt_";
     const ICON_ID = PREFIX + "icon";
     const TOOLTIP_ID = PREFIX + "tooltip";
@@ -104,15 +104,7 @@
             .trim();
     }
 
-    /** Clean text for TTS – remove symbols and markup that are read aloud */
-    function cleanTextForTTS(text) {
-        return String(text ?? "")
-            .replace(/<[^>]*>/g, " ")
-            .replace(/[<>]/g, "")
-            .replace(/#/g, "")
-            .replace(/\s{2,}/g, " ")
-            .trim();
-    }
+
 
     /** Check if a DOM element is part of our UI */
     function isOwnUI(target) {
@@ -313,35 +305,6 @@
     }
 
     // ═══════════════════════════════════════════════════════════════
-    //  TTS – Voice Selection
-    // ═══════════════════════════════════════════════════════════════
-
-    /**
-     * Pick the best available voice.
-     * Priority: user-saved > natural/neural > Google > remote > any
-     */
-    function pickBestVoice(savedVoiceName, lang) {
-        const voices = window.speechSynthesis.getVoices();
-        if (!voices.length) return null;
-
-        // Only use Google voices
-        const googleVoices = voices.filter((v) => /google/i.test(v.name));
-
-        if (savedVoiceName) {
-            const exact = googleVoices.find((v) => v.name === savedVoiceName);
-            if (exact) return exact;
-        }
-
-        const baseLang = (lang || "en").split("-")[0].toLowerCase();
-        const langVoices = googleVoices.filter((v) =>
-            v.lang.toLowerCase().startsWith(baseLang),
-        );
-        if (!langVoices.length) return null;
-
-        return langVoices[0];
-    }
-
-    // ═══════════════════════════════════════════════════════════════
     //  TTS – ElevenLabs
     // ═══════════════════════════════════════════════════════════════
 
@@ -365,26 +328,34 @@
 
     async function speakElevenLabs(text, apiKey, voiceId) {
         try {
-            const res = await fetch(
-                `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
-                {
-                    method: "POST",
-                    headers: {
-                        "xi-api-key": apiKey,
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        text: cleanTextForTTS(text),
-                        model_id: "eleven_flash_v2_5",
-                        voice_settings: {
-                            stability: 0.5,
-                            similarity_boost: 0.75,
+            const cleanText = cleanTextForTTS(text);
+            const cacheKey = `${cleanText}|${voiceId}`;
+            let blob = await AudioCache.get(cacheKey);
+
+            if (!blob) {
+                const res = await fetch(
+                    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+                    {
+                        method: "POST",
+                        headers: {
+                            "xi-api-key": apiKey,
+                            "Content-Type": "application/json",
                         },
-                    }),
-                },
-            );
-            if (!res.ok) throw new Error(await elevenLabsErrorMessage(res));
-            const blob = await res.blob();
+                        body: JSON.stringify({
+                            text: cleanText,
+                            model_id: "eleven_flash_v2_5",
+                            voice_settings: {
+                                stability: 0.5,
+                                similarity_boost: 0.75,
+                            },
+                        }),
+                    },
+                );
+                if (!res.ok) throw new Error(await elevenLabsErrorMessage(res));
+                blob = await res.blob();
+                await AudioCache.set(cacheKey, blob);
+            }
+
             const url = URL.createObjectURL(blob);
             if (elAudioEl) {
                 elAudioEl.pause();
