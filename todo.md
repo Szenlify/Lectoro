@@ -32,8 +32,6 @@ zapisywanie powtorek limit 100 000
 firebase login
 firebase deploy --only functions --project extension-eng
 
-napraw - popraw loadReviewQueue() popup/init.js:51 bo jest error
-
 # Klucz Gemini API – wstaw swój klucz poniżej
 # NIGDY nie commituj tego pliku do Git!
 # Plik jest w .gitignore
