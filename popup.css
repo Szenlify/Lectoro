@@ -1219,15 +1219,8 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            /* "safe center" falls back to start-alignment once content
-               overflows the panel — plain "center" leaves an unreachable
-               region above the card that scrollIntoView can't scroll to,
-               which is why the top of the question/answer sometimes stayed
-               slightly hidden behind the fold. */
             justify-content: safe center;
             overflow-y: auto;
-            /* Real card feel: gives the flip/swipe 3D transforms below some
-               depth instead of looking like a flat squash. */
             perspective: 1200px;
         }
 
