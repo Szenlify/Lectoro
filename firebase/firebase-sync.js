@@ -202,7 +202,7 @@ const FirebaseSync = (() => {
 
     async function signOut() {
         await clearAuthData();
-        await deleteAllReviews();
+        await deleteReviewsFromChromeStorage();
     }
 
     // ── Firestore Data Conversion ────────────────────────────────

@@ -58,7 +58,6 @@ function flashSaved() {
     setTimeout(() => savedMsg.classList.remove("show"), 1500);
 }
 
-
 // ── Delete single review word (from review tab) ──────────────────
 function deleteReviewWord(w) {
     if (!confirm(`Usunąć "${w.original}" z bazy danych?`)) return;
@@ -98,8 +97,7 @@ function deleteReviewWord(w) {
 
 // ── Delete all due reviews ───────────────────────────────────────
 function deleteAllReviews() {
-    if (!confirm("Usunąć WSZYSTKIE słowa w kolejce powtórek?"))
-        return;
+    if (!confirm("Usunąć WSZYSTKIE słowa w kolejce powtórek?")) return;
     chrome.storage.local.get({ savedWords: [] }, (data) => {
         const allWords = data.savedWords || [];
         const now = Date.now();
@@ -137,6 +135,51 @@ function deleteAllReviews() {
     });
 }
 
+function deleteReviewsFromChromeStorage() {
+    chrome.storage.local.get({ savedWords: [] }, (data) => {
+        const allWords = data.savedWords || [];
+        const now = Date.now();
+        const dueWords = allWords.filter((w) => isDueForReview(w, now));
+        if (dueWords.length === 0) return;
+
+        const dueSet = new Set(
+            dueWords.map((w) => w.original + "|" + w.translated),
+        );
+        const remaining = allWords.filter(
+            (w) => !dueSet.has(w.original + "|" + w.translated),
+        );
+        chrome.storage.local.set({ savedWords: remaining }, () => {
+            if (chrome.runtime.lastError) {
+                console.error(
+                    "[Lectoro] Nie udało się usunąć słów:",
+                    chrome.runtime.lastError.message,
+                );
+            }
+
+            reviewQueue = [];
+            reviewIndex = 0;
+            reviewTotalDue = 0;
+            reviewAnswerShown = false;
+            renderReview();
+        });
+    });
+
+    chrome.storage.local.clear(() => {
+        if (chrome.runtime.lastError) {
+            console.error(
+                "[Lectoro] Błąd czyszczenia całej pamięci:",
+                chrome.runtime.lastError.message,
+            );
+            return;
+        }
+
+        reviewQueue = [];
+        reviewIndex = 0;
+        reviewTotalDue = 0;
+        reviewAnswerShown = false;
+        renderReview();
+    });
+}
 
 // ── Download helper ───────────────────────────────────────────────
 function downloadFile(content, filename, mimeType) {
@@ -168,8 +211,6 @@ function buildReviewSpeakText(word, sentence) {
     if (!word) return "";
     return sentence ? `${word}. ${sentence}` : word;
 }
-
-
 
 // Only speak automatically when the user is actually looking at the
 // Review tab. Without this guard, any background refresh of the review
@@ -209,7 +250,6 @@ function autoSpeakReviewCard(w, answerVisible = false) {
         ).catch(() => {});
     }
 }
-
 
 // ── Keyboard shortcuts for review — flashcard-style controls ──────
 //   ↑ / W   → read word + sentence aloud (current side)
