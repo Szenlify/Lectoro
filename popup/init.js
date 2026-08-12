@@ -136,48 +136,25 @@ function deleteAllReviews() {
 }
 
 function deleteReviewsFromChromeStorage() {
-    chrome.storage.local.get({ savedWords: [] }, (data) => {
-        const allWords = data.savedWords || [];
-        const now = Date.now();
-        const dueWords = allWords.filter((w) => isDueForReview(w, now));
-        if (dueWords.length === 0) return;
-
-        const dueSet = new Set(
-            dueWords.map((w) => w.original + "|" + w.translated),
-        );
-        const remaining = allWords.filter(
-            (w) => !dueSet.has(w.original + "|" + w.translated),
-        );
-        chrome.storage.local.set({ savedWords: remaining }, () => {
+    return new Promise((resolve) => {
+        chrome.storage.local.clear(() => {
             if (chrome.runtime.lastError) {
                 console.error(
-                    "[Lectoro] Nie udało się usunąć słów:",
+                    "[Lectoro] Błąd czyszczenia całej pamięci:",
                     chrome.runtime.lastError.message,
                 );
             }
 
+            // Resetowanie stanu interfejsu
             reviewQueue = [];
             reviewIndex = 0;
             reviewTotalDue = 0;
             reviewAnswerShown = false;
             renderReview();
+
+            // Dajemy znać `signOut()`, że pamięć jest bezpiecznie pusta
+            resolve();
         });
-    });
-
-    chrome.storage.local.clear(() => {
-        if (chrome.runtime.lastError) {
-            console.error(
-                "[Lectoro] Błąd czyszczenia całej pamięci:",
-                chrome.runtime.lastError.message,
-            );
-            return;
-        }
-
-        reviewQueue = [];
-        reviewIndex = 0;
-        reviewTotalDue = 0;
-        reviewAnswerShown = false;
-        renderReview();
     });
 }
 
