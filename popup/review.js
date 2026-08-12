@@ -367,14 +367,6 @@ async function aiTranslateReviewCard() {
     }
     panel.innerHTML = `<div class="review-ai-translate-loading"><span class="review-ai-spinner"></span>Tłumaczę (AI)…</div>`;
 
-    const { geminiApiKey } = await new Promise((r) =>
-        chrome.storage.sync.get({ geminiApiKey: "" }, r),
-    );
-    if (!geminiApiKey) {
-        panel.innerHTML = `<div class="review-ai-translate-error">Ustaw klucz Gemini API w zakładce ⚙️ Ustawienia.</div>`;
-        return;
-    }
-
     try {
         const prompt = AIPrompts.standardTranslate(
             qWord,
@@ -382,30 +374,22 @@ async function aiTranslateReviewCard() {
             qLang,
             aLang,
         );
-        const res = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${encodeURIComponent(geminiApiKey)}`,
-            {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig: {
-                        temperature: 0.3,
-                        maxOutputTokens: 300,
-                    },
-                }),
-            },
-        );
-        if (!res.ok) {
-            const errData = await res.json().catch(() => ({}));
-            throw new Error(
-                errData?.error?.message || `Gemini HTTP ${res.status}`,
-            );
+
+        // Bezpieczne proxy – klucz Gemini API jest TYLKO na serwerze Firebase.
+        if (typeof GeminiProxy === "undefined") {
+            panel.innerHTML = `<div class="review-ai-translate-error">GeminiProxy niedostępny.</div>`;
+            return;
         }
-        const json = await res.json();
-        const text = json?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+        let parsed;
+        try {
+            parsed = await GeminiProxy.requestJSON(prompt, {
+                temperature: 0.3,
+                maxOutputTokens: 300,
+            });
+        } catch (aiErr) {
+            panel.innerHTML = `<div class="review-ai-translate-error">${escapeHtml(aiErr.message)}</div>`;
+            return;
+        }
         const wordTr = parsed.word_translation || "";
         const sentTr = parsed.sentence_translation || "";
 

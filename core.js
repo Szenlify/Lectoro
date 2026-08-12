@@ -543,55 +543,12 @@
         prompt,
         { temperature = 0.8, maxOutputTokens = 200 } = {},
     ) {
-        return new Promise((resolve, reject) => {
-            if (!chrome?.storage?.sync) {
-                reject(new Error("Brak klucza Gemini API"));
-                return;
-            }
-            chrome.storage.sync.get({ geminiApiKey: "" }, async (data) => {
-                const key = data.geminiApiKey;
-                if (!key) {
-                    reject(
-                        new Error(
-                            "Wpisz klucz Gemini API w ustawieniach rozszerzenia",
-                        ),
-                    );
-                    return;
-                }
-                try {
-                    const res = await fetch(
-                        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${encodeURIComponent(key)}`,
-                        {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                                contents: [{ parts: [{ text: prompt }] }],
-                                generationConfig: {
-                                    temperature,
-                                    maxOutputTokens,
-                                },
-                            }),
-                        },
-                    );
-                    if (!res.ok) {
-                        const errData = await res.json().catch(() => ({}));
-                        throw new Error(
-                            errData?.error?.message ||
-                                `Gemini HTTP ${res.status}`,
-                        );
-                    }
-                    const json = await res.json();
-                    const text =
-                        json?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-                    const jsonMatch = text.match(/\{[\s\S]*\}/);
-                    if (!jsonMatch)
-                        throw new Error("Gemini: brak odpowiedzi JSON");
-                    resolve(JSON.parse(jsonMatch[0]));
-                } catch (err) {
-                    reject(err);
-                }
-            });
-        });
+        // Bezpieczne proxy – klucz Gemini API jest TYLKO na serwerze Firebase.
+        // GeminiProxy weryfikuje token Firebase Auth i sprawdza plan użytkownika.
+        if (typeof GeminiProxy === "undefined") {
+            throw new Error("GeminiProxy niedostępny – sprawdź kolejność skryptów.");
+        }
+        return GeminiProxy.requestJSON(prompt, { temperature, maxOutputTokens });
     }
 
     // ═══════════════════════════════════════════════════════════════

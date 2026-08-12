@@ -160,15 +160,6 @@ document.getElementById("exportQuiz").addEventListener("click", async () => {
         return;
     }
 
-    const { geminiApiKey } = await new Promise((r) =>
-        chrome.storage.sync.get({ geminiApiKey: "" }, r),
-    );
-    if (!geminiApiKey) {
-        alert(
-            "Aby wygenerować quiz AI, wpisz najpierw klucz Gemini API w zakładce ⚙️ Ustawienia.",
-        );
-        return;
-    }
 
     // Word scope: newest N, or all (respecting the active list filter above)
     const scope = document.getElementById("quizScope").value;
@@ -182,7 +173,7 @@ document.getElementById("exportQuiz").addEventListener("click", async () => {
     btn.disabled = true;
     btn.innerHTML = "⏳ Generuję quiz…";
     try {
-        const quiz = await generateQuizWithGemini(quizWords, geminiApiKey);
+        const quiz = await generateQuizWithGemini(quizWords);
         const html =
             quizOutputMode === "interactive"
                 ? buildInteractiveQuizHtml(quiz, quizWords)
@@ -206,7 +197,7 @@ document.getElementById("exportQuiz").addEventListener("click", async () => {
 
 /** Ask Gemini to build a varied quiz (multiple choice, fill-in-the-blank,
  * matching, translation, true/false) from the saved word list. */
-async function generateQuizWithGemini(words, geminiApiKey) {
+async function generateQuizWithGemini(words) {
     const srcLang = words[0]?.srcLang || "en";
     const srcLangAdj = QUIZ_LANG_ADJ[srcLang] || srcLang.toUpperCase();
 
@@ -240,23 +231,14 @@ async function generateQuizWithGemini(words, geminiApiKey) {
 
     const prompt = AIPrompts.quiz({ srcLangAdj, wordList, nonce, chosenTypes });
 
-    const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${encodeURIComponent(geminiApiKey)}`,
-        {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { temperature: 1, maxOutputTokens: 8000 },
-            }),
-        },
-    );
-    if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData?.error?.message || `Gemini HTTP ${res.status}`);
+    // Bezpieczne proxy – klucz Gemini API jest TYLKO na serwerze Firebase.
+    if (typeof GeminiProxy === "undefined") {
+        throw new Error("GeminiProxy niedostępny – sprawdź kolejność skryptów.");
     }
-    const json = await res.json();
-    const text = json?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const { text } = await GeminiProxy.request(prompt, {
+        temperature: 1,
+        maxOutputTokens: 8000,
+    });
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("Gemini: brak odpowiedzi JSON");
     const knownWords = new Set(

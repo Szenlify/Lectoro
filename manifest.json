@@ -15,7 +15,8 @@
         "https://identitytoolkit.googleapis.com/*",
         "https://firestore.googleapis.com/*",
         "https://securetoken.googleapis.com/*",
-        "https://generativelanguage.googleapis.com/*"
+        "https://europe-west1-extension-eng.cloudfunctions.net/*",
+        "https://geminiproxy-gyagzflbra-ew.a.run.app/*"
     ],
     "background": {
         "service_worker": "background.js"
@@ -35,6 +36,9 @@
                 "shared/utils.js",
                 "shared/audio-cache.js",
                 "shared/ai-prompts.js",
+                "firebase/firebase-config.js",
+                "firebase/firebase-sync.js",
+                "shared/gemini-proxy.js",
                 "core.js",
                 "content.js"
             ],

@@ -1,1 +1,12 @@
 .DS_Store
+
+# Sekrety – NIGDY nie commituj!
+functions/.env
+functions/.env.*
+
+# Firebase local cache
+.firebase/
+
+# Node modules
+functions/node_modules/
+node_modules/

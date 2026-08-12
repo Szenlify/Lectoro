@@ -26,3 +26,8 @@ Plan 3: PRO – 79 zł / mc $19.99
 Limit ElevenLabs: 200 000
 duzy limit AI
 zapisywanie powtorek limit 100 000
+
+
+
+firebase login
+firebase deploy --only functions --project extension-eng

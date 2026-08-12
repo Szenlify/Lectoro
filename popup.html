@@ -145,19 +145,11 @@
             <div class="setting-group">
                 <label>🤖 Gemini AI</label>
                 <div class="glass-card" style="padding:12px;">
-                    <div class="setting-group" style="margin-bottom:0;">
-                        <label for="geminiApiKey">Gemini API Key</label>
-                        <input type="password" id="geminiApiKey" placeholder="AIzaSy...">
+                    <div style="font-size:13px;color:var(--text-secondary);line-height:1.5;">
+                        ✅ Funkcje AI są dostępne automatycznie po zalogowaniu.<br>
+                        Twój limit AI zależy od aktywnego planu subskrypcji.
                     </div>
-                    <div class="el-help" style="margin-top:8px;">
-                        📖 <strong>Jak zdobyć API key:</strong>
-                        <ol>
-                            <li>Wejdź na <a href="https://aistudio.google.com/apikey"
-                                    target="_blank">aistudio.google.com/apikey</a></li>
-                            <li>Kliknij <strong>Create API key</strong></li>
-                            <li>Skopiuj klucz i wklej powyżej</li>
-                        </ol>
-                    </div>
+                    <div id="aiUsageInfo" style="margin-top:10px;font-size:12px;color:var(--text-muted);"></div>
                 </div>
             </div>
 
@@ -410,9 +402,10 @@
     <script src="shared/audio-cache.js"></script>
     <script src="shared/srs.js"></script>
     <script src="shared/ai-prompts.js"></script>
-    <script src="shared/quiz-export.js"></script>
     <script src="firebase/firebase-config.js"></script>
     <script src="firebase/firebase-sync.js"></script>
+    <script src="shared/gemini-proxy.js"></script>
+    <script src="shared/quiz-export.js"></script>
     <script src="popup/firebase-ui.js"></script>
     <script src="popup/init.js"></script>
     <script src="popup/tts.js"></script>

@@ -1,0 +1,9 @@
+# Tajne zmienne środowiskowe – NIE commituj do Git!
+.env
+.env.*
+
+# Firebase lokalny cache
+.firebase/
+
+# Node modules
+node_modules/

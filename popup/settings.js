@@ -189,18 +189,6 @@ elVoiceSelect.addEventListener("change", () => {
     chrome.storage.sync.set({ elVoiceId: elVoiceSelect.value }, flashSaved);
 });
 
-// ── Gemini API Key ────────────────────────────────────────────────
-const geminiApiKeyInput = document.getElementById("geminiApiKey");
-chrome.storage.sync.get({ geminiApiKey: "" }, (data) => {
-    if (data.geminiApiKey) geminiApiKeyInput.value = data.geminiApiKey;
-});
-let geminiKeyDebounce = null;
-geminiApiKeyInput.addEventListener("input", () => {
-    clearTimeout(geminiKeyDebounce);
-    geminiKeyDebounce = setTimeout(() => {
-        chrome.storage.sync.set(
-            { geminiApiKey: geminiApiKeyInput.value.trim() },
-            flashSaved,
-        );
-    }, 600);
-});
+// ── Gemini AI – zużycie (info) ────────────────────────────────────
+// Klucz Gemini API jest zarządzany przez serwer – użytkownicy nie muszą
+// go wpisywać. Tutaj pokazujemy tylko informację o zużyciu z odpowiedzi proxy.

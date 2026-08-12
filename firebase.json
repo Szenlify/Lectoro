@@ -1,10 +1,10 @@
 {
     "firestore": {
-        "rules": "firestore.rules"
+        "rules": "firebase/firestore.rules"
     },
     "functions": [
         {
-            "source": "../functions",
+            "source": "functions",
             "codebase": "default",
             "ignore": [
                 "node_modules",
