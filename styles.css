@@ -700,25 +700,48 @@
    bottom edge, white text with a black outline, transparent background.
    ═══════════════════════════════════════════════════════════════ */
 
+/* Pozycjonowanie i kontener napisów */
+/* Pozycjonowanie i kontener napisów */
 body.__qt_reels-active .caption-window {
     top: auto !important;
-    bottom: 25% !important;
+    bottom: 22% !important;
+    width: 60% !important;
 }
 
+/* Stylizacja i płynne skalowanie tekstu */
 body.__qt_reels-active .ytp-caption-segment,
 body.__qt_reels-active .captions-text {
-    background-color: transparent !important;
     background: transparent !important;
     color: #ffffff !important;
-    font-family: "YouTube Sans", "Roboto", "Arial", sans-serif;
-    font-weight: 700;
+    font-family: "Montserrat", "YouTube Sans", "Roboto", sans-serif !important;
+    font-weight: 800 !important;
+
+    /* Płynny rozmiar: min. 16px, optymalnie 2.2vw, max. 36px */
+    font-size: clamp(16px, 2.2vw, 36px) !important;
+
+    /* text-transform: uppercase; */
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+    padding: 0.2em 0.5em !important;
+    display: inline-block !important;
+
+    /* Obrys i cień skalujące się razem z wielkością czcionki (jednostki em) */
     text-shadow:
-        -1.5px -1.5px 0 #000,
-        1.5px -1.5px 0 #000,
-        -1.5px 1.5px 0 #000,
-        1.5px 1.5px 0 #000,
-        0 0 6px rgba(0, 0, 0, 0.9),
-        0 0 14px rgba(0, 0, 0, 0.7);
+        -0.07em -0.07em 0 #000,
+        0.07em -0.07em 0 #000,
+        -0.07em 0.07em 0 #000,
+        0.07em 0.07em 0 #000,
+        -0.07em 0px 0 #000,
+        0.07em 0px 0 #000,
+        0px -0.07em 0 #000,
+        0px 0.07em 0 #000,
+        0px 0.15em 0.3em rgba(0, 0, 0, 0.85);
+}
+
+/* Opcjonalna korekta pod tryb pełnoekranowy (Fullscreen) */
+:fullscreen body.__qt_reels-active .ytp-caption-segment,
+:fullscreen body.__qt_reels-active .captions-text {
+    font-size: clamp(22px, 2.8vw, 48px) !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════
