@@ -1369,7 +1369,7 @@ function wireAiExplainSaveButton(
             cloud.className = PREFIX + "word-cloud";
             cloud.textContent = translated;
             cloud.style.fontSize = cloudFontSize + "px";
-            cloud.style.animationDelay = i * 0.05 + "s";
+            cloud.style.animationDelay = i * 0.02 + "s";
             parent.appendChild(cloud);
             wordCloudEls.push(cloud);
             const cloudRect = cloud.getBoundingClientRect();
