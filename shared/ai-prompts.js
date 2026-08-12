@@ -37,7 +37,7 @@ Respond ONLY in this exact JSON format, nothing else:
 
 Please explain what this sentence means briefly and concisely. Provide a direct translation to ${targetLang} and a short explanation of any idioms or difficult words if present.
 
-The explanation must be written in Polish.
+The explanation must be written in ${targetLang}.
 Respond ONLY in this exact JSON format, nothing else:
 {"translation": "...", "explanation": "..."}`;
     },

@@ -195,11 +195,19 @@
 
         try {
             const targetLang = await getTargetLang();
-            const { translation, explanation } = await QT.geminiMovieTranslate(
-                text,
-                targetLang,
-            );
-            const srcLang = "auto";
+            // Pobieramy tłumaczenie AI oraz równolegle detekcję języka z Google Translate
+            const [aiRes, googleRes] = await Promise.all([
+                QT.geminiMovieTranslate(text, targetLang),
+                googleTranslate(text, targetLang).catch(() => ({
+                    detectedLang: "auto",
+                })),
+            ]);
+
+            const { translation, explanation } = aiRes;
+            const srcLang =
+                typeof googleRes.detectedLang === "string"
+                    ? googleRes.detectedLang
+                    : "auto";
             const html = `
                 <div class="${PREFIX}header"><span>AI Tłumaczenie</span></div>
                 <div class="${PREFIX}body">
@@ -1002,69 +1010,71 @@
     /** Wire the "save to review" button inside the AI-explain tooltip:
      *  stores the original + translated sentence together with a video
      *  screenshot in the spaced-repetition deck. */
-function wireAiExplainSaveButton(
-    text,
-    translation,
-    explanation,
-    targetLang,
-) {
-    const tooltipNode = document.getElementById(PREFIX + "tooltip");
-    const saveBtn = tooltipNode?.querySelector(
-        `.${PREFIX}ai-explain-save-btn`,
-    );
-    if (!saveBtn) return;
+    function wireAiExplainSaveButton(
+        text,
+        translation,
+        explanation,
+        targetLang,
+    ) {
+        const tooltipNode = document.getElementById(PREFIX + "tooltip");
+        const saveBtn = tooltipNode?.querySelector(
+            `.${PREFIX}ai-explain-save-btn`,
+        );
+        if (!saveBtn) return;
 
-    // 1. UI: Dodanie plakietki z klawiszem "1" do przycisku (jeśli jeszcze nie istnieje)
-    if (!saveBtn.querySelector(`.${PREFIX}key-hint`)) {
-        const hintNode = document.createElement("kbd");
-        hintNode.className = `${PREFIX}key-hint`;
-        hintNode.textContent = "PageDown";
-        saveBtn.appendChild(hintNode);
-    }
-
-    // 2. Obsługa zdarzenia kliknięcia
-    saveBtn.addEventListener("click", (ev) => {
-        ev.stopPropagation();
-        if (saveBtn.classList.contains("saved")) return;
-        const screenshot = QT.captureVideoScreenshot() || "";
-        saveWord({
-            original: text,
-            translated: translation || text,
-            srcLang: "en",
-            tgtLang: targetLang,
-            sentence: "",
-            sentenceTranslated: "",
-            aiSentence: explanation || "",
-            aiSentenceTranslated: "",
-            screenshot,
-            url: window.location.href,
-            timestamp: Date.now(),
-            downloaded: false,
-        });
-        saveBtn.innerHTML = `${SVG.SAVE_SENTENCE_CHECK} <span>Zapisano!</span>`;
-        saveBtn.classList.add("saved");
-    });
-
-    // 3. Obsługa skrótu klawiszowego "PageDown"
-    const handleKeyDown = (ev) => {
-        // Ignoruj wciśnięcie, jeśli użytkownik pisze w jakimś polu tekstowym
-        const isTyping = ["INPUT", "TEXTAREA"].includes(ev.target?.tagName) || ev.target?.isContentEditable;
-        if (isTyping) return;
-
-        if (ev.key === "PageDown") {
-            // Jeśli przycisk nadal istnieje w DOM, wywołaj kliknięcie
-            if (document.contains(saveBtn)) {
-                ev.preventDefault();
-                saveBtn.click();
-            } else {
-                // Czyszczenie listenera, gdy tooltip został usunięty
-                window.removeEventListener("keydown", handleKeyDown);
-            }
+        // 1. UI: Dodanie plakietki z klawiszem "1" do przycisku (jeśli jeszcze nie istnieje)
+        if (!saveBtn.querySelector(`.${PREFIX}key-hint`)) {
+            const hintNode = document.createElement("kbd");
+            hintNode.className = `${PREFIX}key-hint`;
+            hintNode.textContent = "PageDown";
+            saveBtn.appendChild(hintNode);
         }
-    };
 
-    window.addEventListener("keydown", handleKeyDown);
-}
+        // 2. Obsługa zdarzenia kliknięcia
+        saveBtn.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            if (saveBtn.classList.contains("saved")) return;
+            const screenshot = QT.captureVideoScreenshot() || "";
+            saveWord({
+                original: text,
+                translated: translation || text,
+                srcLang: "en",
+                tgtLang: targetLang,
+                sentence: "",
+                sentenceTranslated: "",
+                aiSentence: explanation || "",
+                aiSentenceTranslated: "",
+                screenshot,
+                url: window.location.href,
+                timestamp: Date.now(),
+                downloaded: false,
+            });
+            saveBtn.innerHTML = `${SVG.SAVE_SENTENCE_CHECK} <span>Zapisano!</span>`;
+            saveBtn.classList.add("saved");
+        });
+
+        // 3. Obsługa skrótu klawiszowego "PageDown"
+        const handleKeyDown = (ev) => {
+            // Ignoruj wciśnięcie, jeśli użytkownik pisze w jakimś polu tekstowym
+            const isTyping =
+                ["INPUT", "TEXTAREA"].includes(ev.target?.tagName) ||
+                ev.target?.isContentEditable;
+            if (isTyping) return;
+
+            if (ev.key === "PageDown") {
+                // Jeśli przycisk nadal istnieje w DOM, wywołaj kliknięcie
+                if (document.contains(saveBtn)) {
+                    ev.preventDefault();
+                    saveBtn.click();
+                } else {
+                    // Czyszczenie listenera, gdy tooltip został usunięty
+                    window.removeEventListener("keydown", handleKeyDown);
+                }
+            }
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+    }
 
     async function handleAIExplain(video) {
         const text = PlayerAdapter.getCurrentText();
@@ -1819,7 +1829,12 @@ function wireAiExplainSaveButton(
             }
 
             // Save current subtitle sentence to spaced-repetition review
-            if (key === "z" || key === "Z" || key === "Home" || key === "PageUp") {
+            if (
+                key === "z" ||
+                key === "Z" ||
+                key === "Home" ||
+                key === "PageUp"
+            ) {
                 saveCurrentSentenceToReview();
                 return;
             }
