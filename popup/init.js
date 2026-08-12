@@ -34,23 +34,31 @@ const volumeRange = document.getElementById("volumeRange");
 const volumeValue = document.getElementById("volumeValue");
 
 // ── Auto-switch to Review tab if there are due reviews ────────────
-chrome.storage.local.get({ savedWords: [] }, (data) => {
-    const words = data.savedWords || [];
-    const now = Date.now();
-    const dueCount = countDueWords(words, now);
-    if (dueCount > 0) {
-        document
-            .querySelectorAll(".tab")
-            .forEach((t) => t.classList.remove("active"));
-        document
-            .querySelectorAll(".tab-content")
-            .forEach((c) => c.classList.remove("active"));
-        const reviewTab = document.querySelector('.tab[data-tab="review"]');
-        if (reviewTab) reviewTab.classList.add("active");
-        document.getElementById("tab-review")?.classList.add("active");
-        loadReviewQueue();
-    }
+document.addEventListener("DOMContentLoaded", () => {
+    chrome.storage.local.get({ savedWords: [] }, (data) => {
+        const words = data.savedWords || [];
+        const now = Date.now();
+        // Sprawdzamy czy funkcja z srs.js jest dostępna
+        if (typeof countDueWords !== "function") return;
+        const dueCount = countDueWords(words, now);
+        if (dueCount > 0) {
+            document
+                .querySelectorAll(".tab")
+                .forEach((t) => t.classList.remove("active"));
+            document
+                .querySelectorAll(".tab-content")
+                .forEach((c) => c.classList.remove("active"));
+            const reviewTab = document.querySelector('.tab[data-tab="review"]');
+            if (reviewTab) reviewTab.classList.add("active");
+            document.getElementById("tab-review")?.classList.add("active");
+            // loadReviewQueue jest definiowane w review.js, dlatego czekamy na DOMContentLoaded
+            if (typeof loadReviewQueue === "function") {
+                loadReviewQueue();
+            }
+        }
+    });
 });
+
 
 // ── Flash saved message ───────────────────────────────────────────
 function flashSaved() {
