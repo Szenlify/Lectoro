@@ -143,10 +143,12 @@
         return tooltipEl;
     }
 
-    function showTooltip(html, rect, preferredPosition = "top") {
-        const tip = getTooltip();
-        tip.innerHTML = html;
-        tip.classList.remove("visible");
+    function positionTooltip(rect, preferredPosition = "top") {
+        if (!tooltipEl || !rect) return;
+
+        const tip = tooltipEl;
+        const parent = getOverlayParent();
+        if (tip.parentElement !== parent) parent.appendChild(tip);
 
         const inFullscreen = !!(
             document.fullscreenElement || document.webkitFullscreenElement
@@ -217,6 +219,14 @@
             tip.style.left = `${left}px`;
             tip.style.top = `${top}px`;
         }
+    }
+
+    function showTooltip(html, rect, preferredPosition = "top") {
+        const tip = getTooltip();
+        tip.innerHTML = html;
+        tip.classList.remove("visible");
+
+        positionTooltip(rect, preferredPosition);
 
         requestAnimationFrame(() => tip.classList.add("visible"));
     }
@@ -1063,6 +1073,7 @@
         // UI
         getOverlayParent,
         showTooltip,
+        positionTooltip,
         hideTooltip,
         hideAll,
         showLoading,

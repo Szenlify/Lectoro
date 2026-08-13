@@ -736,6 +736,7 @@
     let subWasPlaying = false;
     let subClickLocked = false;
     let lastHoveredSubWord = null;
+    let subTooltipAnchor = null;
     let subCloseTimer = null;
 
     function makeSubtitlesInteractive() {
@@ -769,6 +770,7 @@
         subClickLocked = false;
         QT.hoverClickActive = false;
         clearTimeout(subCloseTimer);
+        subTooltipAnchor = null;
         if (lastHoveredSubWord) {
             lastHoveredSubWord.classList.remove(`${PREFIX}word-hover`);
             lastHoveredSubWord = null;
@@ -827,12 +829,14 @@
                     if (!text) return;
 
                     isSubHovering = true;
+                    subTooltipAnchor = wordSpan;
                     const video = PlayerAdapter.getVideo();
                     subWasPlaying = video ? !video.paused : false;
                     if (video && !video.paused) video.pause();
 
                     const rect = wordSpan.getBoundingClientRect();
                     QT.showLoading(rect, "top");
+                    ensureSubtitleUiTracking();
 
                     try {
                         const targetLang = await QT.getTargetLang();
@@ -874,6 +878,7 @@
         subClickLocked = true;
         QT.hoverClickActive = true;
         isSubHovering = true;
+        subTooltipAnchor = wordSpan;
 
         if (lastHoveredSubWord && lastHoveredSubWord !== wordSpan)
             lastHoveredSubWord.classList.remove(`${PREFIX}word-hover`);
@@ -893,6 +898,7 @@
         const sentence = PlayerAdapter.getCurrentText() || text;
         const rect = wordSpan.getBoundingClientRect();
         QT.showLoading(rect, "top");
+        ensureSubtitleUiTracking();
 
         try {
             const targetLang = await QT.getTargetLang();
@@ -980,6 +986,12 @@
             <span class="${PREFIX}ai-loader-label">AI analizuje</span>`;
         parent.appendChild(aiShimmerEl);
 
+        positionAiShimmer(rect);
+        ensureSubtitleUiTracking();
+    }
+
+    function positionAiShimmer(rect) {
+        if (!aiShimmerEl || !rect) return;
         const loaderRect = aiShimmerEl.getBoundingClientRect();
         let left = rect.left + (rect.width - loaderRect.width) / 2;
         left = Math.max(
@@ -1224,6 +1236,7 @@
     let wordCloudActive = false;
     let wordCloudEls = [];
     let wordCloudWasPlaying = false;
+    let subtitleUiTrackingFrame = null;
     const wordCloudCache = QT.createTranslateCache(300);
     const SIMPLE_WORDS = new Set([
         "a",
@@ -1305,7 +1318,7 @@
     }
 
     function removeWordClouds() {
-        wordCloudEls.forEach((el) => el.remove());
+        wordCloudEls.forEach(({ cloud }) => cloud.remove());
         wordCloudEls = [];
         document
             .querySelectorAll("." + PREFIX + "word-cloud-highlight")
@@ -1313,6 +1326,67 @@
                 el.classList.remove(PREFIX + "word-cloud-highlight");
             });
         wordCloudActive = false;
+    }
+
+    function positionWordCloud(cloud, span) {
+        if (!cloud?.isConnected || !span?.isConnected) return;
+        const rect = span.getBoundingClientRect();
+        if (rect.width === 0 && rect.height === 0) return;
+        const cloudRect = cloud.getBoundingClientRect();
+        let left = rect.left + (rect.width - cloudRect.width) / 2;
+        let top = rect.top - cloudRect.height + 8;
+        left = Math.max(
+            4,
+            Math.min(left, window.innerWidth - cloudRect.width - 4),
+        );
+        if (top < 4) top = rect.bottom + 4;
+        cloud.style.left = left + "px";
+        cloud.style.top = top + "px";
+    }
+
+    function ensureSubtitleUiTracking() {
+        if (subtitleUiTrackingFrame !== null) return;
+        subtitleUiTrackingFrame = requestAnimationFrame(trackSubtitleUi);
+    }
+
+    function trackSubtitleUi() {
+        subtitleUiTrackingFrame = null;
+
+        if (translationOverlay?.isConnected) positionOverlay();
+
+        for (const { cloud, span } of wordCloudEls) {
+            positionWordCloud(cloud, span);
+        }
+
+        if (isSubHovering && subTooltipAnchor) {
+            if (subTooltipAnchor.isConnected) {
+                QT.positionTooltip(
+                    subTooltipAnchor.getBoundingClientRect(),
+                    "top",
+                );
+            } else {
+                closeSubTooltip();
+            }
+        }
+
+        if (aiTooltipActive) {
+            const rect = getSubtitleRect();
+            if (rect) {
+                positionAiShimmer(rect);
+                if (QT.getTooltipEl()?.classList.contains("visible")) {
+                    QT.positionTooltip(rect, "top");
+                }
+            }
+        }
+
+        if (
+            translationOverlay?.isConnected ||
+            wordCloudEls.length > 0 ||
+            isSubHovering ||
+            aiTooltipActive
+        ) {
+            subtitleUiTrackingFrame = requestAnimationFrame(trackSubtitleUi);
+        }
     }
 
     async function showWordClouds(video, opts = { skipSpeech: false }) {
@@ -1395,18 +1469,10 @@
             cloud.style.fontSize = cloudFontSize + "px";
             cloud.style.animationDelay = i * 0.02 + "s";
             parent.appendChild(cloud);
-            wordCloudEls.push(cloud);
-            const cloudRect = cloud.getBoundingClientRect();
-            let left = rect.left + (rect.width - cloudRect.width) / 2;
-            let top = rect.top - cloudRect.height + 8;
-            left = Math.max(
-                4,
-                Math.min(left, window.innerWidth - cloudRect.width - 4),
-            );
-            if (top < 4) top = rect.bottom + 4;
-            cloud.style.left = left + "px";
-            cloud.style.top = top + "px";
+            wordCloudEls.push({ cloud, span });
+            positionWordCloud(cloud, span);
         });
+        ensureSubtitleUiTracking();
     }
 
     let translationOverlay = null;
@@ -1438,6 +1504,7 @@
             document.webkitFullscreenElement ||
             document.body;
         parent.appendChild(translationOverlay);
+        ensureSubtitleUiTracking();
         return translationOverlay;
     }
 
