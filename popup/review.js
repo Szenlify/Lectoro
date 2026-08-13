@@ -9,7 +9,6 @@ const {
     ensure: ensureSR,
 } = SRS; // shared/srs.js
 
-
 // ── Review state ──────────────────────────────────────────────────
 let reviewQueue = [];
 let reviewIndex = 0;
@@ -24,14 +23,17 @@ let reviewDirection = "normal";
 let reviewRandomVoice = false;
 
 // Load saved direction and random voice setting from storage
-chrome.storage.sync.get({ reviewDirection: "normal", reviewRandomVoice: false, ttsMode: "browser" }, (data) => {
-    reviewDirection = data.reviewDirection;
-    reviewRandomVoice = data.reviewRandomVoice;
-    ttsMode = data.ttsMode;
-    updateDirBtnLabel();
-    updateRandomVoiceBtnLabel();
-    updateElevenLabsBtnLabel();
-});
+chrome.storage.sync.get(
+    { reviewDirection: "normal", reviewRandomVoice: false, ttsMode: "browser" },
+    (data) => {
+        reviewDirection = data.reviewDirection;
+        reviewRandomVoice = data.reviewRandomVoice;
+        ttsMode = data.ttsMode;
+        updateDirBtnLabel();
+        updateRandomVoiceBtnLabel();
+        updateElevenLabsBtnLabel();
+    },
+);
 
 // ── Direction toggle button ───────────────────────────────────────
 function updateDirBtnLabel() {
@@ -64,11 +66,13 @@ function updateRandomVoiceBtnLabel() {
     }
 }
 
-document.getElementById("reviewRandomVoiceBtn")?.addEventListener("click", () => {
-    reviewRandomVoice = !reviewRandomVoice;
-    chrome.storage.sync.set({ reviewRandomVoice }, flashSaved);
-    updateRandomVoiceBtnLabel();
-});
+document
+    .getElementById("reviewRandomVoiceBtn")
+    ?.addEventListener("click", () => {
+        reviewRandomVoice = !reviewRandomVoice;
+        chrome.storage.sync.set({ reviewRandomVoice }, flashSaved);
+        updateRandomVoiceBtnLabel();
+    });
 
 // ── ElevenLabs toggle button ──────────────────────────────────────
 let ttsMode = "browser";
@@ -83,15 +87,19 @@ function updateElevenLabsBtnLabel() {
     }
 }
 
-document.getElementById("reviewElevenLabsBtn")?.addEventListener("click", () => {
-    const newMode = ttsMode === "elevenlabs" ? "browser" : "elevenlabs";
-    // Symulacja kliknięcia w główny przycisk w ustawieniach
-    const settingsBtn = document.getElementById(newMode === "elevenlabs" ? "modeEL" : "modeBrowser");
-    if (settingsBtn) settingsBtn.click();
-    
-    ttsMode = newMode;
-    updateElevenLabsBtnLabel();
-});
+document
+    .getElementById("reviewElevenLabsBtn")
+    ?.addEventListener("click", () => {
+        const newMode = ttsMode === "elevenlabs" ? "browser" : "elevenlabs";
+        // Symulacja kliknięcia w główny przycisk w ustawieniach
+        const settingsBtn = document.getElementById(
+            newMode === "elevenlabs" ? "modeEL" : "modeBrowser",
+        );
+        if (settingsBtn) settingsBtn.click();
+
+        ttsMode = newMode;
+        updateElevenLabsBtnLabel();
+    });
 
 // ── Delete all reviews button ─────────────────────────────────────
 document.getElementById("reviewDeleteAll")?.addEventListener("click", () => {
@@ -572,11 +580,7 @@ function showReviewEditForm(w) {
         // Persist to storage (updates word list too)
         chrome.storage.local.get({ savedWords: [] }, (data) => {
             const words = data.savedWords || [];
-            const idx = words.findIndex(
-                (x) =>
-                    x.original === oldOriginal &&
-                    x.translated === oldTranslated,
-            );
+            const idx = words.findIndex((x) => x.id === w.id);
             if (idx !== -1) {
                 // Assign a stable id on first edit so this doc's identity in
                 // Firestore never changes again, even though its content just did
@@ -622,9 +626,7 @@ function rateWord(grade) {
     _reviewSaving = true;
     chrome.storage.local.get({ savedWords: [] }, (data) => {
         const words = data.savedWords || [];
-        const idx = words.findIndex(
-            (x) => x.original === w.original && x.translated === w.translated,
-        );
+        const idx = words.findIndex((x) => x.id === w.id);
         if (idx !== -1) {
             words[idx].sr = w.sr;
             words[idx].updatedAt = Date.now();

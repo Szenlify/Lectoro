@@ -9,7 +9,8 @@
     "use strict";
 
     // ── Constants ──────────────────────────────────────────────────
-    const { escapeHtml, escapeAttr,cleanTextForTTS, pickBestVoice } = SharedUtils;
+    const { escapeHtml, escapeAttr, cleanTextForTTS, pickBestVoice } =
+        SharedUtils;
     const PREFIX = "__qt_";
     const ICON_ID = PREFIX + "icon";
     const TOOLTIP_ID = PREFIX + "tooltip";
@@ -103,8 +104,6 @@
             .replace(/\s{2,}/g, " ")
             .trim();
     }
-
-
 
     /** Check if a DOM element is part of our UI */
     function isOwnUI(target) {
@@ -479,8 +478,9 @@
                 // Attach spaced-repetition metadata
                 if (!entry.sr) {
                     entry.sr = {
-                        step: 0, // position in interval ladder
-                        interval: 0, // current interval in days
+                        step: 0,
+                        easeFactor: 2.5,
+                        interval: 0,
                         nextReview: Date.now(), // due immediately
                         lastReview: null,
                     };
@@ -546,9 +546,14 @@
         // Bezpieczne proxy – klucz Gemini API jest TYLKO na serwerze Firebase.
         // GeminiProxy weryfikuje token Firebase Auth i sprawdza plan użytkownika.
         if (typeof GeminiProxy === "undefined") {
-            throw new Error("GeminiProxy niedostępny – sprawdź kolejność skryptów.");
+            throw new Error(
+                "GeminiProxy niedostępny – sprawdź kolejność skryptów.",
+            );
         }
-        return GeminiProxy.requestJSON(prompt, { temperature, maxOutputTokens });
+        return GeminiProxy.requestJSON(prompt, {
+            temperature,
+            maxOutputTokens,
+        });
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -742,7 +747,6 @@
                 aiSentence: "",
                 aiSentenceTranslated: "",
                 screenshot: screenshot || "",
-                url: window.location.href,
                 timestamp: Date.now(),
                 downloaded: false,
             };

@@ -219,7 +219,6 @@ const FirebaseSync = (() => {
         f.srcLang = { stringValue: word.srcLang || "" };
         f.tgtLang = { stringValue: word.tgtLang || "" };
         f.timestamp = { integerValue: String(word.timestamp || 0) };
-        f.url = { stringValue: word.url || "" };
         f.downloaded = { booleanValue: !!word.downloaded };
         f.updatedAt = {
             integerValue: String(word.updatedAt || word.timestamp || 0),
@@ -252,7 +251,6 @@ const FirebaseSync = (() => {
             srcLang: fields.srcLang?.stringValue || "",
             tgtLang: fields.tgtLang?.stringValue || "",
             timestamp: parseInt(fields.timestamp?.integerValue || "0"),
-            url: fields.url?.stringValue || "",
             downloaded: fields.downloaded?.booleanValue || false,
             updatedAt: parseInt(fields.updatedAt?.integerValue || "0"),
         };
@@ -260,6 +258,9 @@ const FirebaseSync = (() => {
         if (fields.sr_step || fields.sr_nextReview) {
             word.sr = {
                 step: parseInt(fields.sr_step?.integerValue || "0"),
+                easeFactor:
+                    fields.sr_easeFactor?.doubleValue ??
+                    parseFloat(fields.sr_easeFactor?.integerValue || "2.5"),
                 interval:
                     fields.sr_interval?.doubleValue ??
                     parseFloat(fields.sr_interval?.integerValue || "0"),

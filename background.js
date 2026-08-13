@@ -63,7 +63,6 @@ async function pushWordsToSync(words) {
                 sl: w.srcLang || "",
                 tl: w.tgtLang || "",
                 ts: w.timestamp || 0,
-                url: w.url || "",
                 dl: w.downloaded || false,
                 sr: w.sr || null,
             })),
@@ -109,7 +108,6 @@ async function pullWordsFromSync() {
             srcLang: c.sl || "",
             tgtLang: c.tl || "",
             timestamp: c.ts || 0,
-            url: c.url || "",
             downloaded: c.dl || false,
             sr: c.sr || null,
         }));

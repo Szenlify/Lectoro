@@ -89,17 +89,14 @@ const SRS = {
     ensure(word) {
         if (!word.sr) {
             word.sr = SRS.defaultState();
-        } else if (word.sr.step !== undefined) {
-            // Czysta migracja bez zbędnych modyfikacji obiektu
-            word.sr = {
-                ...SRS.defaultState(),
-                ...word.sr, // Zachowaj m.in. lastReview i nextReview
-                interval: word.sr.interval || 0,
-                step: (word.sr.interval || 0) > 0 ? 1 : 0,
-                step: undefined, // Usuwamy stary format
-            };
-            delete word.sr.step;
+        } else {
+            word.sr.step = word.sr.step ?? 0;
+            word.sr.easeFactor = word.sr.easeFactor ?? 2.5;
+            word.sr.interval = word.sr.interval ?? 0;
+            word.sr.nextReview = word.sr.nextReview ?? 0;
+            word.sr.lastReview = word.sr.lastReview ?? null;
         }
+
         return word;
     },
 };
