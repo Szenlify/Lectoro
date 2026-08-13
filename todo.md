@@ -10,26 +10,10 @@
 
 5. tlumaczenie oraz tooltipy w chmurkach nad slowami maja przylegac do orginalnych napisow youtube czyli jak nie bede poruszał myszka na youtubie i napisy lekko opadna to tlumaczenie i tooltipy/chmurki podarzaja za napisami
 
-6. Popraw content.js czasem jak cos zaznaczam ni widze tooltipa z 3 przyciskami ale nie moge dalej kopiowac textu wiec czasem go nie widze a pewnie jest 
+6. Popraw content.js tooltip/chmurka czasem jak cos zaznaczam nie widze tooltipa z 3 przyciskami ale nie moge dalej kopiowac textu ani w text kliknac wiec czasem go nie widze a pewnie jest i czasami nawet wcisne niewidoczny przycisk
 
 7. napisy reel niech sie pojawiaja tam gdzie jest najciemniejsze miejsce na filmiku ale zawsze tak aby byly cale widoczne i 15% od granicy frame video
 
-3 plany Subskrybcji
-
-Plan 1: FREE
-Brak ElevenLabs
-mały limit AI = (2 do testow a pozniej 10) uzyć tlumaczen, quizów wszystko co zwiazane z AI
-zapisywanie powtorek limit 100
-
-Plan 2: BASIC – 29 zł / mc $7.99
-Limit ElevenLabs: do testow 100 (pozniej 35 000)
-umiarkowany limit AI = (3 do testow a pozniej 100) uzyć tlumaczen, quizów wszystko co zwiazane z AI
-zapisywanie powtorek limit 10 000
-
-Plan 3: PRO – 79 zł / mc $19.99
-Limit ElevenLabs: do testow 200 (pozniej 200 000)
-duzy limit AI = (4 do testow a pozniej 1000) uzyć tlumaczen, quizów wszystko co zwiazane z AI
-zapisywanie powtorek limit 100 000
 
 firebase login
 firebase deploy --only functions --project extension-eng"
