@@ -1,4 +1,4 @@
-zdjecia od powtorek do claudflare R2 z webp w malej rozdzielczosci
+zdjecia od powtorek do claudflare R2 w webp w malej rozdzielczosci
 
 oraz kazdy moze zalozyc wlasne konto i po przelogowaniu sie ma inne powtorki wlasne ktore ma zapisane
 
@@ -8,12 +8,14 @@ zrob w kazdym jezyku aby był text UI w zaleznosci jaki zalezny jest język a ja
 
 tlumaczenie oraz tooltipy w chmurkach nad slowami maja przylegac do orginalnych napisow youtube czyli jak nie bede poruszał myszka na youtubie i napisy lekko opadna to tlumaczenie i tooltipy/chmurki podarzaja za napisami
 
+czy moge zrobic tak aby we wtyczce nadlowki opcji pokazywaly sie w danym jezyku w zaleznosci jaki target language jest wybrany?
+
 edycja powtorek (sprawdz)
 
-3 plany Subskrybcji 
+3 plany Subskrybcji
 
-Plan 1: FREE 
-Brak ElevenLabs 
+Plan 1: FREE
+Brak ElevenLabs
 mały limit AI
 zapisywanie powtorek limit 100
 
@@ -27,13 +29,13 @@ Limit ElevenLabs: 200 000
 duzy limit AI
 zapisywanie powtorek limit 100 000
 
-
-
 firebase login
 firebase deploy --only functions --project extension-eng
 
 # Klucz Gemini API – wstaw swój klucz poniżej
+
 # NIGDY nie commituj tego pliku do Git!
+
 # Plik jest w .gitignore
 
 GEMINI_API_KEY=x
