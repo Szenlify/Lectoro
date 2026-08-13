@@ -1,7 +1,7 @@
 [TODO]
 1. zdjecia od powtorek do claudflare R2 w webp w malej rozdzielczosci
 
-2. zmiejszyc zyzycie odczytu bazy danych niech po zamknieciu popup sunchronizuje do bazy danych lub przy manualnym kliknieciu przycisku synchronizuj w settings oraz przy wylogowaniu
+2. zmiejsz zyzycie odczytu/zapisu i usuniec bazy danych firebase niech synchronizuje "writeBatch()" do bazy danych to z chrome local storage chrome manualnym kliknieciu przycisku synchronizuj w settings a przy uzyciu przycisku wyloguj najpierw synchronizuj powtorki a potem wyloguj dodatkowo przy przycisku synchronizuj niech sie pojawi czerwona kropka mrygajaca sugerujaca ze sa rzeczy niesynchronizowane oraz dodaj Auto-sync po przestaniu klikania powtorek co 30 sekund niech wysle paczke do firebase w tle tak zeby zmiejszyc koszta bazy danych firebase funkcje AI z cloud firebase function niech liczy w pamieci wczesniejsze pobranie z firebase i dolicza lokalnie niech pamieta limity oraz Jeśli użytkownik zainstaluje wtyczkę na laptopie i komputerze stacjonarnym: Przy synchronizacji stosuj prostą zasadę "Last-Write-Wins" (wygrywa najnowsza zmiana) 
 
 3. cache'owanie audio elevanlabs w Chrome Extension, żeby nie płacić dwa razy za te same fiszki [cos tam zrobione nie sprawdzone]
 
