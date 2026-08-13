@@ -129,7 +129,7 @@ Otwórz [Products w trybie testowym](https://dashboard.stripe.com/test/products)
 Przykład kształtu identyfikatora — **nie kopiuj tego przykładu**:
 
 ```text
-price_1U45bvPWye8UyAN8xKC8ista
+price_1U45
 ```
 
 ## 6. Utwórz produkt i cenę PRO
@@ -155,8 +155,8 @@ Zapisz produkt, skopiuj jego `price_...` i nazwij go sobie `STRIPE_PRO_PRICE_ID`
 Masz teraz dwa różne identyfikatory:
 
 ```text
-STRIPE_BASIC_PRICE_ID = price_1U45bvPWye8UyAN8xKC8ista
-STRIPE_PRO_PRICE_ID   = price_1U45fWPWye8UyAN8nonPXtSd
+STRIPE_BASIC_PRICE_ID = price_ta
+STRIPE_PRO_PRICE_ID   = price_1U4
 ```
 
 Nie zamieniaj ich miejscami. Kod przyznaje plan na podstawie tych identyfikatorów, a nie nazwy produktu widocznej na ekranie.
@@ -169,7 +169,7 @@ Nie zamieniaj ich miejscami. Kod przyznaje plan na podstawie tych identyfikator�
 4. Skopiuj wartość zaczynającą się od:
 
    ```text
-   sk_test_51RH45cPWye8UyAN8Eq6VOVEu9p2i0uB95ylGg4UvigvBR11c9XHxSp94DpCljjVWwkXcVNpeT6ewmZKENTCmedMX00QfR6Di4d
+   sk_test_51R
    ```
 
 To będzie `STRIPE_SECRET_KEY`.
@@ -221,7 +221,7 @@ Kod odczytuje okres rozliczeniowy z elementów subskrypcji, zgodnie z formatem t
 12. Znajdź `Signing secret`, kliknij `Reveal` i skopiuj wartość zaczynającą się od:
 
    ```text
-   whsec_50fMdwVkTyIJSCv6KVWlGOdjXeSTkSnL
+   whsec_50f
    ```
 
 To będzie `STRIPE_WEBHOOK_SECRET`. Ten sekret jest inny dla każdego webhooka i inny w środowisku testowym oraz produkcyjnym.
@@ -274,8 +274,8 @@ firebase functions:secrets:set STRIPE_SECRET_KEY
 ```
 
 Wklej `sk_test_...` z kroku 7.
-STRIPE_BASIC_PRICE_ID = price_1U45bvPWye8UyAN8xKC8ista
-STRIPE_PRO_PRICE_ID   = price_1U45fWPWye8UyAN8nonPXtSd
+STRIPE_BASIC_PRICE_ID = price_1U
+STRIPE_PRO_PRICE_ID   = price_1
 
 ### Sekret 2 — podpis webhooka
 
@@ -283,7 +283,7 @@ STRIPE_PRO_PRICE_ID   = price_1U45fWPWye8UyAN8nonPXtSd
 firebase functions:secrets:set STRIPE_WEBHOOK_SECRET
 ```
 
-Wklej `whsec_50fMdwVkTyIJSCv6KVWlGOdjXeSTkSnL` z kroku 8.
+Wklej `whsec_5` z kroku 8.
 
 ### Sekret 3 — cena BASIC
 
