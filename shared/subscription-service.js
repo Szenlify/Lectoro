@@ -4,6 +4,8 @@ const SubscriptionService = (() => {
 
     const PROFILE_KEY = "subscriptionProfileCache";
     const PROXY_URL = "https://geminiproxy-gyagzflbra-ew.a.run.app";
+    const BILLING_FUNCTIONS_URL =
+        "https://europe-west1-extension-eng.cloudfunctions.net";
     const Config = SubscriptionConfig;
 
     function currentMonth() {
@@ -31,6 +33,7 @@ const SubscriptionService = (() => {
 
     async function setCachedProfile(profile) {
         if (!profile) return null;
+        const previous = await getCachedProfile();
         const normalized = {
             ...freeProfile(profile.uid || ""),
             ...profile,
@@ -51,7 +54,17 @@ const SubscriptionService = (() => {
             },
             updatedAt: Date.now(),
         };
-        await chrome.storage.local.set({ [PROFILE_KEY]: normalized });
+        const planChanged =
+            previous?.uid === normalized.uid &&
+            Config.normalizePlan(previous.plan) !== normalized.plan;
+        // AI usage contains a plan-specific limit. Keeping it after an upgrade
+        // or downgrade makes the popup show (and enforce) the old limit until
+        // the first AI request. Clear both values atomically so the next usage
+        // read fetches current server data without consuming an AI credit.
+        await chrome.storage.local.set({
+            [PROFILE_KEY]: normalized,
+            ...(planChanged ? { aiUsageCache: null } : {}),
+        });
         return normalized;
     }
 
@@ -146,7 +159,11 @@ const SubscriptionService = (() => {
             const data = await response.json().catch(() => ({}));
             if (data.profile) await setCachedProfile(data.profile);
             if (data.limit) throw new Config.SubscriptionLimitError(data.limit);
-            throw new Error(data.error || `Błąd limitu ElevenLabs (${response.status})`);
+            const error = new Error(
+                data.error || `ElevenLabs jest niedostępny (${response.status})`,
+            );
+            error.code = data.code || "ELEVENLABS_REQUEST_FAILED";
+            throw error;
         }
         const profile = await effectiveProfile(false);
         profile.plan = Config.normalizePlan(response.headers.get("X-Lectoro-Plan") || profile.plan);
@@ -159,6 +176,17 @@ const SubscriptionService = (() => {
             ),
         };
         await setCachedProfile(profile);
+        const limits = Config.getPlanLimits(profile.plan).elevenLabs;
+        if (
+            limits.enabled &&
+            profile.usage.elevenLabsCharacters.used >= limits.charactersPerMonth
+        ) {
+            showUpgradePrompt({
+                feature: "elevenLabs",
+                code: Config.LIMIT_ERROR_CODES.ELEVENLABS_MONTHLY_LIMIT_REACHED,
+                message: `Wykorzystano miesięczny limit ${limits.charactersPerMonth} znaków ElevenLabs. Do odnowienia używany będzie głos systemowy.`,
+            });
+        }
         return response.blob();
     }
 
@@ -195,6 +223,45 @@ const SubscriptionService = (() => {
         return setCachedProfile(profile);
     }
 
+    async function billingRequest(functionName, body = {}) {
+        const token = await getToken(true);
+        if (!token) throw new Error("Zaloguj się, aby zarządzać płatnością.");
+        const response = await fetch(`${BILLING_FUNCTIONS_URL}/${functionName}`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(body),
+        });
+        const data = await response.json().catch(() => ({}));
+        // When a subscription already exists, the backend intentionally sends
+        // the user to Stripe Portal instead of allowing a duplicate purchase.
+        if (!response.ok && !(response.status === 409 && data.url)) {
+            throw new Error(data.error || `Błąd płatności (${response.status})`);
+        }
+        if (!data.url) throw new Error("Stripe nie zwrócił adresu płatności.");
+        const url = new URL(data.url);
+        if (url.protocol !== "https:") throw new Error("Nieprawidłowy adres Stripe.");
+        await chrome.tabs.create({ url: url.href });
+        return { opened: true, redirectedToPortal: response.status === 409 };
+    }
+
+    function startCheckout(plan) {
+        const normalizedPlan = Config.normalizePlan(plan);
+        if (
+            normalizedPlan !== Config.SUBSCRIPTION_PLANS.BASIC &&
+            normalizedPlan !== Config.SUBSCRIPTION_PLANS.PRO
+        ) {
+            return Promise.reject(new Error("Wybierz plan BASIC albo PRO."));
+        }
+        return billingRequest("createStripeCheckoutSession", { plan: normalizedPlan });
+    }
+
+    function openBillingPortal() {
+        return billingRequest("createStripePortalSession");
+    }
+
     function isLimitError(error) {
         return error?.name === "SubscriptionLimitError" || !!error?.upgradeRequired;
     }
@@ -216,7 +283,8 @@ const SubscriptionService = (() => {
 
     function showUpgradePrompt(validation) {
         if (typeof document === "undefined") return;
-        if (document.getElementById("aiPlansSection")) {
+        const isElevenLabs = validation?.feature === "elevenLabs";
+        if (document.getElementById("aiPlansSection") && !isElevenLabs) {
             openPlans();
             return;
         }
@@ -226,7 +294,7 @@ const SubscriptionService = (() => {
         toast.innerHTML = `
             <div class="__qt_ai_limit_orb">✦</div>
             <div class="__qt_ai_limit_copy">
-                <strong>Limit planu został osiągnięty</strong>
+                <strong>${isElevenLabs ? "Limit ElevenLabs wykorzystany" : "Limit planu został osiągnięty"}</strong>
                 <span>${String(validation?.message || "Ulepsz plan, aby kontynuować.")}</span>
             </div>
             <button type="button" class="__qt_ai_upgrade_link">Zobacz plany</button>
@@ -245,20 +313,14 @@ const SubscriptionService = (() => {
         if (typeof document === "undefined") return;
         const profile = await effectiveProfile(false);
         const enabled = Config.getPlanLimits(profile.plan).elevenLabs.enabled;
-        const modeButton = document.getElementById("modeEL");
-        if (modeButton) {
-            modeButton.disabled = !enabled;
-            modeButton.setAttribute("aria-disabled", String(!enabled));
-            modeButton.title = enabled
-                ? "Włącz ElevenLabs"
-                : "ElevenLabs wymaga planu BASIC lub PRO";
-            modeButton.classList.toggle("subscription-locked", !enabled);
-        }
         if (!enabled) {
             const stored = await chrome.storage.local.get({ ttsMode: "browser" });
             if (stored.ttsMode === "elevenlabs") {
                 await chrome.storage.local.set({ ttsMode: "browser" });
             }
+        }
+        if (typeof updateReviewVoiceUI === "function") {
+            await updateReviewVoiceUI();
         }
     }
 
@@ -272,6 +334,8 @@ const SubscriptionService = (() => {
         synthesizeElevenLabs,
         getElevenLabsVoices,
         updateAiUsage,
+        startCheckout,
+        openBillingPortal,
         isLimitError,
         showUpgradePrompt,
         openPlans,

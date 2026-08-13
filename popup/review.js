@@ -20,18 +20,21 @@ let _reviewQueueStale = false; // set when a background sync happens mid-session
 // ── Review direction: "normal" = show original, guess translation
 //                      "reverse" = show translation, guess original
 let reviewDirection = "normal";
-let reviewRandomVoice = false;
+let ttsMode = "browser";
+let reviewElVoiceId = "";
+let reviewElVoices = [];
+let reviewVoiceProfile = null;
+let reviewVoicesLoading = false;
 
-// Load saved direction and random voice setting from storage
+// Load the saved review direction and voice setting.
 chrome.storage.local.get(
-    { reviewDirection: "normal", reviewRandomVoice: false, ttsMode: "browser" },
+    { reviewDirection: "normal", ttsMode: "browser", elVoiceId: "" },
     (data) => {
         reviewDirection = data.reviewDirection;
-        reviewRandomVoice = data.reviewRandomVoice;
         ttsMode = data.ttsMode;
+        reviewElVoiceId = data.elVoiceId;
         updateDirBtnLabel();
-        updateRandomVoiceBtnLabel();
-        updateElevenLabsBtnLabel();
+        void updateReviewVoiceUI();
     },
 );
 
@@ -56,50 +59,241 @@ document.getElementById("reviewDirBtn")?.addEventListener("click", () => {
 });
 
 // ── Random Voice toggle button ────────────────────────────────────
-function updateRandomVoiceBtnLabel() {
-    const btn = document.getElementById("reviewRandomVoiceBtn");
-    if (!btn) return;
-    if (reviewRandomVoice) {
-        btn.classList.add("active");
-    } else {
-        btn.classList.remove("active");
-    }
+// Compact voice picker for the review workflow.
+function setReviewVoiceStatus(message = "", type = "") {
+    const status = document.getElementById("reviewVoiceStatus");
+    if (!status) return;
+    status.textContent = message;
+    status.className = `review-voice-status${type ? ` ${type}` : ""}`;
 }
 
-document
-    .getElementById("reviewRandomVoiceBtn")
-    ?.addEventListener("click", () => {
-        reviewRandomVoice = !reviewRandomVoice;
-        chrome.storage.local.set({ reviewRandomVoice }, flashSaved);
-        updateRandomVoiceBtnLabel();
+async function reportReviewVoiceFailure(error) {
+    const useSystemVoice = [
+        "ELEVENLABS_PROVIDER_DISABLED",
+        "ELEVENLABS_PROVIDER_QUOTA",
+        "ELEVENLABS_REQUEST_FAILED",
+        "ELEVENLABS_MONTHLY_LIMIT_REACHED",
+    ].includes(error?.code);
+    if (useSystemVoice) {
+        ttsMode = "browser";
+        await chrome.storage.local.set({ ttsMode });
+        if (reviewElVoices.length) renderElevenLabsVoiceSelect();
+        syncReviewVoiceButton();
+    }
+    setReviewVoiceStatus(
+        `${error?.message || "ElevenLabs jest niedostępny."} Używam głosu systemowego.`,
+        "error",
+    );
+}
+
+function closeReviewVoiceMenu() {
+    const menu = document.getElementById("reviewVoiceMenu");
+    const btn = document.getElementById("reviewVoiceBtn");
+    if (menu) menu.hidden = true;
+    btn?.setAttribute("aria-expanded", "false");
+}
+
+function formatVoiceLabels(voice) {
+    const preferredKeys = ["age", "language", "accent", "use_case", "gender", "description"];
+    return preferredKeys
+        .map((key) => voice?.labels?.[key])
+        .filter(Boolean)
+        .slice(0, 4)
+        .join(" · ");
+}
+
+function selectedReviewVoice() {
+    return reviewElVoices.find((voice) => voice.voice_id === reviewElVoiceId) || null;
+}
+
+function syncReviewVoiceButton() {
+    const btn = document.getElementById("reviewVoiceBtn");
+    const label = document.getElementById("reviewVoiceBtnLabel");
+    const badge = document.getElementById("reviewVoiceAiBadge");
+    const systemOption = document.getElementById("reviewBrowserVoiceOption");
+    if (!btn || !label || !badge) return;
+
+    const enabled = !!reviewVoiceProfile &&
+        SubscriptionConfig.getPlanLimits(reviewVoiceProfile.plan).elevenLabs.enabled;
+    const voice = selectedReviewVoice();
+    const usingElevenLabs = enabled && ttsMode === "elevenlabs" && !!reviewElVoiceId;
+
+    btn.classList.toggle("is-elevenlabs", usingElevenLabs);
+    systemOption?.classList.toggle("active", !usingElevenLabs);
+    badge.classList.toggle("is-locked", !enabled);
+    badge.textContent = usingElevenLabs ? "EL" : "AI";
+    label.textContent = usingElevenLabs
+        ? reviewElVoiceId === "random"
+            ? "Losowy"
+            : voice?.name || "ElevenLabs"
+        : "Głos";
+    btn.title = usingElevenLabs
+        ? `ElevenLabs: ${voice?.name || "losowy głos"}`
+        : "Wybierz głos powtórek";
+}
+
+function renderFreeVoiceTeaser() {
+    const content = document.getElementById("reviewElevenLabsContent");
+    if (!content) return;
+    content.innerHTML = `
+        <div class="review-voice-teaser">
+            <div class="review-voice-teaser-title"><span>Naturalne głosy AI</span><span>🔒</span></div>
+            <p>Usłysz różne akcenty i wybierz lektora do swoich powtórek.</p>
+            <div class="review-voice-chips" aria-hidden="true">
+                <span class="review-voice-chip">Darian</span>
+                <span class="review-voice-chip">Talia</span>
+                <span class="review-voice-chip">Florence</span>
+            </div>
+            <button type="button" class="review-voice-upgrade" id="reviewVoiceUpgrade">Odblokuj głosy ElevenLabs</button>
+        </div>`;
+    content.querySelector("#reviewVoiceUpgrade")?.addEventListener("click", () => {
+        closeReviewVoiceMenu();
+        SubscriptionService.openPlans();
+    });
+}
+
+function renderElevenLabsVoiceSelect() {
+    const content = document.getElementById("reviewElevenLabsContent");
+    if (!content) return;
+    content.replaceChildren();
+
+    const wrap = document.createElement("div");
+    wrap.className = "review-voice-select-wrap";
+    const select = document.createElement("select");
+    select.id = "reviewElVoiceSelect";
+    select.setAttribute("aria-label", "Głos ElevenLabs");
+
+    const placeholderOption = document.createElement("option");
+    placeholderOption.value = "";
+    placeholderOption.textContent = "Wybierz głos…";
+    placeholderOption.disabled = true;
+    select.appendChild(placeholderOption);
+
+    const randomOption = document.createElement("option");
+    randomOption.value = "random";
+    randomOption.textContent = "✦ Losowy głos przy każdej karcie";
+    select.appendChild(randomOption);
+
+    reviewElVoices.forEach((voice) => {
+        const option = document.createElement("option");
+        option.value = voice.voice_id;
+        option.textContent = voice.name;
+        select.appendChild(option);
     });
 
-// ── ElevenLabs toggle button ──────────────────────────────────────
-let ttsMode = "browser";
-
-function updateElevenLabsBtnLabel() {
-    const btn = document.getElementById("reviewElevenLabsBtn");
-    if (!btn) return;
-    if (ttsMode === "elevenlabs") {
-        btn.classList.add("active");
+    if (ttsMode === "elevenlabs" && reviewElVoiceId &&
+        (reviewElVoiceId === "random" || reviewElVoices.some((voice) => voice.voice_id === reviewElVoiceId))) {
+        select.value = reviewElVoiceId;
     } else {
-        btn.classList.remove("active");
+        select.value = "";
     }
+
+    const meta = document.createElement("div");
+    meta.className = "review-voice-meta";
+    const updateMeta = () => {
+        if (select.value === "random") {
+            meta.textContent = "Inny naturalny głos przy każdej powtórce.";
+            return;
+        }
+        const voice = reviewElVoices.find((item) => item.voice_id === select.value);
+        meta.textContent = voice
+            ? formatVoiceLabels(voice) || "Naturalny głos ElevenLabs"
+            : "Wybierz lektora, aby włączyć ElevenLabs.";
+    };
+    updateMeta();
+
+    select.addEventListener("change", async () => {
+        reviewElVoiceId = select.value;
+        ttsMode = "elevenlabs";
+        await chrome.storage.local.set({
+            ttsMode,
+            elVoiceId: reviewElVoiceId,
+        });
+        updateMeta();
+        syncReviewVoiceButton();
+        setReviewVoiceStatus("✓ Głos ElevenLabs włączony.", "ok");
+    });
+
+    wrap.append(select, meta);
+    content.appendChild(wrap);
 }
 
-document
-    .getElementById("reviewElevenLabsBtn")
-    ?.addEventListener("click", () => {
-        const newMode = ttsMode === "elevenlabs" ? "browser" : "elevenlabs";
-        // Symulacja kliknięcia w główny przycisk w ustawieniach
-        const settingsBtn = document.getElementById(
-            newMode === "elevenlabs" ? "modeEL" : "modeBrowser",
+async function loadReviewElevenLabsVoices() {
+    if (reviewVoicesLoading || reviewElVoices.length) return;
+    reviewVoicesLoading = true;
+    setReviewVoiceStatus("Ładowanie głosów…");
+    try {
+        reviewElVoices = await SubscriptionService.getElevenLabsVoices();
+        renderElevenLabsVoiceSelect();
+        setReviewVoiceStatus(
+            reviewElVoices.length ? `${reviewElVoices.length} głosów do wyboru` : "Brak dostępnych głosów.",
+            reviewElVoices.length ? "" : "error",
         );
-        if (settingsBtn) settingsBtn.click();
+        syncReviewVoiceButton();
+    } catch (error) {
+        setReviewVoiceStatus(error.message || "Nie udało się pobrać głosów.", "error");
+    } finally {
+        reviewVoicesLoading = false;
+    }
+}
 
-        ttsMode = newMode;
-        updateElevenLabsBtnLabel();
-    });
+async function updateReviewVoiceUI() {
+    try {
+        reviewVoiceProfile = await SubscriptionService.effectiveProfile(false);
+    } catch (error) {
+        reviewVoiceProfile = null;
+        setReviewVoiceStatus(error.message || "Nie udało się sprawdzić planu.", "error");
+    }
+
+    const enabled = !!reviewVoiceProfile &&
+        SubscriptionConfig.getPlanLimits(reviewVoiceProfile.plan).elevenLabs.enabled;
+    if (!enabled) {
+        if (ttsMode === "elevenlabs") {
+            ttsMode = "browser";
+            await chrome.storage.local.set({ ttsMode });
+        }
+        renderFreeVoiceTeaser();
+    } else if (reviewElVoices.length) {
+        renderElevenLabsVoiceSelect();
+    }
+    syncReviewVoiceButton();
+}
+
+document.getElementById("reviewVoiceBtn")?.addEventListener("click", async () => {
+    const menu = document.getElementById("reviewVoiceMenu");
+    const btn = document.getElementById("reviewVoiceBtn");
+    if (!menu || !btn) return;
+    const willOpen = menu.hidden;
+    menu.hidden = !willOpen;
+    btn.setAttribute("aria-expanded", String(willOpen));
+    if (!willOpen) return;
+
+    await updateReviewVoiceUI();
+    const enabled = !!reviewVoiceProfile &&
+        SubscriptionConfig.getPlanLimits(reviewVoiceProfile.plan).elevenLabs.enabled;
+    if (enabled) await loadReviewElevenLabsVoices();
+});
+
+document.getElementById("reviewVoiceClose")?.addEventListener("click", closeReviewVoiceMenu);
+
+document.getElementById("reviewBrowserVoiceOption")?.addEventListener("click", async () => {
+    ttsMode = "browser";
+    await chrome.storage.local.set({ ttsMode });
+    if (reviewElVoices.length) renderElevenLabsVoiceSelect();
+    syncReviewVoiceButton();
+    setReviewVoiceStatus("✓ Używasz głosu systemowego.", "ok");
+});
+
+document.addEventListener("click", (event) => {
+    const picker = document.getElementById("reviewVoicePicker");
+    if (picker && !picker.contains(event.target)) closeReviewVoiceMenu();
+});
+
+document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeReviewVoiceMenu();
+});
+
+// Voice selection is handled by the compact picker above.
 
 // ── Delete all reviews button ─────────────────────────────────────
 document.getElementById("reviewDeleteAll")?.addEventListener("click", () => {

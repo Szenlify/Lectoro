@@ -103,87 +103,16 @@ if (volumeRange) {
 }
 
 // ── TTS Mode toggle (Browser / ElevenLabs) ───────────────────────
-const modeBrowserBtn = document.getElementById("modeBrowser");
-const modeELBtn = document.getElementById("modeEL");
-const browserTtsSettings = document.getElementById("browserTtsSettings");
-const elSettingsPanel = document.getElementById("elSettings");
-const elVoiceSelect = document.getElementById("elVoiceSelect");
-const elStatusEl = document.getElementById("elStatus");
-
-async function setTtsMode(mode) {
-    if (mode === "elevenlabs") {
-        const profile = await SubscriptionService.effectiveProfile(false);
-        if (!SubscriptionConfig.getPlanLimits(profile.plan).elevenLabs.enabled) {
-            mode = "browser";
-        }
-    }
-    if (mode === "elevenlabs") {
-        modeBrowserBtn.classList.remove("active");
-        modeELBtn.classList.add("active");
-        browserTtsSettings.style.display = "none";
-        elSettingsPanel.classList.add("visible");
-        if (elVoiceSelect.options.length <= 1) {
-            const stored = await chrome.storage.local.get({ elVoiceId: "" });
-            await loadELVoices(stored.elVoiceId);
-        }
-    } else {
-        modeELBtn.classList.remove("active");
-        modeBrowserBtn.classList.add("active");
-        browserTtsSettings.style.display = "";
-        elSettingsPanel.classList.remove("visible");
-    }
-    chrome.storage.local.set({ ttsMode: mode }, flashSaved);
-}
-
-modeBrowserBtn.addEventListener("click", () => void setTtsMode("browser"));
-modeELBtn.addEventListener("click", () => void setTtsMode("elevenlabs"));
-
-// Load saved mode
-chrome.storage.local.get(
-    { ttsMode: "browser", elVoiceId: "" },
-    async (data) => {
-        if (data.ttsMode === "elevenlabs") await setTtsMode("elevenlabs");
-    },
-);
-
-// Load ElevenLabs voices through the authenticated backend proxy.
-async function loadELVoices(selectedVoiceId) {
-    elStatusEl.textContent = "Ładowanie głosów…";
-    elStatusEl.className = "el-status";
-    try {
-        const voices = await SubscriptionService.getElevenLabsVoices();
-
-        // Czyszczenie i dodanie opcji losowania
-        elVoiceSelect.innerHTML =
-            '<option value="random">🎲 Losowy głos</option>';
-
-        voices.forEach((v) => {
-            const opt = document.createElement("option");
-            opt.value = v.voice_id;
-            const labels = v.labels ? Object.values(v.labels).join(", ") : "";
-            opt.textContent = `${v.name}${labels ? " (" + labels + ")" : ""}`;
-            if (v.voice_id === selectedVoiceId) opt.selected = true;
-            elVoiceSelect.appendChild(opt);
-        });
-        elStatusEl.textContent = `✓ Załadowano ${voices.length} głosów`;
-        elStatusEl.className = "el-status ok";
-    } catch (err) {
-        elStatusEl.textContent = `✗ Błąd: ${err.message}`;
-        elStatusEl.className = "el-status err";
-        elVoiceSelect.innerHTML = '<option value="">— Głosy niedostępne —</option>';
-    }
-}
-
-elVoiceSelect.addEventListener("change", () => {
-    chrome.storage.local.set({ elVoiceId: elVoiceSelect.value }, flashSaved);
-});
+// Wybór ElevenLabs jest celowo dostępny przy fiszkach w zakładce Powtórki.
 
 // ── Gemini AI – zużycie (info) ────────────────────────────────────
 // Klucz Gemini API jest zarządzany przez serwer – użytkownicy nie muszą
 // go wpisywać. Tutaj pokazujemy tylko informację o zużyciu z odpowiedzi proxy.
-function renderSubscriptionPlans(activePlan) {
+function renderSubscriptionPlans(subscription) {
     const grid = document.getElementById("subscriptionPlansGrid");
     if (!grid) return;
+    const activePlan = SubscriptionConfig.normalizePlan(subscription?.plan);
+    const hasPaidPlan = activePlan !== SubscriptionConfig.SUBSCRIPTION_PLANS.FREE;
     grid.innerHTML = Object.entries(SubscriptionConfig.SUBSCRIPTION_LIMITS)
         .map(([planId, limits]) => {
             const price = limits.priceMonthly.amount === 0
@@ -192,16 +121,84 @@ function renderSubscriptionPlans(activePlan) {
             const tts = limits.elevenLabs.enabled
                 ? `${limits.elevenLabs.charactersPerMonth} znaków ElevenLabs / mc`
                 : "ElevenLabs niedostępny";
+            let action = '<span class="subscription-plan-current">AKTYWNY PLAN</span>';
+            if (planId !== activePlan) {
+                if (planId === SubscriptionConfig.SUBSCRIPTION_PLANS.FREE) {
+                    action = `<button type="button" class="subscription-plan-button is-secondary" data-billing-action="portal">Przejdź na FREE</button>`;
+                } else if (hasPaidPlan) {
+                    action = `<button type="button" class="subscription-plan-button" data-billing-action="portal">Zmień plan</button>`;
+                } else {
+                    action = `<button type="button" class="subscription-plan-button" data-billing-action="checkout" data-plan="${planId}">Wybierz ${limits.displayName}</button>`;
+                }
+            } else if (hasPaidPlan) {
+                action = `<button type="button" class="subscription-plan-button is-secondary" data-billing-action="portal">Zarządzaj</button>`;
+            }
             return `<div class="subscription-plan-card ${planId === activePlan ? "is-current" : ""}">
                 <strong>${limits.displayName}</strong>
                 <b>${price}</b>
                 <span>AI: ${limits.ai.usesPerMonth} / mc</span>
                 <span>Fiszki SRS: ${limits.srs.maxSavedCards}</span>
                 <span>${tts}</span>
-                ${planId === activePlan ? '<span class="subscription-plan-current">AKTYWNY PLAN</span>' : ""}
+                ${action}
             </div>`;
         })
         .join("");
+}
+
+function renderElevenLabsUsage(subscription) {
+    const card = document.getElementById("elevenLabsUsageCard");
+    const planEl = document.getElementById("elevenLabsUsagePlan");
+    const title = document.getElementById("elevenLabsUsageTitle");
+    const value = document.getElementById("elevenLabsUsageValue");
+    const info = document.getElementById("elevenLabsUsageInfo");
+    const remaining = document.getElementById("elevenLabsUsageRemaining");
+    const track = document.getElementById("elevenLabsUsageTrack");
+    const fill = document.getElementById("elevenLabsUsageFill");
+    const upgradeButton = document.getElementById("elevenLabsUpgradeButton");
+    if (!card || !subscription) return;
+
+    const plan = SubscriptionConfig.normalizePlan(subscription.plan);
+    const limits = SubscriptionConfig.getPlanLimits(plan).elevenLabs;
+    const used = Math.max(0, Number(subscription.usage?.elevenLabsCharacters?.used) || 0);
+    const limit = Math.max(0, Number(limits.charactersPerMonth) || 0);
+    const left = Math.max(0, limit - used);
+    const percentage = limit ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+    const limitReached = limits.enabled && used >= limit;
+
+    card.classList.remove("is-warning", "is-empty", "is-unavailable");
+    fill?.classList.remove("is-loading");
+    if (planEl) planEl.textContent = `PLAN ${plan.toUpperCase()}`;
+    if (track) {
+        track.setAttribute("aria-valuenow", String(percentage));
+        track.setAttribute("aria-valuetext", `${used} z ${limit} znaków wykorzystanych`);
+    }
+
+    if (!limits.enabled) {
+        card.classList.add("is-unavailable");
+        if (title) title.textContent = "Naturalne głosy w powtórkach";
+        if (value) value.textContent = "Niedostępne";
+        if (fill) fill.style.width = "0%";
+        if (info) info.textContent = "Funkcja dostępna w BASIC i PRO";
+        if (remaining) remaining.textContent = "0 znaków";
+        if (upgradeButton) upgradeButton.hidden = false;
+        return;
+    }
+
+    if (value) value.textContent = `${used} / ${limit}`;
+    if (fill) fill.style.width = `${percentage}%`;
+    if (limitReached) {
+        card.classList.add("is-empty");
+        if (title) title.textContent = "Limit ElevenLabs wykorzystany";
+        if (info) info.textContent = "Do odnowienia używany jest głos systemowy";
+        if (remaining) remaining.textContent = "0 znaków";
+        if (upgradeButton) upgradeButton.hidden = false;
+    } else {
+        if (percentage >= 80) card.classList.add("is-warning");
+        if (title) title.textContent = "Miesięczne wykorzystanie";
+        if (info) info.textContent = "Limit odnawia się co miesiąc";
+        if (remaining) remaining.textContent = `${left} znaków zostało`;
+        if (upgradeButton) upgradeButton.hidden = true;
+    }
 }
 
 async function refreshAiUsageUI() {
@@ -209,6 +206,7 @@ async function refreshAiUsageUI() {
     if (!info || typeof GeminiProxy === "undefined") return;
 
     const usageSection = document.getElementById("aiUsageSection");
+    const elevenLabsUsageSection = document.getElementById("elevenLabsUsageSection");
     const plansSection = document.getElementById("aiPlansSection");
     const user =
         typeof FirebaseSync !== "undefined"
@@ -216,12 +214,25 @@ async function refreshAiUsageUI() {
             : null;
     const signedIn = !!user;
     if (usageSection) usageSection.hidden = !signedIn;
+    if (elevenLabsUsageSection) elevenLabsUsageSection.hidden = !signedIn;
     if (plansSection) plansSection.hidden = !signedIn;
     if (!signedIn) return;
 
-    const usage = await GeminiProxy.getCachedUsage();
     const subscription = await SubscriptionService.effectiveProfile(false);
-    renderSubscriptionPlans(subscription.plan);
+    let usage = await GeminiProxy.refreshUsage(false).catch(() =>
+        GeminiProxy.getCachedUsage(),
+    );
+    // Defensive reconciliation for an older extension cache created before
+    // plan-change invalidation was introduced.
+    if (
+        usage &&
+        SubscriptionConfig.normalizePlan(usage.plan) !==
+            SubscriptionConfig.normalizePlan(subscription.plan)
+    ) {
+        usage = await GeminiProxy.refreshUsage(true).catch(() => usage);
+    }
+    renderSubscriptionPlans(subscription);
+    renderElevenLabsUsage(subscription);
     const card = document.getElementById("aiUsageCard");
     const plan = document.getElementById("aiUsagePlan");
     const title = document.getElementById("aiUsageTitle");
@@ -296,6 +307,37 @@ function showAiPlans() {
 }
 
 document.getElementById("aiUpgradeButton")?.addEventListener("click", showAiPlans);
+document.getElementById("elevenLabsUpgradeButton")?.addEventListener("click", showAiPlans);
+
+document.getElementById("subscriptionPlansGrid")?.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-billing-action]");
+    if (!button) return;
+    const status = document.getElementById("stripeBillingStatus");
+    const buttons = document.querySelectorAll("[data-billing-action]");
+    buttons.forEach((item) => { item.disabled = true; });
+    if (status) {
+        status.className = "stripe-billing-status is-loading";
+        status.textContent = "Otwieram bezpieczną stronę Stripe…";
+    }
+    try {
+        const result = button.dataset.billingAction === "checkout"
+            ? await SubscriptionService.startCheckout(button.dataset.plan)
+            : await SubscriptionService.openBillingPortal();
+        if (status) {
+            status.className = "stripe-billing-status is-success";
+            status.textContent = result.redirectedToPortal
+                ? "Masz już subskrypcję — otwarto panel zmiany planu."
+                : "Stripe został otwarty w nowej karcie.";
+        }
+    } catch (error) {
+        if (status) {
+            status.className = "stripe-billing-status is-error";
+            status.textContent = error.message || "Nie udało się otworzyć Stripe.";
+        }
+    } finally {
+        buttons.forEach((item) => { item.disabled = false; });
+    }
+});
 
 if (location.hash === "#plans") {
     setTimeout(showAiPlans, 80);

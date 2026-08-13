@@ -76,6 +76,17 @@ test("ElevenLabs enforces per-request and monthly character quotas", () => {
         checkElevenLabsLimit({ plan: "pro", text: "abc", usedCharacters: 98 }).code,
         "ELEVENLABS_MONTHLY_LIMIT_REACHED",
     );
+    const lastCharacter = checkElevenLabsLimit({
+        plan: "pro",
+        text: "a",
+        usedCharacters: 99,
+    });
+    assert.equal(lastCharacter.allowed, true);
+    assert.equal(lastCharacter.remaining, 1);
+    assert.equal(
+        checkElevenLabsLimit({ plan: "pro", text: "a", usedCharacters: 100 }).code,
+        "ELEVENLABS_MONTHLY_LIMIT_REACHED",
+    );
 });
 
 test("character counting handles Unicode code points", () => {

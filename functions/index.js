@@ -20,6 +20,10 @@ setGlobalOptions({ region: "europe-west1" });
 const geminiApiKey = defineSecret("LECTORO_GEMINI_API_KEY");
 const elevenLabsApiKey = defineSecret("ELEVENLABS_API_KEY");
 
+// Stripe endpoints live in a separate module so the AI/TTS proxy remains easy
+// to audit. Firebase Admin has already been initialized above.
+Object.assign(exports, require("./stripe-billing"));
+
 function setCorsHeaders(res) {
     res.set("Access-Control-Allow-Origin", "*");
     res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -97,6 +101,36 @@ async function rollbackElevenLabsReservation(db, userRef, month, characters) {
     } catch (error) {
         console.error("[subscriptionProxy] ElevenLabs rollback error:", error);
     }
+}
+
+function elevenLabsClientError(details) {
+    const status = details?.detail?.status || details?.status || "";
+    if (status === "detected_unusual_activity") {
+        return {
+            httpStatus: 503,
+            code: "ELEVENLABS_PROVIDER_DISABLED",
+            error: "Głosy ElevenLabs są chwilowo niedostępne. Administrator usługi musi aktywować konto API.",
+        };
+    }
+    if (status === "quota_exceeded" || status === "insufficient_credits") {
+        return {
+            httpStatus: 503,
+            code: "ELEVENLABS_PROVIDER_QUOTA",
+            error: "Limit konta API ElevenLabs został wyczerpany.",
+        };
+    }
+    if (status === "voice_not_found") {
+        return {
+            httpStatus: 409,
+            code: "ELEVENLABS_VOICE_UNAVAILABLE",
+            error: "Ten głos ElevenLabs nie jest już dostępny. Wybierz inny głos.",
+        };
+    }
+    return {
+        httpStatus: 502,
+        code: "ELEVENLABS_SYNTHESIS_FAILED",
+        error: "Synteza ElevenLabs nie powiodła się.",
+    };
 }
 
 /**
@@ -286,7 +320,13 @@ exports.geminiProxy = onRequest(
                     },
                 );
                 if (!ttsResponse.ok) {
-                    const details = await ttsResponse.text().catch(() => "");
+                    const rawDetails = await ttsResponse.text().catch(() => "");
+                    let details = {};
+                    try {
+                        details = JSON.parse(rawDetails);
+                    } catch (_) {
+                        details = { detail: rawDetails };
+                    }
                     console.error("[subscriptionProxy] ElevenLabs TTS error:", details);
                     await rollbackElevenLabsReservation(
                         db,
@@ -294,7 +334,11 @@ exports.geminiProxy = onRequest(
                         month,
                         reservation.validation.requested,
                     );
-                    return res.status(502).json({ error: "Synteza ElevenLabs nie powiodła się." });
+                    const clientError = elevenLabsClientError(details);
+                    return res.status(clientError.httpStatus).json({
+                        error: clientError.error,
+                        code: clientError.code,
+                    });
                 }
                 const audio = Buffer.from(await ttsResponse.arrayBuffer());
                 res.set("Content-Type", ttsResponse.headers.get("content-type") || "audio/mpeg");

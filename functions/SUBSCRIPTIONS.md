@@ -1,5 +1,10 @@
 # Konfiguracja subskrypcji
 
+Pełna konfiguracja płatności Stripe (Checkout, webhook, Customer Portal,
+środowisko testowe i produkcyjne) znajduje się w pliku `../stripe.md`.
+Poniższa ręczna zmiana planu jest przeznaczona wyłącznie do administracyjnych
+testów i napraw — zwykłe płatne plany nadaje webhook Stripe.
+
 ## Sekrety API
 
 Klucz nie jest przechowywany w rozszerzeniu ani w repozytorium. Ustaw go jako

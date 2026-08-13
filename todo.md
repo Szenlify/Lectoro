@@ -59,3 +59,7 @@ firebase deploy --only "functions,firestore:rules"
 # Plik jest w .gitignore
 
 GEMINI_API_KEY=x
+
+
+
+zmien geminiproxy na apiproxy bo sie myli nazwa

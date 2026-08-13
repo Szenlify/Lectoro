@@ -1,5 +1,14 @@
 export type SubscriptionPlan = "free" | "basic" | "pro";
-export type SubscriptionStatus = "active" | "inactive" | "past_due" | "canceled";
+export type SubscriptionStatus =
+    | "active"
+    | "trialing"
+    | "inactive"
+    | "incomplete"
+    | "incomplete_expired"
+    | "past_due"
+    | "unpaid"
+    | "paused"
+    | "canceled";
 export type SubscriptionFeature = "ai" | "srs" | "elevenLabs";
 
 export interface LectoroAuthClaims {
@@ -25,6 +34,8 @@ export interface UserProfile {
     subscriptionStatus: SubscriptionStatus;
     stripeCustomerId?: string;
     stripeSubscriptionId?: string;
+    stripeCancelAtPeriodEnd?: boolean;
+    stripeCurrentPeriodEnd?: unknown;
     aiCallsThisMonth: number;
     aiCallsResetDate: string;
     elevenLabsCharactersThisMonth: number;

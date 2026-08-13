@@ -65,9 +65,34 @@
                 </div>
             </div>
 
+            <div class="setting-group" id="elevenLabsUsageSection" hidden>
+                <label>🎧 ElevenLabs</label>
+                <div class="glass-card ai-usage-card elevenlabs-usage-card" id="elevenLabsUsageCard">
+                    <div class="ai-usage-head">
+                        <div>
+                            <div class="ai-usage-eyebrow" id="elevenLabsUsagePlan">PLAN FREE</div>
+                            <div class="ai-usage-title" id="elevenLabsUsageTitle">Sprawdzam wykorzystanie…</div>
+                        </div>
+                        <div class="ai-usage-value" id="elevenLabsUsageValue">— / —</div>
+                    </div>
+                    <div class="ai-usage-track" role="progressbar" aria-label="Wykorzystanie znaków ElevenLabs"
+                        aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="elevenLabsUsageTrack">
+                        <div class="ai-usage-fill is-loading" id="elevenLabsUsageFill"></div>
+                    </div>
+                    <div class="ai-usage-footer">
+                        <span id="elevenLabsUsageInfo">Limit odnawia się co miesiąc</span>
+                        <span class="ai-usage-remaining" id="elevenLabsUsageRemaining">Ładowanie…</span>
+                    </div>
+                    <button type="button" class="ai-upgrade-btn" id="elevenLabsUpgradeButton" hidden>
+                        Zobacz plany →
+                    </button>
+                </div>
+            </div>
+
             <div class="setting-group ai-plans-section" id="aiPlansSection" hidden>
                 <label>✨ Plany subskrypcyjne</label>
                 <div class="subscription-plans-grid" id="subscriptionPlansGrid"></div>
+                <div class="stripe-billing-status" id="stripeBillingStatus" aria-live="polite"></div>
             </div>
 
             <div class="setting-group">
@@ -126,15 +151,8 @@
                 </div>
             </div>
 
-            <div class="setting-group">
-                <label>Silnik głosu</label>
-                <div class="tts-mode-toggle">
-                    <button class="tts-mode-btn active" data-mode="browser" id="modeBrowser">🔊 Przeglądarka</button>
-                    <button class="tts-mode-btn" data-mode="elevenlabs" id="modeEL">🎙️ ElevenLabs</button>
-                </div>
-            </div>
-
-            <!-- Browser TTS settings -->
+            <!-- Browser TTS settings. ElevenLabs belongs to the review workflow
+                 and is selected directly from the Review tab. -->
             <div id="browserTtsSettings">
                 <div class="setting-group">
                     <label for="voiceSelect">Głos lektora TTS</label>
@@ -163,27 +181,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- ElevenLabs settings -->
-            <div id="elSettings" class="el-settings">
-                <label>🎙️ ElevenLabs</label>
-                <div class="glass-card" style="padding:12px;">
-                    <div class="setting-group" style="margin-bottom:0;">
-                        <label for="elVoiceSelect">Głos ElevenLabs</label>
-                        <select id="elVoiceSelect">
-                            <option value="">— Ładowanie głosów —</option>
-                        </select>
-                    </div>
-                    <div class="el-status" id="elStatus"></div>
-                    <div class="el-help" style="margin-top:8px;">
-                        🔒 Klucz ElevenLabs jest przechowywany wyłącznie jako sekret na serwerze.
-                        Rozszerzenie nigdy go nie pobiera ani nie zapisuje lokalnie.
-                    </div>
-                </div>
-            </div>
-
-
-
 
             <!-- Subtitle Styles (non-Reels) removed per refactor request -->
 
@@ -288,10 +285,38 @@
                 <span class="review-count" id="reviewCount"></span>
                 <button class="review-dir-btn" id="reviewDirBtn" title="Zmień kierunek powtórek">EN <span
                         class="dir-arrow">→</span> PL</button>
-                <button class="review-icon-btn" id="reviewRandomVoiceBtn" title="Losowy głos TTS (Włącz/Wyłącz)"
-                    style="margin-left: 8px;">🎲</button>
-                <button class="review-icon-btn" id="reviewElevenLabsBtn" title="ElevenLabs TTS (Włącz/Wyłącz)"
-                    style="margin-left: 8px;">🎙️</button>
+                <div class="review-voice-picker" id="reviewVoicePicker">
+                    <button class="review-voice-btn" id="reviewVoiceBtn" type="button" aria-expanded="false"
+                        aria-controls="reviewVoiceMenu" title="Wybierz głos powtórek">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                        <span id="reviewVoiceBtnLabel">Głos</span>
+                        <span class="review-voice-ai-badge" id="reviewVoiceAiBadge">AI</span>
+                        <span class="review-voice-chevron" aria-hidden="true">⌄</span>
+                    </button>
+                    <div class="review-voice-menu" id="reviewVoiceMenu" hidden>
+                        <div class="review-voice-menu-head">
+                            <div>
+                                <strong>Głos powtórek</strong>
+                                <span>Słuchaj i zapamiętuj naturalniej</span>
+                            </div>
+                            <button type="button" class="review-voice-close" id="reviewVoiceClose" aria-label="Zamknij">×</button>
+                        </div>
+                        <button type="button" class="review-voice-system" id="reviewBrowserVoiceOption">
+                            <span class="review-voice-avatar system">🔊</span>
+                            <span class="review-voice-option-copy">
+                                <strong>Głos systemowy</strong>
+                                <small>Szybki i bez limitu</small>
+                            </span>
+                            <span class="review-voice-check" aria-hidden="true">✓</span>
+                        </button>
+                        <div class="review-voice-el-head">
+                            <span>ElevenLabs</span>
+                            <span class="review-voice-premium">PREMIUM</span>
+                        </div>
+                        <div id="reviewElevenLabsContent"></div>
+                        <div class="review-voice-status" id="reviewVoiceStatus" aria-live="polite"></div>
+                    </div>
+                </div>
             </div>
             <div class="review-progress" id="reviewProgress">
                 <div class="review-progress-bar" id="reviewProgressBar" style="width: 0%"></div>

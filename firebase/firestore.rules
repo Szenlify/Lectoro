@@ -13,14 +13,16 @@ service cloud.firestore {
                       'plan',
                       'aiCallsThisMonth', 'aiCallsResetDate',
                       'elevenLabsCharactersThisMonth', 'elevenLabsResetDate',
-                      'subscriptionStatus', 'stripeCustomerId', 'stripeSubscriptionId'
+                      'subscriptionStatus', 'stripeCustomerId', 'stripeSubscriptionId',
+                      'stripeCancelAtPeriodEnd', 'stripeCurrentPeriodEnd'
                     ]);
       allow update: if request.auth != null
                     && request.auth.uid == userId
                     && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
                       'plan', 'aiCallsThisMonth', 'aiCallsResetDate',
                       'elevenLabsCharactersThisMonth', 'elevenLabsResetDate',
-                      'subscriptionStatus', 'stripeCustomerId', 'stripeSubscriptionId'
+                      'subscriptionStatus', 'stripeCustomerId', 'stripeSubscriptionId',
+                      'stripeCancelAtPeriodEnd', 'stripeCurrentPeriodEnd'
                     ]);
       // Deleting the profile would reset server-owned monthly counters.
       allow delete: if false;

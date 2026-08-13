@@ -1,4 +1,4 @@
-const { cleanTextForTTS, pickBestVoice, pickRandomBestVoice } = SharedUtils;
+const { cleanTextForTTS, pickBestVoice } = SharedUtils;
 
 // ── SVG icons for review TTS buttons ──────────────────────────────
 const SPEAK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`;
@@ -40,7 +40,6 @@ function popupSpeak(text, lang) {
                 elVoiceId: "",
                 speechVoice: "",
                 ttsVolume: 1,
-                reviewRandomVoice: false,
             },
             async (data) => {
                 if (mySeq !== popupSpeakSeq) {
@@ -51,18 +50,8 @@ function popupSpeak(text, lang) {
                     data.ttsVolume !== undefined ? data.ttsVolume : 1;
 
                 // ElevenLabs path
-                let useElevenLabs = false;
-                if (
-                    data.ttsMode === "elevenlabs" &&
-                    data.elVoiceId
-                ) {
-                    useElevenLabs = true;
-                    // Jeśli włączony jest losowy głos, mamy 50% szans, że zrezygnujemy z ElevenLabs i użyjemy przeglądarki
-                    // Dzięki temu wszystkie głosy z obu systemów się mieszają
-                    if (data.reviewRandomVoice && Math.random() > 0.5) {
-                        useElevenLabs = false;
-                    }
-                }
+                const useElevenLabs =
+                    data.ttsMode === "elevenlabs" && !!data.elVoiceId;
 
                 let elFailed = false;
                 if (useElevenLabs) {
@@ -70,12 +59,14 @@ function popupSpeak(text, lang) {
                         let targetVoiceId = data.elVoiceId;
 
                         // Pobierz listę głosów i wylosuj jeden, jeśli wybrano tryb losowy
-                        if (targetVoiceId === "random" || data.reviewRandomVoice) {
+                        if (targetVoiceId === "random") {
                             const voices = await SubscriptionService.getElevenLabsVoices();
                             if (voices.length > 0) {
                                 const randomVoice =
                                     voices[Math.floor(Math.random() * voices.length)];
                                 targetVoiceId = randomVoice.voice_id;
+                            } else {
+                                throw new Error("Brak dostępnych głosów ElevenLabs.");
                             }
                         }
 
@@ -104,7 +95,15 @@ function popupSpeak(text, lang) {
                         const url = URL.createObjectURL(blob);
                         popupElAudio = new Audio(url);
                         popupElAudio.volume = volume;
-                        popupElAudio.play();
+                        popupElAudio.addEventListener(
+                            "ended",
+                            () => URL.revokeObjectURL(url),
+                            { once: true },
+                        );
+                        await popupElAudio.play();
+                        if (typeof setReviewVoiceStatus === "function") {
+                            setReviewVoiceStatus("");
+                        }
                         resolve({ type: "audio", obj: popupElAudio });
                         return;
                     } catch (err) {
@@ -112,9 +111,8 @@ function popupSpeak(text, lang) {
                             "[Lectoro] ElevenLabs popup TTS failed:",
                             err.message || err,
                         );
-                        if (elStatusEl) {
-                            elStatusEl.textContent = `✗ ElevenLabs: ${err.message}`;
-                            elStatusEl.className = "el-status err";
+                        if (typeof reportReviewVoiceFailure === "function") {
+                            await reportReviewVoiceFailure(err);
                         }
                         if (SubscriptionService.isLimitError(err)) {
                             SubscriptionService.showUpgradePrompt(err);
@@ -136,9 +134,7 @@ function popupSpeak(text, lang) {
                 // the user picked, just always at a natural pace.
                 utter.rate = 1;
                 utter.volume = volume;
-                const voice = data.reviewRandomVoice 
-                    ? pickRandomBestVoice(data.speechVoice, lang) 
-                    : pickBestVoice(data.speechVoice, lang);
+                const voice = pickBestVoice(data.speechVoice, lang);
                 if (voice) utter.voice = voice;
                 window.speechSynthesis.speak(utter);
                 resolve({ type: "utter", obj: utter });

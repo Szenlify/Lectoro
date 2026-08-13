@@ -332,7 +332,12 @@
                 URL.revokeObjectURL(elAudioEl.src);
             }
             elAudioEl = new Audio(url);
-            elAudioEl.play();
+            elAudioEl.addEventListener(
+                "ended",
+                () => URL.revokeObjectURL(url),
+                { once: true },
+            );
+            await elAudioEl.play();
             return elAudioEl;
         } catch (err) {
             console.warn(
@@ -341,6 +346,14 @@
             );
             if (SubscriptionService.isLimitError(err)) {
                 SubscriptionService.showUpgradePrompt(err);
+            }
+            if ([
+                "ELEVENLABS_PROVIDER_DISABLED",
+                "ELEVENLABS_PROVIDER_QUOTA",
+                "ELEVENLABS_REQUEST_FAILED",
+                "ELEVENLABS_MONTHLY_LIMIT_REACHED",
+            ].includes(err?.code)) {
+                await chrome.storage.local.set({ ttsMode: "browser" });
             }
             return null;
         }
