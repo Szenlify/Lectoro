@@ -17,6 +17,87 @@ const GeminiProxy = (() => {
     // URL Cloud Function (region europe-west1, projekt extension-eng)
     const PROXY_URL =
         "https://geminiproxy-gyagzflbra-ew.a.run.app";
+    const USAGE_KEY = "aiUsageCache";
+
+    function currentMonth() {
+        return new Date().toISOString().slice(0, 7);
+    }
+
+    async function getCachedUsage() {
+        const data = await chrome.storage.local.get({ [USAGE_KEY]: null });
+        return data[USAGE_KEY];
+    }
+
+    async function setCachedUsage(usage) {
+        if (!usage) return null;
+        const user = await FirebaseSync.getUser();
+        const normalized = {
+            uid: user?.uid || usage.uid || "",
+            month: currentMonth(),
+            plan: usage.plan || "free",
+            used: Number(usage.used || 0),
+            limit: Number(usage.limit || 0),
+            remaining: Math.max(
+                0,
+                Number(usage.remaining ?? Number(usage.limit || 0) - Number(usage.used || 0)),
+            ),
+            updatedAt: Date.now(),
+        };
+        await chrome.storage.local.set({ [USAGE_KEY]: normalized });
+        return normalized;
+    }
+
+    /** Fetch once at initialization/month change; later checks are local. */
+    async function refreshUsage(force = false) {
+        const user = await FirebaseSync.getUser();
+        if (!user) return null;
+        const cached = await getCachedUsage();
+        if (!force && cached?.uid === user.uid && cached?.month === currentMonth()) {
+            return cached;
+        }
+
+        const token = await getToken();
+        if (!token) return null;
+        const response = await fetch(PROXY_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ action: "usage" }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(data?.error || `Błąd pobierania limitu AI (${response.status})`);
+        }
+        return setCachedUsage(data.usage);
+    }
+
+    async function requireAvailableUsage() {
+        const usage = (await refreshUsage(false)) || (await getCachedUsage());
+        if (usage?.limit > 0 && usage.used >= usage.limit) {
+            throw new Error(
+                `Przekroczono limit AI (${usage.limit} zapytań/mc dla planu ${(usage.plan || "free").toUpperCase()}). Ulepsz plan aby kontynuować.`,
+            );
+        }
+        return usage;
+    }
+
+    async function applyLocalLimitToUI() {
+        if (typeof document === "undefined") return;
+        const usage = await getCachedUsage();
+        const reached = !!(usage?.limit > 0 && usage.used >= usage.limit);
+        document.documentElement.toggleAttribute(
+            "data-lectoro-ai-limit-reached",
+            reached,
+        );
+        document
+            .querySelectorAll("#__qt_icon .__qt_tb-ai, .__qt_save-ai-btn, #exportQuiz")
+            .forEach((button) => {
+                button.disabled = reached;
+                button.setAttribute("aria-disabled", String(reached));
+            });
+    }
 
     /**
      * Pobiera ważny Firebase ID token z FirebaseSync.
@@ -55,14 +136,30 @@ const GeminiProxy = (() => {
             );
         }
 
-        const res = await fetch(PROXY_URL, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ prompt, temperature, maxOutputTokens }),
-        });
+        const previousUsage = await requireAvailableUsage();
+        // Optimistic local reservation blocks parallel UI actions immediately.
+        if (previousUsage) {
+            await setCachedUsage({
+                ...previousUsage,
+                used: previousUsage.used + 1,
+                remaining: Math.max(0, previousUsage.limit - previousUsage.used - 1),
+            });
+        }
+
+        let res;
+        try {
+            res = await fetch(PROXY_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ prompt, temperature, maxOutputTokens }),
+            });
+        } catch (error) {
+            if (previousUsage) await setCachedUsage(previousUsage);
+            throw error;
+        }
 
         const data = await res.json().catch(() => ({}));
 
@@ -72,10 +169,17 @@ const GeminiProxy = (() => {
             if (res.status === 429) {
                 const plan = data?.plan || "free";
                 const limit = data?.limit || "?";
+                await setCachedUsage({
+                    plan,
+                    used: Number(data?.used || limit || 0),
+                    limit: Number(data?.limit || 0),
+                    remaining: 0,
+                });
                 throw new Error(
                     `Przekroczono limit AI (${limit} zapytań/mc dla planu ${plan.toUpperCase()}). Ulepsz plan aby kontynuować.`
                 );
             }
+            if (previousUsage) await setCachedUsage(previousUsage);
             if (res.status === 401) {
                 throw new Error(
                     "Sesja wygasła. Zaloguj się ponownie."
@@ -84,6 +188,11 @@ const GeminiProxy = (() => {
 
             throw new Error(msg);
         }
+
+        await setCachedUsage(data.usage || {
+            ...previousUsage,
+            used: (previousUsage?.used || 0) + 1,
+        });
 
         return {
             text: data.text || "",
@@ -109,12 +218,28 @@ const GeminiProxy = (() => {
     }
 
     // Eksport
-    return { request, requestJSON };
+    return {
+        request,
+        requestJSON,
+        refreshUsage,
+        getCachedUsage,
+        applyLocalLimitToUI,
+        isLimitReached: async () => {
+            const usage = await getCachedUsage();
+            return !!(usage?.limit > 0 && usage.used >= usage.limit);
+        },
+    };
 })();
 
 // Udostępnij globalnie (content scripts + popup + background)
 if (typeof window !== "undefined") {
     window.GeminiProxy = GeminiProxy;
+    GeminiProxy.applyLocalLimitToUI();
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === "local" && changes.aiUsageCache) {
+            GeminiProxy.applyLocalLimitToUI();
+        }
+    });
 }
 if (typeof self !== "undefined" && typeof window === "undefined") {
     // Service Worker (background.js)

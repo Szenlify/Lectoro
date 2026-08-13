@@ -34,7 +34,7 @@ function popupSpeak(text, lang) {
     }
 
     return new Promise((resolve) => {
-        chrome.storage.sync.get(
+        chrome.storage.local.get(
             {
                 ttsMode: "browser",
                 elApiKey: "",

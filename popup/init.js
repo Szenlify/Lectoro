@@ -82,15 +82,6 @@ function deleteReviewWord(w) {
                     chrome.runtime.lastError.message,
                 );
             }
-            // Delete from Firestore
-            chrome.runtime.sendMessage({
-                type: "QT_FIRESTORE_DELETE",
-                word: {
-                    id: w.id,
-                    original: w.original,
-                    translated: w.translated,
-                },
-            });
             // Remove from current queue and continue
             reviewQueue.splice(reviewIndex, 1);
             reviewTotalDue = reviewQueue.length;
@@ -125,43 +116,11 @@ function deleteAllReviews() {
                     chrome.runtime.lastError.message,
                 );
             }
-            // Delete from Firestore in batch
-            chrome.runtime.sendMessage({
-                type: "QT_FIRESTORE_DELETE_BATCH",
-                words: dueWords.map((w) => ({
-                    id: w.id,
-                    original: w.original,
-                    translated: w.translated,
-                })),
-            });
             reviewQueue = [];
             reviewIndex = 0;
             reviewTotalDue = 0;
             reviewAnswerShown = false;
             renderReview();
-        });
-    });
-}
-
-function deleteReviewsFromChromeStorage() {
-    return new Promise((resolve) => {
-        chrome.storage.local.clear(() => {
-            if (chrome.runtime.lastError) {
-                console.error(
-                    "[Lectoro] Błąd czyszczenia całej pamięci:",
-                    chrome.runtime.lastError.message,
-                );
-            }
-
-            // Resetowanie stanu interfejsu
-            reviewQueue = [];
-            reviewIndex = 0;
-            reviewTotalDue = 0;
-            reviewAnswerShown = false;
-            renderReview();
-
-            // Dajemy znać `signOut()`, że pamięć jest bezpiecznie pusta
-            resolve();
         });
     });
 }

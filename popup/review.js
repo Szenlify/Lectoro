@@ -23,7 +23,7 @@ let reviewDirection = "normal";
 let reviewRandomVoice = false;
 
 // Load saved direction and random voice setting from storage
-chrome.storage.sync.get(
+chrome.storage.local.get(
     { reviewDirection: "normal", reviewRandomVoice: false, ttsMode: "browser" },
     (data) => {
         reviewDirection = data.reviewDirection;
@@ -48,7 +48,7 @@ function updateDirBtnLabel() {
 
 document.getElementById("reviewDirBtn")?.addEventListener("click", () => {
     reviewDirection = reviewDirection === "normal" ? "reverse" : "normal";
-    chrome.storage.sync.set({ reviewDirection }, flashSaved);
+    chrome.storage.local.set({ reviewDirection }, flashSaved);
     updateDirBtnLabel();
     // Restart current card without changing queue position
     reviewAnswerShown = false;
@@ -70,7 +70,7 @@ document
     .getElementById("reviewRandomVoiceBtn")
     ?.addEventListener("click", () => {
         reviewRandomVoice = !reviewRandomVoice;
-        chrome.storage.sync.set({ reviewRandomVoice }, flashSaved);
+        chrome.storage.local.set({ reviewRandomVoice }, flashSaved);
         updateRandomVoiceBtnLabel();
     });
 

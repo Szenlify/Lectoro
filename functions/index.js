@@ -24,7 +24,7 @@ setGlobalOptions({ region: "europe-west1" });
 
 // ── Limity AI dla każdego planu (zapytania na miesiąc) ──────────────
 const PLAN_LIMITS = {
-    free: 50,
+    free: 3,
     basic: 500,
     pro: 5000,
 };
@@ -33,10 +33,7 @@ const PLAN_LIMITS = {
 function setCorsHeaders(res) {
     res.set("Access-Control-Allow-Origin", "*");
     res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
-    res.set(
-        "Access-Control-Allow-Headers",
-        "Content-Type, Authorization"
-    );
+    res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
 }
 
 // ── Główna funkcja proxy ─────────────────────────────────────────────
@@ -112,6 +109,19 @@ exports.geminiProxy = onRequest(
 
         const limit = PLAN_LIMITS[plan] ?? PLAN_LIMITS.free;
 
+        // One lightweight initialization call lets the extension cache usage
+        // locally. Normal UI checks do not need additional Firestore reads.
+        if (req.body?.action === "usage") {
+            return res.status(200).json({
+                usage: {
+                    plan,
+                    used: aiCallsThisMonth,
+                    limit,
+                    remaining: Math.max(0, limit - aiCallsThisMonth),
+                },
+            });
+        }
+
         if (aiCallsThisMonth >= limit) {
             return res.status(429).json({
                 error: "Przekroczono miesięczny limit AI dla Twojego planu.",
@@ -156,19 +166,24 @@ exports.geminiProxy = onRequest(
                     body: JSON.stringify({
                         contents: [{ parts: [{ text: prompt }] }],
                         generationConfig: {
-                            temperature: Math.min(Math.max(Number(temperature), 0), 2),
+                            temperature: Math.min(
+                                Math.max(Number(temperature), 0),
+                                2,
+                            ),
                             maxOutputTokens: Math.min(
                                 Math.max(Number(maxOutputTokens), 1),
-                                8192
+                                8192,
                             ),
                         },
                     }),
-                }
+                },
             );
 
             if (!geminiRes.ok) {
                 const errData = await geminiRes.json().catch(() => ({}));
-                const msg = errData?.error?.message || `Gemini HTTP ${geminiRes.status}`;
+                const msg =
+                    errData?.error?.message ||
+                    `Gemini HTTP ${geminiRes.status}`;
                 console.error("[geminiProxy] Gemini API error:", msg);
                 return res.status(502).json({ error: msg });
             }
@@ -176,7 +191,9 @@ exports.geminiProxy = onRequest(
             geminiResponse = await geminiRes.json();
         } catch (err) {
             console.error("[geminiProxy] Gemini fetch error:", err);
-            return res.status(502).json({ error: "Błąd połączenia z Gemini API." });
+            return res
+                .status(502)
+                .json({ error: "Błąd połączenia z Gemini API." });
         }
 
         // ── 5. Aktualizacja licznika zużycia ──────────────────────────
@@ -187,7 +204,7 @@ exports.geminiProxy = onRequest(
                     aiCallsResetDate: currentMonth,
                     // Nie nadpisujemy plan – tylko serwer może go zmienić
                 },
-                { merge: true }
+                { merge: true },
             );
         } catch (err) {
             // Nie przerywamy – odpowiedź już mamy, licznik to sprawa drugorzędna
@@ -207,5 +224,5 @@ exports.geminiProxy = onRequest(
                 remaining: limit - (aiCallsThisMonth + 1),
             },
         });
-    }
+    },
 );

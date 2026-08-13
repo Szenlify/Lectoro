@@ -301,17 +301,6 @@ document.getElementById("clearAll").addEventListener("click", () => {
                 );
             }
             loadWords();
-            // Delete from Firestore in batch
-            if (visibleWords.length > 0) {
-                chrome.runtime.sendMessage({
-                    type: "QT_FIRESTORE_DELETE_BATCH",
-                    words: visibleWords.map((w) => ({
-                        id: w.id,
-                        original: w.original,
-                        translated: w.translated,
-                    })),
-                });
-            }
         });
     });
 });

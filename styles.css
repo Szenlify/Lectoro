@@ -416,6 +416,13 @@
     background: rgba(167, 139, 250, 0.12);
 }
 
+html[data-lectoro-ai-limit-reached] .__qt_tb-ai,
+html[data-lectoro-ai-limit-reached] .__qt_save-ai-btn {
+    pointer-events: none !important;
+    opacity: 0.45 !important;
+    cursor: not-allowed !important;
+}
+
 /* ── AI Result Display ── */
 #__qt_tooltip .__qt_ai-result {
     padding: 8px 10px;

@@ -397,7 +397,7 @@
                 return;
             }
 
-            chrome.storage.sync.get(
+            chrome.storage.local.get(
                 {
                     ttsMode: "browser",
                     elApiKey: "",
@@ -451,8 +451,8 @@
 
     function getTargetLang() {
         return new Promise((resolve) => {
-            if (chrome?.storage?.sync) {
-                chrome.storage.sync.get({ targetLang: "pl" }, (d) =>
+            if (chrome?.storage?.local) {
+                chrome.storage.local.get({ targetLang: "pl" }, (d) =>
                     resolve(d.targetLang),
                 );
             } else {

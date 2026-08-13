@@ -420,7 +420,7 @@
                 return;
             }
 
-            if (!chrome?.storage?.sync) {
+            if (!chrome?.storage?.local) {
                 const utter = new SpeechSynthesisUtterance(text);
                 utter.lang = lang;
                 const voice = pickBestVoice("", lang);
@@ -435,7 +435,7 @@
                 return;
             }
 
-            chrome.storage.sync.get(
+            chrome.storage.local.get(
                 {
                     ttsMode: "browser",
                     elApiKey: "",
@@ -1888,8 +1888,8 @@
                         });
                     }
                 };
-                if (chrome?.storage?.sync) {
-                    chrome.storage.sync.get(
+                if (chrome?.storage?.local) {
+                    chrome.storage.local.get(
                         { wordCloudMode: true, subtitleTTS: false },
                         handleSubtitleAction,
                     );

@@ -202,7 +202,6 @@ const FirebaseSync = (() => {
 
     async function signOut() {
         await clearAuthData();
-        await deleteReviewsFromChromeStorage();
     }
 
     // ── Firestore Data Conversion ────────────────────────────────
@@ -321,68 +320,58 @@ const FirebaseSync = (() => {
         return words;
     }
 
-    /** Batch upsert words to Firestore (max 500 per commit) */
-    async function pushWords(uid, token, words) {
-        if (!words.length) return;
-
-        // Resource path (NOT the full URL) for document name fields
+    /**
+     * Firestore writeBatch equivalent over the REST commit endpoint.
+     * Upserts and deletes share the same atomic commit (max 500 writes).
+     * Errors are deliberately propagated so the offline queue is only cleared
+     * after Firebase confirms the write.
+     */
+    async function writeBatch(uid, token, { upserts = [], deletes = [] } = {}) {
         const docBase = `${firestoreDocPath()}/users/${uid}/words`;
+        const writes = [];
 
-        // Process in batches of 500 (Firestore commit limit)
-        for (let i = 0; i < words.length; i += 500) {
-            const batch = words.slice(i, i + 500);
-            const writes = [];
+        for (const word of upserts) {
+            const docId = await wordDocId(word);
+            writes.push({
+                update: {
+                    name: `${docBase}/${docId}`,
+                    fields: toFirestoreFields(word),
+                },
+            });
+        }
+        for (const word of deletes) {
+            const docId = await wordDocId(word);
+            writes.push({ delete: `${docBase}/${docId}` });
+        }
 
-            for (const word of batch) {
-                const docId = await wordDocId(word);
-                writes.push({
-                    update: {
-                        name: `${docBase}/${docId}`,
-                        fields: toFirestoreFields(word),
-                    },
-                });
-            }
-
-            try {
-                const res = await fetch(`${firestoreBase()}:commit`, {
-                    method: "POST",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({ writes }),
-                });
-
-                if (!res.ok) {
-                    const err = await res.json().catch(() => ({}));
-                    console.warn(
-                        "[Lectoro] Firestore batch write failed:",
-                        res.status,
-                        err,
-                    );
-                }
-            } catch (err) {
-                console.warn("[Lectoro] Firestore batch write error:", err);
+        for (let i = 0; i < writes.length; i += 500) {
+            const batchWrites = writes.slice(i, i + 500);
+            const res = await fetch(`${firestoreBase()}:commit`, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ writes: batchWrites }),
+            });
+            if (!res.ok) {
+                const details = await res.json().catch(() => ({}));
+                const message =
+                    details?.error?.message || `Firestore commit ${res.status}`;
+                throw new Error(message);
             }
         }
+
+        return writes.length;
+    }
+
+    async function pushWords(uid, token, words) {
+        return writeBatch(uid, token, { upserts: words });
     }
 
     /** Delete a single word document from Firestore */
     async function deleteWordDoc(uid, token, word) {
-        const docId = await wordDocId(word);
-        const url = `${firestoreBase()}/users/${uid}/words/${docId}`;
-
-        try {
-            const res = await fetch(url, {
-                method: "DELETE",
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!res.ok && res.status !== 404) {
-                console.warn("[Lectoro] Firestore delete failed:", res.status);
-            }
-        } catch (err) {
-            console.warn("[Lectoro] Firestore delete error:", err);
-        }
+        return writeBatch(uid, token, { deletes: [word] });
     }
 
     // ── Public API ───────────────────────────────────────────────
@@ -400,6 +389,7 @@ const FirebaseSync = (() => {
 
         // Firestore CRUD
         pullWords,
+        writeBatch,
         pushWords,
         deleteWordDoc,
     };

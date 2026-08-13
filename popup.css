@@ -2255,6 +2255,40 @@ body::before {
     cursor: default;
 }
 
+.sync-button-wrap {
+    position: relative;
+    display: inline-flex;
+}
+
+html[data-lectoro-ai-limit-reached] #exportQuiz {
+    pointer-events: none;
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.sync-pending-dot {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #ef4444;
+    box-shadow: 0 0 0 2px var(--bg-primary, #111827);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.sync-pending-dot.visible {
+    opacity: 1;
+    animation: sync-pending-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes sync-pending-pulse {
+    0%, 100% { transform: scale(0.8); opacity: 0.55; }
+    50% { transform: scale(1.18); opacity: 1; }
+}
+
 .sync-primary {
     background: var(--accent-dim);
     border-color: rgba(129, 140, 248, 0.2);

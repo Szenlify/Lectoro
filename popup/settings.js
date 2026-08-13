@@ -1,5 +1,5 @@
 // ── Settings: load & save language ────────────────────────────────
-chrome.storage.sync.get(
+chrome.storage.local.get(
     { targetLang: "pl", speechVoice: "", speechRate: 1.3, ttsVolume: 1 },
     (data) => {
         select.value = data.targetLang;
@@ -15,7 +15,7 @@ chrome.storage.sync.get(
 );
 
 select.addEventListener("change", () => {
-    chrome.storage.sync.set({ targetLang: select.value }, flashSaved);
+    chrome.storage.local.set({ targetLang: select.value }, flashSaved);
 });
 
 // ── Subtitle reading modes ───────────────────────────────────────
@@ -23,7 +23,7 @@ const subtitleTTSToggle = document.getElementById("subtitleTTS");
 const wordCloudModeToggle = document.getElementById("wordCloudMode");
 
 function syncSubtitleModeUI() {
-    chrome.storage.sync.get(
+    chrome.storage.local.get(
         { subtitleTTS: false, wordCloudMode: true },
         (data) => {
             subtitleTTSToggle.checked = !!data.subtitleTTS;
@@ -35,14 +35,14 @@ function syncSubtitleModeUI() {
 syncSubtitleModeUI();
 
 subtitleTTSToggle.addEventListener("change", () => {
-    chrome.storage.sync.set(
+    chrome.storage.local.set(
         { subtitleTTS: subtitleTTSToggle.checked },
         flashSaved,
     );
 });
 
 wordCloudModeToggle.addEventListener("change", () => {
-    chrome.storage.sync.set(
+    chrome.storage.local.set(
         { wordCloudMode: wordCloudModeToggle.checked },
         flashSaved,
     );
@@ -68,13 +68,13 @@ function loadVoices(selectedVoice) {
 
 // Voices may load async
 window.speechSynthesis.onvoiceschanged = () => {
-    chrome.storage.sync.get({ speechVoice: "" }, (data) => {
+    chrome.storage.local.get({ speechVoice: "" }, (data) => {
         loadVoices(data.speechVoice);
     });
 };
 
 voiceSelect.addEventListener("change", () => {
-    chrome.storage.sync.set({ speechVoice: voiceSelect.value }, flashSaved);
+    chrome.storage.local.set({ speechVoice: voiceSelect.value }, flashSaved);
 });
 
 // ── Rate slider ───────────────────────────────────────────────────
@@ -82,7 +82,7 @@ rateRange.addEventListener("input", () => {
     rateValue.textContent = parseFloat(rateRange.value).toFixed(2);
 });
 rateRange.addEventListener("change", () => {
-    chrome.storage.sync.set(
+    chrome.storage.local.set(
         { speechRate: parseFloat(rateRange.value) },
         flashSaved,
     );
@@ -95,7 +95,7 @@ if (volumeRange) {
             Math.round(parseFloat(volumeRange.value) * 100) + "%";
     });
     volumeRange.addEventListener("change", () => {
-        chrome.storage.sync.set(
+        chrome.storage.local.set(
             { ttsVolume: parseFloat(volumeRange.value) },
             flashSaved,
         );
@@ -123,14 +123,14 @@ function setTtsMode(mode) {
         browserTtsSettings.style.display = "";
         elSettingsPanel.classList.remove("visible");
     }
-    chrome.storage.sync.set({ ttsMode: mode }, flashSaved);
+    chrome.storage.local.set({ ttsMode: mode }, flashSaved);
 }
 
 modeBrowserBtn.addEventListener("click", () => setTtsMode("browser"));
 modeELBtn.addEventListener("click", () => setTtsMode("elevenlabs"));
 
 // Load saved mode
-chrome.storage.sync.get(
+chrome.storage.local.get(
     { ttsMode: "browser", elApiKey: "", elVoiceId: "" },
     (data) => {
         if (data.ttsMode === "elevenlabs") setTtsMode("elevenlabs");
@@ -147,7 +147,7 @@ elApiKeyInput.addEventListener("input", () => {
     clearTimeout(elKeyDebounce);
     elKeyDebounce = setTimeout(() => {
         const key = elApiKeyInput.value.trim();
-        chrome.storage.sync.set({ elApiKey: key }, flashSaved);
+        chrome.storage.local.set({ elApiKey: key }, flashSaved);
         if (key) loadELVoices(key);
     }, 600);
 });
@@ -186,9 +186,38 @@ async function loadELVoices(apiKey, selectedVoiceId) {
 }
 
 elVoiceSelect.addEventListener("change", () => {
-    chrome.storage.sync.set({ elVoiceId: elVoiceSelect.value }, flashSaved);
+    chrome.storage.local.set({ elVoiceId: elVoiceSelect.value }, flashSaved);
 });
 
 // ── Gemini AI – zużycie (info) ────────────────────────────────────
 // Klucz Gemini API jest zarządzany przez serwer – użytkownicy nie muszą
-// go wpisywać. Tutaj pokazujemy tylko informację o zużyciu z odpowiedzi proxy.
+// go wpisywać. Tutaj pokazujemy tylko informację o zużyciu z odpowiedzi proxy.
+async function refreshAiUsageUI() {
+    const info = document.getElementById("aiUsageInfo");
+    if (!info || typeof GeminiProxy === "undefined") return;
+
+    const usage = await GeminiProxy.getCachedUsage();
+
+    const limitReached = !!(usage?.limit > 0 && usage.used >= usage.limit);
+    if (usage) {
+        info.textContent = limitReached
+            ? `Limit wykorzystany: ${usage.used}/${usage.limit} (${usage.plan.toUpperCase()})`
+            : `Wykorzystano ${usage.used}/${usage.limit} zapytań (${usage.plan.toUpperCase()})`;
+        info.style.color = limitReached ? "#ef4444" : "var(--text-muted)";
+    } else {
+        info.textContent = "Zużycie zostanie pobrane po zalogowaniu.";
+    }
+
+    const quizButton = document.getElementById("exportQuiz");
+    if (quizButton) {
+        quizButton.disabled = limitReached;
+        if (limitReached) quizButton.title = "Miesięczny limit AI został wykorzystany";
+    }
+}
+
+refreshAiUsageUI();
+chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === "local" && (changes.aiUsageCache || changes.firebaseAuth)) {
+        refreshAiUsageUI();
+    }
+});

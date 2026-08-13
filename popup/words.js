@@ -143,9 +143,6 @@ function loadWords() {
 // ── Delete word ───────────────────────────────────────────────────
 function deleteWord(original, timestamp) {
     chrome.storage.local.get({ savedWords: [] }, (data) => {
-        const wordToDelete = data.savedWords.find(
-            (w) => w.original === original && w.timestamp === timestamp,
-        );
         const words = data.savedWords.filter(
             (w) => !(w.original === original && w.timestamp === timestamp),
         );
@@ -157,17 +154,6 @@ function deleteWord(original, timestamp) {
                 );
             }
             loadWords();
-            // Delete from Firestore (fire-and-forget via background)
-            if (wordToDelete) {
-                chrome.runtime.sendMessage({
-                    type: "QT_FIRESTORE_DELETE",
-                    word: {
-                        id: wordToDelete.id,
-                        original: wordToDelete.original,
-                        translated: wordToDelete.translated,
-                    },
-                });
-            }
         });
     });
 }
