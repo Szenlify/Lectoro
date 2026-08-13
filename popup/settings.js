@@ -196,23 +196,95 @@ async function refreshAiUsageUI() {
     const info = document.getElementById("aiUsageInfo");
     if (!info || typeof GeminiProxy === "undefined") return;
 
-    const usage = await GeminiProxy.getCachedUsage();
+    const usageSection = document.getElementById("aiUsageSection");
+    const plansSection = document.getElementById("aiPlansSection");
+    const user =
+        typeof FirebaseSync !== "undefined"
+            ? await FirebaseSync.getUser().catch(() => null)
+            : null;
+    const signedIn = !!user;
+    if (usageSection) usageSection.hidden = !signedIn;
+    if (plansSection) plansSection.hidden = !signedIn;
+    if (!signedIn) return;
 
+    const usage = await GeminiProxy.getCachedUsage();
+    const card = document.getElementById("aiUsageCard");
+    const plan = document.getElementById("aiUsagePlan");
+    const title = document.getElementById("aiUsageTitle");
+    const value = document.getElementById("aiUsageValue");
+    const remaining = document.getElementById("aiUsageRemaining");
+    const track = document.getElementById("aiUsageTrack");
+    const fill = document.getElementById("aiUsageFill");
+    const upgradeButton = document.getElementById("aiUpgradeButton");
     const limitReached = !!(usage?.limit > 0 && usage.used >= usage.limit);
+
+    card?.classList.remove("is-warning", "is-empty");
+    fill?.classList.remove("is-loading");
     if (usage) {
-        info.textContent = limitReached
-            ? `Limit wykorzystany: ${usage.used}/${usage.limit} (${usage.plan.toUpperCase()})`
-            : `Wykorzystano ${usage.used}/${usage.limit} zapytań (${usage.plan.toUpperCase()})`;
-        info.style.color = limitReached ? "#ef4444" : "var(--text-muted)";
+        const used = Math.max(0, Number(usage.used || 0));
+        const limit = Math.max(0, Number(usage.limit || 0));
+        const left = Math.max(0, limit - used);
+        const percentage = limit ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+
+        if (plan) plan.textContent = `PLAN ${(usage.plan || "free").toUpperCase()}`;
+        if (value) value.textContent = `${used} / ${limit}`;
+        if (fill) fill.style.width = `${percentage}%`;
+        if (track) {
+            track.setAttribute("aria-valuenow", String(percentage));
+            track.setAttribute("aria-valuetext", `${used} z ${limit} kredytów wykorzystanych`);
+        }
+
+        if (limitReached) {
+            card?.classList.add("is-empty");
+            if (title) title.textContent = "Kredyty zostały wykorzystane";
+            info.textContent = "Funkcje AI są chwilowo wstrzymane";
+            if (remaining) remaining.textContent = "0 pozostało";
+            if (upgradeButton) upgradeButton.hidden = false;
+        } else {
+            if (percentage >= 80) card?.classList.add("is-warning");
+            if (title) title.textContent = "Miesięczne wykorzystanie";
+            info.textContent = "Limit odnawia się co miesiąc";
+            if (remaining) remaining.textContent = `${left} pozostało`;
+            if (upgradeButton) upgradeButton.hidden = true;
+        }
     } else {
-        info.textContent = "Zużycie zostanie pobrane po zalogowaniu.";
+        if (plan) plan.textContent = "KREDYTY AI";
+        if (title) title.textContent = "Zaloguj się, aby sprawdzić limit";
+        if (value) value.textContent = "— / —";
+        if (fill) {
+            fill.style.width = "38%";
+            fill.classList.add("is-loading");
+        }
+        info.textContent = "Zużycie pojawi się po zalogowaniu";
+        if (remaining) remaining.textContent = "Brak danych";
+        if (upgradeButton) upgradeButton.hidden = true;
     }
 
     const quizButton = document.getElementById("exportQuiz");
     if (quizButton) {
-        quizButton.disabled = limitReached;
-        if (limitReached) quizButton.title = "Miesięczny limit AI został wykorzystany";
+        quizButton.classList.toggle("credits-empty", limitReached);
+        quizButton.setAttribute("aria-disabled", String(limitReached));
+        quizButton.innerHTML = limitReached ? "✦ Brak kredytów AI" : "✨ Generuj quiz";
+        quizButton.title = limitReached
+            ? "Miesięczny limit AI został wykorzystany — zobacz dostępne plany"
+            : "Wygeneruj quiz za pomocą AI";
     }
+
+    await GeminiProxy.applyLocalLimitToUI();
+}
+
+function showAiPlans() {
+    document.querySelector('.tab[data-tab="settings"]')?.click();
+    const plans = document.getElementById("aiPlansSection");
+    plans?.scrollIntoView({ behavior: "smooth", block: "center" });
+    plans?.classList.add("is-highlighted");
+    setTimeout(() => plans?.classList.remove("is-highlighted"), 2200);
+}
+
+document.getElementById("aiUpgradeButton")?.addEventListener("click", showAiPlans);
+
+if (location.hash === "#plans") {
+    setTimeout(showAiPlans, 80);
 }
 
 refreshAiUsageUI();

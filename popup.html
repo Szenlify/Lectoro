@@ -39,6 +39,44 @@
                     <div id="syncContent"></div>
                 </div>
             </div>
+
+            <!-- Gemini AI settings -->
+            <div class="setting-group" id="aiUsageSection" hidden>
+                <label>🤖 Kredyty AI</label>
+                <div class="glass-card ai-usage-card" id="aiUsageCard">
+                    <div class="ai-usage-head">
+                        <div>
+                            <div class="ai-usage-eyebrow" id="aiUsagePlan">PLAN FREE</div>
+                            <div class="ai-usage-title" id="aiUsageTitle">Sprawdzam wykorzystanie…</div>
+                        </div>
+                        <div class="ai-usage-value" id="aiUsageValue">— / —</div>
+                    </div>
+                    <div class="ai-usage-track" role="progressbar" aria-label="Wykorzystanie kredytów AI"
+                        aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="aiUsageTrack">
+                        <div class="ai-usage-fill is-loading" id="aiUsageFill"></div>
+                    </div>
+                    <div class="ai-usage-footer">
+                        <span id="aiUsageInfo">Limit odświeża się co miesiąc</span>
+                        <span class="ai-usage-remaining" id="aiUsageRemaining">Ładowanie…</span>
+                    </div>
+                    <button type="button" class="ai-upgrade-btn" id="aiUpgradeButton" hidden>
+                        Zobacz plany →
+                    </button>
+                </div>
+            </div>
+
+            <div class="setting-group ai-plans-section" id="aiPlansSection" hidden>
+                <label>✨ Więcej możliwości</label>
+                <div class="glass-card ai-plans-card">
+                    <div class="ai-plans-icon">✦</div>
+                    <div class="ai-plans-copy">
+                        <strong>Plany Lectoro AI</strong>
+                        <span>Więcej tłumaczeń, wyjaśnień i quizów AI.</span>
+                    </div>
+                    <span class="ai-coming-badge">WKRÓTCE</span>
+                </div>
+            </div>
+
             <div class="setting-group">
                 <label for="targetLang">Język docelowy</label>
                 <select id="targetLang">
@@ -162,19 +200,6 @@
                 </div>
             </div>
 
-
-
-            <!-- Gemini AI settings -->
-            <div class="setting-group">
-                <label>🤖 Gemini AI</label>
-                <div class="glass-card" style="padding:12px;">
-                    <div style="font-size:13px;color:var(--text-secondary);line-height:1.5;">
-                        ✅ Funkcje AI są dostępne automatycznie po zalogowaniu.<br>
-                        Twój limit AI zależy od aktywnego planu subskrypcji.
-                    </div>
-                    <div id="aiUsageInfo" style="margin-top:10px;font-size:12px;color:var(--text-muted);"></div>
-                </div>
-            </div>
 
 
 

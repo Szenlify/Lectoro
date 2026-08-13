@@ -76,17 +76,86 @@ const GeminiProxy = (() => {
     async function requireAvailableUsage() {
         const usage = (await refreshUsage(false)) || (await getCachedUsage());
         if (usage?.limit > 0 && usage.used >= usage.limit) {
-            throw new Error(
+            const error = new Error(
                 `Przekroczono limit AI (${usage.limit} zapytań/mc dla planu ${(usage.plan || "free").toUpperCase()}). Ulepsz plan aby kontynuować.`,
             );
+            error.code = "AI_LIMIT_REACHED";
+            showUpgradePrompt(usage);
+            throw error;
         }
         return usage;
     }
 
+    function isLimitError(error) {
+        return (
+            error?.code === "AI_LIMIT_REACHED" ||
+            /limit AI|brak kredytów|kredyty zostały/i.test(error?.message || "")
+        );
+    }
+
+    function openPlans() {
+        const localPlans =
+            typeof document !== "undefined"
+                ? document.getElementById("aiPlansSection")
+                : null;
+        if (localPlans) {
+            document.querySelector?.('.tab[data-tab="settings"]')?.click();
+            localPlans.scrollIntoView({ behavior: "smooth", block: "center" });
+            localPlans.classList.add("is-highlighted");
+            setTimeout(() => localPlans.classList.remove("is-highlighted"), 2200);
+            return;
+        }
+        chrome.runtime
+            .sendMessage({ type: "QT_OPEN_PLANS" })
+            .catch(() => {});
+    }
+
+    function showUpgradePrompt(usage) {
+        if (typeof document === "undefined") return;
+        // Inside the extension popup the plans section is already available:
+        // navigate to it directly instead of covering the popup with a toast.
+        if (document.getElementById("aiPlansSection")) {
+            openPlans();
+            return;
+        }
+
+        document.getElementById("__qt_ai_limit_toast")?.remove();
+        const toast = document.createElement("div");
+        toast.id = "__qt_ai_limit_toast";
+        toast.innerHTML = `
+            <div class="__qt_ai_limit_orb">✦</div>
+            <div class="__qt_ai_limit_copy">
+                <strong>Wykorzystano kredyty AI</strong>
+                <span>W tym miesiącu użyto ${Number(usage?.used || usage?.limit || 0)} z ${Number(usage?.limit || 0)} kredytów.</span>
+            </div>
+            <button type="button" class="__qt_ai_upgrade_link">Zobacz plany</button>
+            <button type="button" class="__qt_ai_limit_close" aria-label="Zamknij">×</button>
+            <div class="__qt_ai_limit_timer"></div>`;
+        document.documentElement.appendChild(toast);
+        toast.querySelector(".__qt_ai_upgrade_link")?.addEventListener("click", () => {
+            toast.remove();
+            openPlans();
+        });
+        toast.querySelector(".__qt_ai_limit_close")?.addEventListener("click", () => toast.remove());
+        requestAnimationFrame(() => toast.classList.add("visible"));
+        setTimeout(() => {
+            toast.classList.remove("visible");
+            setTimeout(() => toast.remove(), 250);
+        }, 8000);
+    }
+
     async function applyLocalLimitToUI() {
         if (typeof document === "undefined") return;
-        const usage = await getCachedUsage();
-        const reached = !!(usage?.limit > 0 && usage.used >= usage.limit);
+        const [usage, user] = await Promise.all([
+            getCachedUsage(),
+            FirebaseSync.getUser().catch(() => null),
+        ]);
+        const reached = !!(
+            user &&
+            usage?.uid === user.uid &&
+            usage?.limit > 0 &&
+            usage.used >= usage.limit
+        );
         document.documentElement.toggleAttribute(
             "data-lectoro-ai-limit-reached",
             reached,
@@ -94,8 +163,16 @@ const GeminiProxy = (() => {
         document
             .querySelectorAll("#__qt_icon .__qt_tb-ai, .__qt_save-ai-btn, #exportQuiz")
             .forEach((button) => {
-                button.disabled = reached;
+                if (!button.dataset.aiOriginalTitle) {
+                    button.dataset.aiOriginalTitle = button.title || "";
+                }
                 button.setAttribute("aria-disabled", String(reached));
+                button.classList.toggle("ai-credits-empty", reached);
+                if (reached) {
+                    button.title = "Brak kredytów AI — kliknij, aby zobaczyć plany";
+                } else {
+                    button.title = button.dataset.aiOriginalTitle;
+                }
             });
     }
 
@@ -175,9 +252,12 @@ const GeminiProxy = (() => {
                     limit: Number(data?.limit || 0),
                     remaining: 0,
                 });
-                throw new Error(
+                const error = new Error(
                     `Przekroczono limit AI (${limit} zapytań/mc dla planu ${plan.toUpperCase()}). Ulepsz plan aby kontynuować.`
                 );
+                error.code = "AI_LIMIT_REACHED";
+                showUpgradePrompt({ plan, used: Number(data?.used || limit || 0), limit: Number(data?.limit || 0) });
+                throw error;
             }
             if (previousUsage) await setCachedUsage(previousUsage);
             if (res.status === 401) {
@@ -224,6 +304,9 @@ const GeminiProxy = (() => {
         refreshUsage,
         getCachedUsage,
         applyLocalLimitToUI,
+        isLimitError,
+        showUpgradePrompt,
+        openPlans,
         isLimitReached: async () => {
             const usage = await getCachedUsage();
             return !!(usage?.limit > 0 && usage.used >= usage.limit);

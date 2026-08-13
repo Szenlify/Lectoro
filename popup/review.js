@@ -395,7 +395,12 @@ async function aiTranslateReviewCard() {
                 maxOutputTokens: 300,
             });
         } catch (aiErr) {
-            panel.innerHTML = `<div class="review-ai-translate-error">${escapeHtml(aiErr.message)}</div>`;
+            const limitReached = GeminiProxy?.isLimitError?.(aiErr);
+            if (limitReached) {
+                panel.remove();
+            } else {
+                panel.innerHTML = `<div class="review-ai-translate-error">${escapeHtml(aiErr.message)}</div>`;
+            }
             return;
         }
         const wordTr = parsed.word_translation || "";

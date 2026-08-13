@@ -1,15 +1,14 @@
 [TODO]
+
 1. zdjecia od powtorek do claudflare R2 w webp w malej rozdzielczosci
 
-2. zmiejsz zyzycie odczytu/zapisu i usuniec bazy danych firebase niech synchronizuje "writeBatch()" do bazy danych to z chrome local storage chrome manualnym kliknieciu przycisku synchronizuj w settings a przy uzyciu przycisku wyloguj najpierw synchronizuj powtorki a potem wyloguj dodatkowo przy przycisku synchronizuj niech sie pojawi czerwona kropka mrygajaca sugerujaca ze sa rzeczy niesynchronizowane oraz dodaj Auto-sync po przestaniu klikania powtorek co 30 sekund niech wysle paczke do firebase w tle tak zeby zmiejszyc koszta bazy danych firebase funkcje AI z cloud firebase function niech liczy w pamieci wczesniejsze pobranie z firebase i dolicza lokalnie niech pamieta limity oraz Jeśli użytkownik zainstaluje wtyczkę na laptopie i komputerze stacjonarnym: Przy synchronizacji stosuj prostą zasadę "Last-Write-Wins" (wygrywa najnowsza zmiana) 
+[DONE] 2. zmiejsz zyzycie odczytu/zapisu i usuniec bazy danych firebase niech synchronizuje "writeBatch()" do bazy danych to z chrome local storage chrome manualnym kliknieciu przycisku synchronizuj w settings a przy uzyciu przycisku wyloguj najpierw synchronizuj powtorki a potem wyloguj dodatkowo przy przycisku synchronizuj niech sie pojawi czerwona kropka mrygajaca sugerujaca ze sa rzeczy niesynchronizowane oraz dodaj Auto-sync po przestaniu klikania powtorek co 30 sekund niech wysle paczke do firebase w tle tak zeby zmiejszyc koszta bazy danych firebase funkcje AI z cloud firebase function niech liczy w pamieci wczesniejsze pobranie z firebase i dolicza lokalnie niech pamieta limity oraz Jeśli użytkownik zainstaluje wtyczkę na laptopie i komputerze stacjonarnym: Przy synchronizacji stosuj prostą zasadę "Last-Write-Wins" (wygrywa najnowsza zmiana)
 
-3. cache'owanie audio elevanlabs w Chrome Extension, żeby nie płacić dwa razy za te same fiszki [cos tam zrobione nie sprawdzone]
+3. cache'owanie audio elevanlabs w Chrome Extension, żeby nie płacić dwa razy za te same fiszki [nie sprawdzone]
 
 4. zrob w kazdym jezyku aby był text UI nagłowki wszystkie w zaleznosci jaki zalezny jest język a jako defaul jest angielski [na pozniej jako ostatnie]
 
 5. tlumaczenie oraz tooltipy w chmurkach nad slowami maja przylegac do orginalnych napisow youtube czyli jak nie bede poruszał myszka na youtubie i napisy lekko opadna to tlumaczenie i tooltipy/chmurki podarzaja za napisami
-
-6. edycja powtorek (do sprawdzenia)
 
 3 plany Subskrybcji
 

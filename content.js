@@ -232,10 +232,15 @@
             await QT.speak(explanation, targetLang);
         } catch (err) {
             console.error("[Quick Translator AI]", err);
-            showTooltip(
-                `<div class="${PREFIX}error">⚠ ${escapeHtml(err.message)}</div>`,
-                rect,
-            );
+            const limitReached = GeminiProxy?.isLimitError?.(err);
+            if (limitReached) {
+                hideTooltip();
+            } else {
+                showTooltip(
+                    `<div class="${PREFIX}error">⚠ ${escapeHtml(err.message)}</div>`,
+                    rect,
+                );
+            }
         }
     }
 
@@ -1153,12 +1158,18 @@
             }
         } catch (err) {
             removeAiShimmer();
-            if (aiTooltipActive)
-                showTooltip(
-                    `<div class="${PREFIX}error">⚠ ${escapeHtml(err.message)}</div>`,
-                    rect,
-                    "top",
-                );
+            if (aiTooltipActive) {
+                const limitReached = GeminiProxy?.isLimitError?.(err);
+                if (limitReached) {
+                    hideTooltip();
+                } else {
+                    showTooltip(
+                        `<div class="${PREFIX}error">⚠ ${escapeHtml(err.message)}</div>`,
+                        rect,
+                        "top",
+                    );
+                }
+            }
         }
     }
 

@@ -151,6 +151,12 @@ document.getElementById("exportQuiz").addEventListener("click", async () => {
     const btn = document.getElementById("exportQuiz");
     const origText = btn.innerHTML;
 
+    const cachedUsage = await GeminiProxy?.getCachedUsage?.();
+    if (cachedUsage?.limit > 0 && cachedUsage.used >= cachedUsage.limit) {
+        GeminiProxy.showUpgradePrompt(cachedUsage);
+        return;
+    }
+
     const data = await new Promise((r) =>
         chrome.storage.local.get({ savedWords: [] }, r),
     );
@@ -186,10 +192,13 @@ document.getElementById("exportQuiz").addEventListener("click", async () => {
         markAsDownloaded(quizWords, data.savedWords);
     } catch (err) {
         console.error("Quiz export error:", err);
-        alert("Błąd generowania quizu: " + err.message);
+        if (!GeminiProxy?.isLimitError?.(err)) {
+            alert("Błąd generowania quizu: " + err.message);
+        }
     } finally {
         btn.disabled = false;
         btn.innerHTML = origText;
+        if (typeof refreshAiUsageUI === "function") refreshAiUsageUI();
     }
 });
 

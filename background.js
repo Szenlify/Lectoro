@@ -400,6 +400,20 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === "QT_OPEN_PLANS") {
+        chrome.windows
+            .create({
+                url: chrome.runtime.getURL("popup.html#plans"),
+                type: "popup",
+                width: 520,
+                height: 700,
+                focused: true,
+            })
+            .then(() => sendResponse({ ok: true }))
+            .catch((error) => sendResponse({ error: error.message }));
+        return true;
+    }
+
     if (message.type === "QT_FIREBASE_SIGN_IN") {
         FirebaseSync.signIn()
             .then(async (auth) => {

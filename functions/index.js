@@ -25,8 +25,8 @@ setGlobalOptions({ region: "europe-west1" });
 // ── Limity AI dla każdego planu (zapytania na miesiąc) ──────────────
 const PLAN_LIMITS = {
     free: 3,
-    basic: 500,
-    pro: 5000,
+    basic: 5,
+    pro: 7,
 };
 
 // ── CORS helper ──────────────────────────────────────────────────────

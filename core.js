@@ -832,18 +832,23 @@
                 } catch (err) {
                     console.error("[Lectoro] Gemini AI error:", err);
                     saveAiBtn.classList.remove("loading");
-                    saveAiBtn.innerHTML =
-                        SVG.SAVE_AI +
-                        ` <span style="color:#f87171;">Błąd</span>`;
+                    const limitReached = GeminiProxy?.isLimitError?.(err);
+                    saveAiBtn.innerHTML = limitReached
+                        ? SVG.SAVE_AI + " <span>AI</span>"
+                        : SVG.SAVE_AI + ` <span style="color:#f87171;">Błąd</span>`;
 
                     if (aiResultEl) {
-                        aiResultEl.style.display = "block";
-                        aiResultEl.innerHTML = `<div style="color:#f87171;font-size:11px;padding:6px 12px;">⚠ ${escapeHtml(err.message)}</div>`;
+                        aiResultEl.style.display = limitReached ? "none" : "block";
+                        aiResultEl.innerHTML = limitReached
+                            ? ""
+                            : `<div style="color:#f87171;font-size:11px;padding:6px 12px;">⚠ ${escapeHtml(err.message)}</div>`;
                     }
 
-                    setTimeout(() => {
-                        saveAiBtn.innerHTML = SVG.SAVE_AI + " <span>AI</span>";
-                    }, 3000);
+                    if (!limitReached) {
+                        setTimeout(() => {
+                            saveAiBtn.innerHTML = SVG.SAVE_AI + " <span>AI</span>";
+                        }, 3000);
+                    }
                 }
             });
         }
