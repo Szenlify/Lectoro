@@ -8,8 +8,6 @@
 
 4. zrob w kazdym jezyku aby był text UI nagłowki wszystkie w zaleznosci jaki zalezny jest język a jako defaul jest angielski [na pozniej jako ostatnie]
 
-5. tlumaczenie oraz tooltipy w chmurkach nad slowami maja przylegac do orginalnych napisow youtube czyli jak nie bede poruszał myszka na youtubie i napisy lekko opadna to tlumaczenie i tooltipy/chmurki podarzaja za napisami
-
 6. Popraw content.js tooltip/chmurka czasem jak cos zaznaczam nie widze tooltipa z 3 przyciskami ale nie moge dalej kopiowac textu ani w text kliknac wiec czasem go nie widze a pewnie jest i czasami nawet wcisne niewidoczny przycisk
 
 7. napisy reel niech sie pojawiaja tam gdzie jest najciemniejsze miejsce na filmiku ale zawsze tak aby byly cale widoczne i 15% od granicy frame video
