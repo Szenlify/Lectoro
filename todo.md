@@ -12,6 +12,8 @@
 
 7. napisy reel niech sie pojawiaja tam gdzie jest najciemniejsze miejsce na filmiku ale zawsze tak aby byly cale widoczne i 15% od granicy frame video
 
+8. piracka biblioteka
+
 
 firebase login
 firebase deploy --only functions --project extension-eng"
