@@ -612,56 +612,58 @@ function showReviewEditForm(w) {
 
 // ── Rate word & update storage ────────────────────────────────────
 function rateWord(grade) {
-    stopPopupSpeak(); // cut off any card audio immediately, don't wait for the save round-trip
+    // Zatrzymaj odtwarzanie głosu
+    stopPopupSpeak();
+
     const w = reviewQueue[reviewIndex];
+    if (!w) return;
+
+    // Upewnij się, że karta ma dane SRS
     ensureSR(w);
 
-    // Apply SR update
+    // Aktualizujemy SRS na podstawie odpowiedzi:
+    // grade === 1 -> Nie znam
+    // grade === 2 -> Znam
     w.sr = srUpdate(w.sr, grade);
 
-    // Track session attempts per word (max 3 views, then move on)
-    w._sessionAttempts = (w._sessionAttempts || 0) + 1;
-
-    // Persist
+    // Zapisujemy zmiany
     _reviewSaving = true;
+
     chrome.storage.local.get({ savedWords: [] }, (data) => {
         const words = data.savedWords || [];
+
         const idx = words.findIndex((x) => x.id === w.id);
+
         if (idx !== -1) {
+            // Zapisz nowe dane SRS
             words[idx].sr = w.sr;
             words[idx].updatedAt = Date.now();
+
             chrome.storage.local.set({ savedWords: words }, () => {
                 _reviewSaving = false;
+
                 if (chrome.runtime.lastError) {
                     console.error(
                         "[Lectoro] Nie udało się zapisać powtórki:",
                         chrome.runtime.lastError.message,
                     );
                 }
-                if (grade === 1 && w._sessionAttempts < 3) {
-                    // Grade 1 (Again): re-insert word later in the queue
-                    // so it comes back again in this session (max 3 attempts)
-                    reviewQueue.splice(reviewIndex, 1);
-                    // Insert a few cards later (or at end if queue is short)
-                    const insertAt = Math.min(
-                        reviewIndex + 2 + Math.floor(Math.random() * 3),
-                        reviewQueue.length,
-                    );
-                    reviewQueue.splice(insertAt, 0, w);
-                    // Don't increment reviewIndex – current index now has next word
-                    reviewTotalDue = reviewQueue.length;
-                } else {
-                    // Grade 2 (Good) or max attempts reached: word is done, advance
-                    reviewIndex++;
-                }
+
+                // Karta jest zakończona.
+                // NIE wkładamy jej ponownie do reviewQueue.
+                reviewIndex++;
+
                 reviewAnswerShown = false;
+
                 renderReview();
             });
         } else {
-            // word may have been deleted – just advance
+            // Karta została usunięta w międzyczasie.
             _reviewSaving = false;
+
             reviewIndex++;
             reviewAnswerShown = false;
+
             renderReview();
         }
     });
