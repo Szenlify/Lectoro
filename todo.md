@@ -12,6 +12,8 @@
 
 6. Popraw content.js czasem jak cos zaznaczam ni widze tooltipa z 3 przyciskami ale nie moge dalej kopiowac textu wiec czasem go nie widze a pewnie jest 
 
+7. napisy reel niech sie pojawiaja tam gdzie jest najciemniejsze miejsce na filmiku ale zawsze tak aby byly cale widoczne i 15% od granicy frame video
+
 3 plany Subskrybcji
 
 Plan 1: FREE
