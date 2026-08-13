@@ -30,6 +30,8 @@ zapisywanie powtorek limit 100 000
 
 firebase login
 firebase deploy --only functions --project extension-eng"
+lub
+firebase deploy --only functions,firestore:rules --project extension-eng
 
 # Klucz Gemini API – wstaw swój klucz poniżej
 
