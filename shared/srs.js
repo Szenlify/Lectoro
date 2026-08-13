@@ -21,41 +21,41 @@ const SRS = {
     /** Fresh SR state for a word that has never been reviewed */
     defaultState: () => ({
         interval: 0,
-        reps: 0,
+        step: 0,
         easeFactor: 2.5,
         nextReview: 0,
         lastReview: null,
     }),
 
     update(sr, grade) {
-        let { interval = 0, reps = 0, easeFactor = 2.5 } = sr;
+        let { interval = 0, step = 0, easeFactor = 2.5 } = sr;
         const isFail = grade === 1; // 1 = "Nie znam"
 
         if (isFail) {
             easeFactor = Math.max(1.3, easeFactor - 0.2); // Kara do ease factor
 
-            if (reps === 0) {
+            if (step === 0) {
                 interval = 1 / MINS_IN_DAY; // 1 minuta (jeśli nie znam za pierwszym razem)
             } else {
-                reps = Math.max(0, reps - 2); // Degradacja o 2 stopnie w dół
+                step = Math.max(0, step - 2); // Degradacja o 2 stopnie w dół
                 // Jeśli cofnęliśmy się do fazy nauki, bierzemy krok. Jeśli jesteśmy dalej w trybie utrzymania, cofamy mnożnik dwukrotnie.
                 interval =
-                    reps < LEARNING_STEPS.length
-                        ? LEARNING_STEPS[reps]
+                    step < LEARNING_STEPS.length
+                        ? LEARNING_STEPS[step]
                         : interval / Math.pow(easeFactor, 2);
             }
         } else {
             // Znam -> Bierzemy krok z tablicy lub mnożymy (tryb utrzymania)
             interval =
-                reps < LEARNING_STEPS.length
-                    ? LEARNING_STEPS[reps]
+                step < LEARNING_STEPS.length
+                    ? LEARNING_STEPS[step]
                     : interval * easeFactor;
-            reps++;
+            step++;
         }
 
         return {
             interval,
-            reps,
+            step,
             easeFactor,
             nextReview: Date.now() + interval * MS_IN_DAY,
             lastReview: Date.now(),
@@ -95,7 +95,7 @@ const SRS = {
                 ...SRS.defaultState(),
                 ...word.sr, // Zachowaj m.in. lastReview i nextReview
                 interval: word.sr.interval || 0,
-                reps: (word.sr.interval || 0) > 0 ? 1 : 0,
+                step: (word.sr.interval || 0) > 0 ? 1 : 0,
                 step: undefined, // Usuwamy stary format
             };
             delete word.sr.step;
