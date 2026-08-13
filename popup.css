@@ -1221,6 +1221,7 @@ body::before {
     align-items: center;
     justify-content: safe center;
     overflow-y: auto;
+    overflow-x: hidden;
     perspective: 1200px;
 }
 
