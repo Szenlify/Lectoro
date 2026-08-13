@@ -2,6 +2,8 @@
   "name": "lectoro-functions",
   "description": "Lectoro – Firebase Cloud Functions backend",
   "scripts": {
+    "test": "node --test subscription-config.test.js",
+    "plan:set": "node set-user-plan.js",
     "serve": "firebase emulators:start --only functions",
     "shell": "firebase functions:shell",
     "start": "npm run shell",

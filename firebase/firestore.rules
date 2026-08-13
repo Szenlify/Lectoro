@@ -1,18 +1,35 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /users/{userId}/{document=**} {
-      // Użytkownik może czytać i pisać swoje dane,
-      // ALE nie może samodzielnie zmieniać pola "plan" (tylko serwer/admin)
+    match /users/{userId} {
       allow read: if request.auth != null && request.auth.uid == userId;
-      allow update: if request.auth != null
-                    && request.auth.uid == userId
-                    && !('plan' in request.resource.data.diff(resource.data).affectedKeys());
-      allow delete: if request.auth != null && request.auth.uid == userId;
-      // Tworzenie dokumentu (nowy użytkownik) – plan musi być "free"
+
+      // Subscription, Stripe and usage fields are server/admin-owned. The
+      // authoritative plan is a Firebase Auth Custom Claim; this document only
+      // contains its optional admin-written mirror for display/auditing.
       allow create: if request.auth != null
                     && request.auth.uid == userId
-                    && (!('plan' in request.resource.data) || request.resource.data.plan == 'free');
+                    && !request.resource.data.keys().hasAny([
+                      'plan',
+                      'aiCallsThisMonth', 'aiCallsResetDate',
+                      'elevenLabsCharactersThisMonth', 'elevenLabsResetDate',
+                      'subscriptionStatus', 'stripeCustomerId', 'stripeSubscriptionId'
+                    ]);
+      allow update: if request.auth != null
+                    && request.auth.uid == userId
+                    && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+                      'plan', 'aiCallsThisMonth', 'aiCallsResetDate',
+                      'elevenLabsCharactersThisMonth', 'elevenLabsResetDate',
+                      'subscriptionStatus', 'stripeCustomerId', 'stripeSubscriptionId'
+                    ]);
+      // Deleting the profile would reset server-owned monthly counters.
+      allow delete: if false;
+
+      // User-owned learning data (currently users/{uid}/words/{wordId}).
+      match /{document=**} {
+        allow read, create, update, delete: if request.auth != null
+                                            && request.auth.uid == userId;
+      }
     }
   }
 }

@@ -1,227 +1,413 @@
-/**
- * Lectoro – Gemini API Proxy (Firebase Cloud Function)
- *
- * Bezpieczne proxy między rozszerzeniem Chrome a Gemini API.
- * Klucz Gemini API jest przechowywany TYLKO w zmiennych środowiskowych
- * serwera – nigdy nie trafia do kodu rozszerzenia.
- *
- * Przepływ:
- *   1. Rozszerzenie wysyła Firebase ID Token w nagłówku Authorization
- *   2. Funkcja weryfikuje token (Admin SDK)
- *   3. Sprawdza plan użytkownika i limit AI w Firestore
- *   4. Wywołuje Gemini API z kluczem z .env
- *   5. Zwiększa licznik zużycia i zwraca odpowiedź
- */
-
+/** Secure Gemini proxy and subscription quota API. */
 const { onRequest } = require("firebase-functions/v2/https");
+const { onDocumentWritten } = require("firebase-functions/v2/firestore");
 const { setGlobalOptions } = require("firebase-functions/v2");
+const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
+const {
+    SUBSCRIPTION_PLANS,
+    SUBSCRIPTION_LIMITS,
+    normalizePlan,
+    getPlanLimits,
+    checkAiLimit,
+    checkElevenLabsLimit,
+} = require("./subscription-config");
 
 admin.initializeApp();
-
-// Deploy w Europie (bliżej PL = mniejsze opóźnienia)
 setGlobalOptions({ region: "europe-west1" });
+// A distinct name allows migration from the legacy plain GEMINI_API_KEY
+// environment variable without Cloud Run's env/secret name collision.
+const geminiApiKey = defineSecret("LECTORO_GEMINI_API_KEY");
+const elevenLabsApiKey = defineSecret("ELEVENLABS_API_KEY");
 
-// ── Limity AI dla każdego planu (zapytania na miesiąc) ──────────────
-const PLAN_LIMITS = {
-    free: 3,
-    basic: 5,
-    pro: 7,
-};
-
-// ── CORS helper ──────────────────────────────────────────────────────
 function setCorsHeaders(res) {
     res.set("Access-Control-Allow-Origin", "*");
     res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
     res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.set("Access-Control-Expose-Headers", "X-Lectoro-Plan, X-Lectoro-TTS-Used");
 }
 
-// ── Główna funkcja proxy ─────────────────────────────────────────────
+function currentMonth() {
+    return new Date().toISOString().slice(0, 7);
+}
+
+function usageForMonth(value, resetDate, month) {
+    return resetDate === month ? Math.max(0, Number(value) || 0) : 0;
+}
+
+function subscriptionProfile(uid, plan, data = {}, month = currentMonth()) {
+    return {
+        uid,
+        plan: normalizePlan(plan),
+        subscriptionStatus: data.subscriptionStatus || "active",
+        usage: {
+            ai: {
+                month,
+                used: usageForMonth(data.aiCallsThisMonth, data.aiCallsResetDate, month),
+            },
+            elevenLabsCharacters: {
+                month,
+                used: usageForMonth(
+                    data.elevenLabsCharactersThisMonth,
+                    data.elevenLabsResetDate,
+                    month,
+                ),
+            },
+        },
+    };
+}
+
+function limitHttpStatus(validation) {
+    if (validation.code === "ELEVENLABS_REQUEST_TOO_LONG") return 413;
+    if (validation.code === "ELEVENLABS_NOT_INCLUDED") return 403;
+    return 429;
+}
+
+async function rollbackAiReservation(db, userRef, month) {
+    try {
+        await db.runTransaction(async (transaction) => {
+            const snapshot = await transaction.get(userRef);
+            if (!snapshot.exists) return;
+            const data = snapshot.data() || {};
+            if (data.aiCallsResetDate !== month) return;
+            const used = Math.max(0, Number(data.aiCallsThisMonth) || 0);
+            if (used > 0) {
+                transaction.set(userRef, { aiCallsThisMonth: used - 1 }, { merge: true });
+            }
+        });
+    } catch (error) {
+        console.error("[geminiProxy] AI reservation rollback error:", error);
+    }
+}
+
+async function rollbackElevenLabsReservation(db, userRef, month, characters) {
+    try {
+        await db.runTransaction(async (transaction) => {
+            const snapshot = await transaction.get(userRef);
+            if (!snapshot.exists) return;
+            const data = snapshot.data() || {};
+            if (data.elevenLabsResetDate !== month) return;
+            const used = Math.max(0, Number(data.elevenLabsCharactersThisMonth) || 0);
+            transaction.set(
+                userRef,
+                { elevenLabsCharactersThisMonth: Math.max(0, used - characters) },
+                { merge: true },
+            );
+        });
+    } catch (error) {
+        console.error("[subscriptionProxy] ElevenLabs rollback error:", error);
+    }
+}
+
+/**
+ * Admin workflow: edit subscriptionPlans/{uid}.plan in Firebase Console.
+ * Keeping this control document separate avoids invoking the trigger whenever
+ * ordinary monthly usage counters in users/{uid} change.
+ */
+exports.syncUserPlanClaim = onDocumentWritten("subscriptionPlans/{uid}", async (event) => {
+    const snapshot = event.data?.after;
+    if (!snapshot?.exists) return;
+    const requestedPlan = String(snapshot.data()?.plan || "").trim().toLowerCase();
+    if (!Object.prototype.hasOwnProperty.call(SUBSCRIPTION_LIMITS, requestedPlan)) {
+        console.warn(
+            `[syncUserPlanClaim] Ignoring invalid plan for ${event.params.uid}: ${requestedPlan}`,
+        );
+        return;
+    }
+
+    const uid = event.params.uid;
+    const user = await admin.auth().getUser(uid);
+    if (normalizePlan(user.customClaims?.plan) === requestedPlan) return;
+    await admin.auth().setCustomUserClaims(uid, {
+        ...(user.customClaims || {}),
+        plan: requestedPlan,
+    });
+    await admin.firestore().collection("users").doc(uid).set(
+        {
+            plan: requestedPlan,
+            subscriptionStatus: "active",
+            planUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+    );
+    console.log(`[syncUserPlanClaim] ${uid} -> ${requestedPlan}`);
+});
+
 exports.geminiProxy = onRequest(
     {
-        cors: false, // obsługujemy ręcznie
+        cors: false,
         timeoutSeconds: 60,
         memory: "256MiB",
+        secrets: [geminiApiKey, elevenLabsApiKey],
     },
     async (req, res) => {
         setCorsHeaders(res);
+        if (req.method === "OPTIONS") return res.status(204).send("");
+        if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-        // Preflight (OPTIONS) dla CORS
-        if (req.method === "OPTIONS") {
-            return res.status(204).send("");
-        }
-
-        // Tylko POST
-        if (req.method !== "POST") {
-            return res.status(405).json({ error: "Method not allowed" });
-        }
-
-        // ── 1. Weryfikacja Firebase Auth Token ───────────────────────
         const authHeader = req.headers.authorization || "";
-        const idToken = authHeader.startsWith("Bearer ")
-            ? authHeader.slice(7)
-            : null;
-
-        if (!idToken) {
-            return res
-                .status(401)
-                .json({ error: "Brak tokenu autoryzacji. Zaloguj się." });
-        }
+        const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+        if (!idToken) return res.status(401).json({ error: "Brak tokenu autoryzacji. Zaloguj się." });
 
         let decodedToken;
         try {
             decodedToken = await admin.auth().verifyIdToken(idToken);
-        } catch (err) {
-            console.error("[geminiProxy] Token invalid:", err.message);
-            return res
-                .status(401)
-                .json({ error: "Nieprawidłowy token. Zaloguj się ponownie." });
+        } catch (error) {
+            console.error("[geminiProxy] Invalid token:", error.message);
+            return res.status(401).json({ error: "Nieprawidłowy token. Zaloguj się ponownie." });
         }
 
         const uid = decodedToken.uid;
-
-        // ── 2. Sprawdzenie planu i limitu w Firestore ─────────────────
+        // Custom Claims are the authoritative entitlement source. Unknown or
+        // missing values deliberately fall back to FREE.
+        const claimedPlan = normalizePlan(decodedToken.plan);
         const db = admin.firestore();
         const userRef = db.collection("users").doc(uid);
-
-        let plan = "free";
-        let aiCallsThisMonth = 0;
-        let aiCallsResetDate = "";
+        const month = currentMonth();
+        let userData = {};
 
         try {
-            const userDoc = await userRef.get();
-            if (userDoc.exists) {
-                const data = userDoc.data();
-                plan = data.plan || "free";
-                aiCallsThisMonth = data.aiCallsThisMonth || 0;
-                aiCallsResetDate = data.aiCallsResetDate || "";
-            }
-        } catch (err) {
-            console.error("[geminiProxy] Firestore read error:", err);
-            // Przy błędzie odczytu – nie blokujemy, ale logujemy
+            const snapshot = await userRef.get();
+            if (snapshot.exists) userData = snapshot.data() || {};
+        } catch (error) {
+            console.error("[geminiProxy] Firestore read error:", error);
+            return res.status(503).json({ error: "Nie udało się sprawdzić planu użytkownika." });
         }
 
-        // Reset licznika jeśli nowy miesiąc
-        const currentMonth = new Date().toISOString().slice(0, 7); // "2026-08"
-        if (aiCallsResetDate !== currentMonth) {
-            aiCallsThisMonth = 0;
-        }
+        const profile = subscriptionProfile(uid, claimedPlan, userData, month);
+        const plan = profile.plan || SUBSCRIPTION_PLANS.FREE;
+        const aiLimit = getPlanLimits(plan).ai.usesPerMonth;
+        const aiUsed = profile.usage.ai.used;
 
-        const limit = PLAN_LIMITS[plan] ?? PLAN_LIMITS.free;
-
-        // One lightweight initialization call lets the extension cache usage
-        // locally. Normal UI checks do not need additional Firestore reads.
-        if (req.body?.action === "usage") {
+        // Compatibility with the existing AI usage UI plus a complete profile
+        // for all current/future entitlement checks.
+        if (req.body?.action === "usage" || req.body?.action === "subscription") {
             return res.status(200).json({
+                profile,
                 usage: {
                     plan,
-                    used: aiCallsThisMonth,
-                    limit,
-                    remaining: Math.max(0, limit - aiCallsThisMonth),
+                    used: aiUsed,
+                    limit: aiLimit,
+                    remaining: Math.max(0, aiLimit - aiUsed),
                 },
             });
         }
 
-        if (aiCallsThisMonth >= limit) {
+        if (req.body?.action === "elevenLabsVoices") {
+            if (!getPlanLimits(claimedPlan).elevenLabs.enabled) {
+                return res.status(403).json({
+                    error: "ElevenLabs nie jest dostępny w planie FREE.",
+                    code: "ELEVENLABS_NOT_INCLUDED",
+                });
+            }
+            try {
+                const voicesResponse = await fetch("https://api.elevenlabs.io/v1/voices", {
+                    headers: { "xi-api-key": elevenLabsApiKey.value() },
+                });
+                const details = await voicesResponse.json().catch(() => ({}));
+                if (!voicesResponse.ok) {
+                    console.error("[subscriptionProxy] ElevenLabs voices error:", details);
+                    return res.status(502).json({ error: "Nie udało się pobrać głosów ElevenLabs." });
+                }
+                return res.status(200).json({
+                    voices: (details.voices || []).map((voice) => ({
+                        voice_id: voice.voice_id,
+                        name: voice.name,
+                        labels: voice.labels || {},
+                    })),
+                });
+            } catch (error) {
+                console.error("[subscriptionProxy] ElevenLabs voices fetch error:", error);
+                return res.status(502).json({ error: "Błąd połączenia z ElevenLabs." });
+            }
+        }
+
+        if (req.body?.action === "synthesizeElevenLabs") {
+            const text = typeof req.body.text === "string" ? req.body.text : "";
+            const voiceId = typeof req.body.voiceId === "string" ? req.body.voiceId : "";
+            if (!/^[a-zA-Z0-9_-]{10,64}$/.test(voiceId)) {
+                return res.status(400).json({ error: "Nieprawidłowy identyfikator głosu ElevenLabs." });
+            }
+            let reservation = null;
+            try {
+                reservation = await db.runTransaction(async (transaction) => {
+                    const snapshot = await transaction.get(userRef);
+                    const data = snapshot.exists ? snapshot.data() || {} : {};
+                    const used = usageForMonth(
+                        data.elevenLabsCharactersThisMonth,
+                        data.elevenLabsResetDate,
+                        month,
+                    );
+                    const validation = checkElevenLabsLimit({
+                        plan: claimedPlan,
+                        text,
+                        usedCharacters: used,
+                    });
+                    if (!validation.allowed) return { validation, data };
+
+                    const nextData = {
+                        ...data,
+                        elevenLabsCharactersThisMonth: used + validation.requested,
+                        elevenLabsResetDate: month,
+                    };
+                    transaction.set(
+                        userRef,
+                        {
+                            elevenLabsCharactersThisMonth: nextData.elevenLabsCharactersThisMonth,
+                            elevenLabsResetDate: month,
+                        },
+                        { merge: true },
+                    );
+                    return { validation, data: nextData };
+                });
+
+                if (!reservation.validation.allowed) {
+                    return res.status(limitHttpStatus(reservation.validation)).json({
+                        error: reservation.validation.message,
+                        limit: reservation.validation,
+                        profile: subscriptionProfile(uid, claimedPlan, reservation.data, month),
+                    });
+                }
+
+                const ttsResponse = await fetch(
+                    `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}`,
+                    {
+                        method: "POST",
+                        headers: {
+                            "xi-api-key": elevenLabsApiKey.value(),
+                            "Content-Type": "application/json",
+                            Accept: "audio/mpeg",
+                        },
+                        body: JSON.stringify({
+                            text,
+                            model_id: "eleven_flash_v2_5",
+                            voice_settings: { stability: 0.5, similarity_boost: 0.75 },
+                        }),
+                    },
+                );
+                if (!ttsResponse.ok) {
+                    const details = await ttsResponse.text().catch(() => "");
+                    console.error("[subscriptionProxy] ElevenLabs TTS error:", details);
+                    await rollbackElevenLabsReservation(
+                        db,
+                        userRef,
+                        month,
+                        reservation.validation.requested,
+                    );
+                    return res.status(502).json({ error: "Synteza ElevenLabs nie powiodła się." });
+                }
+                const audio = Buffer.from(await ttsResponse.arrayBuffer());
+                res.set("Content-Type", ttsResponse.headers.get("content-type") || "audio/mpeg");
+                res.set("Cache-Control", "private, no-store");
+                res.set("X-Lectoro-Plan", claimedPlan);
+                res.set(
+                    "X-Lectoro-TTS-Used",
+                    String(
+                        reservation.data.elevenLabsCharactersThisMonth ||
+                            reservation.validation.requested,
+                    ),
+                );
+                return res.status(200).send(audio);
+            } catch (error) {
+                console.error("[subscriptionProxy] ElevenLabs request error:", error);
+                if (reservation?.validation?.allowed) {
+                    await rollbackElevenLabsReservation(
+                        db,
+                        userRef,
+                        month,
+                        reservation.validation.requested,
+                    );
+                }
+                return res.status(503).json({ error: "Nie udało się wykonać syntezy ElevenLabs." });
+            }
+        }
+
+        const { prompt, temperature = 0.8, maxOutputTokens = 500 } = req.body || {};
+        if (!prompt || typeof prompt !== "string") {
+            return res.status(400).json({ error: "Brak pola 'prompt' w ciele żądania." });
+        }
+        if (prompt.length > 50000) {
+            return res.status(400).json({ error: "Prompt zbyt długi (max 50 000 znaków)." });
+        }
+
+        // Reserve atomically before calling Gemini so parallel requests cannot
+        // overshoot the configured monthly quota.
+        let aiReservation;
+        try {
+            aiReservation = await db.runTransaction(async (transaction) => {
+                const snapshot = await transaction.get(userRef);
+                const data = snapshot.exists ? snapshot.data() || {} : {};
+                const used = usageForMonth(data.aiCallsThisMonth, data.aiCallsResetDate, month);
+                const validation = checkAiLimit({ plan: claimedPlan, used });
+                if (!validation.allowed) return validation;
+                transaction.set(
+                    userRef,
+                    { aiCallsThisMonth: used + 1, aiCallsResetDate: month },
+                    { merge: true },
+                );
+                return { ...validation, plan: claimedPlan, usedAfter: used + 1 };
+            });
+        } catch (error) {
+            console.error("[geminiProxy] AI reservation error:", error);
+            return res.status(503).json({ error: "Nie udało się sprawdzić limitu AI." });
+        }
+
+        if (!aiReservation.allowed) {
             return res.status(429).json({
-                error: "Przekroczono miesięczny limit AI dla Twojego planu.",
-                plan,
-                used: aiCallsThisMonth,
-                limit,
+                error: aiReservation.message,
+                code: aiReservation.code,
+                plan: aiReservation.plan,
+                used: aiReservation.used,
+                limit: aiReservation.limit,
             });
         }
 
-        // ── 3. Walidacja żądania ──────────────────────────────────────
-        const { prompt, temperature = 0.8, maxOutputTokens = 500 } = req.body;
-
-        if (!prompt || typeof prompt !== "string") {
-            return res
-                .status(400)
-                .json({ error: "Brak pola 'prompt' w ciele żądania." });
-        }
-
-        if (prompt.length > 50000) {
-            return res
-                .status(400)
-                .json({ error: "Prompt zbyt długi (max 50 000 znaków)." });
-        }
-
-        // ── 4. Wywołanie Gemini API ───────────────────────────────────
-        const geminiApiKey = process.env.GEMINI_API_KEY;
-
-        if (!geminiApiKey) {
-            console.error("[geminiProxy] GEMINI_API_KEY not set in .env");
-            return res
-                .status(500)
-                .json({ error: "Błąd konfiguracji serwera." });
+        const geminiKey = geminiApiKey.value();
+        if (!geminiKey) {
+            console.error("[geminiProxy] LECTORO_GEMINI_API_KEY is not configured");
+            await rollbackAiReservation(db, userRef, month);
+            return res.status(500).json({ error: "Błąd konfiguracji serwera." });
         }
 
         let geminiResponse;
         try {
             const geminiRes = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${encodeURIComponent(geminiApiKey)}`,
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${encodeURIComponent(geminiKey)}`,
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         contents: [{ parts: [{ text: prompt }] }],
                         generationConfig: {
-                            temperature: Math.min(
-                                Math.max(Number(temperature), 0),
-                                2,
-                            ),
-                            maxOutputTokens: Math.min(
-                                Math.max(Number(maxOutputTokens), 1),
-                                8192,
-                            ),
+                            temperature: Math.min(Math.max(Number(temperature), 0), 2),
+                            maxOutputTokens: Math.min(Math.max(Number(maxOutputTokens), 1), 8192),
                         },
                     }),
                 },
             );
-
             if (!geminiRes.ok) {
-                const errData = await geminiRes.json().catch(() => ({}));
-                const msg =
-                    errData?.error?.message ||
-                    `Gemini HTTP ${geminiRes.status}`;
-                console.error("[geminiProxy] Gemini API error:", msg);
-                return res.status(502).json({ error: msg });
+                const details = await geminiRes.json().catch(() => ({}));
+                const message = details?.error?.message || `Gemini HTTP ${geminiRes.status}`;
+                console.error("[geminiProxy] Gemini API error:", message);
+                await rollbackAiReservation(db, userRef, month);
+                return res.status(502).json({ error: message });
             }
-
             geminiResponse = await geminiRes.json();
-        } catch (err) {
-            console.error("[geminiProxy] Gemini fetch error:", err);
-            return res
-                .status(502)
-                .json({ error: "Błąd połączenia z Gemini API." });
+        } catch (error) {
+            console.error("[geminiProxy] Gemini fetch error:", error);
+            await rollbackAiReservation(db, userRef, month);
+            return res.status(502).json({ error: "Błąd połączenia z Gemini API." });
         }
 
-        // ── 5. Aktualizacja licznika zużycia ──────────────────────────
-        try {
-            await userRef.set(
-                {
-                    aiCallsThisMonth: aiCallsThisMonth + 1,
-                    aiCallsResetDate: currentMonth,
-                    // Nie nadpisujemy plan – tylko serwer może go zmienić
-                },
-                { merge: true },
-            );
-        } catch (err) {
-            // Nie przerywamy – odpowiedź już mamy, licznik to sprawa drugorzędna
-            console.error("[geminiProxy] Counter update error:", err);
-        }
-
-        // ── 6. Zwrot odpowiedzi ───────────────────────────────────────
-        const text =
-            geminiResponse?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-
+        const text = geminiResponse?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        const activeAiLimit = getPlanLimits(aiReservation.plan).ai.usesPerMonth;
         return res.status(200).json({
             text,
             usage: {
-                plan,
-                used: aiCallsThisMonth + 1,
-                limit,
-                remaining: limit - (aiCallsThisMonth + 1),
+                plan: aiReservation.plan,
+                used: aiReservation.usedAfter,
+                limit: activeAiLimit,
+                remaining: Math.max(0, activeAiLimit - aiReservation.usedAfter),
             },
         });
     },

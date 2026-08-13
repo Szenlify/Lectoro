@@ -44,6 +44,9 @@ const GeminiProxy = (() => {
             updatedAt: Date.now(),
         };
         await chrome.storage.local.set({ [USAGE_KEY]: normalized });
+        if (typeof SubscriptionService !== "undefined") {
+            await SubscriptionService.updateAiUsage(normalized);
+        }
         return normalized;
     }
 
@@ -70,16 +73,27 @@ const GeminiProxy = (() => {
         if (!response.ok) {
             throw new Error(data?.error || `Błąd pobierania limitu AI (${response.status})`);
         }
+        if (data.profile && typeof SubscriptionService !== "undefined") {
+            await SubscriptionService.setCachedProfile(data.profile);
+        }
         return setCachedUsage(data.usage);
     }
 
     async function requireAvailableUsage() {
         const usage = (await refreshUsage(false)) || (await getCachedUsage());
-        if (usage?.limit > 0 && usage.used >= usage.limit) {
+        const validation =
+            typeof SubscriptionConfig !== "undefined"
+                ? SubscriptionConfig.checkAiLimit({
+                      plan: usage?.plan,
+                      used: usage?.used || 0,
+                  })
+                : null;
+        if (validation ? !validation.allowed : usage?.limit > 0 && usage.used >= usage.limit) {
             const error = new Error(
                 `Przekroczono limit AI (${usage.limit} zapytań/mc dla planu ${(usage.plan || "free").toUpperCase()}). Ulepsz plan aby kontynuować.`,
             );
             error.code = "AI_LIMIT_REACHED";
+            error.validation = validation;
             showUpgradePrompt(usage);
             throw error;
         }

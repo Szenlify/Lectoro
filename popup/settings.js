@@ -107,16 +107,25 @@ const modeBrowserBtn = document.getElementById("modeBrowser");
 const modeELBtn = document.getElementById("modeEL");
 const browserTtsSettings = document.getElementById("browserTtsSettings");
 const elSettingsPanel = document.getElementById("elSettings");
-const elApiKeyInput = document.getElementById("elApiKey");
 const elVoiceSelect = document.getElementById("elVoiceSelect");
 const elStatusEl = document.getElementById("elStatus");
 
-function setTtsMode(mode) {
+async function setTtsMode(mode) {
+    if (mode === "elevenlabs") {
+        const profile = await SubscriptionService.effectiveProfile(false);
+        if (!SubscriptionConfig.getPlanLimits(profile.plan).elevenLabs.enabled) {
+            mode = "browser";
+        }
+    }
     if (mode === "elevenlabs") {
         modeBrowserBtn.classList.remove("active");
         modeELBtn.classList.add("active");
         browserTtsSettings.style.display = "none";
         elSettingsPanel.classList.add("visible");
+        if (elVoiceSelect.options.length <= 1) {
+            const stored = await chrome.storage.local.get({ elVoiceId: "" });
+            await loadELVoices(stored.elVoiceId);
+        }
     } else {
         modeELBtn.classList.remove("active");
         modeBrowserBtn.classList.add("active");
@@ -126,43 +135,23 @@ function setTtsMode(mode) {
     chrome.storage.local.set({ ttsMode: mode }, flashSaved);
 }
 
-modeBrowserBtn.addEventListener("click", () => setTtsMode("browser"));
-modeELBtn.addEventListener("click", () => setTtsMode("elevenlabs"));
+modeBrowserBtn.addEventListener("click", () => void setTtsMode("browser"));
+modeELBtn.addEventListener("click", () => void setTtsMode("elevenlabs"));
 
 // Load saved mode
 chrome.storage.local.get(
-    { ttsMode: "browser", elApiKey: "", elVoiceId: "" },
-    (data) => {
-        if (data.ttsMode === "elevenlabs") setTtsMode("elevenlabs");
-        if (data.elApiKey) {
-            elApiKeyInput.value = data.elApiKey;
-            loadELVoices(data.elApiKey, data.elVoiceId);
-        }
+    { ttsMode: "browser", elVoiceId: "" },
+    async (data) => {
+        if (data.ttsMode === "elevenlabs") await setTtsMode("elevenlabs");
     },
 );
 
-// Save API key on change & load voices
-let elKeyDebounce = null;
-elApiKeyInput.addEventListener("input", () => {
-    clearTimeout(elKeyDebounce);
-    elKeyDebounce = setTimeout(() => {
-        const key = elApiKeyInput.value.trim();
-        chrome.storage.local.set({ elApiKey: key }, flashSaved);
-        if (key) loadELVoices(key);
-    }, 600);
-});
-
-// Load ElevenLabs voices
-async function loadELVoices(apiKey, selectedVoiceId) {
+// Load ElevenLabs voices through the authenticated backend proxy.
+async function loadELVoices(selectedVoiceId) {
     elStatusEl.textContent = "Ładowanie głosów…";
     elStatusEl.className = "el-status";
     try {
-        const res = await fetch("https://api.elevenlabs.io/v1/voices", {
-            headers: { "xi-api-key": apiKey },
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        const voices = data.voices || [];
+        const voices = await SubscriptionService.getElevenLabsVoices();
 
         // Czyszczenie i dodanie opcji losowania
         elVoiceSelect.innerHTML =
@@ -181,7 +170,7 @@ async function loadELVoices(apiKey, selectedVoiceId) {
     } catch (err) {
         elStatusEl.textContent = `✗ Błąd: ${err.message}`;
         elStatusEl.className = "el-status err";
-        elVoiceSelect.innerHTML = '<option value="">— Błąd API —</option>';
+        elVoiceSelect.innerHTML = '<option value="">— Głosy niedostępne —</option>';
     }
 }
 
@@ -192,6 +181,29 @@ elVoiceSelect.addEventListener("change", () => {
 // ── Gemini AI – zużycie (info) ────────────────────────────────────
 // Klucz Gemini API jest zarządzany przez serwer – użytkownicy nie muszą
 // go wpisywać. Tutaj pokazujemy tylko informację o zużyciu z odpowiedzi proxy.
+function renderSubscriptionPlans(activePlan) {
+    const grid = document.getElementById("subscriptionPlansGrid");
+    if (!grid) return;
+    grid.innerHTML = Object.entries(SubscriptionConfig.SUBSCRIPTION_LIMITS)
+        .map(([planId, limits]) => {
+            const price = limits.priceMonthly.amount === 0
+                ? "0 zł"
+                : `$${limits.priceMonthly.amount.toFixed(2)} / mc`;
+            const tts = limits.elevenLabs.enabled
+                ? `${limits.elevenLabs.charactersPerMonth} znaków ElevenLabs / mc`
+                : "ElevenLabs niedostępny";
+            return `<div class="subscription-plan-card ${planId === activePlan ? "is-current" : ""}">
+                <strong>${limits.displayName}</strong>
+                <b>${price}</b>
+                <span>AI: ${limits.ai.usesPerMonth} / mc</span>
+                <span>Fiszki SRS: ${limits.srs.maxSavedCards}</span>
+                <span>${tts}</span>
+                ${planId === activePlan ? '<span class="subscription-plan-current">AKTYWNY PLAN</span>' : ""}
+            </div>`;
+        })
+        .join("");
+}
+
 async function refreshAiUsageUI() {
     const info = document.getElementById("aiUsageInfo");
     if (!info || typeof GeminiProxy === "undefined") return;
@@ -208,6 +220,8 @@ async function refreshAiUsageUI() {
     if (!signedIn) return;
 
     const usage = await GeminiProxy.getCachedUsage();
+    const subscription = await SubscriptionService.effectiveProfile(false);
+    renderSubscriptionPlans(subscription.plan);
     const card = document.getElementById("aiUsageCard");
     const plan = document.getElementById("aiUsagePlan");
     const title = document.getElementById("aiUsageTitle");
@@ -287,9 +301,23 @@ if (location.hash === "#plans") {
     setTimeout(showAiPlans, 80);
 }
 
-refreshAiUsageUI();
+SubscriptionService.refreshProfile(true)
+    .catch((error) => console.warn("[Lectoro] Nie udało się odświeżyć planu:", error))
+    .finally(async () => {
+        await SubscriptionService.applyPlanToUI();
+        await refreshAiUsageUI();
+    })
+    .catch((error) => console.warn("[Lectoro] Nie udało się odświeżyć UI planu:", error));
 chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === "local" && (changes.aiUsageCache || changes.firebaseAuth)) {
-        refreshAiUsageUI();
+    if (
+        area === "local" &&
+        (changes.aiUsageCache || changes.firebaseAuth || changes.subscriptionProfileCache)
+    ) {
+        SubscriptionService.applyPlanToUI().catch((error) =>
+            console.warn("[Lectoro] Aktualizacja blokad planu nie powiodła się:", error),
+        );
+        refreshAiUsageUI().catch((error) =>
+            console.warn("[Lectoro] Aktualizacja wykorzystania nie powiodła się:", error),
+        );
     }
 });

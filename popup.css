@@ -2456,6 +2456,43 @@ html[data-lectoro-ai-limit-reached] .quiz-export-bottom {
     transform: translateY(-1px);
 }
 
+.subscription-plans-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.subscription-plan-card {
+    padding: 10px;
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    background: var(--glass-bg);
+    color: var(--text-muted);
+    font-size: 9px;
+    line-height: 1.45;
+}
+
+.subscription-plan-card.is-current {
+    border-color: rgba(129, 140, 248, .65);
+    box-shadow: 0 0 0 2px rgba(129, 140, 248, .1);
+}
+
+.subscription-plan-card strong,
+.subscription-plan-card b {
+    display: block;
+    color: var(--text-primary);
+}
+
+.subscription-plan-card strong { font-size: 12px; }
+.subscription-plan-card b { margin: 2px 0 6px; font-size: 10px; }
+.subscription-plan-card span { display: block; }
+.subscription-plan-current { margin-top: 7px; color: #a5b4fc; font-weight: 700; }
+
+.tts-mode-btn.subscription-locked {
+    opacity: .48;
+    cursor: not-allowed;
+}
+
 .ai-plans-icon {
     display: grid;
     place-items: center;

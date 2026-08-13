@@ -10,6 +10,8 @@
 
 5. tlumaczenie oraz tooltipy w chmurkach nad slowami maja przylegac do orginalnych napisow youtube czyli jak nie bede poruszał myszka na youtubie i napisy lekko opadna to tlumaczenie i tooltipy/chmurki podarzaja za napisami
 
+6. Popraw content.js czasem jak cos zaznaczam ni widze tooltipa z 3 przyciskami ale nie moge dalej kopiowac textu wiec czasem go nie widze a pewnie jest 
+
 3 plany Subskrybcji
 
 Plan 1: FREE
@@ -31,6 +33,24 @@ firebase login
 firebase deploy --only functions --project extension-eng"
 lub
 firebase deploy --only functions,firestore:rules --project extension-eng
+
+
+
+firebase use extension-eng
+firebase functions:secrets:set ELEVENLABS_API_KEY
+
+firebase.cmd functions:secrets:set LECTORO_GEMINI_API_KEY
+firebase.cmd functions:secrets:set ELEVENLABS_API_KEY
+
+
+Po ustawieniu obu sekretów odczekaj 2–5 minut i wdrażaj osobno:
+firebase.cmd deploy --only "functions:geminiProxy"
+Następnie:
+firebase.cmd deploy --only "functions:syncUserPlanClaim"
+Na końcu:
+firebase.cmd deploy --only "firestore:rules"
+
+firebase deploy --only "functions,firestore:rules"
 
 # Klucz Gemini API – wstaw swój klucz poniżej
 

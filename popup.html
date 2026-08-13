@@ -66,15 +66,8 @@
             </div>
 
             <div class="setting-group ai-plans-section" id="aiPlansSection" hidden>
-                <label>✨ Więcej możliwości</label>
-                <div class="glass-card ai-plans-card">
-                    <div class="ai-plans-icon">✦</div>
-                    <div class="ai-plans-copy">
-                        <strong>Plany Lectoro AI</strong>
-                        <span>Więcej tłumaczeń, wyjaśnień i quizów AI.</span>
-                    </div>
-                    <span class="ai-coming-badge">WKRÓTCE</span>
-                </div>
+                <label>✨ Plany subskrypcyjne</label>
+                <div class="subscription-plans-grid" id="subscriptionPlansGrid"></div>
             </div>
 
             <div class="setting-group">
@@ -176,26 +169,15 @@
                 <label>🎙️ ElevenLabs</label>
                 <div class="glass-card" style="padding:12px;">
                     <div class="setting-group" style="margin-bottom:0;">
-                        <label for="elApiKey">API Key</label>
-                        <input type="password" id="elApiKey" placeholder="sk_ wpisz tutaj klucz z elevenlabs">
-                    </div>
-                    <div class="setting-group" style="margin-bottom:0; margin-top:10px;">
                         <label for="elVoiceSelect">Głos ElevenLabs</label>
                         <select id="elVoiceSelect">
-                            <option value="">— Wpisz API key —</option>
+                            <option value="">— Ładowanie głosów —</option>
                         </select>
                     </div>
                     <div class="el-status" id="elStatus"></div>
                     <div class="el-help" style="margin-top:8px;">
-                        📖 <strong>Jak zdobyć API key:</strong>
-                        <ol>
-                            <li>Zarejestruj się na <a href="https://elevenlabs.io/app/developers/api-keys"
-                                    target="_blank">elevenlabs.io</a>
-                                (darmowy plan = 10 000 znaków/mies.)</li>
-                            <li>Kliknij ikonę profilu → <strong>Profile + API key</strong></li>
-                            <li>Kliknij <strong>Create API Key</strong> lub skopiuj istniejący</li>
-                            <li>Wklej klucz powyżej — głosy załadują się automatycznie</li>
-                        </ol>
+                        🔒 Klucz ElevenLabs jest przechowywany wyłącznie jako sekret na serwerze.
+                        Rozszerzenie nigdy go nie pobiera ani nie zapisuje lokalnie.
                     </div>
                 </div>
             </div>
@@ -437,12 +419,14 @@
 
         </div>
     </div>
+    <script src="functions/subscription-config.js"></script>
     <script src="shared/utils.js"></script>
     <script src="shared/audio-cache.js"></script>
     <script src="shared/srs.js"></script>
     <script src="shared/ai-prompts.js"></script>
     <script src="firebase/firebase-config.js"></script>
     <script src="firebase/firebase-sync.js"></script>
+    <script src="shared/subscription-service.js"></script>
     <script src="shared/gemini-proxy.js"></script>
     <script src="shared/quiz-export.js"></script>
     <script src="popup/firebase-ui.js"></script>

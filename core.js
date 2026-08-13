@@ -307,51 +307,22 @@
     //  TTS – ElevenLabs
     // ═══════════════════════════════════════════════════════════════
 
-    /** Extract a human-readable reason from an ElevenLabs error response (e.g. quota_exceeded, invalid_api_key). */
-    async function elevenLabsErrorMessage(res) {
-        try {
-            const data = await res.json();
-            const detail = data?.detail;
-            const status =
-                typeof detail === "object" ? detail?.status : undefined;
-            const message =
-                typeof detail === "object" ? detail?.message : detail;
-            if (status === "quota_exceeded")
-                return "skończyły się kredyty ElevenLabs";
-            if (res.status === 401) return "nieprawidłowy klucz API ElevenLabs";
-            return message || `HTTP ${res.status}`;
-        } catch {
-            return `HTTP ${res.status}`;
-        }
-    }
-
-    async function speakElevenLabs(text, apiKey, voiceId) {
+    async function speakElevenLabs(text, voiceId) {
         try {
             const cleanText = cleanTextForTTS(text);
-            const cacheKey = `${cleanText}|${voiceId}`;
+            const validation = await SubscriptionService.checkElevenLabs(cleanText);
+            SubscriptionConfig.assertAllowed(validation);
+            let targetVoiceId = voiceId;
+            if (targetVoiceId === "random") {
+                const voices = await SubscriptionService.getElevenLabsVoices();
+                if (!voices.length) throw new Error("Brak dostępnych głosów ElevenLabs.");
+                targetVoiceId = voices[Math.floor(Math.random() * voices.length)].voice_id;
+            }
+            const cacheKey = `${cleanText}|${targetVoiceId}`;
             let blob = await AudioCache.get(cacheKey);
 
             if (!blob) {
-                const res = await fetch(
-                    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
-                    {
-                        method: "POST",
-                        headers: {
-                            "xi-api-key": apiKey,
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({
-                            text: cleanText,
-                            model_id: "eleven_flash_v2_5",
-                            voice_settings: {
-                                stability: 0.5,
-                                similarity_boost: 0.75,
-                            },
-                        }),
-                    },
-                );
-                if (!res.ok) throw new Error(await elevenLabsErrorMessage(res));
-                blob = await res.blob();
+                blob = await SubscriptionService.synthesizeElevenLabs(cleanText, targetVoiceId);
                 await AudioCache.set(cacheKey, blob);
             }
 
@@ -368,6 +339,9 @@
                 "[QuickTranslator] ElevenLabs TTS failed:",
                 err.message || err,
             );
+            if (SubscriptionService.isLimitError(err)) {
+                SubscriptionService.showUpgradePrompt(err);
+            }
             return null;
         }
     }
@@ -400,7 +374,6 @@
             chrome.storage.local.get(
                 {
                     ttsMode: "browser",
-                    elApiKey: "",
                     elVoiceId: "",
                     speechVoice: "",
                     speechRate: 1.3,
@@ -412,12 +385,10 @@
                     let audio = null;
                     if (
                         data.ttsMode === "elevenlabs" &&
-                        data.elApiKey &&
                         data.elVoiceId
                     ) {
                         audio = await speakElevenLabs(
                             text,
-                            data.elApiKey,
                             data.elVoiceId,
                         );
                         if (audio instanceof HTMLAudioElement)
@@ -461,42 +432,52 @@
         });
     }
 
+    let saveWordQueue = Promise.resolve();
+
     function saveWord(entry) {
-        if (!chrome?.storage?.local) return;
-        chrome.storage.local.get({ savedWords: [] }, (data) => {
-            const words = data.savedWords || [];
-            const exists = words.some(
-                (w) =>
-                    w.original === entry.original &&
-                    w.translated === entry.translated &&
-                    (w.sentence || "") === (entry.sentence || "") &&
-                    (w.aiSentence || "") === (entry.aiSentence || ""),
-            );
-            if (!exists) {
-                // Stable id so edits/syncs never change this word's identity
-                if (!entry.id) entry.id = SharedUtils.generateId();
-                // Attach spaced-repetition metadata
-                if (!entry.sr) {
-                    entry.sr = {
-                        step: 0,
-                        easeFactor: 2.5,
-                        interval: 0,
-                        nextReview: Date.now(), // due immediately
-                        lastReview: null,
-                    };
-                }
-                entry.updatedAt = Date.now();
-                words.push(entry);
-                chrome.storage.local.set({ savedWords: words }, () => {
-                    if (chrome.runtime.lastError) {
-                        console.error(
-                            "[Lectoro] Nie udało się zapisać słowa:",
-                            chrome.runtime.lastError.message,
-                        );
-                    }
-                });
-            }
-        });
+        const operation = saveWordQueue.then(() => saveWordNow(entry));
+        saveWordQueue = operation.catch(() => {});
+        return operation;
+    }
+
+    async function saveWordNow(entry) {
+        if (!chrome?.storage?.local) {
+            return { saved: false, reason: "STORAGE_UNAVAILABLE" };
+        }
+        const data = await chrome.storage.local.get({ savedWords: [] });
+        const words = data.savedWords || [];
+        const exists = words.some(
+            (w) =>
+                w.original === entry.original &&
+                w.translated === entry.translated &&
+                (w.sentence || "") === (entry.sentence || "") &&
+                (w.aiSentence || "") === (entry.aiSentence || ""),
+        );
+        if (exists) return { saved: false, duplicate: true };
+
+        const validation = await SubscriptionService.checkSrsSave(words.length);
+        try {
+            SubscriptionConfig.assertAllowed(validation);
+        } catch (error) {
+            SubscriptionService.showUpgradePrompt(validation);
+            throw error;
+        }
+
+        // Stable id so edits/syncs never change this word's identity.
+        if (!entry.id) entry.id = SharedUtils.generateId();
+        if (!entry.sr) {
+            entry.sr = {
+                step: 0,
+                easeFactor: 2.5,
+                interval: 0,
+                nextReview: Date.now(),
+                lastReview: null,
+            };
+        }
+        entry.updatedAt = Date.now();
+        words.push(entry);
+        await chrome.storage.local.set({ savedWords: words });
+        return { saved: true, entry, validation };
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -755,12 +736,16 @@
         // Save word only (no sentence)
         const saveWordBtn = tooltipEl.querySelector(`.${PREFIX}save-word-btn`);
         if (saveWordBtn) {
-            saveWordBtn.addEventListener("click", (ev) => {
+            saveWordBtn.addEventListener("click", async (ev) => {
                 ev.stopPropagation();
-                saveWord(buildSaveEntry(saveWordBtn));
-                saveWordBtn.innerHTML =
-                    SVG.SAVE_CHECK + " <span>Zapisano!</span>";
-                saveWordBtn.classList.add("saved");
+                try {
+                    await saveWord(buildSaveEntry(saveWordBtn));
+                    saveWordBtn.innerHTML = SVG.SAVE_CHECK + " <span>Zapisano!</span>";
+                    saveWordBtn.classList.add("saved");
+                } catch (error) {
+                    saveWordBtn.innerHTML = SVG.SAVE + " <span>Limit planu</span>";
+                    saveWordBtn.title = error.message;
+                }
             });
         }
 
@@ -769,16 +754,20 @@
             `.${PREFIX}save-sentence-footer-btn`,
         );
         if (saveSentenceBtn && !saveSentenceBtn.disabled) {
-            saveSentenceBtn.addEventListener("click", (ev) => {
+            saveSentenceBtn.addEventListener("click", async (ev) => {
                 ev.stopPropagation();
                 const entry = buildSaveEntry(saveSentenceBtn);
                 entry.sentence = saveSentenceBtn.dataset.sentence || "";
                 entry.sentenceTranslated =
                     saveSentenceBtn.dataset.sentenceTranslated || "";
-                saveWord(entry);
-                saveSentenceBtn.innerHTML =
-                    SVG.SAVE_SENTENCE_CHECK + " <span>Zapisano!</span>";
-                saveSentenceBtn.classList.add("saved");
+                try {
+                    await saveWord(entry);
+                    saveSentenceBtn.innerHTML = SVG.SAVE_SENTENCE_CHECK + " <span>Zapisano!</span>";
+                    saveSentenceBtn.classList.add("saved");
+                } catch (error) {
+                    saveSentenceBtn.innerHTML = SVG.SAVE_SENTENCE + " <span>Limit planu</span>";
+                    saveSentenceBtn.title = error.message;
+                }
             });
         }
 
@@ -823,7 +812,7 @@
                     // Also use AI sentence as the main sentence for Anki cloze
                     entry.sentence = result.sentence;
                     entry.sentenceTranslated = result.translation;
-                    saveWord(entry);
+                    await saveWord(entry);
 
                     saveAiBtn.innerHTML =
                         SVG.SAVE_AI_CHECK + " <span>Zapisano!</span>";
@@ -832,7 +821,9 @@
                 } catch (err) {
                     console.error("[Lectoro] Gemini AI error:", err);
                     saveAiBtn.classList.remove("loading");
-                    const limitReached = GeminiProxy?.isLimitError?.(err);
+                    const limitReached =
+                        GeminiProxy?.isLimitError?.(err) ||
+                        SubscriptionService?.isLimitError?.(err);
                     saveAiBtn.innerHTML = limitReached
                         ? SVG.SAVE_AI + " <span>AI</span>"
                         : SVG.SAVE_AI + ` <span style="color:#f87171;">Błąd</span>`;

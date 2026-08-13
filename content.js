@@ -443,7 +443,6 @@
             chrome.storage.local.get(
                 {
                     ttsMode: "browser",
-                    elApiKey: "",
                     elVoiceId: "",
                     speechVoice: "",
                     speechRate: 1.3,
@@ -454,7 +453,6 @@
                         data.ttsVolume !== undefined ? data.ttsVolume : 1;
                     if (
                         data.ttsMode === "elevenlabs" &&
-                        data.elApiKey &&
                         data.elVoiceId
                     ) {
                         const audio = await QT.speak(text, lang);
@@ -1036,26 +1034,31 @@
         }
 
         // 2. Obsługa zdarzenia kliknięcia
-        saveBtn.addEventListener("click", (ev) => {
+        saveBtn.addEventListener("click", async (ev) => {
             ev.stopPropagation();
             if (saveBtn.classList.contains("saved")) return;
             const screenshot = QT.captureVideoScreenshot() || "";
-            saveWord({
-                original: text,
-                translated: translation || text,
-                srcLang: "en",
-                tgtLang: targetLang,
-                sentence: "",
-                sentenceTranslated: "",
-                aiSentence: explanation || "",
-                aiSentenceTranslated: "",
-                screenshot,
-                url: window.location.href,
-                timestamp: Date.now(),
-                downloaded: false,
-            });
-            saveBtn.innerHTML = `${SVG.SAVE_SENTENCE_CHECK} <span>Zapisano!</span>`;
-            saveBtn.classList.add("saved");
+            try {
+                await saveWord({
+                    original: text,
+                    translated: translation || text,
+                    srcLang: "en",
+                    tgtLang: targetLang,
+                    sentence: "",
+                    sentenceTranslated: "",
+                    aiSentence: explanation || "",
+                    aiSentenceTranslated: "",
+                    screenshot,
+                    url: window.location.href,
+                    timestamp: Date.now(),
+                    downloaded: false,
+                });
+                saveBtn.innerHTML = `${SVG.SAVE_SENTENCE_CHECK} <span>Zapisano!</span>`;
+                saveBtn.classList.add("saved");
+            } catch (error) {
+                saveBtn.innerHTML = `${SVG.SAVE_SENTENCE} <span>Limit planu</span>`;
+                saveBtn.title = error.message;
+            }
         });
 
         // 3. Obsługa skrótu klawiszowego "PageDown"
@@ -1695,7 +1698,7 @@
 
             // No separate sentence fields: original/translated already hold the
             // full sentence, avoids showing it twice in the review card.
-            saveWord({
+            await saveWord({
                 original: text,
                 translated: translated || text,
                 srcLang,

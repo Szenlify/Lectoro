@@ -80,14 +80,32 @@ const FirebaseSync = (() => {
 
     // ── Token Management ─────────────────────────────────────────
 
-    /** Get a valid Firebase ID token, auto-refreshing if expired */
-    async function getValidToken() {
+    function decodeIdTokenClaims(idToken) {
+        try {
+            const payload = idToken.split(".")[1];
+            if (!payload) return {};
+            const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+            const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+            const json = decodeURIComponent(
+                Array.from(atob(padded))
+                    .map((char) => `%${char.charCodeAt(0).toString(16).padStart(2, "0")}`)
+                    .join(""),
+            );
+            return JSON.parse(json);
+        } catch (error) {
+            console.warn("[Lectoro] Nie udało się odczytać claims z tokenu:", error);
+            return {};
+        }
+    }
+
+    /** Get a valid Firebase ID token, auto-refreshing if expired. */
+    async function getValidToken(forceRefresh = false) {
         if (!isConfigured()) return null;
         const auth = await getAuthData();
         if (!auth?.idToken) return null;
 
         // Still valid? (5 min buffer)
-        if (auth.expiresAt && Date.now() < auth.expiresAt - 300_000) {
+        if (!forceRefresh && auth.expiresAt && Date.now() < auth.expiresAt - 300_000) {
             return auth.idToken;
         }
 
@@ -202,6 +220,20 @@ const FirebaseSync = (() => {
 
     async function signOut() {
         await clearAuthData();
+    }
+
+    /** REST equivalent of Firebase Auth user.getIdTokenResult(). */
+    async function getIdTokenResult(forceRefresh = false) {
+        const token = await getValidToken(forceRefresh);
+        if (!token) return null;
+        const claims = decodeIdTokenClaims(token);
+        return {
+            token,
+            claims,
+            authTime: claims.auth_time || null,
+            expirationTime: claims.exp || null,
+            issuedAtTime: claims.iat || null,
+        };
     }
 
     // ── Firestore Data Conversion ────────────────────────────────
@@ -386,6 +418,7 @@ const FirebaseSync = (() => {
         signOut,
         getUser,
         getValidToken,
+        getIdTokenResult,
 
         // Firestore CRUD
         pullWords,

@@ -2,9 +2,11 @@
 
 try {
     importScripts(
+        "functions/subscription-config.js",
         "shared/utils.js",
         "firebase/firebase-config.js",
         "firebase/firebase-sync.js",
+        "shared/subscription-service.js",
         "shared/gemini-proxy.js",
     );
 } catch (error) {
@@ -269,11 +271,15 @@ async function fullSync({ pull = true } = {}) {
 }
 
 async function initializeAiUsage(force = false) {
-    if (typeof self.GeminiProxy?.refreshUsage !== "function") return;
     try {
-        await self.GeminiProxy.refreshUsage(force);
+        if (typeof self.SubscriptionService?.refreshProfile === "function") {
+            await self.SubscriptionService.refreshProfile(force);
+        }
+        if (typeof self.GeminiProxy?.refreshUsage === "function") {
+            await self.GeminiProxy.refreshUsage(force);
+        }
     } catch (error) {
-        console.warn("[Lectoro] AI usage initialization failed:", error);
+        console.warn("[Lectoro] Subscription initialization failed:", error);
     }
 }
 

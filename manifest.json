@@ -33,11 +33,13 @@
             "matches": ["<all_urls>"],
             "css": ["styles.css"],
             "js": [
+                "functions/subscription-config.js",
                 "shared/utils.js",
                 "shared/audio-cache.js",
                 "shared/ai-prompts.js",
                 "firebase/firebase-config.js",
                 "firebase/firebase-sync.js",
+                "shared/subscription-service.js",
                 "shared/gemini-proxy.js",
                 "core.js",
                 "content.js"

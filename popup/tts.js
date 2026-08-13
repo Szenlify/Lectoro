@@ -37,7 +37,6 @@ function popupSpeak(text, lang) {
         chrome.storage.local.get(
             {
                 ttsMode: "browser",
-                elApiKey: "",
                 elVoiceId: "",
                 speechVoice: "",
                 ttsVolume: 1,
@@ -55,7 +54,6 @@ function popupSpeak(text, lang) {
                 let useElevenLabs = false;
                 if (
                     data.ttsMode === "elevenlabs" &&
-                    data.elApiKey &&
                     data.elVoiceId
                 ) {
                     useElevenLabs = true;
@@ -73,24 +71,11 @@ function popupSpeak(text, lang) {
 
                         // Pobierz listę głosów i wylosuj jeden, jeśli wybrano tryb losowy
                         if (targetVoiceId === "random" || data.reviewRandomVoice) {
-                            const voicesRes = await fetch(
-                                "https://api.elevenlabs.io/v1/voices",
-                                {
-                                    headers: { "xi-api-key": data.elApiKey },
-                                },
-                            );
-                            if (voicesRes.ok) {
-                                const voicesData = await voicesRes.json();
-                                const voices = voicesData.voices || [];
-                                if (voices.length > 0) {
-                                    const randomVoice =
-                                        voices[
-                                            Math.floor(
-                                                Math.random() * voices.length,
-                                            )
-                                        ];
-                                    targetVoiceId = randomVoice.voice_id;
-                                }
+                            const voices = await SubscriptionService.getElevenLabsVoices();
+                            if (voices.length > 0) {
+                                const randomVoice =
+                                    voices[Math.floor(Math.random() * voices.length)];
+                                targetVoiceId = randomVoice.voice_id;
                             }
                         }
 
@@ -100,52 +85,16 @@ function popupSpeak(text, lang) {
                         }
 
                         const cleanText = cleanTextForTTS(text);
+                        const validation = await SubscriptionService.checkElevenLabs(cleanText);
+                        SubscriptionConfig.assertAllowed(validation);
                         const cacheKey = `${cleanText}|${targetVoiceId}`;
                         let blob = await AudioCache.get(cacheKey);
 
                         if (!blob) {
-                            const res = await fetch(
-                                `https://api.elevenlabs.io/v1/text-to-speech/${targetVoiceId}`,
-                                {
-                                    method: "POST",
-                                    headers: {
-                                        "xi-api-key": data.elApiKey,
-                                        "Content-Type": "application/json",
-                                    },
-                                    body: JSON.stringify({
-                                        text: cleanText,
-                                        model_id: "eleven_flash_v2_5",
-                                        voice_settings: {
-                                            stability: 0.5,
-                                            similarity_boost: 0.75,
-                                        },
-                                    }),
-                                },
+                            blob = await SubscriptionService.synthesizeElevenLabs(
+                                cleanText,
+                                targetVoiceId,
                             );
-                            if (!res.ok) {
-                                let reason = `HTTP ${res.status}`;
-                                try {
-                                    const errData = await res.json();
-                                    const detail = errData?.detail;
-                                    const status =
-                                        typeof detail === "object"
-                                            ? detail?.status
-                                            : undefined;
-                                    if (status === "quota_exceeded")
-                                        reason = "skończyły się kredyty";
-                                    else if (res.status === 401)
-                                        reason = "nieprawidłowy klucz API";
-                                    else if (
-                                        typeof detail === "object" &&
-                                        detail?.message
-                                    )
-                                        reason = detail.message;
-                                } catch {
-                                    /* keep default reason */
-                                }
-                                throw new Error(reason);
-                            }
-                            blob = await res.blob();
                             await AudioCache.set(cacheKey, blob);
                         }
                         if (mySeq !== popupSpeakSeq) {
@@ -166,6 +115,9 @@ function popupSpeak(text, lang) {
                         if (elStatusEl) {
                             elStatusEl.textContent = `✗ ElevenLabs: ${err.message}`;
                             elStatusEl.className = "el-status err";
+                        }
+                        if (SubscriptionService.isLimitError(err)) {
+                            SubscriptionService.showUpgradePrompt(err);
                         }
                         elFailed = true;
                     }
