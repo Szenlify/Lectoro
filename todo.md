@@ -10,6 +10,8 @@ tlumaczenie oraz tooltipy w chmurkach nad slowami maja przylegac do orginalnych 
 
 czy moge zrobic tak aby we wtyczce nadlowki opcji pokazywaly sie w danym jezyku w zaleznosci jaki target language jest wybrany?
 
+kiedy skoncza sie powtorki ostatnia karta zawsze zostaje i moge ja zrobic 3 razy zanim zniknie popraw to
+
 edycja powtorek (sprawdz)
 
 3 plany Subskrybcji
