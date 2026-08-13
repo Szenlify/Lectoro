@@ -169,7 +169,7 @@ Nie zamieniaj ich miejscami. Kod przyznaje plan na podstawie tych identyfikator�
 4. Skopiuj wartość zaczynającą się od:
 
    ```text
-   sk_test_51R
+   sk_test_
    ```
 
 To będzie `STRIPE_SECRET_KEY`.
