@@ -13,7 +13,7 @@ Przed udostępnieniem wtyczki tysiącom użytkowników zalecam jednak refaktoryz
 3. Popup zawsze ładuje 18 skryptów i ok. 368 KB surowych zasobów, również ciężki generator quizu, niezależnie od otwartej zakładki.
 4. Kod profilu, planów i limitów jest częściowo zdublowany w `shared/gemini-proxy.js` oraz `shared/subscription-service.js`.
 5. `popup.css` ma 4 011 linii i 524 reguły, a `styles.css` używa 75 deklaracji `!important`. To wskazuje na narastającą specyficzność, nadpisywanie stylów i wysoki koszt dalszych zmian UI.
-6. Limit SRS jest egzekwowany wyłącznie w kliencie. Użytkownik może ominąć rozszerzenie i zapisać dowolną liczbę dokumentów w `users/{uid}/...`, generując koszt Firestore.
+6. Limit SRS jest egzekwowany wyłącznie w kliencie. Użytkownik może ominąć rozszerzenie i zapisać dowolną liczbę dokumentów w `users/{uid}/...`, generując koszt Firestore. wiec ustaw limit zeby 20 fiszek na minute mozna bylo zrobic
 7. Jedno „użycie AI” może oznaczać krótkie tłumaczenie albo quiz z limitem 8 000 tokenów wyjścia. Model kredytów nie odzwierciedla więc rzeczywistego kosztu.
 
 Najlepszy cel refaktoryzacji bez zmiany funkcjonalności to:
