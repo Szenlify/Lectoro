@@ -405,7 +405,90 @@ chrome.storage.onChanged.addListener((changes, area) => {
     }
 });
 
+const MAX_CONTEXT_IMAGE_BYTES = 8 * 1024 * 1024;
+
+function bytesToBase64(bytes) {
+    let binary = "";
+    const chunkSize = 0x8000;
+    for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+        binary += String.fromCharCode(
+            ...bytes.subarray(offset, offset + chunkSize),
+        );
+    }
+    return btoa(binary);
+}
+
+async function readResponseBytes(response) {
+    if (!response.body?.getReader) {
+        const buffer = await response.arrayBuffer();
+        if (buffer.byteLength > MAX_CONTEXT_IMAGE_BYTES) {
+            throw new Error("Obraz jest zbyt duży.");
+        }
+        return new Uint8Array(buffer);
+    }
+
+    const reader = response.body.getReader();
+    const chunks = [];
+    let size = 0;
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        size += value.byteLength;
+        if (size > MAX_CONTEXT_IMAGE_BYTES) {
+            await reader.cancel();
+            throw new Error("Obraz jest zbyt duży.");
+        }
+        chunks.push(value);
+    }
+
+    const bytes = new Uint8Array(size);
+    let offset = 0;
+    for (const chunk of chunks) {
+        bytes.set(chunk, offset);
+        offset += chunk.byteLength;
+    }
+    return bytes;
+}
+
+async function fetchContextImageDataUrl(rawUrl) {
+    const url = new URL(rawUrl);
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+        throw new Error("Nieobsługiwany adres obrazu.");
+    }
+
+    const response = await fetch(url.href, {
+        credentials: "omit",
+        redirect: "follow",
+        referrerPolicy: "no-referrer",
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const contentType = (response.headers.get("content-type") || "")
+        .split(";")[0]
+        .trim()
+        .toLowerCase();
+    if (!contentType.startsWith("image/") || contentType === "image/svg+xml") {
+        throw new Error("Zasób nie jest obsługiwanym obrazem.");
+    }
+
+    const declaredSize = Number(response.headers.get("content-length")) || 0;
+    if (declaredSize > MAX_CONTEXT_IMAGE_BYTES) {
+        throw new Error("Obraz jest zbyt duży.");
+    }
+
+    const bytes = await readResponseBytes(response);
+    const base64 = bytesToBase64(bytes);
+    return `data:${contentType};base64,${base64}`;
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === "QT_FETCH_CONTEXT_IMAGE") {
+        fetchContextImageDataUrl(message.url)
+            .then((dataUrl) => sendResponse({ dataUrl }))
+            .catch((error) => sendResponse({ error: error.message }));
+        return true;
+    }
+
     if (message.type === "QT_ENABLE_VIDEO_FRAME") {
         if (
             !sender.tab?.id ||

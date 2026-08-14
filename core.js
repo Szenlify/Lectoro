@@ -57,6 +57,7 @@
     let tooltipSpeechTimer = null;
     let lastMouseX = 0;
     let lastMouseY = 0;
+    let screenshotContext = null;
 
     const cleanupHandlers = [];
     const dismissHandlers = [];
@@ -230,6 +231,7 @@
     }
 
     function showTooltip(html, rect, preferredPosition = "top") {
+        rememberScreenshotContext(rect);
         const tip = getTooltip();
         clearTimeout(tooltipHideTimer);
         if (tooltipShowFrame !== null) cancelAnimationFrame(tooltipShowFrame);
@@ -464,39 +466,253 @@
     }
 
     // ═══════════════════════════════════════════════════════════════
-    //  Video Screenshot Capture
+    //  Context-aware Screenshot Capture
     // ═══════════════════════════════════════════════════════════════
+
+    function rememberScreenshotContext(rect) {
+        if (!rect) return;
+        const left = Number(rect.left);
+        const top = Number(rect.top);
+        const right = Number(rect.right);
+        const bottom = Number(rect.bottom);
+        if (![left, top, right, bottom].every(Number.isFinite)) return;
+
+        const x = Math.max(
+            0,
+            Math.min(window.innerWidth - 1, (left + right) / 2),
+        );
+        const y = Math.max(
+            0,
+            Math.min(window.innerHeight - 1, (top + bottom) / 2),
+        );
+        const anchorElement = document
+            .elementsFromPoint(x, y)
+            .find((element) => !isOwnUI(element));
+
+        screenshotContext = {
+            rect: { left, top, right, bottom },
+            anchorElement: anchorElement || null,
+            scrollX: window.scrollX,
+            scrollY: window.scrollY,
+        };
+    }
+
+    function getMediaContextRoot(element) {
+        return element?.closest?.(
+            'article, [role="article"], shreddit-post, [data-testid="post-container"]',
+        );
+    }
+
+    function distanceBetweenRects(a, b) {
+        const dx = Math.max(a.left - b.right, b.left - a.right, 0);
+        const dy = Math.max(a.top - b.bottom, b.top - a.bottom, 0);
+        return Math.hypot(dx, dy);
+    }
+
+    function getSharedContainerBonus(anchorElement, media) {
+        let ancestor = anchorElement;
+        for (let depth = 0; ancestor && depth < 14; depth += 1) {
+            if (
+                ancestor === document.body ||
+                ancestor === document.documentElement
+            ) {
+                break;
+            }
+            if (ancestor.contains?.(media)) return 2_000 - depth * 120;
+            ancestor = ancestor.parentElement;
+        }
+        return 0;
+    }
+
+    function getVisibleMediaCandidates() {
+        const viewportWidth = document.documentElement.clientWidth;
+        const viewportHeight = document.documentElement.clientHeight;
+        const storedRect = screenshotContext?.rect;
+        const scrollDeltaX = window.scrollX - (screenshotContext?.scrollX || 0);
+        const scrollDeltaY = window.scrollY - (screenshotContext?.scrollY || 0);
+        const anchorRect = storedRect
+            ? {
+                  left: storedRect.left - scrollDeltaX,
+                  right: storedRect.right - scrollDeltaX,
+                  top: storedRect.top - scrollDeltaY,
+                  bottom: storedRect.bottom - scrollDeltaY,
+              }
+            : {
+                  left: viewportWidth / 2,
+                  right: viewportWidth / 2,
+                  top: viewportHeight / 2,
+                  bottom: viewportHeight / 2,
+              };
+        const anchorRoot = getMediaContextRoot(
+            screenshotContext?.anchorElement,
+        );
+
+        return Array.from(document.querySelectorAll("img, video, canvas"))
+            .filter((media) => !isOwnUI(media))
+            .map((media) => {
+                const rect = media.getBoundingClientRect();
+                const visibleWidth = Math.max(
+                    0,
+                    Math.min(rect.right, viewportWidth) - Math.max(rect.left, 0),
+                );
+                const visibleHeight = Math.max(
+                    0,
+                    Math.min(rect.bottom, viewportHeight) - Math.max(rect.top, 0),
+                );
+                const visibleArea = visibleWidth * visibleHeight;
+                const area = Math.max(1, rect.width * rect.height);
+                return {
+                    media,
+                    rect,
+                    visibleArea,
+                    visibleRatio: visibleArea / area,
+                };
+            })
+            .filter(({ media, rect, visibleArea }) => {
+                const mediaLabel = `${media.className || ""} ${
+                    media.getAttribute?.("alt") || ""
+                }`.toLowerCase();
+                const isSmallDecorativeImage =
+                    media instanceof HTMLImageElement &&
+                    rect.width <= 200 &&
+                    rect.height <= 200 &&
+                    /avatar|profile|emoji|icon|logo|badge|reaction/.test(
+                        mediaLabel,
+                    );
+                if (
+                    rect.width < 64 ||
+                    rect.height < 64 ||
+                    rect.width * rect.height < 10_000 ||
+                    visibleArea < 4_000 ||
+                    isSmallDecorativeImage
+                ) {
+                    return false;
+                }
+                const style = window.getComputedStyle(media);
+                return (
+                    style.display !== "none" &&
+                    style.visibility !== "hidden" &&
+                    Number(style.opacity || 1) > 0.05
+                );
+            })
+            .map(({ media, rect, visibleRatio }) => {
+                let score = distanceBetweenRects(anchorRect, rect);
+                score += (1 - Math.min(1, visibleRatio)) * 250;
+
+                const mediaRoot = getMediaContextRoot(media);
+                if (anchorRoot && mediaRoot === anchorRoot) score -= 100_000;
+                const anchorElement = screenshotContext?.anchorElement;
+                score -= getSharedContainerBonus(anchorElement, media);
+                if (anchorElement && media.contains(anchorElement))
+                    score -= 200_000;
+
+                return { media, score };
+            })
+            .sort((a, b) => a.score - b.score)
+            .map(({ media }) => media);
+    }
+
+    function drawMediaToDataUrl(media) {
+        try {
+            const sourceWidth =
+                media.videoWidth || media.naturalWidth || media.width;
+            const sourceHeight =
+                media.videoHeight || media.naturalHeight || media.height;
+            if (!sourceWidth || !sourceHeight) return null;
+
+            const MAX = 640;
+            const scale = Math.min(MAX / sourceWidth, MAX / sourceHeight, 1);
+            const width = Math.max(1, Math.round(sourceWidth * scale));
+            const height = Math.max(1, Math.round(sourceHeight * scale));
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) return null;
+            ctx.fillStyle = "#fff";
+            ctx.fillRect(0, 0, width, height);
+            ctx.drawImage(media, 0, 0, width, height);
+            return canvas.toDataURL("image/jpeg", 0.86);
+        } catch (_) {
+            return null;
+        }
+    }
+
+    function requestImageDataUrl(url) {
+        if (!url || !chrome?.runtime?.sendMessage) return Promise.resolve(null);
+        return new Promise((resolve) => {
+            chrome.runtime.sendMessage(
+                { type: "QT_FETCH_CONTEXT_IMAGE", url },
+                (response) => {
+                    if (chrome.runtime.lastError || !response?.dataUrl) {
+                        resolve(null);
+                        return;
+                    }
+                    resolve(response.dataUrl);
+                },
+            );
+        });
+    }
+
+    function loadImage(src) {
+        return new Promise((resolve) => {
+            const image = new Image();
+            image.onload = () => resolve(image);
+            image.onerror = () => resolve(null);
+            image.src = src;
+        });
+    }
+
+    async function captureMediaScreenshot(media) {
+        if (media instanceof HTMLVideoElement) {
+            if (media.readyState >= 2) {
+                const frame = drawMediaToDataUrl(media);
+                if (frame) return frame;
+            }
+            if (media.poster) {
+                const posterData = await requestImageDataUrl(media.poster);
+                const posterImage = posterData
+                    ? await loadImage(posterData)
+                    : null;
+                return posterImage ? drawMediaToDataUrl(posterImage) : null;
+            }
+            return null;
+        }
+
+        const directCapture = drawMediaToDataUrl(media);
+        if (directCapture) return directCapture;
+        if (!(media instanceof HTMLImageElement)) return null;
+
+        const src = media.currentSrc || media.src;
+        if (!/^https?:/i.test(src)) return null;
+        const imageData = await requestImageDataUrl(src);
+        const fetchedImage = imageData ? await loadImage(imageData) : null;
+        return fetchedImage ? drawMediaToDataUrl(fetchedImage) : null;
+    }
 
     /**
      * Capture a screenshot of the current video frame as a base64 JPEG.
-     * Returns null if no video is playing or capture fails.
+     * An explicit video is required to avoid selecting unrelated off-screen
+     * players on ordinary web pages.
      */
     function captureVideoScreenshot(videoOverride = null) {
-        try {
-            const video = videoOverride || document.querySelector("video");
-            if (!video || video.readyState < 2) return null;
-
-            const vw = video.videoWidth || video.clientWidth || 640;
-            const vh = video.videoHeight || video.clientHeight || 360;
-            const MAX = 640;
-            const scale = Math.min(MAX / vw, MAX / vh, 1);
-            const width = Math.round(vw * scale);
-            const height = Math.round(vh * scale);
-            const ratio = window.devicePixelRatio || 1;
-            const canvas = document.createElement("canvas");
-            canvas.width = width * ratio;
-            canvas.height = height * ratio;
-            canvas.style.width = `${width}px`;
-            canvas.style.height = `${height}px`;
-            const ctx = canvas.getContext("2d");
-            if (!ctx) return null;
-            ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-            ctx.drawImage(video, 0, 0, width, height);
-            return canvas.toDataURL("image/jpeg", 0.9);
-        } catch (e) {
-            console.warn("[Lectoro] Screenshot capture failed:", e);
-            return null;
+        if (!videoOverride || videoOverride.readyState < 2) return null;
+        const screenshot = drawMediaToDataUrl(videoOverride);
+        if (!screenshot) {
+            console.warn("[Lectoro] Video screenshot capture failed.");
         }
+        return screenshot;
+    }
+
+    async function captureContextScreenshot() {
+        const candidates = getVisibleMediaCandidates().slice(0, 3);
+        for (const media of candidates) {
+            try {
+                const screenshot = await captureMediaScreenshot(media);
+                if (screenshot) return screenshot;
+            } catch (_) {}
+        }
+        return null;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -768,8 +984,10 @@
         });
 
         /** Helper: build base save entry from a button's data attributes */
-        function buildSaveEntry(btn) {
-            const screenshot = captureVideoScreenshot();
+        async function buildSaveEntry(btn, screenshotPromise = null) {
+            const screenshot = screenshotPromise
+                ? await screenshotPromise
+                : await captureContextScreenshot();
             return {
                 original: btn.dataset.src,
                 translated: btn.dataset.translated,
@@ -791,7 +1009,7 @@
             saveWordBtn.addEventListener("click", async (ev) => {
                 ev.stopPropagation();
                 try {
-                    await saveWord(buildSaveEntry(saveWordBtn));
+                    await saveWord(await buildSaveEntry(saveWordBtn));
                     saveWordBtn.innerHTML = SVG.SAVE_CHECK + " <span>Zapisano!</span>";
                     saveWordBtn.classList.add("saved");
                 } catch (error) {
@@ -808,7 +1026,7 @@
         if (saveSentenceBtn && !saveSentenceBtn.disabled) {
             saveSentenceBtn.addEventListener("click", async (ev) => {
                 ev.stopPropagation();
-                const entry = buildSaveEntry(saveSentenceBtn);
+                const entry = await buildSaveEntry(saveSentenceBtn);
                 entry.sentence = saveSentenceBtn.dataset.sentence || "";
                 entry.sentenceTranslated =
                     saveSentenceBtn.dataset.sentenceTranslated || "";
@@ -836,6 +1054,7 @@
 
                 saveAiBtn.classList.add("loading");
                 saveAiBtn.innerHTML = `<span class="${PREFIX}spinner-small"></span> <span>Generuję…</span>`;
+                const screenshotPromise = captureContextScreenshot();
 
                 const aiResultEl = tooltipEl.querySelector(
                     `#${PREFIX}ai-result`,
@@ -858,7 +1077,10 @@
                             <div class="${PREFIX}ai-translation">${escapeHtml(result.translation)}</div>`;
                     }
 
-                    const entry = buildSaveEntry(saveAiBtn);
+                    const entry = await buildSaveEntry(
+                        saveAiBtn,
+                        screenshotPromise,
+                    );
                     entry.aiSentence = result.sentence;
                     entry.aiSentenceTranslated = result.translation;
                     // Also use AI sentence as the main sentence for Anki cloze

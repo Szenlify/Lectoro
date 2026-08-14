@@ -4,28 +4,22 @@
 
 [DONE] 2. zmiejsz zyzycie odczytu/zapisu i usuniec bazy danych firebase niech synchronizuje "writeBatch()" do bazy danych to z chrome local storage chrome manualnym kliknieciu przycisku synchronizuj w settings a przy uzyciu przycisku wyloguj najpierw synchronizuj powtorki a potem wyloguj dodatkowo przy przycisku synchronizuj niech sie pojawi czerwona kropka mrygajaca sugerujaca ze sa rzeczy niesynchronizowane oraz dodaj Auto-sync po przestaniu klikania powtorek co 30 sekund niech wysle paczke do firebase w tle tak zeby zmiejszyc koszta bazy danych firebase funkcje AI z cloud firebase function niech liczy w pamieci wczesniejsze pobranie z firebase i dolicza lokalnie niech pamieta limity oraz Jeśli użytkownik zainstaluje wtyczkę na laptopie i komputerze stacjonarnym: Przy synchronizacji stosuj prostą zasadę "Last-Write-Wins" (wygrywa najnowsza zmiana)
 
-3. cache'owanie audio elevanlabs w Chrome Extension, żeby nie płacić dwa razy za te same fiszki [nie sprawdzone]
 
 4. zrob w kazdym jezyku aby był text UI nagłowki wszystkie w zaleznosci jaki zalezny jest język a jako defaul jest angielski [na pozniej jako ostatnie]
 
-6. Popraw content.js tooltip/chmurka czasem jak cos zaznaczam nie widze tooltipa z 3 przyciskami ale nie moge dalej kopiowac textu ani w text kliknac wiec czasem go nie widze a pewnie jest i czasami nawet wcisne niewidoczny przycisk, czasami sie zacina i mimo ze tts nic nie mowi to ikonka jest aktywna i nie moge nacisnac drugi raz w nia, przeanalizuj caly content.js
 
 7. napisy reel niech sie pojawiaja tam gdzie jest najciemniejsze miejsce na filmiku ale zawsze tak aby byly cale widoczne i 15% od granicy frame video
 
 8. piracka biblioteka
 
-9. dodaj spiner w trakcie otwierania Stripe do 
-
-
 11. w settings w divie kredytow jest napis Limit odnawia się co miesiąc. podaj date obok kiedy dokladnie sie odnowi na kolor var ghost
 
-12. powtorki z glosami ktore sa casche zawsze niech sie otwieraja tym glosem nawet jak jest inny glos z elevenlabs zaznaczony lub glos systemowy casch first chyba ze karta zostala edytowana wtedy juz nie
 
-13. jesli zapisuje slowo z content.js to niech lapie najblizsze zdjecie lub film tego co akurat widzi screen bo teraz czesto czytam posty i zapisuje sobie slowo do powtorek i wskakuje mi jakies randomowy screen z video do powtorki gdzie byl daleko daleko gdzies na samym dole w komentarzu popraw to inteligentnie
+13. jesli zapisuje slowo do powtorek na stronie internetowej z content.js to niech lapie najblizsze zdjecie lub film tego co akurat widzi screen bo teraz czesto czytam posty i zapisuje sobie slowo do powtorek i wskakuje mi jakies randomowy screen z video do powtorki gdzie byl daleko daleko gdzies na samym dole w komentarzu popraw to inteligentnie
 
 14. WSAD i strzalki niech dzialaja na kazdym filmie i zabezpiecz tak ze np w social mediach jest duzo filmow na raz to ten ktory widzie na srceene aktualnie nie inny
 
-15. najechanie na napisy na slowo pauzuje pokazuje sie tooltip ale jesli kursor nie jest na tooltip ani na slowie to zawsze schowaj tooltip i wlacz wideo 
+16. netflix przewijanie i tlumaczenie
 
 firebase login
 firebase deploy --only functions --project extension-eng"
@@ -60,4 +54,4 @@ GEMINI_API_KEY=x
 
 
 
-zmien geminiproxy na apiproxy bo sie myli nazwa
+1. zmien geminiproxy na apiproxy bo sie myli nazwa
