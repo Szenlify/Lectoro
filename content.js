@@ -208,6 +208,15 @@
                 typeof googleRes.detectedLang === "string"
                     ? googleRes.detectedLang
                     : "auto";
+            // Reuse the same save-button contract as the regular translation
+            // tooltip. The saved card keeps Gemini's translation, while the
+            // AI option can additionally generate a memorable example sentence.
+            const saveDataAttrs =
+                `data-src="${escapeAttr(text)}" ` +
+                `data-translated="${escapeAttr(translation)}" ` +
+                `data-src-lang="${escapeAttr(srcLang)}" ` +
+                `data-tgt-lang="${escapeAttr(targetLang)}" ` +
+                `data-sentence="" data-sentence-translated=""`;
             const html = `
                 <div class="${PREFIX}header"><span>AI Tłumaczenie</span></div>
                 <div class="${PREFIX}body">
@@ -226,6 +235,15 @@
                         <div class="${PREFIX}ai-text">${escapeHtml(explanation)}</div>
                         <button class="${PREFIX}speak" data-text="${escapeAttr(explanation)}" data-lang="${escapeAttr(targetLang)}" title="Odczytaj wyjaśnienie" style="margin-top:6px;">${SVG.SPEAKER}</button>
                     </div>
+                    <div class="${PREFIX}ai-result" id="${PREFIX}ai-result" style="display:none;"></div>
+                </div>
+                <div class="${PREFIX}save-footer">
+                    <button class="${PREFIX}save-word-btn ${PREFIX}save-footer-btn" ${saveDataAttrs} title="Zapisz słowo z tłumaczeniem wygenerowanym przez AI do powtórek">
+                        ${SVG.SAVE} <span>Słowo</span>
+                    </button>
+                    <button class="${PREFIX}save-ai-btn ${PREFIX}save-footer-btn" ${saveDataAttrs} title="Zapisz z mądrym zdaniem AI (Gemini)">
+                        ${SVG.SAVE_AI} <span>AI</span>
+                    </button>
                 </div>`;
             showTooltip(html, rect);
             attachTooltipHandlers();
