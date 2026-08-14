@@ -406,6 +406,43 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === "QT_ENABLE_VIDEO_FRAME") {
+        if (
+            !sender.tab?.id ||
+            !Number.isInteger(sender.frameId) ||
+            sender.frameId === 0
+        ) {
+            sendResponse({ error: "Brak docelowej ramki wideo." });
+            return false;
+        }
+
+        const target = {
+            tabId: sender.tab.id,
+            frameIds: [sender.frameId],
+        };
+        chrome.scripting
+            .insertCSS({ target, files: ["styles.css"] })
+            .then(() =>
+                chrome.scripting.executeScript({
+                    target,
+                    files: [
+                        "functions/subscription-config.js",
+                        "shared/utils.js",
+                        "shared/ai-prompts.js",
+                        "firebase/firebase-config.js",
+                        "firebase/firebase-sync.js",
+                        "shared/subscription-service.js",
+                        "shared/gemini-proxy.js",
+                        "core.js",
+                        "content.js",
+                    ],
+                }),
+            )
+            .then(() => sendResponse({ ok: true }))
+            .catch((error) => sendResponse({ error: error.message }));
+        return true;
+    }
+
     if (message.type === "QT_OPEN_PLANS") {
         chrome.windows
             .create({

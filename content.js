@@ -870,80 +870,465 @@
     //  PlayerAdapter & Unified Video/Subtitle Logic
     // ═══════════════════════════════════════════════════════════════
 
-    const PlayerAdapter = {
-        get type() {
-            if (window.location.hostname.includes("youtube.com"))
-                return "youtube";
-            if (window.location.hostname.includes("lookmovie"))
-                return "lookmovie";
-            return "unknown";
+    const CAPTION_FALLBACK_MS = 300;
+
+    // Detect the player technology instead of hard-coding hostnames. An
+    // adapter therefore works on every site which embeds the same player.
+    const DOM_CAPTION_ADAPTERS = [
+        {
+            id: "youtube",
+            playerSelector: "#movie_player, .html5-video-player",
+            containerSelector: ".ytp-caption-window-container",
+            cueSelector: ".ytp-caption-segment",
         },
-        getVideo() {
-            if (this.type === "youtube")
-                return (
-                    document.querySelector("#movie_player video") ||
-                    document.querySelector(".html5-video-player video") ||
-                    document.querySelector("video")
-                );
-            return document.querySelector("video");
+        {
+            id: "videojs",
+            playerSelector: ".video-js",
+            containerSelector: ".vjs-text-track-display",
+            cueSelector: ".vjs-text-track-cue div",
+            leafOnly: true,
         },
-        getSubtitleContainer() {
-            if (this.type === "youtube")
-                return document.querySelector(".ytp-caption-window-container");
-            if (this.type === "lookmovie")
-                return document.querySelector(".vjs-text-track-display");
-            return null;
+        {
+            id: "netflix",
+            playerSelector: ".watch-video, [data-uia='video-canvas']",
+            containerSelector: ".player-timedtext",
+            cueSelector: ".player-timedtext-text-container span",
+            leafOnly: true,
+            documentFallback: true,
         },
-        getSubtitleElements() {
-            if (this.type === "youtube")
-                return Array.from(
-                    document.querySelectorAll(
-                        ".ytp-caption-window-container .ytp-caption-segment",
-                    ),
-                );
-            if (this.type === "lookmovie")
-                return Array.from(
-                    document.querySelectorAll(".vjs-text-track-cue div"),
-                ).filter(
-                    (d) => d.textContent.trim() && !d.querySelector("div"),
-                );
-            // Fallback (Netflix etc)
-            let els = document.querySelectorAll(
-                ".player-timedtext-text-container span",
+        {
+            id: "shaka",
+            playerSelector: ".shaka-video-container",
+            containerSelector: ".shaka-text-container",
+            cueSelector: ".shaka-text-container span",
+            leafOnly: true,
+        },
+        {
+            id: "jwplayer",
+            playerSelector: ".jwplayer",
+            containerSelector: ".jw-captions",
+            cueSelector: ".jw-text-track-cue",
+        },
+        {
+            id: "plyr",
+            playerSelector: ".plyr",
+            containerSelector: ".plyr__captions",
+            cueSelector: ".plyr__caption",
+        },
+        {
+            id: "clappr",
+            playerSelector: ".clappr-container",
+            containerSelector: ".clappr-subtitle, .cc-line",
+            cueSelector: ".cc-line, .clappr-subtitle",
+        },
+    ];
+
+    const videoSessions = new WeakMap();
+    const liveVideoSessions = new Set();
+    let activeVideo = null;
+    let videoSweepTimer = null;
+
+    function visibleVideoArea(video) {
+        const rect = video.getBoundingClientRect();
+        const width = Math.max(
+            0,
+            Math.min(rect.right, window.innerWidth) - Math.max(rect.left, 0),
+        );
+        const height = Math.max(
+            0,
+            Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0),
+        );
+        return width * height;
+    }
+
+    function selectBestVideo() {
+        let best = null;
+        let bestScore = -1;
+        for (const session of liveVideoSessions) {
+            const video = session.video;
+            if (!video.isConnected) continue;
+            const score =
+                visibleVideoArea(video) +
+                (!video.paused && !video.ended ? 1_000_000_000 : 0);
+            if (score > bestScore) {
+                best = video;
+                bestScore = score;
+            }
+        }
+        return best;
+    }
+
+    function getAdapterElements(binding) {
+        if (!binding?.container?.isConnected) return [];
+        const candidates = Array.from(
+            new Set([
+                ...(binding.container.matches(binding.adapter.cueSelector)
+                    ? [binding.container]
+                    : []),
+                ...binding.container.querySelectorAll(
+                    binding.adapter.cueSelector,
+                ),
+            ]),
+        );
+        return candidates.filter((element) => {
+            if (isOwnUI(element) || !element.textContent?.trim()) return false;
+            return (
+                !binding.adapter.leafOnly ||
+                !element.querySelector(binding.adapter.cueSelector)
             );
-            if (els.length > 0) return Array.from(els);
-            return [];
-        },
-        getCurrentText() {
-            const els = this.getSubtitleElements();
-            if (els.length > 0)
-                return els
-                    .map((e) => e.textContent.trim())
-                    .filter(Boolean)
-                    .join(" ");
-            // Fallback: textTracks API
-            const video = this.getVideo();
-            if (video?.textTracks) {
-                for (let i = 0; i < video.textTracks.length; i++) {
-                    const track = video.textTracks[i];
-                    if (track.mode === "disabled" || !track.activeCues)
-                        continue;
-                    for (let j = 0; j < track.activeCues.length; j++) {
-                        const t = track.activeCues[j].text;
-                        if (t?.trim()) return t.trim();
-                    }
+        });
+    }
+
+    function findCaptionBinding(video) {
+        if (!video?.isConnected) return null;
+
+        for (const adapter of DOM_CAPTION_ADAPTERS) {
+            const roots = [];
+            const player = adapter.playerSelector
+                ? video.closest(adapter.playerSelector)
+                : null;
+            if (player) roots.push(player);
+            if (adapter.documentFallback) roots.push(document);
+            if (roots.length === 0) continue;
+
+            for (const root of roots) {
+                const container = root.querySelector(adapter.containerSelector);
+                if (container && !isOwnUI(container)) {
+                    return { adapter, container };
                 }
             }
-            return null;
+        }
+        return null;
+    }
+
+    function cueText(cue) {
+        const raw = typeof cue?.text === "string" ? cue.text.trim() : "";
+        if (!raw) return "";
+        if (!raw.includes("<")) return raw;
+        const holder = document.createElement("div");
+        holder.innerHTML = raw;
+        return holder.textContent.trim();
+    }
+
+    function getNativeCueText(video) {
+        if (!video?.textTracks) return "";
+        const showing = [];
+        const hidden = [];
+
+        for (let i = 0; i < video.textTracks.length; i += 1) {
+            const track = video.textTracks[i];
+            if (
+                !["subtitles", "captions"].includes(track.kind) ||
+                track.mode === "disabled" ||
+                !track.activeCues
+            ) {
+                continue;
+            }
+            const texts = Array.from(track.activeCues)
+                .map(cueText)
+                .filter(Boolean);
+            if (texts.length === 0) continue;
+            (track.mode === "showing" ? showing : hidden).push(...texts);
+        }
+
+        return Array.from(new Set(showing.length > 0 ? showing : hidden)).join(
+            " ",
+        );
+    }
+
+    function hasEnabledNativeCaptionTrack(video) {
+        if (!video?.textTracks) return false;
+        for (let i = 0; i < video.textTracks.length; i += 1) {
+            const track = video.textTracks[i];
+            if (
+                ["subtitles", "captions"].includes(track.kind) &&
+                track.mode !== "disabled"
+            ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function queueSubtitleDomScan(session) {
+        if (
+            session !== videoSessions.get(session.video) ||
+            session !== videoSessions.get(activeVideo) ||
+            document.hidden ||
+            session.domFrame !== null
+        ) {
+            return;
+        }
+
+        session.domFrame = requestAnimationFrame(() => {
+            session.domFrame = null;
+            if (session !== videoSessions.get(activeVideo)) return;
+            makeSubtitlesInteractive(getAdapterElements(session.binding));
+        });
+    }
+
+    function disconnectCaptionObserver(session) {
+        session.domObserver?.disconnect();
+        session.domObserver = null;
+        if (session.domFrame !== null) cancelAnimationFrame(session.domFrame);
+        session.domFrame = null;
+    }
+
+    function refreshCaptionBinding(session, forceScan = false) {
+        if (
+            session !== videoSessions.get(activeVideo) ||
+            document.hidden ||
+            !session.video.isConnected
+        ) {
+            return;
+        }
+
+        const current = session.binding;
+        if (!current?.container?.isConnected) {
+            disconnectCaptionObserver(session);
+            session.binding = findCaptionBinding(session.video);
+        }
+
+        if (session.binding && !session.domObserver) {
+            session.domObserver = new MutationObserver(() =>
+                queueSubtitleDomScan(session),
+            );
+            session.domObserver.observe(session.binding.container, {
+                childList: true,
+                subtree: true,
+                characterData: true,
+            });
+            forceScan = true;
+        }
+
+        if (forceScan) queueSubtitleDomScan(session);
+    }
+
+    function refreshNativeTracks(session) {
+        const tracks = session.video.textTracks;
+        if (!tracks) return;
+
+        for (let i = 0; i < tracks.length; i += 1) {
+            const track = tracks[i];
+            if (!["subtitles", "captions"].includes(track.kind)) continue;
+            if (session.tracks.has(track)) continue;
+            session.tracks.add(track);
+            track.addEventListener(
+                "cuechange",
+                () => {
+                    session.nativeText = getNativeCueText(session.video);
+                },
+                { signal: session.controller.signal },
+            );
+        }
+        session.nativeText = getNativeCueText(session.video);
+    }
+
+    function activateVideo(video) {
+        const session = registerVideo(video);
+        if (!session) return;
+
+        if (activeVideo !== video) {
+            const previous = videoSessions.get(activeVideo);
+            if (previous) disconnectCaptionObserver(previous);
+            activeVideo = video;
+        }
+
+        refreshNativeTracks(session);
+        refreshCaptionBinding(session, true);
+        if (typeof initControlBarHide === "function") initControlBarHide();
+    }
+
+    function teardownVideoSession(session) {
+        if (!session || session !== videoSessions.get(session.video)) return;
+        disconnectCaptionObserver(session);
+        session.controller.abort();
+        videoSessions.delete(session.video);
+        liveVideoSessions.delete(session);
+        if (activeVideo === session.video) activeVideo = null;
+    }
+
+    function scheduleVideoSweep() {
+        if (videoSweepTimer !== null || liveVideoSessions.size === 0) return;
+        videoSweepTimer = setTimeout(() => {
+            videoSweepTimer = null;
+            for (const session of Array.from(liveVideoSessions)) {
+                if (!session.video.isConnected) teardownVideoSession(session);
+            }
+            if (!activeVideo) {
+                const next = selectBestVideo();
+                if (next) activateVideo(next);
+            }
+            scheduleVideoSweep();
+        }, 10_000);
+    }
+
+    function registerVideo(video) {
+        if (!(video instanceof HTMLVideoElement)) return null;
+        const existing = videoSessions.get(video);
+        if (existing) return existing;
+
+        const controller = new AbortController();
+        const session = {
+            video,
+            controller,
+            tracks: new WeakSet(),
+            nativeText: "",
+            binding: null,
+            domObserver: null,
+            domFrame: null,
+            lastFallbackAt: 0,
+        };
+        const signal = controller.signal;
+
+        videoSessions.set(video, session);
+        liveVideoSessions.add(session);
+        refreshNativeTracks(session);
+
+        video.addEventListener("play", () => activateVideo(video), { signal });
+        video.addEventListener(
+            "loadedmetadata",
+            () => activateVideo(video),
+            { signal },
+        );
+        video.addEventListener(
+            "emptied",
+            () => {
+                session.nativeText = "";
+                session.binding = null;
+                disconnectCaptionObserver(session);
+            },
+            { signal },
+        );
+        video.addEventListener(
+            "timeupdate",
+            () => {
+                if (
+                    activeVideo !== video ||
+                    video.paused ||
+                    video.ended ||
+                    document.hidden
+                ) {
+                    return;
+                }
+                const now = performance.now();
+                if (now - session.lastFallbackAt < CAPTION_FALLBACK_MS) return;
+                session.lastFallbackAt = now;
+                session.nativeText = getNativeCueText(video);
+                if (hasEnabledNativeCaptionTrack(video)) return;
+                refreshCaptionBinding(session, !session.binding);
+            },
+            { signal },
+        );
+
+        if (video.textTracks?.addEventListener) {
+            const refresh = () => {
+                refreshNativeTracks(session);
+                if (activeVideo === video) refreshCaptionBinding(session, true);
+            };
+            video.textTracks.addEventListener("addtrack", refresh, { signal });
+            video.textTracks.addEventListener("removetrack", refresh, {
+                signal,
+            });
+            video.textTracks.addEventListener("change", refresh, { signal });
+        }
+
+        scheduleVideoSweep();
+        return session;
+    }
+
+    const PlayerAdapter = {
+        get type() {
+            const session = videoSessions.get(this.getVideo());
+            return session?.binding?.adapter?.id || "native";
+        },
+        getVideo() {
+            if (activeVideo?.isConnected) return activeVideo;
+            const best = selectBestVideo();
+            if (best) {
+                activateVideo(best);
+                return best;
+            }
+            const first = document.querySelector("video");
+            if (first) activateVideo(first);
+            return first;
+        },
+        getSubtitleContainer() {
+            const video = this.getVideo();
+            if (!video) return null;
+            const session = videoSessions.get(video);
+            if (session && !session.binding?.container?.isConnected) {
+                refreshCaptionBinding(session);
+            }
+            return session?.binding?.container || null;
+        },
+        getSubtitleElements() {
+            const video = this.getVideo();
+            if (!video) return [];
+            const session = videoSessions.get(video);
+            if (session && !session.binding?.container?.isConnected) {
+                refreshCaptionBinding(session);
+            }
+            return getAdapterElements(session?.binding);
+        },
+        getCurrentText() {
+            const video = this.getVideo();
+            if (!video) return null;
+            const nativeText = getNativeCueText(video);
+            if (nativeText) return nativeText;
+            const text = this.getSubtitleElements()
+                .map((element) => element.textContent.trim())
+                .filter(Boolean)
+                .join(" ");
+            return text || null;
         },
     };
+
+    function handleVideoLifecycleEvent(event) {
+        if (!(event.target instanceof HTMLVideoElement)) return;
+        registerVideo(event.target);
+        if (event.type === "play" || event.type === "loadedmetadata") {
+            activateVideo(event.target);
+        }
+    }
+
+    document.addEventListener("play", handleVideoLifecycleEvent, true);
+    document.addEventListener(
+        "loadedmetadata",
+        handleVideoLifecycleEvent,
+        true,
+    );
+    document.addEventListener("visibilitychange", () => {
+        const session = videoSessions.get(activeVideo);
+        if (!session) return;
+        if (document.hidden) disconnectCaptionObserver(session);
+        else refreshCaptionBinding(session, true);
+    });
+    window.addEventListener("pagehide", () => {
+        for (const session of Array.from(liveVideoSessions)) {
+            teardownVideoSession(session);
+        }
+        clearTimeout(videoSweepTimer);
+        videoSweepTimer = null;
+    });
+
+    const initialVideos = Array.from(document.querySelectorAll("video"));
+    initialVideos.forEach(registerVideo);
+    const initialVideo = selectBestVideo();
+    if (initialVideo) activateVideo(initialVideo);
 
     function getAllCues(video) {
         if (!video?.textTracks) return [];
         const cues = [];
         for (let i = 0; i < video.textTracks.length; i++) {
             const track = video.textTracks[i];
-            if (track.mode === "disabled" || !track.cues) continue;
+            if (
+                !["subtitles", "captions"].includes(track.kind) ||
+                track.mode === "disabled" ||
+                !track.cues
+            ) {
+                continue;
+            }
             for (let j = 0; j < track.cues.length; j++)
                 cues.push(track.cues[j]);
         }
@@ -981,11 +1366,19 @@
     let subTooltipAnchor = null;
     let subCloseTimer = null;
 
-    function makeSubtitlesInteractive() {
-        const els = PlayerAdapter.getSubtitleElements();
+    function makeSubtitlesInteractive(
+        els = PlayerAdapter.getSubtitleElements(),
+    ) {
         for (const el of els) {
-            if (el.dataset[PREFIX + "bound"]) continue;
-            if (!el.textContent.trim()) continue;
+            const sourceText = el.textContent.trim();
+            if (!sourceText) continue;
+            if (
+                el.dataset[PREFIX + "bound"] &&
+                el.dataset[PREFIX + "source"] === sourceText &&
+                el.querySelector(`.${PREFIX}sub-word`)
+            ) {
+                continue;
+            }
             // if already split, ignore
             if (
                 el.querySelector(
@@ -994,17 +1387,10 @@
             )
                 continue;
             el.dataset[PREFIX + "bound"] = "1";
+            el.dataset[PREFIX + "source"] = sourceText;
             QT.splitIntoWordSpans(el, PREFIX + "sub-word");
         }
     }
-
-    const subObserver = new MutationObserver(() => makeSubtitlesInteractive());
-    subObserver.observe(document.body, {
-        childList: true,
-        subtree: true,
-        characterData: true,
-    });
-    setInterval(makeSubtitlesInteractive, 500);
 
     function closeSubTooltip() {
         if (!isSubHovering) return;
@@ -1039,6 +1425,7 @@
     document.addEventListener(
         "mousemove",
         (e) => {
+            if (!activeVideo?.isConnected) return;
             if (isReading) return;
             if (typeof eTranslateActive !== "undefined" && eTranslateActive)
                 return;
@@ -1185,6 +1572,7 @@
     document.addEventListener(
         "click",
         (e) => {
+            if (!activeVideo?.isConnected) return;
             if (isOwnUI(e.target)) return;
             const wordSpan = QT.findWordAtPoint(
                 e.clientX,
@@ -1297,7 +1685,8 @@
         saveBtn.addEventListener("click", async (ev) => {
             ev.stopPropagation();
             if (saveBtn.classList.contains("saved")) return;
-            const screenshot = QT.captureVideoScreenshot() || "";
+            const screenshot =
+                QT.captureVideoScreenshot(PlayerAdapter.getVideo()) || "";
             try {
                 await saveWord({
                     original: text,
@@ -2013,7 +2402,7 @@
         }
 
         flashCapture();
-        const screenshot = QT.captureVideoScreenshot() || "";
+        const screenshot = QT.captureVideoScreenshot(video) || "";
         showSaveToast("saving", { text });
 
         try {

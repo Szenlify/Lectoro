@@ -9,14 +9,16 @@
         "unlimitedStorage",
         "alarms",
         "notifications",
-        "identity"
+        "identity",
+        "scripting"
     ],
     "host_permissions": [
         "https://identitytoolkit.googleapis.com/*",
         "https://firestore.googleapis.com/*",
         "https://securetoken.googleapis.com/*",
         "https://europe-west1-extension-eng.cloudfunctions.net/*",
-        "https://geminiproxy-gyagzflbra-ew.a.run.app/*"
+        "https://geminiproxy-gyagzflbra-ew.a.run.app/*",
+        "<all_urls>"
     ],
     "background": {
         "service_worker": "background.js"
@@ -44,6 +46,14 @@
                 "content.js"
             ],
             "run_at": "document_idle"
+        },
+        {
+            "matches": ["<all_urls>"],
+            "js": ["video-frame-bootstrap.js"],
+            "run_at": "document_idle",
+            "all_frames": true,
+            "match_about_blank": true,
+            "match_origin_as_fallback": true
         }
     ]
 }

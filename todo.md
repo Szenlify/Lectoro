@@ -21,6 +21,10 @@
 
 12. powtorki z glosami ktore sa casche zawsze niech sie otwieraja tym glosem nawet jak jest inny glos z elevenlabs zaznaczony lub glos systemowy casch first chyba ze karta zostala edytowana wtedy juz nie
 
+13. jesli zapisuje slowo z content.js to niech lapie najblizsze zdjecie lub film tego co akurat widzi screen bo teraz czesto czytam posty i zapisuje sobie slowo do powtorek i wskakuje mi jakies randomowy screen z video do powtorki gdzie byl daleko daleko gdzies na samym dole w komentarzu popraw to inteligentnie
+
+14. WSAD i strzalki niech dzialaja na kazdym filmie i zabezpiecz tak ze np w social mediach jest duzo filmow na raz to ten ktory widzie na srceene aktualnie nie inny
+
 firebase login
 firebase deploy --only functions --project extension-eng"
 lub

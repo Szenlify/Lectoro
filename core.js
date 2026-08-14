@@ -63,7 +63,11 @@
 
     // ── Review-due toast notification ──────────────────────────────
     chrome.runtime.onMessage.addListener((msg) => {
-        if (msg.type === "QT_REVIEW_DUE" && msg.count > 0) {
+        if (
+            window === window.top &&
+            msg.type === "QT_REVIEW_DUE" &&
+            msg.count > 0
+        ) {
             showReviewDueToast(msg.count);
         }
     });
@@ -467,9 +471,9 @@
      * Capture a screenshot of the current video frame as a base64 JPEG.
      * Returns null if no video is playing or capture fails.
      */
-    function captureVideoScreenshot() {
+    function captureVideoScreenshot(videoOverride = null) {
         try {
-            const video = document.querySelector("video");
+            const video = videoOverride || document.querySelector("video");
             if (!video || video.readyState < 2) return null;
 
             const vw = video.videoWidth || video.clientWidth || 640;

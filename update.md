@@ -11,7 +11,7 @@ Przed udostępnieniem wtyczki tysiącom użytkowników zalecam jednak refaktoryz
 1. `content.js` uruchamia `MutationObserver` na całym `document.body` oraz skan napisów co 500 ms na **każdej stronie**, nawet bez filmu. To największe ryzyko zużycia CPU po stronie użytkowników.
 2. Wszystkie fiszki są trzymane w jednej tablicy `savedWords`. Zmiana jednej fiszki przepisuje całą tablicę, a background porównuje wiele obiektów przez `JSON.stringify`. Przy 2 000–8 000 kartach, szczególnie ze screenshotami base64, będzie to coraz wolniejsze i bardziej awaryjne.
 3. Popup zawsze ładuje 18 skryptów i ok. 368 KB surowych zasobów, również ciężki generator quizu, niezależnie od otwartej zakładki.
-4. Kod profilu, planów i limitów jest częściowo zdublowany w `shared/gemini-proxy.js` oraz `shared/subscription-service.js`.
+4. Kod profilu, planów i limitów jest częściowo zdublowany w `shared/gemini-proxy.js` oraz `shared/subscription-service.js`. przenies wszystko do pliku shared/api-proxy.js
 5. `popup.css` ma 4 011 linii i 524 reguły, a `styles.css` używa 75 deklaracji `!important`. To wskazuje na narastającą specyficzność, nadpisywanie stylów i wysoki koszt dalszych zmian UI.
 6. Limit SRS jest egzekwowany wyłącznie w kliencie. Użytkownik może ominąć rozszerzenie i zapisać dowolną liczbę dokumentów w `users/{uid}/...`, generując koszt Firestore. wiec ustaw limit zeby 20 fiszek na minute mozna bylo zrobic
 7. Jedno „użycie AI” może oznaczać krótkie tłumaczenie albo quiz z limitem 8 000 tokenów wyjścia. Model kredytów nie odzwierciedla więc rzeczywistego kosztu.
@@ -27,7 +27,7 @@ Najlepszy cel refaktoryzacji bez zmiany funkcjonalności to:
 Finansowo projekt może być rentowny przy aktualnych cenach. W scenariuszu bazowym 90% FREE / 8% BASIC / 2% PRO szacowana miesięczna marża operacyjna przed VAT, podatkiem dochodowym, zwrotami i kosztem pracy wynosi około:
 
 - **1 000 użytkowników:** 878–883 USD, czyli około 3.336 – 3.355 PLN;
-- **10 000 użytkowników:** 8 798–8 823 USD, czyli około 33.433 – 33.528 PLN.
+- **10 000 użytkowników:** 8.798–8.823 USD, czyli około 33.433 – 33.528 PLN.
 
 Przy wykorzystaniu 100% limitów przez wszystkich użytkowników tego samego miksu marża spada odpowiednio do około 690–695 USD oraz 6.902–6.942 USD. Największym kosztem zmiennym jest ElevenLabs, nie Gemini ani Firebase.
 
