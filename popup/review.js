@@ -421,7 +421,71 @@ function renderReview() {
     }
 }
 
-// ── Question (front) side ──────────────────────────────────────────
+// ── Shared card controls + question (front) side ───────────────────
+function reviewCardMetaHtml(sideLabel) {
+    return `
+        <div class="review-card-meta">
+            <span class="review-side-badge">${sideLabel}</span>
+            <span class="review-keyboard-cue" title="Możesz oceniać kartę klawiaturą">
+                <span>Klawiatura</span><kbd>←</kbd><kbd>→</kbd>
+            </span>
+        </div>`;
+}
+
+function reviewControlsHtml(sr, answerShown) {
+    const labels = [1, 2].map((grade) => previewLabel(sr, grade));
+    return `
+        <button class="review-flip-btn" type="button">
+            <span class="review-flip-keys"><kbd>↓</kbd><kbd>S</kbd></span>
+            <span>${answerShown ? "Pokaż pytanie" : "Pokaż odpowiedź"}</span>
+        </button>
+        <div class="review-controls">
+            <div class="review-rating">
+                <div class="review-rating-label">Znałeś odpowiedź?</div>
+                <div class="review-rating-buttons review-rating-buttons-2">
+                    <button class="review-rate-btn rate-no" data-grade="1" type="button" title="Nie znam (← lub A)">
+                        <span class="rate-key-pair"><kbd>←</kbd><kbd>A</kbd></span>
+                        <span class="rate-copy">
+                            <span class="rate-label">Nie znam</span>
+                            <span class="review-next-info">${labels[0]}</span>
+                        </span>
+                    </button>
+                    <button class="review-rate-btn rate-yes" data-grade="2" type="button" title="Znam (→ lub D)">
+                        <span class="rate-key-pair"><kbd>→</kbd><kbd>D</kbd></span>
+                        <span class="rate-copy">
+                            <span class="rate-label">Znam</span>
+                            <span class="review-next-info">${labels[1]}</span>
+                        </span>
+                    </button>
+                </div>
+            </div>
+            <div class="review-shortcuts" aria-label="Skróty klawiszowe powtórki">
+                <span><span class="shortcut-keys"><kbd>↑</kbd><kbd>W</kbd></span> czytaj</span>
+                <span><span class="shortcut-keys"><kbd>↓</kbd><kbd>S</kbd></span> odwróć</span>
+                <span><span class="shortcut-keys"><kbd>Enter</kbd></span> tłumacz AI</span>
+            </div>
+            <div class="review-actions-row">
+                <button class="review-edit-btn" type="button"><span aria-hidden="true">✏️</span> Edytuj</button>
+                <button class="review-delete-btn" type="button"><span aria-hidden="true">🗑</span> Usuń</button>
+            </div>
+        </div>`;
+}
+
+function attachReviewCardControls(card, w) {
+    card.querySelector(".review-flip-btn")?.addEventListener("click", flipCard);
+    card.querySelectorAll(".review-rate-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            animateSwipeAndRate(parseInt(btn.dataset.grade));
+        });
+    });
+    card.querySelector(".review-edit-btn")?.addEventListener("click", () => {
+        showReviewEditForm(w, reviewAnswerShown);
+    });
+    card.querySelector(".review-delete-btn")?.addEventListener("click", () => {
+        deleteReviewWord(w);
+    });
+}
+
 function renderQuestion(w) {
     const card = document.getElementById("reviewCard");
     const srcL = w.srcLang || "en";
@@ -433,6 +497,7 @@ function renderQuestion(w) {
         ? w.sentenceTranslated || ""
         : w.sentence || "";
     const wordClass = isReverse ? "__qt_translated" : "__qt_original";
+    const sr = w.sr || { step: 0, interval: 0 };
     const sentenceHtml = showSentence
         ? `
                 <div class="review-context-row">
@@ -459,12 +524,11 @@ function renderQuestion(w) {
                     ${w.screenshot ? `<div class="review-screenshot"><img src="${w.screenshot}" alt="Screenshot" class="review-screenshot-img"></div>` : ""}
                 </div>
             </div>
-            <button class="review-reveal-btn" id="revealBtn">▸ Pokaż odpowiedź</button>
-            <div class="review-hint"><kbd>↓</kbd>/<kbd>S</kbd> odwróć &nbsp; <kbd>↑</kbd>/<kbd>W</kbd> czytaj &nbsp; <kbd>←</kbd>/<kbd>A</kbd> nie znam &nbsp; <kbd>→</kbd>/<kbd>D</kbd> znam &nbsp; <kbd>Enter</kbd> tłumacz AI</div>`;
+            ${reviewControlsHtml(sr, false)}`;
 
     attachReviewSpeakHandlers(card);
+    attachReviewCardControls(card, w);
     autoSpeakReviewCard(w, false);
-    document.getElementById("revealBtn").addEventListener("click", flipCard);
 
     // Every new card must always start fully scrolled to the top — force
     // the scrollable card container itself back to 0 rather than relying
@@ -524,15 +588,15 @@ function revealAnswer() {
 function animateSwipeAndRate(grade) {
     const card = document.getElementById("reviewCard");
     const flashcard = card?.querySelector(".review-flashcard");
-    const rating = card?.querySelector(".review-rating");
-    const actions = card?.querySelector(".review-actions-row");
+    const controls = card?.querySelector(".review-controls");
+    const flipButton = card?.querySelector(".review-flip-btn");
 
     if (flashcard) {
         flashcard.classList.add(
             grade === 1 ? "qt-swipe-left" : "qt-swipe-right",
         );
-        rating?.classList.add("qt-fade-out");
-        actions?.classList.add("qt-fade-out");
+        controls?.classList.add("qt-fade-out");
+        flipButton?.classList.add("qt-fade-out");
         setTimeout(() => rateWord(grade), 200);
     } else {
         rateWord(grade);
@@ -639,9 +703,6 @@ function renderAnswer(w) {
     const aSentence = isReverse ? w.sentence || "" : w.sentenceTranslated || "";
     const aWordClass = isReverse ? "__qt_original" : "__qt_translated";
 
-    // Preview labels for each grade (1 = Nie znam, 2 = Znam)
-    const labels = [1, 2].map((g) => previewLabel(sr, g));
-
     // Same layout as the question side (review-word-row / review-context-row
     // / screenshot) so the answer visually *replaces* the original word in
     // the exact same spot — true flashcard flip — instead of stacking a
@@ -671,29 +732,11 @@ function renderAnswer(w) {
                 ${w.screenshot ? `<div class="review-screenshot"><img src="${w.screenshot}" alt="Screenshot" class="review-screenshot-img"></div>` : ""}
             </div>
         </div>
-        <div class="review-rating">
-            <div class="review-rating-label">Znałeś odpowiedź?</div>
-            <div class="review-rating-buttons review-rating-buttons-2">
-                <button class="review-rate-btn rate-no" data-grade="1" title="Nie znam (←)">
-                    <span class="rate-key">←</span>
-                    <span class="rate-label">Nie znam</span>
-                    <span class="review-next-info">${labels[0]}</span>
-                </button>
-                <button class="review-rate-btn rate-yes" data-grade="2" title="Znam (→)">
-                    <span class="rate-key">→</span>
-                    <span class="rate-label">Znam</span>
-                    <span class="review-next-info">${labels[1]}</span>
-                </button>
-            </div>
-            <div class="review-hint"><kbd>←</kbd>/<kbd>A</kbd> nie znam &nbsp; <kbd>→</kbd>/<kbd>D</kbd> znam &nbsp; <kbd>↑</kbd>/<kbd>W</kbd> czytaj &nbsp; <kbd>↓</kbd>/<kbd>S</kbd> odwróć &nbsp; <kbd>Enter</kbd> tłumacz AI</div>
-        </div>
-        <div class="review-actions-row">
-            <button class="review-edit-btn" id="reviewEditBtn">✏️ Edytuj</button>
-            <button class="review-delete-btn" id="reviewDeleteBtn">🗑 Usuń</button>
-        </div>`;
+        ${reviewControlsHtml(sr, true)}`;
 
     // Attach TTS handlers
     attachReviewSpeakHandlers(card);
+    attachReviewCardControls(card, w);
     autoSpeakReviewCard(w, true);
 
     // Same as the question side: always force a full scroll back to the
@@ -710,26 +753,10 @@ function renderAnswer(w) {
         shotImg.addEventListener("load", scrollToTop, { once: true });
     }
 
-    // Attach rating handlers
-    card.querySelectorAll(".review-rate-btn").forEach((btn) => {
-        btn.addEventListener("click", () => {
-            animateSwipeAndRate(parseInt(btn.dataset.grade));
-        });
-    });
-
-    // Edit button
-    document.getElementById("reviewEditBtn").addEventListener("click", () => {
-        showReviewEditForm(w);
-    });
-
-    // Delete button
-    document.getElementById("reviewDeleteBtn").addEventListener("click", () => {
-        deleteReviewWord(w);
-    });
 }
 
 // ── Edit form in review ───────────────────────────────────────────
-function showReviewEditForm(w) {
+function showReviewEditForm(w, returnToAnswer = reviewAnswerShown) {
     const card = document.getElementById("reviewCard");
     card.innerHTML = `
         <div class="review-edit-form">
@@ -748,7 +775,7 @@ function showReviewEditForm(w) {
         </div>`;
 
     document.getElementById("editCancel").addEventListener("click", () => {
-        renderAnswer(w);
+        returnToAnswer ? renderAnswer(w) : renderQuestion(w);
     });
 
     document.getElementById("editSave").addEventListener("click", () => {
@@ -797,10 +824,10 @@ function showReviewEditForm(w) {
                             chrome.runtime.lastError.message,
                         );
                     }
-                    renderAnswer(w);
+                    returnToAnswer ? renderAnswer(w) : renderQuestion(w);
                 });
             } else {
-                renderAnswer(w);
+                returnToAnswer ? renderAnswer(w) : renderQuestion(w);
             }
         });
     });

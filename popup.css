@@ -2415,6 +2415,238 @@ body::before {
     margin: 8px auto 0;
 }
 
+/* ── Minimal review controls shared by the front and back of a card ── */
+.review-flashcard {
+    position: relative;
+    padding: 16px 20px 24px;
+    margin-bottom: 10px;
+}
+
+.review-card-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 24px;
+    margin-bottom: 18px;
+}
+
+.review-side-badge {
+    font-size: 8.5px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: 1.1px;
+    text-transform: uppercase;
+    color: var(--text-ghost);
+}
+
+.review-keyboard-cue {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--text-ghost);
+    font-size: 8.5px;
+    font-weight: 650;
+    letter-spacing: .15px;
+}
+
+.review-keyboard-cue>span {
+    margin-right: 2px;
+}
+
+.review-keyboard-cue kbd,
+.review-flip-btn kbd,
+.rate-key-pair kbd,
+.review-shortcuts kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    box-sizing: border-box;
+    padding: 0 4px;
+    border: 1px solid rgba(255, 255, 255, .1);
+    border-bottom-color: rgba(255, 255, 255, .16);
+    border-radius: 5px;
+    background: rgba(255, 255, 255, .035);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 8.5px;
+    font-weight: 700;
+    line-height: 1;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, .18);
+}
+
+.review-flip-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    min-height: 32px;
+    padding: 6px 12px;
+    margin: 0 auto 12px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 10.5px;
+    font-weight: 650;
+    line-height: 1;
+    cursor: pointer;
+    transition: color .18s ease, background .18s ease;
+}
+
+.review-flip-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, .045);
+}
+
+.review-flip-keys,
+.rate-key-pair,
+.shortcut-keys {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.review-controls {
+    width: 100%;
+    max-width: 390px;
+    box-sizing: border-box;
+    padding: 14px;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .08);
+}
+
+.review-controls .review-rating {
+    width: 100%;
+    max-width: none;
+}
+
+.review-controls .review-rating-label {
+    margin-bottom: 11px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: -.05px;
+    text-transform: none;
+}
+
+.review-controls .review-rating-buttons-2 {
+    gap: 8px;
+}
+
+.review-controls .review-rating-buttons-2 .review-rate-btn {
+    min-height: 66px;
+    justify-content: center;
+    padding: 12px 10px 10px;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.review-controls .review-rate-btn:hover {
+    transform: translateY(-1px);
+}
+
+.review-controls .rate-key-pair {
+    position: absolute;
+    top: 8px;
+}
+
+.review-controls .rate-no .rate-key-pair {
+    left: 9px;
+}
+
+.review-controls .rate-yes .rate-key-pair {
+    right: 9px;
+}
+
+.review-controls .rate-no .rate-key-pair kbd {
+    border-color: rgba(248, 113, 113, .2);
+    color: #fca5a5;
+}
+
+.review-controls .rate-yes .rate-key-pair kbd {
+    border-color: rgba(110, 231, 183, .2);
+    color: #a7f3d0;
+}
+
+.rate-copy {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    margin-top: 6px;
+}
+
+.review-controls .rate-label {
+    font-size: 12px;
+    font-weight: 750;
+    letter-spacing: -.05px;
+    text-transform: none;
+}
+
+.review-controls .review-next-info {
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    color: var(--text-ghost);
+    font-size: 9px;
+    font-weight: 600;
+}
+
+.review-shortcuts {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 7px 12px;
+    padding: 24px 2px 24px;
+    color: var(--text-ghost);
+    font-size: 8.5px;
+    line-height: 18px;
+}
+
+.review-shortcuts>span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+.review-shortcuts kbd {
+    min-width: 17px;
+    height: 17px;
+    padding: 0 3px;
+    font-size: 8px;
+}
+
+.review-controls .review-actions-row {
+    gap: 4px;
+    padding-top: 9px;
+    margin: 0;
+    border-top: 1px solid rgba(255, 255, 255, .055);
+}
+
+.review-controls .review-edit-btn,
+.review-controls .review-delete-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 9px;
+    border-color: transparent;
+    background: transparent;
+    font-size: 9.5px;
+}
+
+.review-flip-btn:focus-visible,
+.review-rate-btn:focus-visible,
+.review-edit-btn:focus-visible,
+.review-delete-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
 .review-delete-all-btn {
     background: var(--glass);
     border: 1px solid var(--glass-border);
