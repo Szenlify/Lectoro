@@ -710,7 +710,10 @@ async function aiTranslateReviewCard() {
         const speakText = [wordTr, sentTr, explanation].filter(Boolean).join(". ");
         if (speakText) {
             stopPopupSpeak();
-            popupSpeak(speakText, tgtL, { forceBrowser: true }).catch(() => {});
+            popupSpeak(speakText, tgtL, {
+                forceBrowser: true,
+                useConfiguredRate: true,
+            }).catch(() => {});
         }
     } catch (err) {
         state.status = "idle";
@@ -754,7 +757,7 @@ function renderReviewTranslationResult(panel, result) {
         <div class="review-ai-result-row">
             <div class="review-ai-translate-word">${escapeHtml(result.wordTr || "—")}</div>
             ${speakText ? `
-                <button class="review-speak-btn review-speak-sm" data-text="${escapeAttr(speakText)}" data-lang="${escapeAttr(result.targetLang)}" data-force-browser-tts="true" title="Odczytaj tłumaczenie i wyjaśnienie głosem systemowym" aria-label="Odczytaj tłumaczenie i wyjaśnienie głosem systemowym">${SPEAK_SVG}</button>
+                <button class="review-speak-btn review-speak-sm" data-text="${escapeAttr(speakText)}" data-lang="${escapeAttr(result.targetLang)}" data-force-browser-tts="true" data-use-configured-rate="true" title="Odczytaj tłumaczenie i wyjaśnienie głosem systemowym" aria-label="Odczytaj tłumaczenie i wyjaśnienie głosem systemowym">${SPEAK_SVG}</button>
             ` : ""}
         </div>
         ${result.sentTr ? `<div class="review-ai-translate-sentence">"${escapeHtml(result.sentTr)}"</div>` : ""}

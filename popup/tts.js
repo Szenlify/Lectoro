@@ -30,7 +30,11 @@ function stopPopupSpeak() {
  * Speak text using the engine & voice configured in settings. Callers may
  * force the system/browser voice for content that must never use ElevenLabs.
  */
-function popupSpeak(text, lang, { forceBrowser = false } = {}) {
+function popupSpeak(
+    text,
+    lang,
+    { forceBrowser = false, useConfiguredRate = false } = {},
+) {
     const mySeq = ++popupSpeakSeq;
     window.speechSynthesis.cancel();
     if (popupElAudio) {
@@ -44,6 +48,7 @@ function popupSpeak(text, lang, { forceBrowser = false } = {}) {
                 ttsMode: "browser",
                 elVoiceId: "",
                 speechVoice: "",
+                speechRate: 1.3,
                 ttsVolume: 1,
             },
             async (data) => {
@@ -143,12 +148,15 @@ function popupSpeak(text, lang, { forceBrowser = false } = {}) {
                     cleanTextForTTS(text),
                 );
                 utter.lang = lang || "en";
-                // Review TTS always speaks at normal speed (1.0), regardless
-                // of the Settings speed slider — that slider only affects
-                // in-video subtitle TTS. Voice and volume still follow
-                // Settings so the review card sounds like the same voice
-                // the user picked, just always at a natural pace.
-                utter.rate = 1;
+                // Ordinary review cards stay at the fixed natural pace. Some
+                // explicitly marked content (the Enter AI result) follows the
+                // speech-speed slider from Settings.
+                utter.rate = useConfiguredRate
+                    ? Math.max(
+                          0.1,
+                          Math.min(10, Number(data.speechRate) || 1.3),
+                      )
+                    : 1;
                 utter.volume = volume;
                 const voice = pickBestVoice(data.speechVoice, lang);
                 if (voice) utter.voice = voice;
@@ -173,6 +181,8 @@ function attachReviewSpeakHandlers(card) {
                     {
                         forceBrowser:
                             btn.dataset.forceBrowserTts === "true",
+                        useConfiguredRate:
+                            btn.dataset.useConfiguredRate === "true",
                     },
                 );
                 if (result.type === "utter") {

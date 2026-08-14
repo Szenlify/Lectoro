@@ -16,6 +16,11 @@
 
 9. dodaj spiner w trakcie otwierania Stripe do 
 
+10 przy usowaniu slow/ zdan w zakladce slowa jak klikne X to niech zapyta czy na pewno usunac oraz obok X niech bedzie jeszcze ikonka edytuj zeby edytowac slowo/zdanie
+
+11. w settings w divie kredytow jest napis Limit odnawia się co miesiąc. podaj date obok kiedy dokladnie sie odnowi na kolor var ghost
+
+12. powtorki z glosami ktore sa casche zawsze niech sie otwieraja tym glosem nawet jak jest inny glos z elevenlabs zaznaczony lub glos systemowy casch first chyba ze karta zostala edytowana wtedy juz nie
 
 firebase login
 firebase deploy --only functions --project extension-eng"

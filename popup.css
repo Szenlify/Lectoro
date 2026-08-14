@@ -835,23 +835,116 @@ body::before {
     font-weight: 600;
 }
 
+.word-item .wi-actions {
+    display: flex;
+    flex-shrink: 0;
+    gap: 4px;
+}
+
+.word-item .wi-edit,
 .word-item .wi-delete {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 27px;
+    height: 27px;
     flex-shrink: 0;
     background: transparent;
     border: 1px solid rgba(255, 255, 255, 0.04);
     color: var(--text-ghost);
     cursor: pointer;
-    padding: 5px 7px;
+    padding: 5px;
     font-size: 11px;
     line-height: 1;
     border-radius: var(--radius-sm);
     transition: all .2s ease;
 }
 
+.word-item .wi-edit svg {
+    width: 13px;
+    height: 13px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.word-item .wi-edit:hover {
+    color: var(--accent);
+    background: var(--accent-dim);
+    border-color: rgba(129, 140, 248, 0.2);
+}
+
 .word-item .wi-delete:hover {
     color: #f87171;
     background: rgba(248, 113, 113, 0.08);
     border-color: rgba(248, 113, 113, 0.15);
+}
+
+.word-item.is-editing {
+    display: block;
+    padding: 14px;
+}
+
+.wi-edit-form {
+    display: grid;
+    gap: 6px;
+}
+
+.wi-edit-form label {
+    margin-top: 3px;
+    color: var(--text-muted);
+    font-size: 9.5px;
+    font-weight: 650;
+}
+
+.wi-edit-form input,
+.wi-edit-form textarea {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 8px 9px;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    outline: none;
+    resize: vertical;
+    background: rgba(255, 255, 255, 0.035);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 11px;
+}
+
+.wi-edit-form input:focus,
+.wi-edit-form textarea:focus {
+    border-color: rgba(129, 140, 248, 0.45);
+    box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.08);
+}
+
+.wi-edit-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 7px;
+    margin-top: 7px;
+}
+
+.wi-edit-actions button {
+    padding: 6px 11px;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.wi-edit-cancel {
+    background: transparent;
+    color: var(--text-muted);
+}
+
+.wi-edit-save {
+    background: var(--accent-dim);
+    color: var(--accent);
 }
 
 .word-item.new-item {
