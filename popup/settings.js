@@ -66,7 +66,11 @@ function loadVoices(selectedVoice) {
             if (v.name === selectedVoice) opt.selected = true;
             voiceSelect.appendChild(opt);
         });
-    if ([...voiceSelect.options].some((option) => option.value === selectedVoice)) {
+    if (
+        [...voiceSelect.options].some(
+            (option) => option.value === selectedVoice,
+        )
+    ) {
         voiceSelect.value = selectedVoice;
     }
 }
@@ -117,47 +121,65 @@ function renderSubscriptionPlans(subscription) {
     const grid = document.getElementById("subscriptionPlansGrid");
     if (!grid) return;
     const activePlan = SubscriptionConfig.normalizePlan(subscription?.plan);
-    const hasPaidPlan = activePlan !== SubscriptionConfig.SUBSCRIPTION_PLANS.FREE;
+    const hasPaidPlan =
+        activePlan !== SubscriptionConfig.SUBSCRIPTION_PLANS.FREE;
     grid.innerHTML = Object.entries(SubscriptionConfig.SUBSCRIPTION_LIMITS)
         .map(([planId, limits]) => {
             const isCurrent = planId === activePlan;
-            const isRecommended = planId === SubscriptionConfig.SUBSCRIPTION_PLANS.BASIC;
-            const price = limits.priceMonthly.amount === 0
-                ? "0 zł"
-                : new Intl.NumberFormat("pl-PL", {
-                    style: "currency",
-                    currency: limits.priceMonthly.currency,
-                }).format(limits.priceMonthly.amount);
+            const isRecommended =
+                planId === SubscriptionConfig.SUBSCRIPTION_PLANS.BASIC;
+            const price =
+                limits.priceMonthly.amount === 0
+                    ? "0 zł"
+                    : new Intl.NumberFormat("pl-PL", {
+                          style: "currency",
+                          currency: limits.priceMonthly.currency,
+                      }).format(limits.priceMonthly.amount);
             const tts = limits.elevenLabs.enabled
-                ? `${limits.elevenLabs.charactersPerMonth.toLocaleString("pl-PL")} znaków ElevenLabs`
+                ? `${limits.elevenLabs.charactersPerMonth.toLocaleString("pl-PL")} znaków z ElevenLabs`
                 : "Głos systemowy";
-            let action = '<span class="subscription-plan-current">Obecny plan</span>';
+            let action =
+                '<span class="subscription-plan-current">Obecny plan</span>';
             if (!isCurrent) {
                 if (planId === SubscriptionConfig.SUBSCRIPTION_PLANS.FREE) {
                     action = hasPaidPlan
                         ? '<button type="button" class="subscription-plan-button is-secondary" data-billing-action="portal"><span class="subscription-button-label">Zmień w Stripe</span></button>'
                         : "";
                 } else if (hasPaidPlan) {
-                    action = '<button type="button" class="subscription-plan-button" data-billing-action="portal"><span class="subscription-button-label">Zmień plan</span><span aria-hidden="true">→</span></button>';
+                    action =
+                        '<button type="button" class="subscription-plan-button" data-billing-action="portal"><span class="subscription-button-label">Zmień plan</span><span aria-hidden="true">→</span></button>';
                 } else {
                     action = `<button type="button" class="subscription-plan-button" data-billing-action="checkout" data-plan="${planId}"><span class="subscription-button-label">Wybierz ${limits.displayName}</span><span aria-hidden="true">→</span></button>`;
                 }
             } else if (hasPaidPlan) {
-                action = '<button type="button" class="subscription-plan-button is-secondary" data-billing-action="portal"><span class="subscription-button-label">Zarządzaj planem</span><span aria-hidden="true">→</span></button>';
+                action =
+                    '<button type="button" class="subscription-plan-button is-secondary" data-billing-action="portal"><span class="subscription-button-label">Zarządzaj planem</span><span aria-hidden="true">→</span></button>';
             }
             return `<article class="subscription-plan-card ${isCurrent ? "is-current" : ""} ${isRecommended ? "is-recommended" : ""}">
                 <div class="subscription-plan-topline">
                     <strong>${limits.displayName}</strong>
-                    ${isCurrent
-                        ? '<span class="subscription-plan-badge is-active">Aktywny</span>'
-                        : isRecommended
-                            ? '<span class="subscription-plan-badge">Popularny</span>'
-                            : ""}
+                    ${
+                        isCurrent
+                            ? '<span class="subscription-plan-badge is-active">Aktywny</span>'
+                            : isRecommended
+                              ? '<span class="subscription-plan-badge">Popularny</span>'
+                              : ""
+                    }
                 </div>
                 <div class="subscription-plan-price"><b>${price}</b><span>${limits.priceMonthly.amount === 0 ? "na zawsze" : "/ miesiąc"}</span></div>
                 <div class="subscription-plan-features">
                     <span><i aria-hidden="true">✓</i><b>${limits.ai.usesPerMonth.toLocaleString("pl-PL")}</b> użyć AI / mies.</span>
                     <span><i aria-hidden="true">✓</i><b>${limits.srs.maxSavedCards.toLocaleString("pl-PL")}</b> fiszek SRS</span>
+                    ${
+                        limits.elevenLabs.enabled
+                            ? '<span><i aria-hidden="true">✓</i>Naturalne głosy</span>'
+                            : ""
+                    }
+                    ${
+                        limits.elevenLabs.enabled
+                            ? '<span><i aria-hidden="true">✓</i>Cwiczenia <b>AI</b></span>'
+                            : ""
+                    }
                     <span class="${limits.elevenLabs.enabled ? "" : "is-muted"}"><i aria-hidden="true">${limits.elevenLabs.enabled ? "✓" : "—"}</i>${tts}</span>
                 </div>
                 <div class="subscription-plan-action">${action}</div>
@@ -177,17 +199,25 @@ function renderElevenLabsUsage(subscription) {
 
     const plan = SubscriptionConfig.normalizePlan(subscription.plan);
     const limits = SubscriptionConfig.getPlanLimits(plan).elevenLabs;
-    const used = Math.max(0, Number(subscription.usage?.elevenLabsCharacters?.used) || 0);
+    const used = Math.max(
+        0,
+        Number(subscription.usage?.elevenLabsCharacters?.used) || 0,
+    );
     const limit = Math.max(0, Number(limits.charactersPerMonth) || 0);
     const left = Math.max(0, limit - used);
-    const percentage = limit ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+    const percentage = limit
+        ? Math.min(100, Math.round((used / limit) * 100))
+        : 0;
     const limitReached = limits.enabled && used >= limit;
 
     card.classList.remove("is-warning", "is-empty", "is-unavailable");
     fill?.classList.remove("is-loading");
     if (track) {
         track.setAttribute("aria-valuenow", String(percentage));
-        track.setAttribute("aria-valuetext", `${used} z ${limit} znaków wykorzystanych`);
+        track.setAttribute(
+            "aria-valuetext",
+            `${used} z ${limit} znaków wykorzystanych`,
+        );
     }
 
     if (!limits.enabled) {
@@ -207,8 +237,10 @@ function renderElevenLabsUsage(subscription) {
         if (info) info.textContent = "ElevenLabs: 0 znaków zostało";
     } else {
         if (percentage >= 80) card.classList.add("is-warning");
-        if (title) title.textContent = `${left.toLocaleString("pl-PL")} znaków pozostało`;
-        if (info) info.textContent = `ElevenLabs: ${left.toLocaleString("pl-PL")} znaków zostało`;
+        if (title)
+            title.textContent = `${left.toLocaleString("pl-PL")} znaków pozostało`;
+        if (info)
+            info.textContent = `ElevenLabs: ${left.toLocaleString("pl-PL")} znaków zostało`;
     }
 }
 
@@ -252,19 +284,26 @@ async function refreshAiUsageUI() {
 
     card?.classList.remove("is-warning", "is-empty");
     fill?.classList.remove("is-loading");
-    if (plan) plan.textContent = `PLAN ${SubscriptionConfig.normalizePlan(subscription.plan).toUpperCase()}`;
+    if (plan)
+        plan.textContent = `PLAN ${SubscriptionConfig.normalizePlan(subscription.plan).toUpperCase()}`;
     if (usage) {
         const used = Math.max(0, Number(usage.used || 0));
         const limit = Math.max(0, Number(usage.limit || 0));
         const left = Math.max(0, limit - used);
-        const percentage = limit ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+        const percentage = limit
+            ? Math.min(100, Math.round((used / limit) * 100))
+            : 0;
 
-        if (plan) plan.textContent = `PLAN ${(usage.plan || "free").toUpperCase()}`;
+        if (plan)
+            plan.textContent = `PLAN ${(usage.plan || "free").toUpperCase()}`;
         if (value) value.textContent = `${used} / ${limit}`;
         if (fill) fill.style.width = `${percentage}%`;
         if (track) {
             track.setAttribute("aria-valuenow", String(percentage));
-            track.setAttribute("aria-valuetext", `${used} z ${limit} kredytów wykorzystanych`);
+            track.setAttribute(
+                "aria-valuetext",
+                `${used} z ${limit} kredytów wykorzystanych`,
+            );
         }
 
         if (limitReached) {
@@ -273,7 +312,8 @@ async function refreshAiUsageUI() {
             info.textContent = "Funkcje AI są chwilowo wstrzymane";
         } else {
             if (percentage >= 80) card?.classList.add("is-warning");
-            if (title) title.textContent = `${left.toLocaleString("pl-PL")} kredytów pozostało`;
+            if (title)
+                title.textContent = `${left.toLocaleString("pl-PL")} kredytów pozostało`;
             info.textContent = "Limit odnawia się co miesiąc";
         }
     } else {
@@ -300,7 +340,9 @@ async function refreshAiUsageUI() {
     if (quizButton) {
         quizButton.classList.toggle("credits-empty", limitReached);
         quizButton.setAttribute("aria-disabled", String(limitReached));
-        quizButton.innerHTML = limitReached ? "✦ Brak kredytów AI" : "✨ Generuj quiz";
+        quizButton.innerHTML = limitReached
+            ? "✦ Brak kredytów AI"
+            : "✨ Generuj quiz";
         quizButton.title = limitReached
             ? "Miesięczny limit AI został wykorzystany — zobacz dostępne plany"
             : "Wygeneruj quiz za pomocą AI";
@@ -317,69 +359,95 @@ function showAiPlans() {
     setTimeout(() => plans?.classList.remove("is-highlighted"), 2200);
 }
 
-document.getElementById("usageUpgradeButton")?.addEventListener("click", showAiPlans);
+document
+    .getElementById("usageUpgradeButton")
+    ?.addEventListener("click", showAiPlans);
 
-document.getElementById("subscriptionPlansGrid")?.addEventListener("click", async (event) => {
-    const button = event.target.closest("[data-billing-action]");
-    if (!button) return;
-    const status = document.getElementById("stripeBillingStatus");
-    const grid = document.getElementById("subscriptionPlansGrid");
-    const buttons = document.querySelectorAll("[data-billing-action]");
-    const originalButtonContent = button.innerHTML;
-    buttons.forEach((item) => { item.disabled = true; });
-    button.classList.add("is-loading");
-    button.setAttribute("aria-busy", "true");
-    button.innerHTML = '<span class="stripe-spinner" aria-hidden="true"></span><span>Łączenie ze Stripe...</span>';
-    grid?.setAttribute("aria-busy", "true");
-    if (status) {
-        status.className = "stripe-billing-status is-loading";
-        status.innerHTML = '<span class="stripe-spinner" aria-hidden="true"></span><span>Otwieram bezpieczną stronę płatności...</span>';
-    }
-    try {
-        const result = button.dataset.billingAction === "checkout"
-            ? await SubscriptionService.startCheckout(button.dataset.plan)
-            : await SubscriptionService.openBillingPortal();
+document
+    .getElementById("subscriptionPlansGrid")
+    ?.addEventListener("click", async (event) => {
+        const button = event.target.closest("[data-billing-action]");
+        if (!button) return;
+        const status = document.getElementById("stripeBillingStatus");
+        const grid = document.getElementById("subscriptionPlansGrid");
+        const buttons = document.querySelectorAll("[data-billing-action]");
+        const originalButtonContent = button.innerHTML;
+        buttons.forEach((item) => {
+            item.disabled = true;
+        });
+        button.classList.add("is-loading");
+        button.setAttribute("aria-busy", "true");
+        button.innerHTML =
+            '<span class="stripe-spinner" aria-hidden="true"></span><span>Łączenie ze Stripe...</span>';
+        grid?.setAttribute("aria-busy", "true");
         if (status) {
-            status.className = "stripe-billing-status is-success";
-            status.textContent = result.redirectedToPortal
-                ? "Masz już subskrypcję — otwarto panel zmiany planu."
-                : "Stripe został otwarty w nowej karcie.";
+            status.className = "stripe-billing-status is-loading";
+            status.innerHTML =
+                '<span class="stripe-spinner" aria-hidden="true"></span><span>Otwieram bezpieczną stronę płatności...</span>';
         }
-    } catch (error) {
-        if (status) {
-            status.className = "stripe-billing-status is-error";
-            status.textContent = error.message || "Nie udało się otworzyć Stripe.";
+        try {
+            const result =
+                button.dataset.billingAction === "checkout"
+                    ? await SubscriptionService.startCheckout(
+                          button.dataset.plan,
+                      )
+                    : await SubscriptionService.openBillingPortal();
+            if (status) {
+                status.className = "stripe-billing-status is-success";
+                status.textContent = result.redirectedToPortal
+                    ? "Masz już subskrypcję — otwarto panel zmiany planu."
+                    : "Stripe został otwarty w nowej karcie.";
+            }
+        } catch (error) {
+            if (status) {
+                status.className = "stripe-billing-status is-error";
+                status.textContent =
+                    error.message || "Nie udało się otworzyć Stripe.";
+            }
+        } finally {
+            button.innerHTML = originalButtonContent;
+            button.classList.remove("is-loading");
+            button.removeAttribute("aria-busy");
+            grid?.removeAttribute("aria-busy");
+            buttons.forEach((item) => {
+                item.disabled = false;
+            });
         }
-    } finally {
-        button.innerHTML = originalButtonContent;
-        button.classList.remove("is-loading");
-        button.removeAttribute("aria-busy");
-        grid?.removeAttribute("aria-busy");
-        buttons.forEach((item) => { item.disabled = false; });
-    }
-});
+    });
 
 if (location.hash === "#plans") {
     setTimeout(showAiPlans, 80);
 }
 
 SubscriptionService.refreshProfile(true)
-    .catch((error) => console.warn("[Lectoro] Nie udało się odświeżyć planu:", error))
+    .catch((error) =>
+        console.warn("[Lectoro] Nie udało się odświeżyć planu:", error),
+    )
     .finally(async () => {
         await SubscriptionService.applyPlanToUI();
         await refreshAiUsageUI();
     })
-    .catch((error) => console.warn("[Lectoro] Nie udało się odświeżyć UI planu:", error));
+    .catch((error) =>
+        console.warn("[Lectoro] Nie udało się odświeżyć UI planu:", error),
+    );
 chrome.storage.onChanged.addListener((changes, area) => {
     if (
         area === "local" &&
-        (changes.aiUsageCache || changes.firebaseAuth || changes.subscriptionProfileCache)
+        (changes.aiUsageCache ||
+            changes.firebaseAuth ||
+            changes.subscriptionProfileCache)
     ) {
         SubscriptionService.applyPlanToUI().catch((error) =>
-            console.warn("[Lectoro] Aktualizacja blokad planu nie powiodła się:", error),
+            console.warn(
+                "[Lectoro] Aktualizacja blokad planu nie powiodła się:",
+                error,
+            ),
         );
         refreshAiUsageUI().catch((error) =>
-            console.warn("[Lectoro] Aktualizacja wykorzystania nie powiodła się:", error),
+            console.warn(
+                "[Lectoro] Aktualizacja wykorzystania nie powiodła się:",
+                error,
+            ),
         );
     }
 });

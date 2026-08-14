@@ -3292,7 +3292,7 @@ html[data-lectoro-ai-limit-reached] .quiz-export-bottom {
     position: relative;
     display: flex;
     min-width: 0;
-    min-height: 193px;
+    min-height: 220px;
     flex-direction: column;
     padding: 11px 10px 10px;
     overflow: hidden;
