@@ -50,6 +50,11 @@
 
     // ── Internal State ─────────────────────────────────────────────
     let tooltipEl = null;
+    let tooltipShowFrame = null;
+    let tooltipHideTimer = null;
+    let tooltipSpeechToken = 0;
+    let activeTooltipSpeechButton = null;
+    let tooltipSpeechTimer = null;
     let lastMouseX = 0;
     let lastMouseY = 0;
 
@@ -222,19 +227,35 @@
 
     function showTooltip(html, rect, preferredPosition = "top") {
         const tip = getTooltip();
+        clearTimeout(tooltipHideTimer);
+        if (tooltipShowFrame !== null) cancelAnimationFrame(tooltipShowFrame);
+        stopTooltipSpeech();
         tip.innerHTML = html;
+        tip.querySelectorAll("button").forEach((button) => {
+            button.type = "button";
+        });
         tip.classList.remove("visible");
 
         positionTooltip(rect, preferredPosition);
 
-        requestAnimationFrame(() => tip.classList.add("visible"));
+        tooltipShowFrame = requestAnimationFrame(() => {
+            tooltipShowFrame = null;
+            if (tip.innerHTML) tip.classList.add("visible");
+        });
     }
 
     function hideTooltip() {
         if (!tooltipEl) return;
+        if (tooltipShowFrame !== null) {
+            cancelAnimationFrame(tooltipShowFrame);
+            tooltipShowFrame = null;
+        }
+        clearTimeout(tooltipHideTimer);
+        stopTooltipSpeech();
         tooltipEl.classList.remove("visible");
-        setTimeout(() => {
+        tooltipHideTimer = setTimeout(() => {
             if (tooltipEl) tooltipEl.innerHTML = "";
+            tooltipHideTimer = null;
         }, 180);
     }
 
@@ -316,14 +337,19 @@
     //  TTS – browser voices outside Review
     // ═══════════════════════════════════════════════════════════════
 
-    function speak(text, lang) {
+    function speak(text, lang, options = {}) {
+        const cleanedText = cleanTextForTTS(text);
+        if (!cleanedText?.trim()) return Promise.resolve(null);
+
         window.speechSynthesis.cancel();
 
         return new Promise((resolve) => {
             if (!chrome?.storage?.sync) {
-                const utter = new SpeechSynthesisUtterance(
-                    cleanTextForTTS(text),
-                );
+                if (options.isCancelled?.()) {
+                    resolve(null);
+                    return;
+                }
+                const utter = new SpeechSynthesisUtterance(cleanedText);
                 utter.lang = lang;
                 const voice = pickBestVoice("", lang);
                 if (voice) utter.voice = voice;
@@ -340,15 +366,26 @@
                     ttsVolume: 1,
                 },
                 async (data) => {
-                    const vol =
-                        data.ttsVolume !== undefined ? data.ttsVolume : 1;
+                    if (options.isCancelled?.()) {
+                        resolve(null);
+                        return;
+                    }
+                    data ||= {};
+                    const rawVolume =
+                        data.ttsVolume !== undefined
+                            ? Number(data.ttsVolume)
+                            : 1;
+                    const volume = Number.isFinite(rawVolume)
+                        ? Math.max(0, Math.min(1, rawVolume))
+                        : 1;
                     // ElevenLabs belongs exclusively to popup/review TTS.
-                    const utter = new SpeechSynthesisUtterance(
-                        cleanTextForTTS(text),
-                    );
+                    const utter = new SpeechSynthesisUtterance(cleanedText);
                     utter.lang = lang;
-                    utter.rate = data.speechRate;
-                    utter.volume = vol;
+                    utter.rate = Math.max(
+                        0.1,
+                        Math.min(10, Number(data.speechRate) || 1.3),
+                    );
+                    utter.volume = volume;
                     const voice = pickBestVoice(data.speechVoice, lang);
                     if (voice) utter.voice = voice;
                     window.speechSynthesis.speak(utter);
@@ -624,6 +661,28 @@
     //  Shared Tooltip Handler Attacher
     // ═══════════════════════════════════════════════════════════════
 
+    function stopTooltipSpeech(cancelSpeech = true) {
+        tooltipSpeechToken += 1;
+        clearTimeout(tooltipSpeechTimer);
+        tooltipSpeechTimer = null;
+
+        if (activeTooltipSpeechButton) {
+            activeTooltipSpeechButton.classList.remove("speaking");
+            activeTooltipSpeechButton = null;
+        }
+        tooltipEl
+            ?.querySelectorAll(`.${PREFIX}speak.speaking`)
+            .forEach((btn) => btn.classList.remove("speaking"));
+
+        if (cancelSpeech) window.speechSynthesis?.cancel();
+    }
+
+    function getSpeechSafetyTimeout(text, rate = 1) {
+        const words = String(text || "").trim().split(/\s+/).filter(Boolean);
+        const estimatedMs = (words.length / Math.max(0.5, rate * 2)) * 1000;
+        return Math.min(300000, Math.max(12000, estimatedMs + 10000));
+    }
+
     /** Attach TTS + save handlers to all buttons in the current tooltip */
     function attachTooltipHandlers() {
         if (!tooltipEl) return;
@@ -632,17 +691,64 @@
         tooltipEl.querySelectorAll(`.${PREFIX}speak`).forEach((btn) => {
             btn.addEventListener("click", (ev) => {
                 ev.stopPropagation();
+
+                // The active speaker button doubles as a stop button.
+                if (
+                    activeTooltipSpeechButton === btn &&
+                    btn.classList.contains("speaking")
+                ) {
+                    stopTooltipSpeech();
+                    return;
+                }
+
+                stopTooltipSpeech();
+                const token = tooltipSpeechToken;
+                activeTooltipSpeechButton = btn;
                 btn.classList.add("speaking");
-                speak(btn.dataset.text, btn.dataset.lang).then((result) => {
-                    const onDone = () => btn.classList.remove("speaking");
-                    if (result && typeof result.onend !== "undefined") {
-                        result.onend = onDone;
-                        result.onerror = onDone;
-                    } else if (result instanceof HTMLAudioElement) {
-                        result.onended = onDone;
-                        result.onerror = onDone;
-                    }
-                });
+
+                const onDone = () => {
+                    if (token !== tooltipSpeechToken) return;
+                    stopTooltipSpeech(false);
+                };
+
+                speak(btn.dataset.text, btn.dataset.lang, {
+                    isCancelled: () => token !== tooltipSpeechToken,
+                })
+                    .then((result) => {
+                        if (token !== tooltipSpeechToken) return;
+                        if (!result) {
+                            onDone();
+                            return;
+                        }
+
+                        if (result instanceof HTMLAudioElement) {
+                            result.addEventListener("ended", onDone, {
+                                once: true,
+                            });
+                            result.addEventListener("error", onDone, {
+                                once: true,
+                            });
+                        } else {
+                            result.addEventListener?.("end", onDone, {
+                                once: true,
+                            });
+                            result.addEventListener?.("error", onDone, {
+                                once: true,
+                            });
+                            // Fallback for older SpeechSynthesisUtterance
+                            // implementations without EventTarget helpers.
+                            if (!result.addEventListener) {
+                                result.onend = onDone;
+                                result.onerror = onDone;
+                            }
+                        }
+
+                        tooltipSpeechTimer = setTimeout(
+                            onDone,
+                            getSpeechSafetyTimeout(btn.dataset.text),
+                        );
+                    })
+                    .catch(onDone);
             });
         });
 
@@ -650,7 +756,7 @@
         tooltipEl.querySelectorAll(`.${PREFIX}img-search`).forEach((btn) => {
             btn.addEventListener("click", (ev) => {
                 ev.stopPropagation();
-                const word = (btn.dataset.word || "").trim();
+                const word = ("meaning " + btn.dataset.word || "").trim();
                 if (!word) return;
                 const url = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(word)}`;
                 window.open(url, "_blank", "noopener,noreferrer");

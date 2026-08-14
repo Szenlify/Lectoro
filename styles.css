@@ -30,13 +30,16 @@
     transition:
         opacity 0.18s ease,
         transform 0.18s ease;
-    pointer-events: auto;
+    /* A faded-out toolbar must not leave an invisible click shield over the
+       page. Interaction is enabled only together with the visible class. */
+    pointer-events: none !important;
     user-select: none;
 }
 
 #__qt_icon.visible {
     opacity: 1;
     transform: scale(1);
+    pointer-events: auto !important;
 }
 
 #__qt_review_toast {
@@ -179,7 +182,9 @@
         Helvetica,
         Arial,
         sans-serif;
-    pointer-events: auto;
+    /* hideTooltip() animates opacity, so keep the hidden panel out of hit
+       testing while it is fading out. */
+    pointer-events: none !important;
     user-select: text;
     box-shadow:
         0 8px 32px rgba(0, 0, 0, 0.4),
@@ -196,6 +201,7 @@
 #__qt_tooltip.visible {
     opacity: 1;
     transform: translateY(0) scale(1);
+    pointer-events: auto !important;
 }
 
 /* Reset any host-page `button` styles (e.g. video.js `.video-js button`)

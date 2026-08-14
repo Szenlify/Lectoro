@@ -37,11 +37,22 @@
     let currentRect = null;
     let currentRange = null;
     let isReading = false;
-    let readingHighlightEl = null;
+    let iconShowFrame = null;
+    let selectionRevision = 0;
+    let readingSession = 0;
+    let readingSafetyTimer = null;
+    let readingMonitorTimer = null;
+    let readingStartTimer = null;
+    let activeReadingUtterance = null;
+    let lastSpeechCancelAt = 0;
 
     // Register cleanup handlers with core
     addCleanup(() => {
-        if (iconEl) iconEl.classList.remove("visible");
+        selectionRevision += 1;
+        currentText = "";
+        currentRect = null;
+        currentRange = null;
+        hideIcon();
     });
     addCleanup(() => {
         if (isReading) cleanupReading();
@@ -57,18 +68,22 @@
         iconEl.id = ICON_ID;
 
         const translateBtn = document.createElement("button");
+        translateBtn.type = "button";
         translateBtn.className = `${PREFIX}tb-btn ${PREFIX}tb-translate`;
         translateBtn.innerHTML = SVG.TRANSLATE;
         translateBtn.title = "Przetłumacz";
         translateBtn.addEventListener("click", onIconClick);
 
         const readBtn = document.createElement("button");
+        readBtn.type = "button";
         readBtn.className = `${PREFIX}tb-btn ${PREFIX}tb-read`;
         readBtn.innerHTML = SVG.READ;
         readBtn.title = "Czytaj na głos";
+        readBtn.setAttribute("aria-pressed", "false");
         readBtn.addEventListener("click", onReadClick);
 
         const aiBtn = document.createElement("button");
+        aiBtn.type = "button";
         aiBtn.className = `${PREFIX}tb-btn ${PREFIX}tb-ai`;
         aiBtn.innerHTML = SVG.AI;
         aiBtn.title = "Tłumacz AI";
@@ -83,10 +98,15 @@
 
     function showIcon(rect) {
         const icon = getIcon();
+        const parent = QT.getOverlayParent();
+        const inFullscreen = parent !== document.body;
+        if (icon.parentElement !== parent) parent.appendChild(icon);
+        if (iconShowFrame !== null) cancelAnimationFrame(iconShowFrame);
         icon.classList.remove("visible");
 
-        const scrollX = window.scrollX;
-        const scrollY = window.scrollY;
+        const scrollX = inFullscreen ? 0 : window.scrollX;
+        const scrollY = inFullscreen ? 0 : window.scrollY;
+        icon.style.position = inFullscreen ? "fixed" : "absolute";
         const { width: ICON_W, height: ICON_H } = icon.getBoundingClientRect();
         const GAP = 8;
         const vpW = document.documentElement.clientWidth;
@@ -136,10 +156,17 @@
 
         icon.style.left = `${bestX + scrollX}px`;
         icon.style.top = `${bestY + scrollY}px`;
-        requestAnimationFrame(() => icon.classList.add("visible"));
+        iconShowFrame = requestAnimationFrame(() => {
+            iconShowFrame = null;
+            if (currentText) icon.classList.add("visible");
+        });
     }
 
     function hideIcon() {
+        if (iconShowFrame !== null) {
+            cancelAnimationFrame(iconShowFrame);
+            iconShowFrame = null;
+        }
         if (iconEl) iconEl.classList.remove("visible");
     }
 
@@ -154,6 +181,8 @@
 
         const text = currentText;
         const rect = currentRect;
+        const revision = selectionRevision;
+        if (isReading) cleanupReading();
         hideIcon();
         showLoading(rect);
 
@@ -163,6 +192,7 @@
                 text,
                 targetLang,
             );
+            if (revision !== selectionRevision) return;
             const srcLang =
                 typeof detectedLang === "string" ? detectedLang : "auto";
 
@@ -175,6 +205,7 @@
             showTooltip(html, rect);
             attachTooltipHandlers();
         } catch (err) {
+            if (revision !== selectionRevision) return;
             console.error("[Quick Translator]", err);
             showTooltip(
                 `<div class="${PREFIX}error">⚠ ${escapeHtml(err.message)}</div>`,
@@ -190,6 +221,8 @@
 
         const text = currentText;
         const rect = currentRect;
+        const revision = selectionRevision;
+        if (isReading) cleanupReading();
         hideIcon();
         showLoading(rect);
 
@@ -202,6 +235,7 @@
                     detectedLang: "auto",
                 })),
             ]);
+            if (revision !== selectionRevision) return;
 
             const { translation, explanation } = aiRes;
             const srcLang =
@@ -247,8 +281,11 @@
                 </div>`;
             showTooltip(html, rect);
             attachTooltipHandlers();
-            await QT.speak(explanation, targetLang);
+            await QT.speak(explanation, targetLang, {
+                isCancelled: () => revision !== selectionRevision,
+            });
         } catch (err) {
+            if (revision !== selectionRevision) return;
             console.error("[Quick Translator AI]", err);
             const limitReached = GeminiProxy?.isLimitError?.(err);
             if (limitReached) {
@@ -263,114 +300,170 @@
     }
 
     // ═══════════════════════════════════════════════════════════════
-    //  Read-Aloud – Sentence-by-Sentence Highlighting
+    //  Read-Aloud – Fragmented Text with Synchronized Highlighting
     // ═══════════════════════════════════════════════════════════════
 
-    function getTextNodesInRange(range) {
-        const result = [];
-        const ancestor = range.commonAncestorContainer;
+    const READING_BLOCK_SELECTOR =
+        "p,div,li,blockquote,pre,td,th,h1,h2,h3,h4,h5,h6,article,section";
 
-        if (ancestor.nodeType === Node.TEXT_NODE) {
-            return [
-                {
-                    node: ancestor,
-                    start: range.startOffset,
-                    end: range.endOffset,
-                },
-            ];
-        }
-
-        const walker = document.createTreeWalker(
-            ancestor,
-            NodeFilter.SHOW_TEXT,
-        );
-        let node;
-        while ((node = walker.nextNode())) {
-            if (!range.intersectsNode(node)) continue;
-            if (!node.textContent.trim()) continue;
-            let start = 0,
-                end = node.textContent.length;
-            if (node === range.startContainer) start = range.startOffset;
-            if (node === range.endContainer) end = range.endOffset;
-            if (end > start) result.push({ node, start, end });
-        }
-        return result;
-    }
-
-    function splitIntoSentencesWithOffsets(text) {
-        const results = [];
-        const regex = /[.!?]+[\s]*/g;
-        let lastEnd = 0,
-            match;
-        while ((match = regex.exec(text))) {
-            const end = match.index + match[0].length;
-            if (end > lastEnd) {
-                results.push({
-                    text: text.substring(lastEnd, end),
-                    start: lastEnd,
-                    end,
-                });
+    function getSelectedTextSegments(range) {
+        const nodes = [];
+        if (range.commonAncestorContainer.nodeType === Node.TEXT_NODE) {
+            nodes.push(range.commonAncestorContainer);
+        } else {
+            const walker = document.createTreeWalker(
+                range.commonAncestorContainer,
+                NodeFilter.SHOW_TEXT,
+            );
+            let node;
+            while ((node = walker.nextNode())) {
+                try {
+                    if (range.intersectsNode(node)) nodes.push(node);
+                } catch (_) {}
             }
-            lastEnd = end;
         }
-        if (lastEnd < text.length) {
-            results.push({
-                text: text.substring(lastEnd),
-                start: lastEnd,
-                end: text.length,
+
+        const segments = [];
+        let fullText = "";
+        let previousBlock = null;
+
+        for (const node of nodes) {
+            const start =
+                node === range.startContainer ? range.startOffset : 0;
+            const end =
+                node === range.endContainer
+                    ? range.endOffset
+                    : node.data.length;
+            if (end <= start) continue;
+
+            const block = node.parentElement?.closest(
+                READING_BLOCK_SELECTOR,
+            );
+            if (
+                segments.length > 0 &&
+                block &&
+                previousBlock &&
+                block !== previousBlock
+            ) {
+                fullText += "\n";
+            }
+
+            const text = node.data.slice(start, end);
+            const globalStart = fullText.length;
+            fullText += text;
+            segments.push({
+                node,
+                nodeStart: start,
+                globalStart,
+                globalEnd: fullText.length,
             });
+            previousBlock = block || previousBlock;
         }
-        if (results.length === 0) {
-            results.push({ text, start: 0, end: text.length });
-        }
-        return results;
+
+        return { fullText, segments };
     }
 
-    function buildSentenceRanges(textInfos, sentencesWithOffsets) {
-        let totalOffset = 0;
-        const charMap = [];
-        textInfos.forEach((info, i) => {
-            if (i > 0) totalOffset += 1;
-            const len = info.end - info.start;
-            charMap.push({
-                node: info.node,
-                nodeStart: info.start,
-                globalStart: totalOffset,
-                globalEnd: totalOffset + len,
-            });
-            totalOffset += len;
-        });
+    function splitReadingOffsets(text, maxLength = 240) {
+        const rawParts = [];
+        let start = 0;
 
-        function findNodeOffset(charIdx) {
-            for (const seg of charMap) {
-                if (charIdx >= seg.globalStart && charIdx <= seg.globalEnd) {
+        const pushPart = (rawStart, rawEnd) => {
+            let partStart = rawStart;
+            let partEnd = rawEnd;
+            while (partStart < partEnd && /\s/.test(text[partStart])) {
+                partStart += 1;
+            }
+            while (partEnd > partStart && /\s/.test(text[partEnd - 1])) {
+                partEnd -= 1;
+            }
+            if (partEnd > partStart) rawParts.push([partStart, partEnd]);
+        };
+
+        for (let i = 0; i < text.length; i += 1) {
+            if (!/[.!?;,:\n]/.test(text[i])) continue;
+            let end = i + 1;
+            while (end < text.length && /[.!?;,:]/.test(text[end])) end += 1;
+            while (end < text.length && /[ \t]/.test(text[end])) end += 1;
+            pushPart(start, end);
+            start = end;
+            i = end - 1;
+        }
+        pushPart(start, text.length);
+
+        const parts = [];
+        for (const [partStart, partEnd] of rawParts) {
+            let cursor = partStart;
+            while (partEnd - cursor > maxLength) {
+                const target = cursor + maxLength;
+                let splitAt = target;
+                while (splitAt > cursor && !/\s/.test(text[splitAt])) {
+                    splitAt -= 1;
+                }
+                if (splitAt === cursor) splitAt = target;
+                parts.push([cursor, splitAt]);
+                cursor = splitAt;
+                while (cursor < partEnd && /\s/.test(text[cursor])) {
+                    cursor += 1;
+                }
+            }
+            if (partEnd > cursor) parts.push([cursor, partEnd]);
+        }
+        return parts;
+    }
+
+    function getMappedPosition(segments, offset, isEnd) {
+        if (isEnd) {
+            for (let i = segments.length - 1; i >= 0; i -= 1) {
+                const segment = segments[i];
+                if (offset > segment.globalStart) {
+                    const local = Math.min(offset, segment.globalEnd);
                     return {
-                        node: seg.node,
-                        offset: seg.nodeStart + (charIdx - seg.globalStart),
+                        node: segment.node,
+                        offset:
+                            segment.nodeStart +
+                            Math.max(0, local - segment.globalStart),
                     };
                 }
             }
-            const last = charMap[charMap.length - 1];
-            return {
-                node: last.node,
-                offset: last.nodeStart + (last.globalEnd - last.globalStart),
-            };
-        }
-
-        const ranges = [];
-        for (const sentence of sentencesWithOffsets) {
-            try {
-                const r = document.createRange();
-                const s = findNodeOffset(sentence.start);
-                const e = findNodeOffset(sentence.end);
-                r.setStart(s.node, s.offset);
-                r.setEnd(e.node, e.offset);
-                ranges.push(r);
-            } catch (err) {
-                console.warn("[Lectoro] sentence range error:", err);
+        } else {
+            for (const segment of segments) {
+                if (offset < segment.globalEnd) {
+                    const local = Math.max(offset, segment.globalStart);
+                    return {
+                        node: segment.node,
+                        offset:
+                            segment.nodeStart +
+                            Math.max(0, local - segment.globalStart),
+                    };
+                }
             }
         }
-        return ranges;
+        return null;
+    }
+
+    function buildReadingFragments(range, fallbackText) {
+        try {
+            const { fullText, segments } = getSelectedTextSegments(range);
+            if (!fullText.trim() || segments.length === 0) throw new Error();
+
+            return splitReadingOffsets(fullText)
+                .map(([start, end]) => {
+                    const rangeStart = getMappedPosition(segments, start, false);
+                    const rangeEnd = getMappedPosition(segments, end, true);
+                    if (!rangeStart || !rangeEnd) return null;
+
+                    const fragmentRange = document.createRange();
+                    fragmentRange.setStart(rangeStart.node, rangeStart.offset);
+                    fragmentRange.setEnd(rangeEnd.node, rangeEnd.offset);
+                    const text = cleanTextForTTS(fullText.slice(start, end));
+                    return text ? { text, range: fragmentRange } : null;
+                })
+                .filter(Boolean);
+        } catch (_) {
+            return fallbackText
+                ? [{ text: fallbackText, range: range.cloneRange() }]
+                : [];
+        }
     }
 
     function clearSentenceHighlight() {
@@ -380,111 +473,241 @@
         } catch (_) {}
     }
 
-    function cleanupReading() {
-        window.speechSynthesis.cancel();
-        const audio = getElAudioEl();
-        if (audio) {
-            audio.pause();
-            setElAudioEl(null);
-        }
+    function cleanupReading(session = null, hideToolbar = false) {
+        if (session !== null && session !== readingSession) return;
+
+        // Invalidate callbacks from the utterance that is being cancelled.
+        readingSession += 1;
+        clearTimeout(readingSafetyTimer);
+        clearTimeout(readingStartTimer);
+        clearInterval(readingMonitorTimer);
+        readingSafetyTimer = null;
+        readingStartTimer = null;
+        readingMonitorTimer = null;
+        activeReadingUtterance = null;
         isReading = false;
+
+        // Reset the DOM first. Browser/media APIs can occasionally throw
+        // during teardown; that must never leave the visual state stuck.
         clearSentenceHighlight();
-
-        if (readingHighlightEl) {
-            const parent = readingHighlightEl.parentNode;
-            if (parent) {
-                while (readingHighlightEl.firstChild)
-                    parent.insertBefore(
-                        readingHighlightEl.firstChild,
-                        readingHighlightEl,
-                    );
-                parent.removeChild(readingHighlightEl);
-                parent.normalize();
-            }
-            readingHighlightEl = null;
-        }
-
         if (iconEl) {
             const rb = iconEl.querySelector(`.${PREFIX}tb-read`);
-            if (rb) rb.classList.remove("reading");
+            if (rb) {
+                rb.classList.remove("reading");
+                rb.setAttribute("aria-pressed", "false");
+                rb.title = "Czytaj na głos";
+            }
+        }
+        if (hideToolbar) hideIcon();
+
+        try {
+            window.speechSynthesis.cancel();
+            lastSpeechCancelAt = Date.now();
+        } catch (error) {
+            console.warn("[Lectoro] Could not cancel speech:", error);
+        }
+
+        try {
+            const audio = getElAudioEl();
+            if (audio) {
+                audio.pause();
+                setElAudioEl(null);
+            }
+        } catch (error) {
+            console.warn("[Lectoro] Could not stop audio:", error);
         }
     }
 
-    function readSentenceBySentence(sentences, sentenceRanges, lang) {
-        let idx = 0;
+    function getReadingSafetyTimeout(text, rate) {
+        const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
+        const estimatedMs =
+            (wordCount / Math.max(0.75, Number(rate) * 1.5 || 1.5)) * 1000;
+        return Math.min(300000, Math.max(6000, estimatedMs + 4000));
+    }
 
-        function highlightSentence(i) {
-            try {
-                if (
-                    typeof CSS !== "undefined" &&
-                    CSS.highlights &&
-                    sentenceRanges[i]
-                ) {
-                    CSS.highlights.set(
-                        "qt-reading-sentence",
-                        new Highlight(sentenceRanges[i]),
-                    );
-                }
-            } catch (_) {}
-        }
+    function speakSelectedText(text, lang, settings, session, onEnd) {
+        if (!isReading || session !== readingSession) return;
 
-        function readNext() {
-            if (!isReading || idx >= sentences.length) {
-                clearSentenceHighlight();
-                cleanupReading();
-                return;
-            }
-
-            highlightSentence(idx);
-            const text = cleanTextForTTS(sentences[idx].text);
-            if (!text?.trim()) {
-                idx++;
-                readNext();
-                return;
-            }
-
-            if (!chrome?.storage?.local) {
-                const utter = new SpeechSynthesisUtterance(text);
-                utter.lang = lang;
-                const voice = pickBestVoice("", lang);
-                if (voice) utter.voice = voice;
-                utter.rate = 1.3;
-                utter.onend = () => {
-                    idx++;
-                    readNext();
-                };
-                utter.onerror = () => cleanupReading();
-                window.speechSynthesis.speak(utter);
-                return;
-            }
-
-            chrome.storage.local.get(
-                {
-                    speechVoice: "",
-                    speechRate: 1.3,
-                    ttsVolume: 1,
-                },
-                async (data) => {
-                    const vol =
-                        data.ttsVolume !== undefined ? data.ttsVolume : 1;
-                    // Page/subtitle reading is always local system TTS.
-                    // ElevenLabs is reserved exclusively for Review cards.
-                    const utter = new SpeechSynthesisUtterance(text);
-                    utter.lang = lang;
-                    utter.rate = data.speechRate;
-                    utter.volume = vol;
-                    const voice = pickBestVoice(data.speechVoice, lang);
-                    if (voice) utter.voice = voice;
-                    utter.onend = () => {
-                        idx++;
-                        readNext();
-                    };
-                    utter.onerror = () => cleanupReading();
-                    window.speechSynthesis.speak(utter);
-                },
+        let utter;
+        try {
+            settings ||= {};
+            utter = new SpeechSynthesisUtterance(text);
+            utter.lang = lang;
+            utter.rate = Math.max(
+                0.1,
+                Math.min(10, Number(settings.speechRate) || 1.3),
             );
+            const volume =
+                settings.ttsVolume !== undefined
+                    ? Number(settings.ttsVolume)
+                    : 1;
+            utter.volume = Number.isFinite(volume)
+                ? Math.max(0, Math.min(1, volume))
+                : 1;
+            const voice = pickBestVoice(settings.speechVoice || "", lang);
+            if (voice) utter.voice = voice;
+        } catch (error) {
+            console.warn("[Lectoro] Could not prepare speech:", error);
+            cleanupReading(session, true);
+            return;
         }
-        readNext();
+
+        let finished = false;
+        let hasStarted = false;
+        let idleSince = 0;
+        let safetyTimer = null;
+        let startTimer = null;
+        let monitorTimer = null;
+        const queuedAt = Date.now();
+        const finish = (failed = false) => {
+            if (finished || session !== readingSession) return;
+            finished = true;
+            clearTimeout(safetyTimer);
+            clearTimeout(startTimer);
+            clearInterval(monitorTimer);
+            if (readingSafetyTimer === safetyTimer) readingSafetyTimer = null;
+            if (readingStartTimer === startTimer) readingStartTimer = null;
+            if (readingMonitorTimer === monitorTimer)
+                readingMonitorTimer = null;
+            if (activeReadingUtterance === utter) {
+                activeReadingUtterance = null;
+            }
+            if (failed) cleanupReading(session, true);
+            else onEnd();
+        };
+
+        utter.onstart = () => {
+            hasStarted = true;
+            idleSince = 0;
+        };
+        utter.onboundary = () => {
+            hasStarted = true;
+            idleSince = 0;
+        };
+        utter.onend = () => finish(false);
+        utter.onerror = () => finish(true);
+        utter.addEventListener?.("end", () => finish(false), { once: true });
+        utter.addEventListener?.("error", () => finish(true), { once: true });
+        safetyTimer = setTimeout(
+            () => finish(true),
+            getReadingSafetyTimeout(text, utter.rate),
+        );
+        readingSafetyTimer = safetyTimer;
+        monitorTimer = setInterval(() => {
+            if (finished || session !== readingSession) {
+                clearInterval(monitorTimer);
+                if (readingMonitorTimer === monitorTimer)
+                    readingMonitorTimer = null;
+                return;
+            }
+
+            // `pending` may stay true after an utterance has audibly ended on
+            // some Chromium/Windows voice combinations. Once our utterance
+            // has started, `speaking` is the reliable completion signal.
+            const synthesisSpeaking = window.speechSynthesis.speaking;
+            if (
+                synthesisSpeaking ||
+                (!hasStarted && window.speechSynthesis.pending)
+            ) {
+                hasStarted = true;
+                idleSince = 0;
+                return;
+            }
+
+            if (!hasStarted && Date.now() - queuedAt > 5000) {
+                finish(true);
+                return;
+            }
+            if (hasStarted) {
+                if (!idleSince) idleSince = Date.now();
+                if (Date.now() - idleSince > 750) finish(false);
+            }
+        }, 250);
+        readingMonitorTimer = monitorTimer;
+
+        // Chromium can report a fresh utterance as "interrupted" when it is
+        // queued in the same tick as speechSynthesis.cancel(). Keep a short
+        // gap and retain the utterance until it finishes (also avoids a known
+        // Chromium garbage-collection issue with local utterance objects).
+        const cancelGap = 100;
+        const startDelay = Math.max(
+            0,
+            cancelGap - (Date.now() - lastSpeechCancelAt),
+        );
+        const startSpeech = () => {
+            if (readingStartTimer === startTimer) readingStartTimer = null;
+            startTimer = null;
+            if (finished || !isReading || session !== readingSession) return;
+            try {
+                activeReadingUtterance = utter;
+                window.speechSynthesis.resume();
+                window.speechSynthesis.speak(utter);
+            } catch (error) {
+                console.warn("[Lectoro] Speech synthesis failed:", error);
+                finish(true);
+            }
+        };
+        if (startDelay > 0) {
+            startTimer = setTimeout(startSpeech, startDelay);
+            readingStartTimer = startTimer;
+        } else {
+            startSpeech();
+        }
+    }
+
+    function startSelectedTextReading(fragments, lang, session) {
+        const start = (settings) => {
+            if (!isReading || session !== readingSession) return;
+            let index = 0;
+
+            const readNext = () => {
+                if (!isReading || session !== readingSession) return;
+                if (index >= fragments.length) {
+                    cleanupReading(session, true);
+                    return;
+                }
+
+                const fragment = fragments[index];
+                clearSentenceHighlight();
+                try {
+                    if (
+                        fragment.range &&
+                        typeof CSS !== "undefined" &&
+                        CSS.highlights
+                    ) {
+                        CSS.highlights.set(
+                            "qt-reading-sentence",
+                            new Highlight(fragment.range),
+                        );
+                    }
+                } catch (error) {
+                    console.warn("[Lectoro] Fragment highlight failed:", error);
+                }
+
+                speakSelectedText(
+                    fragment.text,
+                    lang,
+                    settings,
+                    session,
+                    () => {
+                        index += 1;
+                        readNext();
+                    },
+                );
+            };
+
+            readNext();
+        };
+
+        if (!chrome?.storage?.local) {
+            start({ speechVoice: "", speechRate: 1.3, ttsVolume: 1 });
+            return;
+        }
+
+        chrome.storage.local.get(
+            { speechVoice: "", speechRate: 1.3, ttsVolume: 1 },
+            start,
+        );
     }
 
     function onReadClick(e) {
@@ -497,63 +720,75 @@
         }
         if (!currentText) return;
 
+        // Do not call cleanupReading() here. It invokes
+        // speechSynthesis.cancel(), and Chromium may then reject the new
+        // utterance started by the same click as "interrupted". At this point
+        // isReading is false, so there is no toolbar reading session to clean.
+        readingSession += 1;
         isReading = true;
-        hideIcon();
+        const session = readingSession;
 
         if (iconEl) {
             const rb = iconEl.querySelector(`.${PREFIX}tb-read`);
-            if (rb) rb.classList.add("reading");
+            if (rb) {
+                rb.classList.add("reading");
+                rb.setAttribute("aria-pressed", "true");
+                rb.title = "Zatrzymaj czytanie";
+            }
         }
 
         const utterText = cleanTextForTTS(currentText);
         if (!utterText) {
-            cleanupReading();
+            cleanupReading(null, true);
             return;
         }
 
         const pageLang =
             document.documentElement.lang || navigator.language || "en";
-
-        // Try sentence-by-sentence reading with CSS Highlight API
-        let started = false;
-        if (currentRange && typeof CSS !== "undefined" && CSS.highlights) {
-            try {
-                const textInfos = getTextNodesInRange(currentRange);
-                if (textInfos.length > 0) {
-                    const fullText = textInfos
-                        .map((i) =>
-                            i.node.textContent.substring(i.start, i.end),
-                        )
-                        .join(" ");
-                    const sents = splitIntoSentencesWithOffsets(fullText);
-                    const ranges = buildSentenceRanges(textInfos, sents);
-                    window.getSelection().removeAllRanges();
-                    readSentenceBySentence(sents, ranges, pageLang);
-                    started = true;
-                }
-            } catch (err) {
-                console.warn("[Lectoro] Sentence highlight failed:", err);
-            }
+        const fragments = currentRange
+            ? buildReadingFragments(currentRange, utterText)
+            : [{ text: utterText, range: null }];
+        if (fragments.length === 0) {
+            cleanupReading(null, true);
+            return;
         }
 
-        if (!started) window.getSelection().removeAllRanges();
-        if (started) return;
-
-        // Fallback: read entire text at once
-        speak(utterText, pageLang).then((result) => {
-            if (result && typeof result.onend !== "undefined") {
-                result.onend = () => cleanupReading();
-                result.onerror = () => cleanupReading();
-            } else if (result instanceof HTMLAudioElement) {
-                result.onended = () => cleanupReading();
-                result.onerror = () => cleanupReading();
-            }
-        });
+        // Reading continues independently; the selection toolbar should no
+        // longer cover the page once its action has been chosen.
+        hideIcon();
+        window.getSelection()?.removeAllRanges();
+        startSelectedTextReading(fragments, pageLang, session);
     }
 
     // ═══════════════════════════════════════════════════════════════
     //  Selection Listener
     // ═══════════════════════════════════════════════════════════════
+
+    function getSelectionAnchorRect(range) {
+        const rects = Array.from(range.getClientRects()).filter(
+            (rect) => rect.width > 0 || rect.height > 0,
+        );
+        if (rects.length === 0) return range.getBoundingClientRect();
+
+        const { x, y } = QT.getMousePos();
+        const containingMouse = rects.find(
+            (rect) =>
+                x >= rect.left &&
+                x <= rect.right &&
+                y >= rect.top &&
+                y <= rect.bottom,
+        );
+        if (containingMouse) return containingMouse;
+
+        return rects.reduce((closest, rect) => {
+            const rectX = Math.max(rect.left, Math.min(x, rect.right));
+            const rectY = Math.max(rect.top, Math.min(y, rect.bottom));
+            const distance = (rectX - x) ** 2 + (rectY - y) ** 2;
+            return !closest || distance < closest.distance
+                ? { rect, distance }
+                : closest;
+        }, null).rect;
+    }
 
     document.addEventListener("mouseup", (e) => {
         if (isOwnUI(e.target)) return;
@@ -564,15 +799,25 @@
 
             const selection = window.getSelection();
             const text = selection?.toString().trim();
-            if (!text || text.length === 0 || text.length > 5000) {
+            if (
+                !text ||
+                text.length === 0 ||
+                text.length > 5000 ||
+                !selection.rangeCount
+            ) {
                 hideAll();
                 return;
             }
 
             const range = selection.getRangeAt(0);
-            const rect = range.getBoundingClientRect();
-            if (rect.width === 0 && rect.height === 0) return;
+            const rect = getSelectionAnchorRect(range);
+            if (rect.width === 0 && rect.height === 0) {
+                hideAll();
+                return;
+            }
 
+            selectionRevision += 1;
+            if (isReading) cleanupReading();
             currentText = text;
             currentRect = rect;
             currentRange = range.cloneRange();
@@ -588,8 +833,10 @@
 
     document.addEventListener("mousedown", (e) => {
         if (isOwnUI(e.target)) return;
-        // Don't dismiss when hover-translate module is handling a word click
-        if (QT.hoverClickActive) return;
+        // A click-locked subtitle tooltip must still close when the next
+        // interaction starts elsewhere. subClickLocked protects only the
+        // tooltip itself; keeping hoverClickActive here made every later text
+        // selection get ignored until Escape was pressed.
         runDismiss();
         hideAll();
     });
@@ -868,6 +1115,7 @@
 
     // Click: word translation + the full subtitle line it belongs to
     async function handleSubWordClick(wordSpan) {
+        if (isReading) cleanupReading();
         clearTimeout(subHoverTimer);
         clearTimeout(subCloseTimer);
         subClickLocked = true;
@@ -959,6 +1207,7 @@
     let aiTooltipActive = false;
     let aiWasPlaying = false;
     let aiShimmerEl = null;
+    let aiExplainKeydownHandler = null;
 
     /** "AI thinking" loader placed exactly above the current subtitle
      *  line(s) — a pulsing orbiting orb + bouncing dots make it obvious a
@@ -1005,6 +1254,10 @@
     addCleanup(removeAiShimmer);
 
     function closeAiTooltip() {
+        if (aiExplainKeydownHandler) {
+            window.removeEventListener("keydown", aiExplainKeydownHandler);
+            aiExplainKeydownHandler = null;
+        }
         if (!aiTooltipActive) return;
         aiTooltipActive = false;
         hideTooltip();
@@ -1069,7 +1322,10 @@
         });
 
         // 3. Obsługa skrótu klawiszowego "PageDown"
-        const handleKeyDown = (ev) => {
+        if (aiExplainKeydownHandler) {
+            window.removeEventListener("keydown", aiExplainKeydownHandler);
+        }
+        aiExplainKeydownHandler = (ev) => {
             // Ignoruj wciśnięcie, jeśli użytkownik pisze w jakimś polu tekstowym
             const isTyping =
                 ["INPUT", "TEXTAREA"].includes(ev.target?.tagName) ||
@@ -1082,18 +1338,22 @@
                     ev.preventDefault();
                     saveBtn.click();
                 } else {
-                    // Czyszczenie listenera, gdy tooltip został usunięty
-                    window.removeEventListener("keydown", handleKeyDown);
+                    window.removeEventListener(
+                        "keydown",
+                        aiExplainKeydownHandler,
+                    );
+                    aiExplainKeydownHandler = null;
                 }
             }
         };
 
-        window.addEventListener("keydown", handleKeyDown);
+        window.addEventListener("keydown", aiExplainKeydownHandler);
     }
 
     async function handleAIExplain(video) {
         const text = PlayerAdapter.getCurrentText();
         if (!text) return;
+        if (isReading) cleanupReading();
 
         // Exit any active in-place translation/word-cloud mode first so it
         // doesn't fight over the same subtitle DOM.
@@ -1132,6 +1392,9 @@
 
             const translation = res.translation || "";
             const explanation = res.explanation || res;
+            const aiSpeechText = [translation, explanation]
+                .filter(Boolean)
+                .join(". ");
 
             const html = `
                 <div class="${PREFIX}header"><span>✨ AI Wyjaśnia</span></div>
@@ -1143,7 +1406,7 @@
                     <div class="${PREFIX}row">
                         <span class="${PREFIX}label">PL</span>
                         <span class="${PREFIX}text ${PREFIX}translated" >${escapeHtml(translation)}</span>
-                        <button class="${PREFIX}speak" data-text="${escapeAttr(translation)}" data-lang="pl" title="Odczytaj tłumaczenie i wyjaśnienie">${SVG.SPEAKER}</button>
+                        <button class="${PREFIX}speak" data-text="${escapeAttr(aiSpeechText)}" data-lang="pl" title="Odczytaj tłumaczenie i wyjaśnienie">${SVG.SPEAKER}</button>
                     </div>
                     <div class="${PREFIX}ai-result" style="margin-top:10px;">
                         <div class="${PREFIX}ai-label">Wyjaśnienie:</div>
@@ -1159,19 +1422,19 @@
             attachTooltipHandlers();
             wireAiExplainSaveButton(text, translation, explanation, targetLang);
 
-            // Auto-play: read translation then explanation
+            // One utterance preserves the intended order. Starting two
+            // separate QT.speak() calls would make the second cancel the first.
             if (aiTooltipActive) {
-                await speak(translation, "pl");
-                if (aiTooltipActive) {
-                    await speak(explanation, "pl");
-                }
+                await speak(aiSpeechText, "pl", {
+                    isCancelled: () => !aiTooltipActive,
+                });
             }
         } catch (err) {
             removeAiShimmer();
             if (aiTooltipActive) {
                 const limitReached = GeminiProxy?.isLimitError?.(err);
                 if (limitReached) {
-                    hideTooltip();
+                    closeAiTooltip();
                 } else {
                     showTooltip(
                         `<div class="${PREFIX}error">⚠ ${escapeHtml(err.message)}</div>`,
@@ -1603,11 +1866,15 @@
         eOriginalContents = [];
         eTranslateActive = false;
         wordCloudActive = false;
-        window.speechSynthesis.cancel();
-        const audio = getElAudioEl();
-        if (audio) {
-            audio.pause();
-            setElAudioEl(null);
+        if (isReading) {
+            cleanupReading();
+        } else {
+            window.speechSynthesis.cancel();
+            const audio = getElAudioEl();
+            if (audio) {
+                audio.pause();
+                setElAudioEl(null);
+            }
         }
     }
 
@@ -1933,6 +2200,7 @@
                 key === "e" ||
                 key === "E"
             ) {
+                if (isReading) cleanupReading();
                 const handleSubtitleAction = (data) => {
                     const text = PlayerAdapter.getCurrentText();
                     if (!text) return;

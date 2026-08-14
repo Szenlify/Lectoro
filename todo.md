@@ -14,6 +14,8 @@
 
 8. piracka biblioteka
 
+9. dodaj spiner w trakcie otwierania Stripe do 
+
 
 firebase login
 firebase deploy --only functions --project extension-eng"
