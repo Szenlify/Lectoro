@@ -23,6 +23,36 @@ const GeminiProxy = (() => {
         return new Date().toISOString().slice(0, 7);
     }
 
+    function matchesConfiguredAiLimit(usage) {
+        if (!usage || typeof SubscriptionConfig === "undefined") return true;
+        const plan = SubscriptionConfig.normalizePlan(usage.plan);
+        const configuredLimit = Number(
+            SubscriptionConfig.getPlanLimits(plan)?.ai?.usesPerMonth,
+        );
+        return (
+            !Number.isFinite(configuredLimit) ||
+            Number(usage.limit) === configuredLimit
+        );
+    }
+
+    function normalizeUsage(usage, uid = "") {
+        if (!usage) return null;
+        const used = Math.max(0, Number(usage.used) || 0);
+        const limit = Math.max(0, Number(usage.limit) || 0);
+        return {
+            uid: uid || usage.uid || "",
+            month: currentMonth(),
+            plan: usage.plan || "free",
+            used,
+            limit,
+            remaining: Math.max(
+                0,
+                Number(usage.remaining ?? limit - used),
+            ),
+            updatedAt: Date.now(),
+        };
+    }
+
     async function getCachedUsage() {
         const data = await chrome.storage.local.get({ [USAGE_KEY]: null });
         return data[USAGE_KEY];
@@ -31,18 +61,10 @@ const GeminiProxy = (() => {
     async function setCachedUsage(usage) {
         if (!usage) return null;
         const user = await FirebaseSync.getUser();
-        const normalized = {
-            uid: user?.uid || usage.uid || "",
-            month: currentMonth(),
-            plan: usage.plan || "free",
-            used: Number(usage.used || 0),
-            limit: Number(usage.limit || 0),
-            remaining: Math.max(
-                0,
-                Number(usage.remaining ?? Number(usage.limit || 0) - Number(usage.used || 0)),
-            ),
-            updatedAt: Date.now(),
-        };
+        const normalized = normalizeUsage(
+            usage,
+            user?.uid || usage.uid || "",
+        );
         await chrome.storage.local.set({ [USAGE_KEY]: normalized });
         if (typeof SubscriptionService !== "undefined") {
             await SubscriptionService.updateAiUsage(normalized);
@@ -55,7 +77,12 @@ const GeminiProxy = (() => {
         const user = await FirebaseSync.getUser();
         if (!user) return null;
         const cached = await getCachedUsage();
-        if (!force && cached?.uid === user.uid && cached?.month === currentMonth()) {
+        if (
+            !force &&
+            cached?.uid === user.uid &&
+            cached?.month === currentMonth() &&
+            matchesConfiguredAiLimit(cached)
+        ) {
             return cached;
         }
 
@@ -317,6 +344,7 @@ const GeminiProxy = (() => {
         requestJSON,
         refreshUsage,
         getCachedUsage,
+        normalizeUsage,
         applyLocalLimitToUI,
         isLimitError,
         showUpgradePrompt,
@@ -341,4 +369,7 @@ if (typeof window !== "undefined") {
 if (typeof self !== "undefined" && typeof window === "undefined") {
     // Service Worker (background.js)
     self.GeminiProxy = GeminiProxy;
+}
+if (typeof module !== "undefined" && module.exports) {
+    module.exports = GeminiProxy;
 }

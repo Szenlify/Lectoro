@@ -80,28 +80,19 @@ ustawienia rozszerzenia, które wymuszają pobranie nowego tokenu.
 Skrypt nie anuluje aktywnej subskrypcji ani nie usuwa klienta w Stripe. Najpierw
 anuluj subskrypcję w Stripe; inaczej późniejszy webhook może ponownie nadać plan.
 
-Maksimum przy 50% marży liczonej tylko względem ElevenLabs
-Plan Cena Budżet kosztowy 50% Maksymalny limit
-BASIC $7.99 $3.995 79 900 znaków
-PRO $19.99 $9.995 199 900 znaków
+## Aktualne limity produktu
 
-Tych limitów nie polecam, ponieważ nie zostawiają miejsca na Stripe, VAT, Firebase, Gemini, zwroty i promocje.
-Zalecane bezpieczne limity
-Plan Limit miesięczny Maks. koszt ElevenLabs Marża przed pozostałymi kosztami
-BASIC 40 000 znaków $2.00 75%
-PRO 100 000 znaków $5.00 75%
+Jedynym źródłem prawdy dla limitów jest `SUBSCRIPTION_LIMITS` w pliku
+`subscription-config.js`. Ta sama konfiguracja jest używana przez rozszerzenie
+i Firebase Functions.
 
-Pozostaje wtedy około 25% ceny na pozostałe koszty, dzięki czemu docelowa marża około 50% jest znacznie bardziej realna.
-Ustawiłbym również:
-BASIC: maksymalnie 2 000 znaków na jedno żądanie,
-PRO: maksymalnie 5 000 znaków na jedno żądanie.
-Docelowa konfiguracja:
-BASIC: {
-maxCharactersPerRequest: 2000,
-charactersPerMonth: 40000,
-}
+| Plan | AI / miesiąc | Zapisane fiszki SRS | ElevenLabs / żądanie | ElevenLabs / miesiąc |
+| --- | ---: | ---: | ---: | ---: |
+| FREE | 10 | 100 | niedostępne | niedostępne |
+| BASIC | 100 | 2 000 | 500 znaków | 30 000 znaków |
+| PRO | 1 000 | 8 000 | 1 000 znaków | 150 000 znaków |
 
-PRO: {
-maxCharactersPerRequest: 5000,
-charactersPerMonth: 100000,
-}
+`priceMonthly` steruje ceną wyświetlaną w rozszerzeniu. Kwota pobierana od
+użytkownika jest przypisana do `STRIPE_BASIC_PRICE_ID` i
+`STRIPE_PRO_PRICE_ID`, więc zmianę ceny trzeba również wykonać w Stripe i
+zaktualizować odpowiedni sekret Firebase.

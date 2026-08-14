@@ -1,8 +1,9 @@
 /**
  * Central subscription configuration shared by the extension and Cloud Functions.
  *
- * To change a quota or price, edit only SUBSCRIPTION_LIMITS below. The lower-case
- * plan values are intentionally identical to values stored in Firestore (`users.plan`).
+ * To change a quota or displayed price, edit SUBSCRIPTION_LIMITS below. Stripe
+ * Price IDs control the amount actually charged. The lower-case plan values are
+ * intentionally identical to values stored in Firestore (`users.plan`).
  */
 (function initSubscriptionConfig(root, factory) {
     const api = factory();
@@ -22,8 +23,8 @@
         [SUBSCRIPTION_PLANS.FREE]: Object.freeze({
             displayName: "FREE",
             priceMonthly: Object.freeze({ amount: 0, currency: "PLN" }),
-            ai: Object.freeze({ usesPerMonth: 3 }),
-            srs: Object.freeze({ maxSavedCards: 3 }),
+            ai: Object.freeze({ usesPerMonth: 10 }),
+            srs: Object.freeze({ maxSavedCards: 100 }),
             elevenLabs: Object.freeze({
                 enabled: false,
                 maxCharactersPerRequest: 0,
@@ -33,23 +34,23 @@
         [SUBSCRIPTION_PLANS.BASIC]: Object.freeze({
             displayName: "BASIC",
             priceMonthly: Object.freeze({ amount: 7.99, currency: "USD" }),
-            ai: Object.freeze({ usesPerMonth: 5 }),
-            srs: Object.freeze({ maxSavedCards: 5 }),
+            ai: Object.freeze({ usesPerMonth: 100 }),
+            srs: Object.freeze({ maxSavedCards: 2000 }),
             elevenLabs: Object.freeze({
                 enabled: true,
-                maxCharactersPerRequest: 50,
-                charactersPerMonth: 50,
+                maxCharactersPerRequest: 500,
+                charactersPerMonth: 30000,
             }),
         }),
         [SUBSCRIPTION_PLANS.PRO]: Object.freeze({
             displayName: "PRO",
             priceMonthly: Object.freeze({ amount: 19.99, currency: "USD" }),
-            ai: Object.freeze({ usesPerMonth: 7 }),
-            srs: Object.freeze({ maxSavedCards: 7 }),
+            ai: Object.freeze({ usesPerMonth: 1000 }),
+            srs: Object.freeze({ maxSavedCards: 8000 }),
             elevenLabs: Object.freeze({
                 enabled: true,
-                maxCharactersPerRequest: 100,
-                charactersPerMonth: 100,
+                maxCharactersPerRequest: 1000,
+                charactersPerMonth: 150000,
             }),
         }),
     });

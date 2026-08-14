@@ -31,7 +31,7 @@ const SubscriptionService = (() => {
         return data[PROFILE_KEY];
     }
 
-    async function setCachedProfile(profile) {
+    async function setCachedProfile(profile, aiUsage = null) {
         if (!profile) return null;
         const previous = await getCachedProfile();
         const normalized = {
@@ -57,13 +57,22 @@ const SubscriptionService = (() => {
         const planChanged =
             previous?.uid === normalized.uid &&
             Config.normalizePlan(previous.plan) !== normalized.plan;
+        const geminiProxy =
+            typeof globalThis !== "undefined" ? globalThis.GeminiProxy : null;
+        const normalizedAiUsage =
+            aiUsage && typeof geminiProxy?.normalizeUsage === "function"
+                ? geminiProxy.normalizeUsage(aiUsage, normalized.uid)
+                : null;
+        const aiUsageUpdate = {};
+        if (normalizedAiUsage) aiUsageUpdate.aiUsageCache = normalizedAiUsage;
+        else if (planChanged) aiUsageUpdate.aiUsageCache = null;
         // AI usage contains a plan-specific limit. Keeping it after an upgrade
         // or downgrade makes the popup show (and enforce) the old limit until
-        // the first AI request. Clear both values atomically so the next usage
-        // read fetches current server data without consuming an AI credit.
+        // the first AI request. Store usage returned with a profile refresh in
+        // the same operation; otherwise clear stale usage after a plan change.
         await chrome.storage.local.set({
             [PROFILE_KEY]: normalized,
-            ...(planChanged ? { aiUsageCache: null } : {}),
+            ...aiUsageUpdate,
         });
         return normalized;
     }
@@ -101,12 +110,15 @@ const SubscriptionService = (() => {
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error || `Błąd profilu (${response.status})`);
-        return setCachedProfile({
-            ...(data.profile || freeProfile(user.uid)),
-            // UI plan comes from the signed Firebase token, never from editable
-            // extension storage or a client-writable Firestore document.
-            plan: claimedPlan,
-        });
+        return setCachedProfile(
+            {
+                ...(data.profile || freeProfile(user.uid)),
+                // UI plan comes from the signed Firebase token, never from editable
+                // extension storage or a client-writable Firestore document.
+                plan: claimedPlan,
+            },
+            data.usage,
+        );
     }
 
     async function effectiveProfile(force = false) {
@@ -357,4 +369,7 @@ const SubscriptionService = (() => {
 if (typeof window !== "undefined") window.SubscriptionService = SubscriptionService;
 if (typeof self !== "undefined" && typeof window === "undefined") {
     self.SubscriptionService = SubscriptionService;
+}
+if (typeof module !== "undefined" && module.exports) {
+    module.exports = SubscriptionService;
 }

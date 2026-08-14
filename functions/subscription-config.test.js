@@ -26,17 +26,24 @@ test("central configuration matches the three product plans", () => {
             ]),
         ),
         {
-            free: { price: 0, currency: "PLN", ai: 3, srs: 3, ttsEnabled: false, ttsRequest: 0, ttsMonth: 0 },
-            basic: { price: 7.99, currency: "USD", ai: 5, srs: 5, ttsEnabled: true, ttsRequest: 50, ttsMonth: 50 },
-            pro: { price: 19.99, currency: "USD", ai: 7, srs: 7, ttsEnabled: true, ttsRequest: 100, ttsMonth: 100 },
+            free: { price: 0, currency: "PLN", ai: 10, srs: 100, ttsEnabled: false, ttsRequest: 0, ttsMonth: 0 },
+            basic: { price: 7.99, currency: "USD", ai: 100, srs: 2000, ttsEnabled: true, ttsRequest: 500, ttsMonth: 30000 },
+            pro: { price: 19.99, currency: "USD", ai: 1000, srs: 8000, ttsEnabled: true, ttsRequest: 1000, ttsMonth: 150000 },
         },
     );
 });
 
 test("unknown plans safely fall back to FREE", () => {
+    const freeAiLimit = SUBSCRIPTION_LIMITS.free.ai.usesPerMonth;
     assert.equal(normalizePlan("enterprise"), "free");
-    assert.equal(checkAiLimit({ plan: "enterprise", used: 2 }).allowed, true);
-    assert.equal(checkAiLimit({ plan: "enterprise", used: 3 }).code, "AI_LIMIT_REACHED");
+    assert.equal(
+        checkAiLimit({ plan: "enterprise", used: freeAiLimit - 1 }).allowed,
+        true,
+    );
+    assert.equal(
+        checkAiLimit({ plan: "enterprise", used: freeAiLimit }).code,
+        "AI_LIMIT_REACHED",
+    );
 });
 
 test("AI and SRS limits come from the central configuration", () => {
@@ -64,27 +71,45 @@ test("FREE cannot use ElevenLabs", () => {
 });
 
 test("ElevenLabs enforces per-request and monthly character quotas", () => {
+    const basicLimits = SUBSCRIPTION_LIMITS.basic.elevenLabs;
+    const proLimits = SUBSCRIPTION_LIMITS.pro.elevenLabs;
     assert.equal(
-        checkElevenLabsLimit({ plan: "basic", text: "a".repeat(50), usedCharacters: 0 }).allowed,
+        checkElevenLabsLimit({
+            plan: "basic",
+            text: "a".repeat(basicLimits.maxCharactersPerRequest),
+            usedCharacters: 0,
+        }).allowed,
         true,
     );
     assert.equal(
-        checkElevenLabsLimit({ plan: "basic", text: "a".repeat(51), usedCharacters: 0 }).code,
+        checkElevenLabsLimit({
+            plan: "basic",
+            text: "a".repeat(basicLimits.maxCharactersPerRequest + 1),
+            usedCharacters: 0,
+        }).code,
         "ELEVENLABS_REQUEST_TOO_LONG",
     );
     assert.equal(
-        checkElevenLabsLimit({ plan: "pro", text: "abc", usedCharacters: 98 }).code,
+        checkElevenLabsLimit({
+            plan: "pro",
+            text: "abc",
+            usedCharacters: proLimits.charactersPerMonth - 2,
+        }).code,
         "ELEVENLABS_MONTHLY_LIMIT_REACHED",
     );
     const lastCharacter = checkElevenLabsLimit({
         plan: "pro",
         text: "a",
-        usedCharacters: 99,
+        usedCharacters: proLimits.charactersPerMonth - 1,
     });
     assert.equal(lastCharacter.allowed, true);
     assert.equal(lastCharacter.remaining, 1);
     assert.equal(
-        checkElevenLabsLimit({ plan: "pro", text: "a", usedCharacters: 100 }).code,
+        checkElevenLabsLimit({
+            plan: "pro",
+            text: "a",
+            usedCharacters: proLimits.charactersPerMonth,
+        }).code,
         "ELEVENLABS_MONTHLY_LIMIT_REACHED",
     );
 });
