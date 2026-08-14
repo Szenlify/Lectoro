@@ -12,14 +12,12 @@
 
 8. piracka biblioteka
 
-11. w settings w divie kredytow jest napis Limit odnawia się co miesiąc. podaj date obok kiedy dokladnie sie odnowi na kolor var ghost
+11. w settings w div kredytow jest napis Limit odnawia się co miesiąc. podaj date obok kiedy dokladnie sie odnowi na kolor var ghost
 
-
-13. jesli zapisuje slowo do powtorek na stronie internetowej z content.js to niech lapie najblizsze zdjecie lub film tego co akurat widzi screen bo teraz czesto czytam posty i zapisuje sobie slowo do powtorek i wskakuje mi jakies randomowy screen z video do powtorki gdzie byl daleko daleko gdzies na samym dole w komentarzu popraw to inteligentnie
 
 14. WSAD i strzalki niech dzialaja na kazdym filmie i zabezpiecz tak ze np w social mediach jest duzo filmow na raz to ten ktory widzie na srceene aktualnie nie inny
 
-16. netflix przewijanie i tlumaczenie
+16. netflix przewijanie i odrazu netflix wyswietla mi strone Pardom i tlumaczenie
 
 firebase login
 firebase deploy --only functions --project extension-eng"
@@ -55,3 +53,9 @@ GEMINI_API_KEY=x
 
 
 1. zmien geminiproxy na apiproxy bo sie myli nazwa
+
+zalety:
+
+fiszki z youtube reels
+fiszki z social media / facebook / X / instagram / komentarze
+
