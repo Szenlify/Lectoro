@@ -25,6 +25,8 @@
 
 14. WSAD i strzalki niech dzialaja na kazdym filmie i zabezpiecz tak ze np w social mediach jest duzo filmow na raz to ten ktory widzie na srceene aktualnie nie inny
 
+15. najechanie na napisy na slowo pauzuje pokazuje sie tooltip ale jesli kursor nie jest na tooltip ani na slowie to zawsze schowaj tooltip i wlacz wideo 
+
 firebase login
 firebase deploy --only functions --project extension-eng"
 lub

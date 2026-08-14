@@ -1394,19 +1394,27 @@
 
     function closeSubTooltip() {
         if (!isSubHovering) return;
+        const shouldResumeVideo = subWasPlaying;
         isSubHovering = false;
+        subWasPlaying = false;
         subClickLocked = false;
         QT.hoverClickActive = false;
+        clearTimeout(subHoverTimer);
         clearTimeout(subCloseTimer);
+        subCloseTimer = null;
         subTooltipAnchor = null;
         if (lastHoveredSubWord) {
             lastHoveredSubWord.classList.remove(`${PREFIX}word-hover`);
             lastHoveredSubWord = null;
         }
         QT.hideTooltip();
-        if (subWasPlaying) {
+        if (shouldResumeVideo) {
             const video = PlayerAdapter.getVideo();
-            if (video && video.paused) video.play();
+            if (video && video.paused) {
+                try {
+                    video.play()?.catch(() => {});
+                } catch (_) {}
+            }
         }
     }
     addDismissHandler(closeSubTooltip);
@@ -1414,8 +1422,10 @@
     // Delay closing so the cursor can travel from the word onto the tooltip
     // (which floats above/below it) without the video resuming prematurely.
     function scheduleCloseSubTooltip() {
+        if (subCloseTimer !== null) return;
         clearTimeout(subCloseTimer);
         subCloseTimer = setTimeout(() => {
+            subCloseTimer = null;
             if (QT.getTooltipEl()?.matches(":hover")) return;
             if (subClickLocked) return;
             closeSubTooltip();
@@ -1425,7 +1435,10 @@
     document.addEventListener(
         "mousemove",
         (e) => {
-            if (!activeVideo?.isConnected) return;
+            if (!activeVideo?.isConnected) {
+                if (isSubHovering && !subClickLocked) closeSubTooltip();
+                return;
+            }
             if (isReading) return;
             if (typeof eTranslateActive !== "undefined" && eTranslateActive)
                 return;
@@ -1433,20 +1446,26 @@
                 return;
             if (subClickLocked) return;
 
-            // Cursor is over our own tooltip – keep it open, don't chase words.
-            if (isOwnUI(e.target)) {
+            // Keep the subtitle tooltip open only while the cursor is over the
+            // tooltip itself. Other extension UI must not pin it open.
+            const tooltip = QT.getTooltipEl();
+            if (tooltip?.contains(e.target)) {
                 clearTimeout(subCloseTimer);
+                subCloseTimer = null;
                 return;
             }
 
-            const wordSpan = QT.findWordAtPoint(
-                e.clientX,
-                e.clientY,
-                PREFIX + "sub-word",
-            );
+            const wordSpan = isOwnUI(e.target)
+                ? null
+                : QT.findWordAtPoint(
+                      e.clientX,
+                      e.clientY,
+                      PREFIX + "sub-word",
+                  );
 
             if (wordSpan && wordSpan !== lastHoveredSubWord) {
                 clearTimeout(subCloseTimer);
+                subCloseTimer = null;
                 if (lastHoveredSubWord)
                     lastHoveredSubWord.classList.remove(`${PREFIX}word-hover`);
                 lastHoveredSubWord = wordSpan;
@@ -1454,13 +1473,17 @@
 
                 clearTimeout(subHoverTimer);
                 subHoverTimer = setTimeout(async () => {
+                    if (lastHoveredSubWord !== wordSpan) return;
                     const text = wordSpan.textContent.trim();
                     if (!text) return;
 
+                    if (!isSubHovering) {
+                        const video = PlayerAdapter.getVideo();
+                        subWasPlaying = video ? !video.paused : false;
+                    }
                     isSubHovering = true;
                     subTooltipAnchor = wordSpan;
                     const video = PlayerAdapter.getVideo();
-                    subWasPlaying = video ? !video.paused : false;
                     if (video && !video.paused) video.pause();
 
                     const rect = wordSpan.getBoundingClientRect();
@@ -1482,7 +1505,10 @@
                         QT.showTooltip(html, rect, "top");
                         QT.attachTooltipHandlers();
                     } catch (err) {
-                        if (isSubHovering)
+                        if (
+                            isSubHovering &&
+                            lastHoveredSubWord === wordSpan
+                        )
                             QT.showTooltip(
                                 `<div class="${PREFIX}error">⚠ ${QT.escapeHtml(err.message)}</div>`,
                                 rect,
@@ -1490,14 +1516,33 @@
                             );
                     }
                 }, 300);
-            } else if (!wordSpan && lastHoveredSubWord) {
+            } else if (!wordSpan) {
                 clearTimeout(subHoverTimer);
-                lastHoveredSubWord.classList.remove(`${PREFIX}word-hover`);
-                lastHoveredSubWord = null;
+                if (lastHoveredSubWord) {
+                    lastHoveredSubWord.classList.remove(
+                        `${PREFIX}word-hover`,
+                    );
+                    lastHoveredSubWord = null;
+                }
+                // This also runs when leaving the tooltip after the word was
+                // already cleared. That transition used to leave the tooltip
+                // open and the video paused indefinitely.
                 if (isSubHovering) scheduleCloseSubTooltip();
+            } else {
+                clearTimeout(subCloseTimer);
+                subCloseTimer = null;
             }
         },
         true,
+    );
+
+    // A cursor leaving the document produces no further mousemove events in
+    // the page, so close immediately instead of leaving playback paused.
+    document.documentElement.addEventListener(
+        "mouseleave",
+        () => {
+            if (isSubHovering && !subClickLocked) closeSubTooltip();
+        },
     );
 
     // Click: word translation + the full subtitle line it belongs to
@@ -1505,6 +1550,8 @@
         if (isReading) cleanupReading();
         clearTimeout(subHoverTimer);
         clearTimeout(subCloseTimer);
+        subCloseTimer = null;
+        const wasAlreadyHovering = isSubHovering;
         subClickLocked = true;
         QT.hoverClickActive = true;
         isSubHovering = true;
@@ -1516,7 +1563,8 @@
         wordSpan.classList.add(`${PREFIX}word-hover`);
 
         const video = PlayerAdapter.getVideo();
-        subWasPlaying = video ? !video.paused : false;
+        if (!wasAlreadyHovering)
+            subWasPlaying = video ? !video.paused : false;
         if (video && !video.paused) video.pause();
 
         const text = wordSpan.textContent.trim();
@@ -1883,6 +1931,9 @@
     let wordCloudActive = false;
     let wordCloudEls = [];
     let wordCloudWasPlaying = false;
+    let subtitleModeRevision = 0;
+    let subtitleModeStarting = false;
+    let subtitleResumeRevision = 0;
     let subtitleUiTrackingFrame = null;
     const wordCloudCache = QT.createTranslateCache(300);
     const SIMPLE_WORDS = new Set([
@@ -2037,6 +2088,8 @@
     }
 
     async function showWordClouds(video, opts = { skipSpeech: false }) {
+        const modeRevision = opts.revision ?? subtitleModeRevision;
+        if (modeRevision !== subtitleModeRevision) return;
         const subEls = PlayerAdapter.getSubtitleElements();
         if (subEls.length === 0) return;
         const fullText = subEls
@@ -2064,19 +2117,25 @@
 
         if (wordSpans.length === 0) {
             removeWordClouds();
-            if (wordCloudWasPlaying) video.play();
+            if (wordCloudWasPlaying) resumeVideoAfterSubtitleClose(video);
             return;
         }
 
         const targetLang = await getTargetLang();
+        if (modeRevision !== subtitleModeRevision) return;
         let translatedFullText = fullText;
         try {
             const translated = await googleTranslate(fullText, targetLang);
+            if (modeRevision !== subtitleModeRevision) return;
             translatedFullText = translated?.translated || fullText;
             if (!opts.skipSpeech && translatedFullText?.trim()) {
-                speak(translatedFullText, targetLang).catch(() => {});
+                speak(translatedFullText, targetLang, {
+                    isCancelled: () =>
+                        modeRevision !== subtitleModeRevision,
+                }).catch(() => {});
             }
         } catch (err) {}
+        if (modeRevision !== subtitleModeRevision) return;
 
         const translatableSpans = wordSpans.filter((span) =>
             shouldTranslateWord(span.textContent),
@@ -2096,6 +2155,7 @@
                 }
             }),
         );
+        if (modeRevision !== subtitleModeRevision) return;
 
         const subFontSizePx =
             parseFloat(window.getComputedStyle(subEls[0]).fontSize) || 16;
@@ -2230,22 +2290,32 @@
         sourceText = null,
         options = {},
     ) {
+        const modeRevision = options.revision ?? subtitleModeRevision;
+        if (modeRevision !== subtitleModeRevision) return;
         const text = sourceText || PlayerAdapter.getCurrentText();
         if (!text) return;
         showSubLoading();
         try {
             const targetLang = await getTargetLang();
+            if (modeRevision !== subtitleModeRevision) return;
             const { translated } = await googleTranslate(text, targetLang);
+            if (modeRevision !== subtitleModeRevision) return;
             const translatedText = translated || text;
             applyTranslation(translatedText);
             if (options.speakTranslated)
-                await speak(translatedText, targetLang);
+                await speak(translatedText, targetLang, {
+                    isCancelled: () =>
+                        modeRevision !== subtitleModeRevision,
+                });
         } catch (err) {
+            if (modeRevision !== subtitleModeRevision) return;
             applyTranslation(text);
         }
     }
 
     function restoreOriginal() {
+        subtitleModeRevision += 1;
+        subtitleModeStarting = false;
         removeOverlay();
         removeWordClouds();
         for (const item of eOriginalContents) {
@@ -2258,13 +2328,40 @@
         if (isReading) {
             cleanupReading();
         } else {
-            window.speechSynthesis.cancel();
-            const audio = getElAudioEl();
-            if (audio) {
-                audio.pause();
-                setElAudioEl(null);
-            }
+            try {
+                window.speechSynthesis?.cancel();
+            } catch (_) {}
+            try {
+                const audio = getElAudioEl();
+                if (audio) {
+                    audio.pause();
+                    setElAudioEl(null);
+                }
+            } catch (_) {}
         }
+    }
+
+    function resumeVideoAfterSubtitleClose(preferredVideo) {
+        const resumeRevision = ++subtitleResumeRevision;
+
+        const tryResume = () => {
+            if (resumeRevision !== subtitleResumeRevision) return;
+            const video = preferredVideo?.isConnected
+                ? preferredVideo
+                : PlayerAdapter.getVideo();
+            if (!video || video.ended || !video.paused) return;
+            try {
+                const playResult = video.play();
+                playResult?.catch(() => {});
+            } catch (_) {}
+        };
+
+        // Plex and some React players can restore their stale paused state
+        // after the key event. Retry briefly after their handlers have run.
+        tryResume();
+        requestAnimationFrame(tryResume);
+        setTimeout(tryResume, 120);
+        setTimeout(tryResume, 400);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -2574,11 +2671,21 @@
             ensureControlsHidden();
             clearTimeout(_controlBarTimer);
 
-            if (eTranslateActive || wordCloudActive) {
-                restoreOriginal();
-                video.play();
-                eWasPlaying = false;
-                wordCloudWasPlaying = false;
+            if (
+                eTranslateActive ||
+                wordCloudActive ||
+                subtitleModeStarting ||
+                translationOverlay?.isConnected
+            ) {
+                try {
+                    restoreOriginal();
+                } finally {
+                    // Resuming playback is the invariant of closing subtitle
+                    // mode, even if a player-owned DOM node rejects cleanup.
+                    resumeVideoAfterSubtitleClose(video);
+                    eWasPlaying = false;
+                    wordCloudWasPlaying = false;
+                }
                 return;
             }
 
@@ -2590,34 +2697,46 @@
                 key === "E"
             ) {
                 if (isReading) cleanupReading();
+                subtitleResumeRevision += 1;
+                subtitleModeStarting = true;
+                const modeRevision = ++subtitleModeRevision;
                 const handleSubtitleAction = (data) => {
+                    if (modeRevision !== subtitleModeRevision) return;
+                    subtitleModeStarting = false;
                     const text = PlayerAdapter.getCurrentText();
                     if (!text) return;
                     if (data.wordCloudMode && data.subtitleTTS) {
                         eWasPlaying = !video.paused;
                         if (eWasPlaying) video.pause();
-                        showWordClouds(video, { skipSpeech: true }).catch(() =>
-                            removeWordClouds(),
-                        );
+                        showWordClouds(video, {
+                            skipSpeech: true,
+                            revision: modeRevision,
+                        }).catch(() => removeWordClouds());
                         doSentenceTranslation(video, text, {
                             speakTranslated: true,
+                            revision: modeRevision,
                         });
                     } else if (data.wordCloudMode) {
-                        showWordClouds(video, { skipSpeech: false }).catch(
-                            () => {
-                                removeWordClouds();
-                                if (wordCloudWasPlaying) video.play();
-                            },
-                        );
+                        showWordClouds(video, {
+                            skipSpeech: false,
+                            revision: modeRevision,
+                        }).catch(() => {
+                            if (modeRevision !== subtitleModeRevision) return;
+                            removeWordClouds();
+                            if (wordCloudWasPlaying)
+                                resumeVideoAfterSubtitleClose(video);
+                        });
                     } else if (data.subtitleTTS) {
                         eWasPlaying = !video.paused;
                         if (eWasPlaying) video.pause();
                         doSentenceTranslation(video, text, {
                             speakTranslated: true,
+                            revision: modeRevision,
                         });
                     } else {
                         doSentenceTranslation(video, text, {
                             speakTranslated: false,
+                            revision: modeRevision,
                         });
                     }
                 };
