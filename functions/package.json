@@ -4,11 +4,13 @@
   "scripts": {
     "test": "node --test *.test.js",
     "plan:set": "node set-user-plan.js",
+    "plan:remove": "node remove-user-plan.js",
     "serve": "firebase emulators:start --only functions",
     "shell": "firebase functions:shell",
     "start": "npm run shell",
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log"
+    
   },
   "engines": {
     "node": "22"

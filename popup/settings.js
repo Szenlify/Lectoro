@@ -124,7 +124,7 @@ function renderSubscriptionPlans(subscription) {
             let action = '<span class="subscription-plan-current">AKTYWNY PLAN</span>';
             if (planId !== activePlan) {
                 if (planId === SubscriptionConfig.SUBSCRIPTION_PLANS.FREE) {
-                    action = `<button type="button" class="subscription-plan-button is-secondary" data-billing-action="portal">Przejdź na FREE</button>`;
+                    action = ``;
                 } else if (hasPaidPlan) {
                     action = `<button type="button" class="subscription-plan-button" data-billing-action="portal">Zmień plan</button>`;
                 } else {

@@ -42,22 +42,35 @@
 
             <!-- Gemini AI settings -->
             <div class="setting-group" id="aiUsageSection" hidden>
-                <label>🤖 Kredyty AI</label>
+                <label id="aiUsagePlan">PLAN FREE</label>
                 <div class="glass-card ai-usage-card" id="aiUsageCard">
                     <div class="ai-usage-head">
                         <div>
-                            <div class="ai-usage-eyebrow" id="aiUsagePlan">PLAN FREE</div>
-                            <div class="ai-usage-title" id="aiUsageTitle">Sprawdzam wykorzystanie…</div>
+                            <div class="ai-usage-eyebrow" id="aiUsagePlan">AI</div>
+                            <div class="ai-usage-title" id="aiUsageTitle">Sprawdzam...</div>
                         </div>
-                        <div class="ai-usage-value" id="aiUsageValue">— / —</div>
+                        <div class="ai-usage-value" id="aiUsageValue">—</div>
                     </div>
                     <div class="ai-usage-track" role="progressbar" aria-label="Wykorzystanie kredytów AI"
                         aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="aiUsageTrack">
                         <div class="ai-usage-fill is-loading" id="aiUsageFill"></div>
                     </div>
+                    <div class="ai-usage-head" id="elevenLabsUsageSection">
+                        <div id="elevenLabsUsageCard">
+                            <div class="ai-usage-eyebrow"">Elevenlabs</div>
+                            <div class="ai-usage-title" id="elevenLabsUsageTitle">Sprawdzam...</div>
+                        </div>
+                        <div class="ai-usage-value" id="elevenLabsUsageValue">—</div>
+                    </div>
+                    <div class="ai-usage-track" role="progressbar" aria-label="Wykorzystanie znaków ElevenLabs"
+                        aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="elevenLabsUsageTrack">
+                        <div class="ai-usage-fill is-loading" id="elevenLabsUsageFill"></div>
+                    </div>
+
+
                     <div class="ai-usage-footer">
-                        <span id="aiUsageInfo">Limit odświeża się co miesiąc</span>
-                        <span class="ai-usage-remaining" id="aiUsageRemaining">Ładowanie…</span>
+                        <span class="ai-usage-remaining" id="aiUsageInfo">Limity odnawiają się co miesiąc</span>
+                       
                     </div>
                     <button type="button" class="ai-upgrade-btn" id="aiUpgradeButton" hidden>
                         Zobacz plany →
@@ -73,7 +86,7 @@
                             <div class="ai-usage-eyebrow" id="elevenLabsUsagePlan">PLAN FREE</div>
                             <div class="ai-usage-title" id="elevenLabsUsageTitle">Sprawdzam wykorzystanie…</div>
                         </div>
-                        <div class="ai-usage-value" id="elevenLabsUsageValue">— / —</div>
+                        <div class="ai-usage-value" id="elevenLabsUsageValue">—</div>
                     </div>
                     <div class="ai-usage-track" role="progressbar" aria-label="Wykorzystanie znaków ElevenLabs"
                         aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="elevenLabsUsageTrack">

@@ -1522,7 +1522,7 @@ body::before {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: safe center;
+    /* justify-content: safe center; */
     overflow-y: auto;
     overflow-x: hidden;
     perspective: 1200px;
@@ -2855,7 +2855,7 @@ html[data-lectoro-ai-limit-reached] .quiz-export-bottom {
 .stripe-billing-status {
     min-height: 14px;
     margin-top: 7px;
-    color: var(--text-muted);
+    color: var(--mint);
     font-size: 9px;
     line-height: 1.4;
 }

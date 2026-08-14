@@ -49,3 +49,33 @@ Dozwolone plany: `free`, `basic`, `pro`. Skrypt ustawia Custom Claim `plan` i
 informacyjną kopię pola w `users/{uid}`. Rozszerzenie wymusza odświeżenie tokenu
 podczas otwarcia ustawień, więc nowy plan trafi następnie do
 `chrome.storage.local`.
+
+## Usunięcie ręcznie nadanego planu
+
+Samo usunięcie `users/{uid}` nie usuwa planu z Firebase Auth Custom Claims.
+Żeby wyczyścić dokument sterujący `syncUserPlanClaim`, claim oraz pola
+subskrypcji bez usuwania konta i pozostałych danych użytkownika, uruchom:
+
+```powershell
+cd functions
+npm run plan:remove -- FIREBASE_UID
+```
+
+Możesz podać kilka UID-ów lub adresów e-mail:
+
+```powershell
+npm run plan:remove -- UID_1 UID_2 osoba@example.com
+```
+
+Najpierw można sprawdzić zakres zmian bez zapisu:
+
+```powershell
+npm run plan:remove -- --dry-run UID_1 UID_2
+```
+
+Opcja `--revoke-sessions` dodatkowo unieważnia tokeny odświeżania i wymaga od
+użytkowników ponownego logowania. Bez tej opcji wystarczy ponownie otworzyć
+ustawienia rozszerzenia, które wymuszają pobranie nowego tokenu.
+
+Skrypt nie anuluje aktywnej subskrypcji ani nie usuwa klienta w Stripe. Najpierw
+anuluj subskrypcję w Stripe; inaczej późniejszy webhook może ponownie nadać plan.
