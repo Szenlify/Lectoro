@@ -42,14 +42,8 @@ chrome.storage.local.get(
     (data) => {
         reviewDirection = data.reviewDirection;
         reviewSystemVoice = data.speechVoice;
-        // "random" used to mean a random ElevenLabs voice. Migrate that
-        // legacy value to the system voice; randomness is system-only now.
-        const legacyRandomElevenLabs = data.elVoiceId === "random";
-        ttsMode = legacyRandomElevenLabs ? "browser" : data.ttsMode;
-        reviewElVoiceId = legacyRandomElevenLabs ? "" : data.elVoiceId;
-        if (legacyRandomElevenLabs) {
-            void chrome.storage.local.set({ ttsMode, elVoiceId: "" });
-        }
+        ttsMode = data.ttsMode;
+        reviewElVoiceId = data.elVoiceId;
         updateDirBtnLabel();
         void updateReviewVoiceUI();
     },
@@ -102,7 +96,14 @@ function closeReviewVoiceMenu() {
 }
 
 function formatVoiceLabels(voice) {
-    const preferredKeys = ["age", "language", "accent", "use_case", "gender", "description"];
+    const preferredKeys = [
+        "age",
+        "language",
+        "accent",
+        "use_case",
+        "gender",
+        "description",
+    ];
     return preferredKeys
         .map((key) => voice?.labels?.[key])
         .filter(Boolean)
@@ -111,7 +112,10 @@ function formatVoiceLabels(voice) {
 }
 
 function selectedReviewVoice() {
-    return reviewElVoices.find((voice) => voice.voice_id === reviewElVoiceId) || null;
+    return (
+        reviewElVoices.find((voice) => voice.voice_id === reviewElVoiceId) ||
+        null
+    );
 }
 
 function syncReviewVoiceButton() {
@@ -119,27 +123,42 @@ function syncReviewVoiceButton() {
     const label = document.getElementById("reviewVoiceBtnLabel");
     const badge = document.getElementById("reviewVoiceAiBadge");
     const systemOption = document.getElementById("reviewBrowserVoiceOption");
-    const randomSystemOption = document.getElementById("reviewRandomSystemVoiceOption");
+    const randomSystemOption = document.getElementById(
+        "reviewRandomSystemVoiceOption",
+    );
     if (!btn || !label || !badge) return;
 
-    const enabled = !!reviewVoiceProfile &&
-        SubscriptionConfig.getPlanLimits(reviewVoiceProfile.plan).elevenLabs.enabled;
+    const enabled =
+        !!reviewVoiceProfile &&
+        SubscriptionConfig.getPlanLimits(reviewVoiceProfile.plan).elevenLabs
+            .enabled;
     const voice = selectedReviewVoice();
-    const usingElevenLabs = enabled && ttsMode === "elevenlabs" && !!reviewElVoiceId;
+    const usingElevenLabs =
+        enabled && ttsMode === "elevenlabs" && !!reviewElVoiceId;
+    const usingRandomElevenLabs =
+        usingElevenLabs && reviewElVoiceId === "random";
 
     btn.classList.toggle("is-elevenlabs", usingElevenLabs);
-    const usingRandomSystem = !usingElevenLabs && reviewSystemVoice === "random";
-    systemOption?.classList.toggle("active", !usingElevenLabs && !usingRandomSystem);
+    const usingRandomSystem =
+        !usingElevenLabs && reviewSystemVoice === "random";
+    systemOption?.classList.toggle(
+        "active",
+        !usingElevenLabs && !usingRandomSystem,
+    );
     randomSystemOption?.classList.toggle("active", usingRandomSystem);
     badge.classList.toggle("is-locked", !enabled);
     badge.textContent = usingElevenLabs ? "EL" : "AI";
     label.textContent = usingElevenLabs
-        ? voice?.name || "ElevenLabs"
+        ? usingRandomElevenLabs
+            ? "Losowy EL"
+            : voice?.name || "ElevenLabs"
         : usingRandomSystem
-            ? "Losowy"
-            : "Głos";
+          ? "Losowy"
+          : "Głos";
     btn.title = usingElevenLabs
-        ? `ElevenLabs: ${voice?.name || "wybrany głos"}`
+        ? usingRandomElevenLabs
+            ? "ElevenLabs: losowy głos dla nowych nagrań"
+            : `ElevenLabs: ${voice?.name || "wybrany głos"}`
         : "Wybierz głos powtórek";
 }
 
@@ -157,10 +176,12 @@ function renderFreeVoiceTeaser() {
             </div>
             <button type="button" class="review-voice-upgrade" id="reviewVoiceUpgrade">Odblokuj głosy ElevenLabs</button>
         </div>`;
-    content.querySelector("#reviewVoiceUpgrade")?.addEventListener("click", () => {
-        closeReviewVoiceMenu();
-        SubscriptionService.openPlans();
-    });
+    content
+        .querySelector("#reviewVoiceUpgrade")
+        ?.addEventListener("click", () => {
+            closeReviewVoiceMenu();
+            SubscriptionService.openPlans();
+        });
 }
 
 function renderElevenLabsVoiceSelect() {
@@ -180,6 +201,11 @@ function renderElevenLabsVoiceSelect() {
     placeholderOption.disabled = true;
     select.appendChild(placeholderOption);
 
+    const randomOption = document.createElement("option");
+    randomOption.value = "random";
+    randomOption.textContent = "✦ Losowy głos ElevenLabs";
+    select.appendChild(randomOption);
+
     reviewElVoices.forEach((voice) => {
         const option = document.createElement("option");
         option.value = voice.voice_id;
@@ -187,8 +213,12 @@ function renderElevenLabsVoiceSelect() {
         select.appendChild(option);
     });
 
-    if (ttsMode === "elevenlabs" && reviewElVoiceId &&
-        reviewElVoices.some((voice) => voice.voice_id === reviewElVoiceId)) {
+    if (
+        ttsMode === "elevenlabs" &&
+        reviewElVoiceId &&
+        (reviewElVoiceId === "random" ||
+            reviewElVoices.some((voice) => voice.voice_id === reviewElVoiceId))
+    ) {
         select.value = reviewElVoiceId;
     } else {
         select.value = "";
@@ -197,7 +227,14 @@ function renderElevenLabsVoiceSelect() {
     const meta = document.createElement("div");
     meta.className = "review-voice-meta";
     const updateMeta = () => {
-        const voice = reviewElVoices.find((item) => item.voice_id === select.value);
+        if (select.value === "random") {
+            meta.textContent =
+                "Nowe nagrania otrzymają losowy głos; zapisany cache nadal ma pierwszeństwo.";
+            return;
+        }
+        const voice = reviewElVoices.find(
+            (item) => item.voice_id === select.value,
+        );
         meta.textContent = voice
             ? formatVoiceLabels(voice) || "Naturalny głos ElevenLabs"
             : "Wybierz lektora, aby włączyć ElevenLabs.";
@@ -218,7 +255,12 @@ function renderElevenLabsVoiceSelect() {
         });
         updateMeta();
         syncReviewVoiceButton();
-        setReviewVoiceStatus("✓ Głos ElevenLabs włączony.", "ok");
+        setReviewVoiceStatus(
+            reviewElVoiceId === "random"
+                ? "✓ Losowy głos ElevenLabs jest włączony."
+                : "✓ Głos ElevenLabs włączony.",
+            "ok",
+        );
     });
 
     wrap.append(select, meta);
@@ -230,15 +272,21 @@ async function loadReviewElevenLabsVoices() {
     reviewVoicesLoading = true;
     setReviewVoiceStatus("Ładowanie głosów…");
     try {
-        reviewElVoices = await SubscriptionService.getElevenLabsVoices("review");
+        reviewElVoices =
+            await SubscriptionService.getElevenLabsVoices("review");
         renderElevenLabsVoiceSelect();
         setReviewVoiceStatus(
-            reviewElVoices.length ? `${reviewElVoices.length} głosów do wyboru` : "Brak dostępnych głosów.",
+            reviewElVoices.length
+                ? `${reviewElVoices.length} głosów do wyboru`
+                : "Brak dostępnych głosów.",
             reviewElVoices.length ? "" : "error",
         );
         syncReviewVoiceButton();
     } catch (error) {
-        setReviewVoiceStatus(error.message || "Nie udało się pobrać głosów.", "error");
+        setReviewVoiceStatus(
+            error.message || "Nie udało się pobrać głosów.",
+            "error",
+        );
     } finally {
         reviewVoicesLoading = false;
     }
@@ -249,11 +297,16 @@ async function updateReviewVoiceUI() {
         reviewVoiceProfile = await SubscriptionService.effectiveProfile(false);
     } catch (error) {
         reviewVoiceProfile = null;
-        setReviewVoiceStatus(error.message || "Nie udało się sprawdzić planu.", "error");
+        setReviewVoiceStatus(
+            error.message || "Nie udało się sprawdzić planu.",
+            "error",
+        );
     }
 
-    const enabled = !!reviewVoiceProfile &&
-        SubscriptionConfig.getPlanLimits(reviewVoiceProfile.plan).elevenLabs.enabled;
+    const enabled =
+        !!reviewVoiceProfile &&
+        SubscriptionConfig.getPlanLimits(reviewVoiceProfile.plan).elevenLabs
+            .enabled;
     if (!enabled) {
         if (ttsMode === "elevenlabs") {
             ttsMode = "browser";
@@ -266,40 +319,56 @@ async function updateReviewVoiceUI() {
     syncReviewVoiceButton();
 }
 
-document.getElementById("reviewVoiceBtn")?.addEventListener("click", async () => {
-    const menu = document.getElementById("reviewVoiceMenu");
-    const btn = document.getElementById("reviewVoiceBtn");
-    if (!menu || !btn) return;
-    const willOpen = menu.hidden;
-    menu.hidden = !willOpen;
-    btn.setAttribute("aria-expanded", String(willOpen));
-    if (!willOpen) return;
+document
+    .getElementById("reviewVoiceBtn")
+    ?.addEventListener("click", async () => {
+        const menu = document.getElementById("reviewVoiceMenu");
+        const btn = document.getElementById("reviewVoiceBtn");
+        if (!menu || !btn) return;
+        const willOpen = menu.hidden;
+        menu.hidden = !willOpen;
+        btn.setAttribute("aria-expanded", String(willOpen));
+        if (!willOpen) return;
 
-    await updateReviewVoiceUI();
-    const enabled = !!reviewVoiceProfile &&
-        SubscriptionConfig.getPlanLimits(reviewVoiceProfile.plan).elevenLabs.enabled;
-    if (enabled) await loadReviewElevenLabsVoices();
-});
+        await updateReviewVoiceUI();
+        const enabled =
+            !!reviewVoiceProfile &&
+            SubscriptionConfig.getPlanLimits(reviewVoiceProfile.plan).elevenLabs
+                .enabled;
+        if (enabled) await loadReviewElevenLabsVoices();
+    });
 
-document.getElementById("reviewVoiceClose")?.addEventListener("click", closeReviewVoiceMenu);
+document
+    .getElementById("reviewVoiceClose")
+    ?.addEventListener("click", closeReviewVoiceMenu);
 
-document.getElementById("reviewBrowserVoiceOption")?.addEventListener("click", async () => {
-    ttsMode = "browser";
-    if (reviewSystemVoice === "random") reviewSystemVoice = "";
-    await chrome.storage.local.set({ ttsMode, speechVoice: reviewSystemVoice });
-    if (reviewElVoices.length) renderElevenLabsVoiceSelect();
-    syncReviewVoiceButton();
-    setReviewVoiceStatus("✓ Używasz głosu systemowego.", "ok");
-});
+document
+    .getElementById("reviewBrowserVoiceOption")
+    ?.addEventListener("click", async () => {
+        ttsMode = "browser";
+        if (reviewSystemVoice === "random") reviewSystemVoice = "";
+        await chrome.storage.local.set({
+            ttsMode,
+            speechVoice: reviewSystemVoice,
+        });
+        if (reviewElVoices.length) renderElevenLabsVoiceSelect();
+        syncReviewVoiceButton();
+        setReviewVoiceStatus("✓ Używasz głosu systemowego.", "ok");
+    });
 
-document.getElementById("reviewRandomSystemVoiceOption")?.addEventListener("click", async () => {
-    ttsMode = "browser";
-    reviewSystemVoice = "random";
-    await chrome.storage.local.set({ ttsMode, speechVoice: reviewSystemVoice });
-    if (reviewElVoices.length) renderElevenLabsVoiceSelect();
-    syncReviewVoiceButton();
-    setReviewVoiceStatus("✓ Losowy głos systemowy jest włączony.", "ok");
-});
+document
+    .getElementById("reviewRandomSystemVoiceOption")
+    ?.addEventListener("click", async () => {
+        ttsMode = "browser";
+        reviewSystemVoice = "random";
+        await chrome.storage.local.set({
+            ttsMode,
+            speechVoice: reviewSystemVoice,
+        });
+        if (reviewElVoices.length) renderElevenLabsVoiceSelect();
+        syncReviewVoiceButton();
+        setReviewVoiceStatus("✓ Losowy głos systemowy jest włączony.", "ok");
+    });
 
 document.addEventListener("click", (event) => {
     const picker = document.getElementById("reviewVoicePicker");
@@ -517,6 +586,7 @@ function renderQuestion(w) {
         ? w.sentenceTranslated || ""
         : w.sentence || "";
     const wordClass = isReverse ? "__qt_translated" : "__qt_original";
+    const cacheAttrs = `data-cache-first="true" data-cache-not-before="${Number(w.ttsCacheInvalidatedAt || 0)}"`;
     const sr = w.sr || { step: 0, interval: 0 };
     const sentenceHtml = showSentence
         ? `
@@ -526,9 +596,6 @@ function renderQuestion(w) {
                         showWord,
                         wordClass,
                     )}"</span>
-                    <button class="review-speak-btn review-speak-sm" data-text="${escapeAttr(
-                        showSentence,
-                    )}" data-lang="${escapeAttr(showLang)}" title="Odczytaj zdanie">${SPEAK_SVG}</button>
                 </div>`
         : "";
     card.innerHTML = `
@@ -538,7 +605,7 @@ function renderQuestion(w) {
                         <span class="review-word ${wordClass}">${escapeHtml(showWord)}</span>
                         <button class="review-speak-btn" data-text="${escapeAttr(
                             buildReviewSpeakText(showWord, showSentence),
-                        )}" data-lang="${escapeAttr(showLang)}" title="Odczytaj">${SPEAK_SVG}</button>
+                        )}" data-lang="${escapeAttr(showLang)}" ${cacheAttrs} title="Odczytaj">${SPEAK_SVG}</button>
                     </div>
                     ${sentenceHtml}
                     ${w.screenshot ? `<div class="review-screenshot"><img src="${w.screenshot}" alt="Screenshot" class="review-screenshot-img"></div>` : ""}
@@ -707,7 +774,9 @@ async function aiTranslateReviewCard() {
         // AI-generated text always uses the free system/browser voice. This
         // avoids sending translations or explanations to ElevenLabs even when
         // that provider is selected for ordinary review-card speech.
-        const speakText = [wordTr, sentTr, explanation].filter(Boolean).join(". ");
+        const speakText = [wordTr, sentTr, explanation]
+            .filter(Boolean)
+            .join(". ");
         if (speakText) {
             stopPopupSpeak();
             popupSpeak(speakText, tgtL, {
@@ -756,9 +825,13 @@ function renderReviewTranslationResult(panel, result) {
         <div class="review-ai-translate-label">Tłumaczenie AI</div>
         <div class="review-ai-result-row">
             <div class="review-ai-translate-word">${escapeHtml(result.wordTr || "—")}</div>
-            ${speakText ? `
+            ${
+                speakText
+                    ? `
                 <button class="review-speak-btn review-speak-sm" data-text="${escapeAttr(speakText)}" data-lang="${escapeAttr(result.targetLang)}" data-force-browser-tts="true" data-use-configured-rate="true" title="Odczytaj tłumaczenie i wyjaśnienie głosem systemowym" aria-label="Odczytaj tłumaczenie i wyjaśnienie głosem systemowym">${SPEAK_SVG}</button>
-            ` : ""}
+            `
+                    : ""
+            }
         </div>
         ${result.sentTr ? `<div class="review-ai-translate-sentence">"${escapeHtml(result.sentTr)}"</div>` : ""}
         ${result.explanation ? `<div class="review-ai-translate-explanation">${escapeHtml(result.explanation)}</div>` : ""}
@@ -775,7 +848,8 @@ function restoreReviewAiPanels(w) {
     const state = getReviewAiState(w);
     if (state.translation.status === "done" && state.translation.result) {
         const panel = ensureReviewAiPanel("reviewAiTranslate");
-        if (panel) renderReviewTranslationResult(panel, state.translation.result);
+        if (panel)
+            renderReviewTranslationResult(panel, state.translation.result);
     } else if (state.translation.status === "loading") {
         const panel = ensureReviewAiPanel("reviewAiTranslate");
         if (panel) {
@@ -796,6 +870,7 @@ function renderAnswer(w) {
     const aLang = isReverse ? srcL : tgtL;
     const aSentence = isReverse ? w.sentence || "" : w.sentenceTranslated || "";
     const aWordClass = isReverse ? "__qt_original" : "__qt_translated";
+    const cacheAttrs = `data-cache-first="true" data-cache-not-before="${Number(w.ttsCacheInvalidatedAt || 0)}"`;
 
     // Same layout as the question side (review-word-row / review-context-row
     // / screenshot) so the answer visually *replaces* the original word in
@@ -808,7 +883,7 @@ function renderAnswer(w) {
                     <span class="review-word ${aWordClass}">${escapeHtml(aWord)}</span>
                     <button class="review-speak-btn" data-text="${escapeAttr(
                         buildReviewSpeakText(aWord, aSentence),
-                    )}" data-lang="${escapeAttr(aLang)}" title="Odczytaj">${SPEAK_SVG}</button>
+                    )}" data-lang="${escapeAttr(aLang)}" ${cacheAttrs} title="Odczytaj">${SPEAK_SVG}</button>
                 </div>
                 ${
                     aSentence
@@ -819,7 +894,7 @@ function renderAnswer(w) {
                         aWord,
                         aWordClass,
                     )}"</span>
-                    <button class="review-speak-btn review-speak-sm" data-text="${escapeAttr(aSentence)}" data-lang="${escapeAttr(aLang)}" title="Odczytaj zdanie">${SPEAK_SVG}</button>
+                    
                 </div>`
                         : ""
                 }
@@ -847,7 +922,6 @@ function renderAnswer(w) {
     if (shotImg && !shotImg.complete) {
         shotImg.addEventListener("load", scrollToTop, { once: true });
     }
-
 }
 
 // ── Edit form in review ───────────────────────────────────────────
@@ -897,6 +971,8 @@ function showReviewEditForm(w, returnToAnswer = reviewAnswerShown) {
         w.translated = newTranslated;
         w.sentence = newSentence;
         w.sentenceTranslated = newSentenceTr;
+        const editedAt = Date.now();
+        w.ttsCacheInvalidatedAt = editedAt;
 
         // Persist to storage (updates word list too)
         chrome.storage.local.get({ savedWords: [] }, (data) => {
@@ -910,7 +986,8 @@ function showReviewEditForm(w, returnToAnswer = reviewAnswerShown) {
                 words[idx].translated = newTranslated;
                 words[idx].sentence = newSentence;
                 words[idx].sentenceTranslated = newSentenceTr;
-                words[idx].updatedAt = Date.now();
+                words[idx].updatedAt = editedAt;
+                words[idx].ttsCacheInvalidatedAt = editedAt;
                 w.id = words[idx].id;
                 chrome.storage.local.set({ savedWords: words }, () => {
                     if (chrome.runtime.lastError) {

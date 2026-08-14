@@ -11,9 +11,39 @@ let popupElAudio = null;
 // the user already moved on to a different card.
 let popupSpeakSeq = 0;
 let popupElevenLabsProviderError = null;
+let lastRandomElevenLabsVoiceId = "";
+let cachedRandomElevenLabsVoices = [];
 
 function clearPopupElevenLabsProviderBlock() {
     popupElevenLabsProviderError = null;
+}
+
+async function pickRandomElevenLabsVoiceId() {
+    let voices =
+        typeof reviewElVoices !== "undefined" && reviewElVoices.length
+            ? reviewElVoices
+            : cachedRandomElevenLabsVoices;
+    if (!voices.length) {
+        voices = await SubscriptionService.getElevenLabsVoices("review");
+        cachedRandomElevenLabsVoices = voices;
+    }
+    const voiceIds = voices
+        .map((voice) => voice?.voice_id)
+        .filter((voiceId) => voiceId && voiceId !== "random");
+    if (!voiceIds.length) {
+        throw new Error("Brak dostępnych głosów ElevenLabs.");
+    }
+
+    const candidates =
+        voiceIds.length > 1
+            ? voiceIds.filter(
+                  (voiceId) => voiceId !== lastRandomElevenLabsVoiceId,
+              )
+            : voiceIds;
+    const voiceId =
+        candidates[Math.floor(Math.random() * candidates.length)];
+    lastRandomElevenLabsVoiceId = voiceId;
+    return voiceId;
 }
 
 /** Immediately stop any in-progress popup TTS (utterance or audio). */
@@ -33,7 +63,12 @@ function stopPopupSpeak() {
 function popupSpeak(
     text,
     lang,
-    { forceBrowser = false, useConfiguredRate = false } = {},
+    {
+        forceBrowser = false,
+        useConfiguredRate = false,
+        cacheFirst = false,
+        cacheNotBefore = 0,
+    } = {},
 ) {
     const mySeq = ++popupSpeakSeq;
     window.speechSynthesis.cancel();
@@ -58,6 +93,39 @@ function popupSpeak(
                 }
                 const volume =
                     data.ttsVolume !== undefined ? data.ttsVolume : 1;
+                const cleanText = cleanTextForTTS(text);
+
+                const playAudioBlob = async (blob) => {
+                    if (mySeq !== popupSpeakSeq) return null;
+                    const url = URL.createObjectURL(blob);
+                    popupElAudio = new Audio(url);
+                    popupElAudio.volume = volume;
+                    popupElAudio.addEventListener(
+                        "ended",
+                        () => URL.revokeObjectURL(url),
+                        { once: true },
+                    );
+                    await popupElAudio.play();
+                    return popupElAudio;
+                };
+
+                // Review cards keep the voice that was already synthesized
+                // for their text. This lookup intentionally happens before
+                // checking the currently selected system/ElevenLabs voice.
+                if (!forceBrowser && cacheFirst && cleanText) {
+                    const cached = await AudioCache.findByText(cleanText, {
+                        notBefore: cacheNotBefore,
+                    });
+                    if (cached?.blob) {
+                        const audio = await playAudioBlob(cached.blob);
+                        if (!audio) {
+                            resolve({ type: "none", obj: null });
+                            return;
+                        }
+                        resolve({ type: "audio", obj: audio });
+                        return;
+                    }
+                }
 
                 // ElevenLabs path
                 const useElevenLabs =
@@ -68,22 +136,23 @@ function popupSpeak(
                 let elFailed = false;
                 if (useElevenLabs) {
                     try {
-                        const targetVoiceId = data.elVoiceId;
-                        if (targetVoiceId === "random") {
-                            throw new Error("Losowy głos jest dostępny tylko dla głosów systemowych.");
-                        }
+                        const targetVoiceId =
+                            data.elVoiceId === "random"
+                                ? await pickRandomElevenLabsVoiceId()
+                                : data.elVoiceId;
 
                         if (mySeq !== popupSpeakSeq) {
                             resolve({ type: "none", obj: null });
                             return;
                         }
 
-                        const cleanText = cleanTextForTTS(text);
                         const cacheKey = `${cleanText}|${targetVoiceId}`;
                         // Cache is deliberately first: cached ElevenLabs audio
                         // remains available after the monthly/provider quota is
                         // exhausted and causes no network/API request.
-                        let blob = await AudioCache.get(cacheKey);
+                        let blob = await AudioCache.get(cacheKey, {
+                            notBefore: cacheNotBefore,
+                        });
 
                         if (!blob) {
                             if (popupElevenLabsProviderError) {
@@ -104,19 +173,15 @@ function popupSpeak(
                             resolve({ type: "none", obj: null });
                             return;
                         }
-                        const url = URL.createObjectURL(blob);
-                        popupElAudio = new Audio(url);
-                        popupElAudio.volume = volume;
-                        popupElAudio.addEventListener(
-                            "ended",
-                            () => URL.revokeObjectURL(url),
-                            { once: true },
-                        );
-                        await popupElAudio.play();
+                        const audio = await playAudioBlob(blob);
+                        if (!audio) {
+                            resolve({ type: "none", obj: null });
+                            return;
+                        }
                         if (typeof setReviewVoiceStatus === "function") {
                             setReviewVoiceStatus("");
                         }
-                        resolve({ type: "audio", obj: popupElAudio });
+                        resolve({ type: "audio", obj: audio });
                         return;
                     } catch (err) {
                         console.warn(
@@ -183,6 +248,10 @@ function attachReviewSpeakHandlers(card) {
                             btn.dataset.forceBrowserTts === "true",
                         useConfiguredRate:
                             btn.dataset.useConfiguredRate === "true",
+                        cacheFirst: btn.dataset.cacheFirst === "true",
+                        cacheNotBefore: Number(
+                            btn.dataset.cacheNotBefore || 0,
+                        ),
                     },
                 );
                 if (result.type === "utter") {

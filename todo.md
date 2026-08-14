@@ -16,7 +16,6 @@
 
 9. dodaj spiner w trakcie otwierania Stripe do 
 
-10 przy usowaniu slow/ zdan w zakladce slowa jak klikne X to niech zapyta czy na pewno usunac oraz obok X niech bedzie jeszcze ikonka edytuj zeby edytowac slowo/zdanie
 
 11. w settings w divie kredytow jest napis Limit odnawia się co miesiąc. podaj date obok kiedy dokladnie sie odnowi na kolor var ghost
 

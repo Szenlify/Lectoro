@@ -254,6 +254,9 @@ const FirebaseSync = (() => {
         f.updatedAt = {
             integerValue: String(word.updatedAt || word.timestamp || 0),
         };
+        f.ttsCacheInvalidatedAt = {
+            integerValue: String(word.ttsCacheInvalidatedAt || 0),
+        };
 
         // SR data (flattened for simpler REST handling)
         if (word.sr) {
@@ -284,6 +287,9 @@ const FirebaseSync = (() => {
             timestamp: parseInt(fields.timestamp?.integerValue || "0"),
             downloaded: fields.downloaded?.booleanValue || false,
             updatedAt: parseInt(fields.updatedAt?.integerValue || "0"),
+            ttsCacheInvalidatedAt: parseInt(
+                fields.ttsCacheInvalidatedAt?.integerValue || "0",
+            ),
         };
 
         if (fields.sr_step || fields.sr_nextReview) {

@@ -239,11 +239,13 @@ function saveWordEdits(word, edits) {
             return;
         }
 
+        const editedAt = Date.now();
         words[index] = {
             ...words[index],
             ...edits,
             id: words[index].id || SharedUtils.generateId(),
-            updatedAt: Date.now(),
+            updatedAt: editedAt,
+            ttsCacheInvalidatedAt: editedAt,
         };
         chrome.storage.local.set({ savedWords: words }, () => {
             if (chrome.runtime.lastError) {

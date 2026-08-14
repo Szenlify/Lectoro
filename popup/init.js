@@ -172,6 +172,10 @@ function autoSpeakReviewCard(w, answerVisible = false) {
     const srcL = w.srcLang || "en";
     const tgtL = w.tgtLang || "pl";
     const isReverse = reviewDirection === "reverse";
+    const cacheOptions = {
+        cacheFirst: true,
+        cacheNotBefore: Number(w.ttsCacheInvalidatedAt || 0),
+    };
     if (!answerVisible) {
         const questionWord = isReverse ? w.translated : w.original;
         const questionSentence = isReverse
@@ -181,6 +185,7 @@ function autoSpeakReviewCard(w, answerVisible = false) {
         popupSpeak(
             buildReviewSpeakText(questionWord, questionSentence),
             questionLang,
+            cacheOptions,
         ).catch(() => {});
     } else {
         const answerWord = isReverse ? w.original : w.translated;
@@ -191,6 +196,7 @@ function autoSpeakReviewCard(w, answerVisible = false) {
         popupSpeak(
             buildReviewSpeakText(answerWord, answerSentence),
             answerLang,
+            cacheOptions,
         ).catch(() => {});
     }
 }
