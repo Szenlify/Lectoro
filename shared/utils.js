@@ -112,6 +112,10 @@ const SharedUtils = {
         );
         if (!langVoices.length) return null;
 
+        if (savedVoiceName === "random") {
+            return langVoices[Math.floor(Math.random() * langVoices.length)];
+        }
+
         return langVoices[0];
     },
 

@@ -442,8 +442,6 @@
 
             chrome.storage.local.get(
                 {
-                    ttsMode: "browser",
-                    elVoiceId: "",
                     speechVoice: "",
                     speechRate: 1.3,
                     ttsVolume: 1,
@@ -451,41 +449,20 @@
                 async (data) => {
                     const vol =
                         data.ttsVolume !== undefined ? data.ttsVolume : 1;
-                    if (
-                        data.ttsMode === "elevenlabs" &&
-                        data.elVoiceId
-                    ) {
-                        const audio = await QT.speak(text, lang);
-                        if (audio instanceof HTMLAudioElement) {
-                            audio.volume = vol;
-                            audio.onended = () => {
-                                idx++;
-                                readNext();
-                            };
-                            audio.onerror = () => cleanupReading();
-                        } else if (audio) {
-                            audio.onend = () => {
-                                idx++;
-                                readNext();
-                            };
-                            audio.onerror = () => cleanupReading();
-                        } else {
-                            cleanupReading();
-                        }
-                    } else {
-                        const utter = new SpeechSynthesisUtterance(text);
-                        utter.lang = lang;
-                        utter.rate = data.speechRate;
-                        utter.volume = vol;
-                        const voice = pickBestVoice(data.speechVoice, lang);
-                        if (voice) utter.voice = voice;
-                        utter.onend = () => {
-                            idx++;
-                            readNext();
-                        };
-                        utter.onerror = () => cleanupReading();
-                        window.speechSynthesis.speak(utter);
-                    }
+                    // Page/subtitle reading is always local system TTS.
+                    // ElevenLabs is reserved exclusively for Review cards.
+                    const utter = new SpeechSynthesisUtterance(text);
+                    utter.lang = lang;
+                    utter.rate = data.speechRate;
+                    utter.volume = vol;
+                    const voice = pickBestVoice(data.speechVoice, lang);
+                    if (voice) utter.voice = voice;
+                    utter.onend = () => {
+                        idx++;
+                        readNext();
+                    };
+                    utter.onerror = () => cleanupReading();
+                    window.speechSynthesis.speak(utter);
                 },
             );
         }

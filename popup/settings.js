@@ -54,7 +54,9 @@ wordCloudModeToggle.addEventListener("change", () => {
 // ── Populate voices ───────────────────────────────────────────────
 function loadVoices(selectedVoice) {
     const voices = window.speechSynthesis.getVoices();
-    voiceSelect.innerHTML = '<option value="">🔊 Domyślny</option>';
+    voiceSelect.innerHTML = `
+        <option value="">🔊 Domyślny</option>
+        <option value="random">✦ Losowy głos systemowy</option>`;
     voices
         .filter((v) => /google/i.test(v.name))
         .forEach((v) => {
@@ -64,6 +66,9 @@ function loadVoices(selectedVoice) {
             if (v.name === selectedVoice) opt.selected = true;
             voiceSelect.appendChild(opt);
         });
+    if ([...voiceSelect.options].some((option) => option.value === selectedVoice)) {
+        voiceSelect.value = selectedVoice;
+    }
 }
 
 // Voices may load async

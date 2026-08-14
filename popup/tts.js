@@ -10,6 +10,11 @@ let popupElAudio = null;
 // newer call has superseded it, so a stale card's audio never starts after
 // the user already moved on to a different card.
 let popupSpeakSeq = 0;
+let popupElevenLabsProviderError = null;
+
+function clearPopupElevenLabsProviderBlock() {
+    popupElevenLabsProviderError = null;
+}
 
 /** Immediately stop any in-progress popup TTS (utterance or audio). */
 function stopPopupSpeak() {
@@ -56,18 +61,9 @@ function popupSpeak(text, lang) {
                 let elFailed = false;
                 if (useElevenLabs) {
                     try {
-                        let targetVoiceId = data.elVoiceId;
-
-                        // Pobierz listę głosów i wylosuj jeden, jeśli wybrano tryb losowy
+                        const targetVoiceId = data.elVoiceId;
                         if (targetVoiceId === "random") {
-                            const voices = await SubscriptionService.getElevenLabsVoices();
-                            if (voices.length > 0) {
-                                const randomVoice =
-                                    voices[Math.floor(Math.random() * voices.length)];
-                                targetVoiceId = randomVoice.voice_id;
-                            } else {
-                                throw new Error("Brak dostępnych głosów ElevenLabs.");
-                            }
+                            throw new Error("Losowy głos jest dostępny tylko dla głosów systemowych.");
                         }
 
                         if (mySeq !== popupSpeakSeq) {
@@ -76,15 +72,24 @@ function popupSpeak(text, lang) {
                         }
 
                         const cleanText = cleanTextForTTS(text);
-                        const validation = await SubscriptionService.checkElevenLabs(cleanText);
-                        SubscriptionConfig.assertAllowed(validation);
                         const cacheKey = `${cleanText}|${targetVoiceId}`;
+                        // Cache is deliberately first: cached ElevenLabs audio
+                        // remains available after the monthly/provider quota is
+                        // exhausted and causes no network/API request.
                         let blob = await AudioCache.get(cacheKey);
 
                         if (!blob) {
+                            if (popupElevenLabsProviderError) {
+                                const blocked = new Error(popupElevenLabsProviderError.message);
+                                blocked.code = popupElevenLabsProviderError.code;
+                                throw blocked;
+                            }
+                            const validation = await SubscriptionService.checkElevenLabs(cleanText);
+                            SubscriptionConfig.assertAllowed(validation);
                             blob = await SubscriptionService.synthesizeElevenLabs(
                                 cleanText,
                                 targetVoiceId,
+                                "review",
                             );
                             await AudioCache.set(cacheKey, blob);
                         }
@@ -111,6 +116,15 @@ function popupSpeak(text, lang) {
                             "[Lectoro] ElevenLabs popup TTS failed:",
                             err.message || err,
                         );
+                        if ([
+                            "ELEVENLABS_PROVIDER_DISABLED",
+                            "ELEVENLABS_PROVIDER_QUOTA",
+                        ].includes(err?.code)) {
+                            popupElevenLabsProviderError = {
+                                code: err.code,
+                                message: err.message,
+                            };
+                        }
                         if (typeof reportReviewVoiceFailure === "function") {
                             await reportReviewVoiceFailure(err);
                         }

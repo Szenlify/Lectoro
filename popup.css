@@ -484,7 +484,7 @@ body::before {
 
 .toggle-label {
     font-size: 13px;
-    color: var(--text-secondary);
+    color: var(--text-primary);
     font-weight: 500;
 }
 
@@ -540,7 +540,7 @@ body::before {
 
 .toggle-desc {
     font-size: 11px;
-    color: var(--text-ghost);
+    color: var(--text-secondary);
     margin-top: 10px;
     line-height: 1.6;
 }

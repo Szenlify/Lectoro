@@ -79,3 +79,29 @@ ustawienia rozszerzenia, które wymuszają pobranie nowego tokenu.
 
 Skrypt nie anuluje aktywnej subskrypcji ani nie usuwa klienta w Stripe. Najpierw
 anuluj subskrypcję w Stripe; inaczej późniejszy webhook może ponownie nadać plan.
+
+Maksimum przy 50% marży liczonej tylko względem ElevenLabs
+Plan Cena Budżet kosztowy 50% Maksymalny limit
+BASIC $7.99 $3.995 79 900 znaków
+PRO $19.99 $9.995 199 900 znaków
+
+Tych limitów nie polecam, ponieważ nie zostawiają miejsca na Stripe, VAT, Firebase, Gemini, zwroty i promocje.
+Zalecane bezpieczne limity
+Plan Limit miesięczny Maks. koszt ElevenLabs Marża przed pozostałymi kosztami
+BASIC 40 000 znaków $2.00 75%
+PRO 100 000 znaków $5.00 75%
+
+Pozostaje wtedy około 25% ceny na pozostałe koszty, dzięki czemu docelowa marża około 50% jest znacznie bardziej realna.
+Ustawiłbym również:
+BASIC: maksymalnie 2 000 znaków na jedno żądanie,
+PRO: maksymalnie 5 000 znaków na jedno żądanie.
+Docelowa konfiguracja:
+BASIC: {
+maxCharactersPerRequest: 2000,
+charactersPerMonth: 40000,
+}
+
+PRO: {
+maxCharactersPerRequest: 5000,
+charactersPerMonth: 100000,
+}

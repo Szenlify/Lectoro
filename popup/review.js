@@ -21,6 +21,7 @@ let _reviewQueueStale = false; // set when a background sync happens mid-session
 //                      "reverse" = show translation, guess original
 let reviewDirection = "normal";
 let ttsMode = "browser";
+let reviewSystemVoice = "";
 let reviewElVoiceId = "";
 let reviewElVoices = [];
 let reviewVoiceProfile = null;
@@ -28,11 +29,23 @@ let reviewVoicesLoading = false;
 
 // Load the saved review direction and voice setting.
 chrome.storage.local.get(
-    { reviewDirection: "normal", ttsMode: "browser", elVoiceId: "" },
+    {
+        reviewDirection: "normal",
+        ttsMode: "browser",
+        speechVoice: "",
+        elVoiceId: "",
+    },
     (data) => {
         reviewDirection = data.reviewDirection;
-        ttsMode = data.ttsMode;
-        reviewElVoiceId = data.elVoiceId;
+        reviewSystemVoice = data.speechVoice;
+        // "random" used to mean a random ElevenLabs voice. Migrate that
+        // legacy value to the system voice; randomness is system-only now.
+        const legacyRandomElevenLabs = data.elVoiceId === "random";
+        ttsMode = legacyRandomElevenLabs ? "browser" : data.ttsMode;
+        reviewElVoiceId = legacyRandomElevenLabs ? "" : data.elVoiceId;
+        if (legacyRandomElevenLabs) {
+            void chrome.storage.local.set({ ttsMode, elVoiceId: "" });
+        }
         updateDirBtnLabel();
         void updateReviewVoiceUI();
     },
@@ -68,18 +81,9 @@ function setReviewVoiceStatus(message = "", type = "") {
 }
 
 async function reportReviewVoiceFailure(error) {
-    const useSystemVoice = [
-        "ELEVENLABS_PROVIDER_DISABLED",
-        "ELEVENLABS_PROVIDER_QUOTA",
-        "ELEVENLABS_REQUEST_FAILED",
-        "ELEVENLABS_MONTHLY_LIMIT_REACHED",
-    ].includes(error?.code);
-    if (useSystemVoice) {
-        ttsMode = "browser";
-        await chrome.storage.local.set({ ttsMode });
-        if (reviewElVoices.length) renderElevenLabsVoiceSelect();
-        syncReviewVoiceButton();
-    }
+    // Keep the chosen ElevenLabs voice active. popupSpeak checks its cache
+    // before limits/provider state, so cached recordings remain playable and
+    // only an uncached phrase falls back to the system voice.
     setReviewVoiceStatus(
         `${error?.message || "ElevenLabs jest niedostępny."} Używam głosu systemowego.`,
         "error",
@@ -111,6 +115,7 @@ function syncReviewVoiceButton() {
     const label = document.getElementById("reviewVoiceBtnLabel");
     const badge = document.getElementById("reviewVoiceAiBadge");
     const systemOption = document.getElementById("reviewBrowserVoiceOption");
+    const randomSystemOption = document.getElementById("reviewRandomSystemVoiceOption");
     if (!btn || !label || !badge) return;
 
     const enabled = !!reviewVoiceProfile &&
@@ -119,16 +124,18 @@ function syncReviewVoiceButton() {
     const usingElevenLabs = enabled && ttsMode === "elevenlabs" && !!reviewElVoiceId;
 
     btn.classList.toggle("is-elevenlabs", usingElevenLabs);
-    systemOption?.classList.toggle("active", !usingElevenLabs);
+    const usingRandomSystem = !usingElevenLabs && reviewSystemVoice === "random";
+    systemOption?.classList.toggle("active", !usingElevenLabs && !usingRandomSystem);
+    randomSystemOption?.classList.toggle("active", usingRandomSystem);
     badge.classList.toggle("is-locked", !enabled);
     badge.textContent = usingElevenLabs ? "EL" : "AI";
     label.textContent = usingElevenLabs
-        ? reviewElVoiceId === "random"
+        ? voice?.name || "ElevenLabs"
+        : usingRandomSystem
             ? "Losowy"
-            : voice?.name || "ElevenLabs"
-        : "Głos";
+            : "Głos";
     btn.title = usingElevenLabs
-        ? `ElevenLabs: ${voice?.name || "losowy głos"}`
+        ? `ElevenLabs: ${voice?.name || "wybrany głos"}`
         : "Wybierz głos powtórek";
 }
 
@@ -169,11 +176,6 @@ function renderElevenLabsVoiceSelect() {
     placeholderOption.disabled = true;
     select.appendChild(placeholderOption);
 
-    const randomOption = document.createElement("option");
-    randomOption.value = "random";
-    randomOption.textContent = "✦ Losowy głos przy każdej karcie";
-    select.appendChild(randomOption);
-
     reviewElVoices.forEach((voice) => {
         const option = document.createElement("option");
         option.value = voice.voice_id;
@@ -182,7 +184,7 @@ function renderElevenLabsVoiceSelect() {
     });
 
     if (ttsMode === "elevenlabs" && reviewElVoiceId &&
-        (reviewElVoiceId === "random" || reviewElVoices.some((voice) => voice.voice_id === reviewElVoiceId))) {
+        reviewElVoices.some((voice) => voice.voice_id === reviewElVoiceId)) {
         select.value = reviewElVoiceId;
     } else {
         select.value = "";
@@ -191,10 +193,6 @@ function renderElevenLabsVoiceSelect() {
     const meta = document.createElement("div");
     meta.className = "review-voice-meta";
     const updateMeta = () => {
-        if (select.value === "random") {
-            meta.textContent = "Inny naturalny głos przy każdej powtórce.";
-            return;
-        }
         const voice = reviewElVoices.find((item) => item.voice_id === select.value);
         meta.textContent = voice
             ? formatVoiceLabels(voice) || "Naturalny głos ElevenLabs"
@@ -205,6 +203,11 @@ function renderElevenLabsVoiceSelect() {
     select.addEventListener("change", async () => {
         reviewElVoiceId = select.value;
         ttsMode = "elevenlabs";
+        // A deliberate re-selection is also an explicit retry after the
+        // provider account has been topped up or re-enabled.
+        if (typeof clearPopupElevenLabsProviderBlock === "function") {
+            clearPopupElevenLabsProviderBlock();
+        }
         await chrome.storage.local.set({
             ttsMode,
             elVoiceId: reviewElVoiceId,
@@ -223,7 +226,7 @@ async function loadReviewElevenLabsVoices() {
     reviewVoicesLoading = true;
     setReviewVoiceStatus("Ładowanie głosów…");
     try {
-        reviewElVoices = await SubscriptionService.getElevenLabsVoices();
+        reviewElVoices = await SubscriptionService.getElevenLabsVoices("review");
         renderElevenLabsVoiceSelect();
         setReviewVoiceStatus(
             reviewElVoices.length ? `${reviewElVoices.length} głosów do wyboru` : "Brak dostępnych głosów.",
@@ -278,10 +281,20 @@ document.getElementById("reviewVoiceClose")?.addEventListener("click", closeRevi
 
 document.getElementById("reviewBrowserVoiceOption")?.addEventListener("click", async () => {
     ttsMode = "browser";
-    await chrome.storage.local.set({ ttsMode });
+    if (reviewSystemVoice === "random") reviewSystemVoice = "";
+    await chrome.storage.local.set({ ttsMode, speechVoice: reviewSystemVoice });
     if (reviewElVoices.length) renderElevenLabsVoiceSelect();
     syncReviewVoiceButton();
     setReviewVoiceStatus("✓ Używasz głosu systemowego.", "ok");
+});
+
+document.getElementById("reviewRandomSystemVoiceOption")?.addEventListener("click", async () => {
+    ttsMode = "browser";
+    reviewSystemVoice = "random";
+    await chrome.storage.local.set({ ttsMode, speechVoice: reviewSystemVoice });
+    if (reviewElVoices.length) renderElevenLabsVoiceSelect();
+    syncReviewVoiceButton();
+    setReviewVoiceStatus("✓ Losowy głos systemowy jest włączony.", "ok");
 });
 
 document.addEventListener("click", (event) => {

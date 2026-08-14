@@ -12,6 +12,7 @@ const {
     checkAiLimit,
     checkElevenLabsLimit,
 } = require("./subscription-config");
+const { isReviewContext } = require("./elevenlabs-policy");
 
 admin.initializeApp();
 setGlobalOptions({ region: "europe-west1" });
@@ -228,6 +229,12 @@ exports.geminiProxy = onRequest(
         }
 
         if (req.body?.action === "elevenLabsVoices") {
+            if (!isReviewContext(req.body?.context)) {
+                return res.status(403).json({
+                    error: "Głosy ElevenLabs są dostępne wyłącznie w powtórkach.",
+                    code: "ELEVENLABS_REVIEW_ONLY",
+                });
+            }
             if (!getPlanLimits(claimedPlan).elevenLabs.enabled) {
                 return res.status(403).json({
                     error: "ElevenLabs nie jest dostępny w planie FREE.",
@@ -257,6 +264,12 @@ exports.geminiProxy = onRequest(
         }
 
         if (req.body?.action === "synthesizeElevenLabs") {
+            if (!isReviewContext(req.body?.context)) {
+                return res.status(403).json({
+                    error: "ElevenLabs jest dostępny wyłącznie w powtórkach.",
+                    code: "ELEVENLABS_REVIEW_ONLY",
+                });
+            }
             const text = typeof req.body.text === "string" ? req.body.text : "";
             const voiceId = typeof req.body.voiceId === "string" ? req.body.voiceId : "";
             if (!/^[a-zA-Z0-9_-]{10,64}$/.test(voiceId)) {

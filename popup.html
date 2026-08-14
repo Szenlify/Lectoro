@@ -143,24 +143,23 @@
                 <label>Czytanie napisów</label>
                 <div class="glass-card">
                     <div class="toggle-row">
-                        <span class="toggle-label">Czytaj napisy na głos przy tłumaczeniu</span>
+                        <span class="toggle-label">Tłumacz całe zdanie</span>
                         <label class="toggle-switch">
                             <input type="checkbox" id="subtitleTTS">
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
                     <div class="toggle-desc">Po naciśnięciu S / E / Enter zostanie pokazane pełne przetłumaczone zdanie,
-                        a TTS odczyta to tłumaczenie.</div>
+                        oraz przeczytane na głos.</div>
                     <div class="toggle-row"
                         style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.06);">
-                        <span class="toggle-label">Tryb tłumaczenia słowo po słowie</span>
+                        <span class="toggle-label">Tłumaczenie słowo po słowie</span>
                         <label class="toggle-switch">
                             <input type="checkbox" id="wordCloudMode" checked>
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
-                    <div class="toggle-desc">S / ↓ pokaże tłumaczenie każdego słowa z osobna w chmurkach nad napisami, a
-                        TTS odczyta pełne przetłumaczone zdanie.</div>
+                    <div class="toggle-desc">S / ↓ pokaże tłumaczenie każdego słowa z osobna w chmurkach nad napisami, oraz przeczytane pełne zdanie na głos.</div>
                 </div>
             </div>
 
@@ -171,6 +170,7 @@
                     <label for="voiceSelect">Głos lektora TTS</label>
                     <select id="voiceSelect">
                         <option value="">🔊 Domyślny</option>
+                        <option value="random">✦ Losowy głos systemowy</option>
                     </select>
                 </div>
 
@@ -319,6 +319,14 @@
                             <span class="review-voice-option-copy">
                                 <strong>Głos systemowy</strong>
                                 <small>Szybki i bez limitu</small>
+                            </span>
+                            <span class="review-voice-check" aria-hidden="true">✓</span>
+                        </button>
+                        <button type="button" class="review-voice-system" id="reviewRandomSystemVoiceOption">
+                            <span class="review-voice-avatar system">✦</span>
+                            <span class="review-voice-option-copy">
+                                <strong>Losowy głos systemowy</strong>
+                                <small>Inny dostępny głos dla każdej wypowiedzi</small>
                             </span>
                             <span class="review-voice-check" aria-hidden="true">✓</span>
                         </button>

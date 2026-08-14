@@ -140,7 +140,10 @@ const SubscriptionService = (() => {
         });
     }
 
-    async function synthesizeElevenLabs(text, voiceId) {
+    async function synthesizeElevenLabs(text, voiceId, context = "") {
+        if (context !== "review") {
+            throw new Error("ElevenLabs jest dostępny wyłącznie w powtórkach.");
+        }
         const localValidation = await checkElevenLabs(text);
         Config.assertAllowed(localValidation);
         const token = await getToken();
@@ -153,7 +156,12 @@ const SubscriptionService = (() => {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({ action: "synthesizeElevenLabs", text, voiceId }),
+            body: JSON.stringify({
+                action: "synthesizeElevenLabs",
+                context,
+                text,
+                voiceId,
+            }),
         });
         if (!response.ok) {
             const data = await response.json().catch(() => ({}));
@@ -190,7 +198,10 @@ const SubscriptionService = (() => {
         return response.blob();
     }
 
-    async function getElevenLabsVoices() {
+    async function getElevenLabsVoices(context = "") {
+        if (context !== "review") {
+            throw new Error("Głosy ElevenLabs są dostępne wyłącznie w powtórkach.");
+        }
         const profile = await effectiveProfile(false);
         if (!Config.getPlanLimits(profile.plan).elevenLabs.enabled) {
             Config.assertAllowed(Config.checkElevenLabsLimit({ plan: profile.plan, text: "a" }));
@@ -203,7 +214,7 @@ const SubscriptionService = (() => {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({ action: "elevenLabsVoices" }),
+            body: JSON.stringify({ action: "elevenLabsVoices", context }),
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error || `Błąd głosów (${response.status})`);

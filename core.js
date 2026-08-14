@@ -52,7 +52,6 @@
     let tooltipEl = null;
     let lastMouseX = 0;
     let lastMouseY = 0;
-    let elAudioEl = null;
 
     const cleanupHandlers = [];
     const dismissHandlers = [];
@@ -314,71 +313,11 @@
     }
 
     // ═══════════════════════════════════════════════════════════════
-    //  TTS – ElevenLabs
-    // ═══════════════════════════════════════════════════════════════
-
-    async function speakElevenLabs(text, voiceId) {
-        try {
-            const cleanText = cleanTextForTTS(text);
-            const validation = await SubscriptionService.checkElevenLabs(cleanText);
-            SubscriptionConfig.assertAllowed(validation);
-            let targetVoiceId = voiceId;
-            if (targetVoiceId === "random") {
-                const voices = await SubscriptionService.getElevenLabsVoices();
-                if (!voices.length) throw new Error("Brak dostępnych głosów ElevenLabs.");
-                targetVoiceId = voices[Math.floor(Math.random() * voices.length)].voice_id;
-            }
-            const cacheKey = `${cleanText}|${targetVoiceId}`;
-            let blob = await AudioCache.get(cacheKey);
-
-            if (!blob) {
-                blob = await SubscriptionService.synthesizeElevenLabs(cleanText, targetVoiceId);
-                await AudioCache.set(cacheKey, blob);
-            }
-
-            const url = URL.createObjectURL(blob);
-            if (elAudioEl) {
-                elAudioEl.pause();
-                URL.revokeObjectURL(elAudioEl.src);
-            }
-            elAudioEl = new Audio(url);
-            elAudioEl.addEventListener(
-                "ended",
-                () => URL.revokeObjectURL(url),
-                { once: true },
-            );
-            await elAudioEl.play();
-            return elAudioEl;
-        } catch (err) {
-            console.warn(
-                "[QuickTranslator] ElevenLabs TTS failed:",
-                err.message || err,
-            );
-            if (SubscriptionService.isLimitError(err)) {
-                SubscriptionService.showUpgradePrompt(err);
-            }
-            if ([
-                "ELEVENLABS_PROVIDER_DISABLED",
-                "ELEVENLABS_PROVIDER_QUOTA",
-                "ELEVENLABS_REQUEST_FAILED",
-                "ELEVENLABS_MONTHLY_LIMIT_REACHED",
-            ].includes(err?.code)) {
-                await chrome.storage.local.set({ ttsMode: "browser" });
-            }
-            return null;
-        }
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    //  TTS – Unified (Browser or ElevenLabs)
+    //  TTS – browser voices outside Review
     // ═══════════════════════════════════════════════════════════════
 
     function speak(text, lang) {
         window.speechSynthesis.cancel();
-        if (elAudioEl) {
-            elAudioEl.pause();
-            elAudioEl = null;
-        }
 
         return new Promise((resolve) => {
             if (!chrome?.storage?.sync) {
@@ -396,8 +335,6 @@
 
             chrome.storage.local.get(
                 {
-                    ttsMode: "browser",
-                    elVoiceId: "",
                     speechVoice: "",
                     speechRate: 1.3,
                     ttsVolume: 1,
@@ -405,35 +342,17 @@
                 async (data) => {
                     const vol =
                         data.ttsVolume !== undefined ? data.ttsVolume : 1;
-                    let audio = null;
-                    if (
-                        data.ttsMode === "elevenlabs" &&
-                        data.elVoiceId
-                    ) {
-                        audio = await speakElevenLabs(
-                            text,
-                            data.elVoiceId,
-                        );
-                        if (audio instanceof HTMLAudioElement)
-                            audio.volume = vol;
-                    }
-                    if (!audio) {
-                        // ElevenLabs disabled/not configured, or the request
-                        // failed (e.g. quota exceeded) — fall back to the
-                        // browser voice so playback never goes silent.
-                        const utter = new SpeechSynthesisUtterance(
-                            cleanTextForTTS(text),
-                        );
-                        utter.lang = lang;
-                        utter.rate = data.speechRate;
-                        utter.volume = vol;
-                        const voice = pickBestVoice(data.speechVoice, lang);
-                        if (voice) utter.voice = voice;
-                        window.speechSynthesis.speak(utter);
-                        resolve(utter);
-                    } else {
-                        resolve(audio);
-                    }
+                    // ElevenLabs belongs exclusively to popup/review TTS.
+                    const utter = new SpeechSynthesisUtterance(
+                        cleanTextForTTS(text),
+                    );
+                    utter.lang = lang;
+                    utter.rate = data.speechRate;
+                    utter.volume = vol;
+                    const voice = pickBestVoice(data.speechVoice, lang);
+                    if (voice) utter.voice = voice;
+                    window.speechSynthesis.speak(utter);
+                    resolve(utter);
                 },
             );
         });
@@ -1087,10 +1006,6 @@
         // TTS
         speak,
         pickBestVoice,
-        getElAudioEl: () => elAudioEl,
-        setElAudioEl: (v) => {
-            elAudioEl = v;
-        },
 
         // Storage
         getTargetLang,
