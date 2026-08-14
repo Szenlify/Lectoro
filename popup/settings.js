@@ -244,8 +244,24 @@ function renderElevenLabsUsage(subscription) {
     }
 }
 
+function formatNextUsageRenewalDate(month) {
+    const match = /^(\d{4})-(\d{2})$/.exec(month || "");
+    const now = new Date();
+    const year = match ? Number(match[1]) : now.getUTCFullYear();
+    const monthIndex = match ? Number(match[2]) - 1 : now.getUTCMonth();
+    const renewalDate = new Date(Date.UTC(year, monthIndex + 1, 1));
+
+    return new Intl.DateTimeFormat("pl-PL", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        timeZone: "UTC",
+    }).format(renewalDate);
+}
+
 async function refreshAiUsageUI() {
     const info = document.getElementById("aiUsageInfo");
+    const renewalDate = document.getElementById("aiUsageRenewalDate");
     if (!info || typeof GeminiProxy === "undefined") return;
 
     const usageSection = document.getElementById("aiUsageSection");
@@ -294,6 +310,10 @@ async function refreshAiUsageUI() {
             ? Math.min(100, Math.round((used / limit) * 100))
             : 0;
 
+        if (renewalDate) {
+            renewalDate.textContent = formatNextUsageRenewalDate(usage.month);
+        }
+
         if (plan)
             plan.textContent = `PLAN ${(usage.plan || "free").toUpperCase()}`;
         if (value) value.textContent = `${used} / ${limit}`;
@@ -324,6 +344,7 @@ async function refreshAiUsageUI() {
             fill.classList.add("is-loading");
         }
         info.textContent = "Nie udało się odświeżyć użycia AI";
+        if (renewalDate) renewalDate.textContent = "";
     }
 
     const usageUpgradeButton = document.getElementById("usageUpgradeButton");

@@ -3347,6 +3347,8 @@ html[data-lectoro-ai-limit-reached] .quiz-export-bottom {
 .usage-reset-copy {
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    width: 100%;
     min-width: 0;
     gap: 5px;
     overflow: hidden;
@@ -3354,6 +3356,10 @@ html[data-lectoro-ai-limit-reached] .quiz-export-bottom {
     font-size: 9px;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.usage-reset-date {
+    color: var(--text-ghost);
 }
 
 .ai-usage-card .ai-upgrade-btn {
