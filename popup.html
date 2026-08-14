@@ -40,70 +40,63 @@
                 </div>
             </div>
 
-            <!-- Gemini AI settings -->
+            <!-- Compact subscription usage overview -->
             <div class="setting-group" id="aiUsageSection" hidden>
-                <label id="aiUsagePlan">PLAN FREE</label>
-                <div class="glass-card ai-usage-card" id="aiUsageCard">
-                    <div class="ai-usage-head">
-                        <div>
-                            <div class="ai-usage-eyebrow" id="aiUsagePlan">AI</div>
-                            <div class="ai-usage-title" id="aiUsageTitle">Sprawdzam...</div>
-                        </div>
-                        <div class="ai-usage-value" id="aiUsageValue">—</div>
-                    </div>
-                    <div class="ai-usage-track" role="progressbar" aria-label="Wykorzystanie kredytów AI"
-                        aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="aiUsageTrack">
-                        <div class="ai-usage-fill is-loading" id="aiUsageFill"></div>
-                    </div>
-                    <div class="ai-usage-head" id="elevenLabsUsageSection">
-                        <div id="elevenLabsUsageCard">
-                            <div class="ai-usage-eyebrow"">Elevenlabs</div>
-                            <div class="ai-usage-title" id="elevenLabsUsageTitle">Sprawdzam...</div>
-                        </div>
-                        <div class="ai-usage-value" id="elevenLabsUsageValue">—</div>
-                    </div>
-                    <div class="ai-usage-track" role="progressbar" aria-label="Wykorzystanie znaków ElevenLabs"
-                        aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="elevenLabsUsageTrack">
-                        <div class="ai-usage-fill is-loading" id="elevenLabsUsageFill"></div>
-                    </div>
-
-
-                    <div class="ai-usage-footer">
-                        <span class="ai-usage-remaining" id="aiUsageInfo">Limity odnawiają się co miesiąc</span>
-                       
-                    </div>
-                    <button type="button" class="ai-upgrade-btn" id="aiUpgradeButton" hidden>
-                        Zobacz plany →
-                    </button>
+                <div class="setting-heading-row">
+                    <span class="usage-plan-badge" id="aiUsagePlan">PLAN FREE</span>
                 </div>
-            </div>
-
-            <div class="setting-group" id="elevenLabsUsageSection" hidden>
-                <label>🎧 ElevenLabs</label>
-                <div class="glass-card ai-usage-card elevenlabs-usage-card" id="elevenLabsUsageCard">
-                    <div class="ai-usage-head">
-                        <div>
-                            <div class="ai-usage-eyebrow" id="elevenLabsUsagePlan">PLAN FREE</div>
-                            <div class="ai-usage-title" id="elevenLabsUsageTitle">Sprawdzam wykorzystanie…</div>
+                <div class="glass-card ai-usage-card" id="aiUsageCard">
+                    <div class="usage-meter" id="aiUsageMeter">
+                        <div class="ai-usage-head">
+                            <div class="usage-meter-name">
+                                <span class="usage-meter-icon usage-meter-icon-ai" aria-hidden="true">AI</span>
+                                <div>
+                                    <div class="ai-usage-title">Kredyty AI</div>
+                                    <div class="usage-meter-note" id="aiUsageTitle">Sprawdzam wykorzystanie...</div>
+                                </div>
+                            </div>
+                            <div class="ai-usage-value" id="aiUsageValue">—</div>
                         </div>
-                        <div class="ai-usage-value" id="elevenLabsUsageValue">—</div>
+                        <div class="ai-usage-track" role="progressbar" aria-label="Wykorzystanie kredytów AI"
+                            aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="aiUsageTrack">
+                            <div class="ai-usage-fill is-loading" id="aiUsageFill"></div>
+                        </div>
                     </div>
-                    <div class="ai-usage-track" role="progressbar" aria-label="Wykorzystanie znaków ElevenLabs"
-                        aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="elevenLabsUsageTrack">
-                        <div class="ai-usage-fill is-loading" id="elevenLabsUsageFill"></div>
+
+                    <div class="usage-meter elevenlabs-usage-meter" id="elevenLabsUsageCard">
+                        <div class="ai-usage-head">
+                            <div class="usage-meter-name">
+                                <span class="usage-meter-icon usage-meter-icon-voice" aria-hidden="true">E</span>
+                                <div>
+                                    <div class="ai-usage-title">ElevenLabs</div>
+                                    <div class="usage-meter-note" id="elevenLabsUsageTitle">Sprawdzam wykorzystanie...</div>
+                                </div>
+                            </div>
+                            <div class="ai-usage-value" id="elevenLabsUsageValue">—</div>
+                        </div>
+                        <div class="ai-usage-track" role="progressbar" aria-label="Wykorzystanie znaków ElevenLabs"
+                            aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="elevenLabsUsageTrack">
+                            <div class="ai-usage-fill is-loading" id="elevenLabsUsageFill"></div>
+                        </div>
                     </div>
+
                     <div class="ai-usage-footer">
-                        <span id="elevenLabsUsageInfo">Limit odnawia się co miesiąc</span>
-                        <span class="ai-usage-remaining" id="elevenLabsUsageRemaining">Ładowanie…</span>
+                        <div class="usage-reset-copy">
+                            <span id="aiUsageInfo">Limity odnawiają się co miesiąc</span>
+            
+                        </div>
                     </div>
-                    <button type="button" class="ai-upgrade-btn" id="elevenLabsUpgradeButton" hidden>
-                        Zobacz plany →
-                    </button>
                 </div>
             </div>
 
             <div class="setting-group ai-plans-section" id="aiPlansSection" hidden>
-                <label>✨ Plany subskrypcyjne</label>
+                <div class="setting-heading-row subscription-heading">
+                    <div>
+                        <label>Plany subskrypcyjne</label>
+                        <p>Wybierz pakiet dopasowany do Twojej nauki.</p>
+                    </div>
+                    
+                </div>
                 <div class="subscription-plans-grid" id="subscriptionPlansGrid"></div>
                 <div class="stripe-billing-status" id="stripeBillingStatus" aria-live="polite"></div>
             </div>

@@ -120,46 +120,59 @@ function renderSubscriptionPlans(subscription) {
     const hasPaidPlan = activePlan !== SubscriptionConfig.SUBSCRIPTION_PLANS.FREE;
     grid.innerHTML = Object.entries(SubscriptionConfig.SUBSCRIPTION_LIMITS)
         .map(([planId, limits]) => {
+            const isCurrent = planId === activePlan;
+            const isRecommended = planId === SubscriptionConfig.SUBSCRIPTION_PLANS.BASIC;
             const price = limits.priceMonthly.amount === 0
                 ? "0 zł"
-                : `$${limits.priceMonthly.amount.toFixed(2)} / mc`;
+                : new Intl.NumberFormat("pl-PL", {
+                    style: "currency",
+                    currency: limits.priceMonthly.currency,
+                }).format(limits.priceMonthly.amount);
             const tts = limits.elevenLabs.enabled
-                ? `${limits.elevenLabs.charactersPerMonth} znaków ElevenLabs / mc`
-                : "ElevenLabs niedostępny";
-            let action = '<span class="subscription-plan-current">AKTYWNY PLAN</span>';
-            if (planId !== activePlan) {
+                ? `${limits.elevenLabs.charactersPerMonth.toLocaleString("pl-PL")} znaków ElevenLabs`
+                : "Głos systemowy";
+            let action = '<span class="subscription-plan-current">Obecny plan</span>';
+            if (!isCurrent) {
                 if (planId === SubscriptionConfig.SUBSCRIPTION_PLANS.FREE) {
-                    action = ``;
+                    action = hasPaidPlan
+                        ? '<button type="button" class="subscription-plan-button is-secondary" data-billing-action="portal"><span class="subscription-button-label">Zmień w Stripe</span></button>'
+                        : "";
                 } else if (hasPaidPlan) {
-                    action = `<button type="button" class="subscription-plan-button" data-billing-action="portal">Zmień plan</button>`;
+                    action = '<button type="button" class="subscription-plan-button" data-billing-action="portal"><span class="subscription-button-label">Zmień plan</span><span aria-hidden="true">→</span></button>';
                 } else {
-                    action = `<button type="button" class="subscription-plan-button" data-billing-action="checkout" data-plan="${planId}">Wybierz ${limits.displayName}</button>`;
+                    action = `<button type="button" class="subscription-plan-button" data-billing-action="checkout" data-plan="${planId}"><span class="subscription-button-label">Wybierz ${limits.displayName}</span><span aria-hidden="true">→</span></button>`;
                 }
             } else if (hasPaidPlan) {
-                action = `<button type="button" class="subscription-plan-button is-secondary" data-billing-action="portal">Zarządzaj</button>`;
+                action = '<button type="button" class="subscription-plan-button is-secondary" data-billing-action="portal"><span class="subscription-button-label">Zarządzaj planem</span><span aria-hidden="true">→</span></button>';
             }
-            return `<div class="subscription-plan-card ${planId === activePlan ? "is-current" : ""}">
-                <strong>${limits.displayName}</strong>
-                <b>${price}</b>
-                <span>AI: ${limits.ai.usesPerMonth} / mc</span>
-                <span>Fiszki SRS: ${limits.srs.maxSavedCards}</span>
-                <span>${tts}</span>
-                ${action}
-            </div>`;
+            return `<article class="subscription-plan-card ${isCurrent ? "is-current" : ""} ${isRecommended ? "is-recommended" : ""}">
+                <div class="subscription-plan-topline">
+                    <strong>${limits.displayName}</strong>
+                    ${isCurrent
+                        ? '<span class="subscription-plan-badge is-active">Aktywny</span>'
+                        : isRecommended
+                            ? '<span class="subscription-plan-badge">Popularny</span>'
+                            : ""}
+                </div>
+                <div class="subscription-plan-price"><b>${price}</b><span>${limits.priceMonthly.amount === 0 ? "na zawsze" : "/ miesiąc"}</span></div>
+                <div class="subscription-plan-features">
+                    <span><i aria-hidden="true">✓</i><b>${limits.ai.usesPerMonth.toLocaleString("pl-PL")}</b> użyć AI / mies.</span>
+                    <span><i aria-hidden="true">✓</i><b>${limits.srs.maxSavedCards.toLocaleString("pl-PL")}</b> fiszek SRS</span>
+                    <span class="${limits.elevenLabs.enabled ? "" : "is-muted"}"><i aria-hidden="true">${limits.elevenLabs.enabled ? "✓" : "—"}</i>${tts}</span>
+                </div>
+                <div class="subscription-plan-action">${action}</div>
+            </article>`;
         })
         .join("");
 }
 
 function renderElevenLabsUsage(subscription) {
     const card = document.getElementById("elevenLabsUsageCard");
-    const planEl = document.getElementById("elevenLabsUsagePlan");
     const title = document.getElementById("elevenLabsUsageTitle");
     const value = document.getElementById("elevenLabsUsageValue");
     const info = document.getElementById("elevenLabsUsageInfo");
-    const remaining = document.getElementById("elevenLabsUsageRemaining");
     const track = document.getElementById("elevenLabsUsageTrack");
     const fill = document.getElementById("elevenLabsUsageFill");
-    const upgradeButton = document.getElementById("elevenLabsUpgradeButton");
     if (!card || !subscription) return;
 
     const plan = SubscriptionConfig.normalizePlan(subscription.plan);
@@ -172,7 +185,6 @@ function renderElevenLabsUsage(subscription) {
 
     card.classList.remove("is-warning", "is-empty", "is-unavailable");
     fill?.classList.remove("is-loading");
-    if (planEl) planEl.textContent = `PLAN ${plan.toUpperCase()}`;
     if (track) {
         track.setAttribute("aria-valuenow", String(percentage));
         track.setAttribute("aria-valuetext", `${used} z ${limit} znaków wykorzystanych`);
@@ -183,9 +195,7 @@ function renderElevenLabsUsage(subscription) {
         if (title) title.textContent = "Naturalne głosy w powtórkach";
         if (value) value.textContent = "Niedostępne";
         if (fill) fill.style.width = "0%";
-        if (info) info.textContent = "Funkcja dostępna w BASIC i PRO";
-        if (remaining) remaining.textContent = "0 znaków";
-        if (upgradeButton) upgradeButton.hidden = false;
+        if (info) info.textContent = "ElevenLabs od planu BASIC";
         return;
     }
 
@@ -194,15 +204,11 @@ function renderElevenLabsUsage(subscription) {
     if (limitReached) {
         card.classList.add("is-empty");
         if (title) title.textContent = "Limit ElevenLabs wykorzystany";
-        if (info) info.textContent = "Do odnowienia używany jest głos systemowy";
-        if (remaining) remaining.textContent = "0 znaków";
-        if (upgradeButton) upgradeButton.hidden = false;
+        if (info) info.textContent = "ElevenLabs: 0 znaków zostało";
     } else {
         if (percentage >= 80) card.classList.add("is-warning");
-        if (title) title.textContent = "Miesięczne wykorzystanie";
-        if (info) info.textContent = "Limit odnawia się co miesiąc";
-        if (remaining) remaining.textContent = `${left} znaków zostało`;
-        if (upgradeButton) upgradeButton.hidden = true;
+        if (title) title.textContent = `${left.toLocaleString("pl-PL")} znaków pozostało`;
+        if (info) info.textContent = `ElevenLabs: ${left.toLocaleString("pl-PL")} znaków zostało`;
     }
 }
 
@@ -211,7 +217,6 @@ async function refreshAiUsageUI() {
     if (!info || typeof GeminiProxy === "undefined") return;
 
     const usageSection = document.getElementById("aiUsageSection");
-    const elevenLabsUsageSection = document.getElementById("elevenLabsUsageSection");
     const plansSection = document.getElementById("aiPlansSection");
     const user =
         typeof FirebaseSync !== "undefined"
@@ -219,7 +224,6 @@ async function refreshAiUsageUI() {
             : null;
     const signedIn = !!user;
     if (usageSection) usageSection.hidden = !signedIn;
-    if (elevenLabsUsageSection) elevenLabsUsageSection.hidden = !signedIn;
     if (plansSection) plansSection.hidden = !signedIn;
     if (!signedIn) return;
 
@@ -238,18 +242,17 @@ async function refreshAiUsageUI() {
     }
     renderSubscriptionPlans(subscription);
     renderElevenLabsUsage(subscription);
-    const card = document.getElementById("aiUsageCard");
+    const card = document.getElementById("aiUsageMeter");
     const plan = document.getElementById("aiUsagePlan");
     const title = document.getElementById("aiUsageTitle");
     const value = document.getElementById("aiUsageValue");
-    const remaining = document.getElementById("aiUsageRemaining");
     const track = document.getElementById("aiUsageTrack");
     const fill = document.getElementById("aiUsageFill");
-    const upgradeButton = document.getElementById("aiUpgradeButton");
     const limitReached = !!(usage?.limit > 0 && usage.used >= usage.limit);
 
     card?.classList.remove("is-warning", "is-empty");
     fill?.classList.remove("is-loading");
+    if (plan) plan.textContent = `PLAN ${SubscriptionConfig.normalizePlan(subscription.plan).toUpperCase()}`;
     if (usage) {
         const used = Math.max(0, Number(usage.used || 0));
         const limit = Math.max(0, Number(usage.limit || 0));
@@ -268,26 +271,29 @@ async function refreshAiUsageUI() {
             card?.classList.add("is-empty");
             if (title) title.textContent = "Kredyty zostały wykorzystane";
             info.textContent = "Funkcje AI są chwilowo wstrzymane";
-            if (remaining) remaining.textContent = "0 pozostało";
-            if (upgradeButton) upgradeButton.hidden = false;
         } else {
             if (percentage >= 80) card?.classList.add("is-warning");
-            if (title) title.textContent = "Miesięczne wykorzystanie";
+            if (title) title.textContent = `${left.toLocaleString("pl-PL")} kredytów pozostało`;
             info.textContent = "Limit odnawia się co miesiąc";
-            if (remaining) remaining.textContent = `${left} pozostało`;
-            if (upgradeButton) upgradeButton.hidden = true;
         }
     } else {
-        if (plan) plan.textContent = "KREDYTY AI";
-        if (title) title.textContent = "Zaloguj się, aby sprawdzić limit";
+        if (title) title.textContent = "Dane chwilowo niedostępne";
         if (value) value.textContent = "— / —";
         if (fill) {
             fill.style.width = "38%";
             fill.classList.add("is-loading");
         }
-        info.textContent = "Zużycie pojawi się po zalogowaniu";
-        if (remaining) remaining.textContent = "Brak danych";
-        if (upgradeButton) upgradeButton.hidden = true;
+        info.textContent = "Nie udało się odświeżyć użycia AI";
+    }
+
+    const usageUpgradeButton = document.getElementById("usageUpgradeButton");
+    if (usageUpgradeButton) {
+        const elevenLabsCard = document.getElementById("elevenLabsUsageCard");
+        usageUpgradeButton.hidden = !(
+            limitReached ||
+            elevenLabsCard?.classList.contains("is-empty") ||
+            elevenLabsCard?.classList.contains("is-unavailable")
+        );
     }
 
     const quizButton = document.getElementById("exportQuiz");
@@ -311,18 +317,23 @@ function showAiPlans() {
     setTimeout(() => plans?.classList.remove("is-highlighted"), 2200);
 }
 
-document.getElementById("aiUpgradeButton")?.addEventListener("click", showAiPlans);
-document.getElementById("elevenLabsUpgradeButton")?.addEventListener("click", showAiPlans);
+document.getElementById("usageUpgradeButton")?.addEventListener("click", showAiPlans);
 
 document.getElementById("subscriptionPlansGrid")?.addEventListener("click", async (event) => {
     const button = event.target.closest("[data-billing-action]");
     if (!button) return;
     const status = document.getElementById("stripeBillingStatus");
+    const grid = document.getElementById("subscriptionPlansGrid");
     const buttons = document.querySelectorAll("[data-billing-action]");
+    const originalButtonContent = button.innerHTML;
     buttons.forEach((item) => { item.disabled = true; });
+    button.classList.add("is-loading");
+    button.setAttribute("aria-busy", "true");
+    button.innerHTML = '<span class="stripe-spinner" aria-hidden="true"></span><span>Łączenie ze Stripe...</span>';
+    grid?.setAttribute("aria-busy", "true");
     if (status) {
         status.className = "stripe-billing-status is-loading";
-        status.textContent = "Otwieram bezpieczną stronę Stripe…";
+        status.innerHTML = '<span class="stripe-spinner" aria-hidden="true"></span><span>Otwieram bezpieczną stronę płatności...</span>';
     }
     try {
         const result = button.dataset.billingAction === "checkout"
@@ -340,6 +351,10 @@ document.getElementById("subscriptionPlansGrid")?.addEventListener("click", asyn
             status.textContent = error.message || "Nie udało się otworzyć Stripe.";
         }
     } finally {
+        button.innerHTML = originalButtonContent;
+        button.classList.remove("is-loading");
+        button.removeAttribute("aria-busy");
+        grid?.removeAttribute("aria-busy");
         buttons.forEach((item) => { item.disabled = false; });
     }
 });
