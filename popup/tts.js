@@ -27,10 +27,10 @@ function stopPopupSpeak() {
 }
 
 /**
- * Speak text using the same engine & voice configured in settings.
- * Returns a Promise that resolves with { type: 'utter'|'audio', obj } for end-tracking.
+ * Speak text using the engine & voice configured in settings. Callers may
+ * force the system/browser voice for content that must never use ElevenLabs.
  */
-function popupSpeak(text, lang) {
+function popupSpeak(text, lang, { forceBrowser = false } = {}) {
     const mySeq = ++popupSpeakSeq;
     window.speechSynthesis.cancel();
     if (popupElAudio) {
@@ -56,7 +56,9 @@ function popupSpeak(text, lang) {
 
                 // ElevenLabs path
                 const useElevenLabs =
-                    data.ttsMode === "elevenlabs" && !!data.elVoiceId;
+                    !forceBrowser &&
+                    data.ttsMode === "elevenlabs" &&
+                    !!data.elVoiceId;
 
                 let elFailed = false;
                 if (useElevenLabs) {
@@ -168,6 +170,10 @@ function attachReviewSpeakHandlers(card) {
                 const result = await popupSpeak(
                     btn.dataset.text,
                     btn.dataset.lang,
+                    {
+                        forceBrowser:
+                            btn.dataset.forceBrowserTts === "true",
+                    },
                 );
                 if (result.type === "utter") {
                     result.obj.onend = done;

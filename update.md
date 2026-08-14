@@ -29,7 +29,7 @@ Finansowo projekt może być rentowny przy aktualnych cenach. W scenariuszu bazo
 - **1 000 użytkowników:** 878–883 USD, czyli około 3.336 – 3.355 PLN;
 - **10 000 użytkowników:** 8 798–8 823 USD, czyli około 33.433 – 33.528 PLN.
 
-Przy wykorzystaniu 100% limitów przez wszystkich użytkowników tego samego miksu marża spada odpowiednio do około 690–695 USD oraz 6 902–6 942 USD. Największym kosztem zmiennym jest ElevenLabs, nie Gemini ani Firebase.
+Przy wykorzystaniu 100% limitów przez wszystkich użytkowników tego samego miksu marża spada odpowiednio do około 690–695 USD oraz 6.902–6.942 USD. Największym kosztem zmiennym jest ElevenLabs, nie Gemini ani Firebase.
 
 ## 2. Zakres i metoda analizy
 

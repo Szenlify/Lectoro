@@ -16,6 +16,10 @@ let reviewAnswerShown = false;
 let reviewTotalDue = 0;
 let _reviewSaving = false; // guard: skip storage listener while rating
 let _reviewQueueStale = false; // set when a background sync happens mid-session
+// Keep AI results on the in-memory card object. This prevents repeated Enter
+// presses (including while a request is still running) from consuming more AI
+// credits and lets the result survive flipping the same card back and forth.
+const reviewAiStates = new WeakMap();
 
 // ── Review direction: "normal" = show original, guess translation
 //                      "reverse" = show translation, guess original
@@ -447,6 +451,9 @@ function reviewCardMetaHtml(sideLabel) {
 
 function reviewControlsHtml(sr, answerShown) {
     const labels = [1, 2].map((grade) => previewLabel(sr, grade));
+    const originalSideShown =
+        (reviewDirection === "normal" && !answerShown) ||
+        (reviewDirection === "reverse" && answerShown);
     return `
         <button class="review-flip-btn" type="button">
             <span class="review-flip-keys"><kbd>↓</kbd><kbd>S</kbd></span>
@@ -475,7 +482,7 @@ function reviewControlsHtml(sr, answerShown) {
             <div class="review-shortcuts" aria-label="Skróty klawiszowe powtórki">
                 <span><span class="shortcut-keys"><kbd>↑</kbd><kbd>W</kbd></span> czytaj</span>
                 <span><span class="shortcut-keys"><kbd>↓</kbd><kbd>S</kbd></span> odwróć</span>
-                <span><span class="shortcut-keys"><kbd>Enter</kbd></span> tłumacz AI</span>
+                ${originalSideShown ? '<span><span class="shortcut-keys"><kbd>Enter</kbd></span> tłumacz i wyjaśnij AI</span>' : ""}
             </div>
             <div class="review-actions-row">
                 <button class="review-edit-btn" type="button"><span aria-hidden="true">✏️</span> Edytuj</button>
@@ -541,6 +548,7 @@ function renderQuestion(w) {
 
     attachReviewSpeakHandlers(card);
     attachReviewCardControls(card, w);
+    restoreReviewAiPanels(w);
     autoSpeakReviewCard(w, false);
 
     // Every new card must always start fully scrolled to the top — force
@@ -618,8 +626,9 @@ function animateSwipeAndRate(grade) {
 
 /**
  * On-demand AI translate ('Enter' shortcut) — fetches a fresh, plain/accurate
- * translation of the currently shown word + sentence via Gemini and shows it
- * inline, without flipping or rating the card. Independent of reveal state.
+ * translation of the original word + sentence via Gemini and shows it inline,
+ * without flipping or rating the card. It is available only while the original
+ * side is visible and may make at most one successful request per card.
  */
 async function aiTranslateReviewCard() {
     const card = document.getElementById("reviewCard");
@@ -627,35 +636,40 @@ async function aiTranslateReviewCard() {
     const w = reviewQueue[reviewIndex];
     if (!w) return;
 
+    const originalSideShown =
+        (reviewDirection === "normal" && !reviewAnswerShown) ||
+        (reviewDirection === "reverse" && reviewAnswerShown);
+    if (!originalSideShown) return;
+
     const srcL = w.srcLang || "en";
     const tgtL = w.tgtLang || "pl";
-    const isReverse = reviewDirection === "reverse";
-    const qWord = isReverse ? w.translated : w.original;
-    const qLang = isReverse ? tgtL : srcL;
-    const qSentence = isReverse ? w.sentenceTranslated || "" : w.sentence || "";
-    const aLang = isReverse ? srcL : tgtL;
+    const qWord = w.original;
+    const qSentence = String(w.sentence || "").trim();
     if (!qWord) return;
 
-    const flashcard = card.querySelector(".review-flashcard");
-    let panel = card.querySelector("#reviewAiTranslate");
-    if (!panel) {
-        panel = document.createElement("div");
-        panel.id = "reviewAiTranslate";
-        panel.className = "review-ai-translate";
-        (flashcard || card).appendChild(panel);
+    const state = getReviewAiState(w).translation;
+    if (state.status === "loading") return;
+    if (state.status === "done") {
+        restoreReviewAiPanels(w);
+        return;
     }
+
+    const panel = ensureReviewAiPanel("reviewAiTranslate");
+    if (!panel) return;
+    state.status = "loading";
     panel.innerHTML = `<div class="review-ai-translate-loading"><span class="review-ai-spinner"></span>Tłumaczę (AI)…</div>`;
 
     try {
         const prompt = AIPrompts.standardTranslate(
             qWord,
             qSentence,
-            qLang,
-            aLang,
+            srcL,
+            tgtL,
         );
 
         // Bezpieczne proxy – klucz Gemini API jest TYLKO na serwerze Firebase.
         if (typeof GeminiProxy === "undefined") {
+            state.status = "idle";
             panel.innerHTML = `<div class="review-ai-translate-error">GeminiProxy niedostępny.</div>`;
             return;
         }
@@ -667,6 +681,7 @@ async function aiTranslateReviewCard() {
             });
         } catch (aiErr) {
             const limitReached = GeminiProxy?.isLimitError?.(aiErr);
+            state.status = "idle";
             if (limitReached) {
                 panel.remove();
             } else {
@@ -675,31 +690,94 @@ async function aiTranslateReviewCard() {
             return;
         }
         const wordTr = parsed.word_translation || "";
-        const sentTr = parsed.sentence_translation || "";
+        // With no source sentence there must be no placeholder/error message.
+        const sentTr = qSentence ? parsed.sentence_translation || "" : "";
+        const explanation = parsed.explanation || "";
+
+        state.status = "done";
+        state.result = { wordTr, sentTr, explanation, targetLang: tgtL };
 
         // Bail out silently if the user already moved to a different card
         // while the request was in flight.
         if (reviewQueue[reviewIndex] !== w) return;
         if (!document.body.contains(panel)) return;
 
-        panel.innerHTML = `
-            <div class="review-ai-translate-label">Tłumaczenie AI</div>
-            <div class="review-ai-translate-word">${escapeHtml(wordTr || "—")}</div>
-            ${sentTr ? `<div class="review-ai-translate-sentence">"${escapeHtml(sentTr)}"</div>` : ""}
-        `;
+        renderReviewTranslationResult(panel, state.result);
 
-        // Read the AI translation aloud too, just like every other card
-        // face — cuts off whatever was speaking before (question/answer
-        // auto-speak) so the two don't overlap.
-        const speakText = buildReviewSpeakText(wordTr, sentTr);
+        // AI-generated text always uses the free system/browser voice. This
+        // avoids sending translations or explanations to ElevenLabs even when
+        // that provider is selected for ordinary review-card speech.
+        const speakText = [wordTr, sentTr, explanation].filter(Boolean).join(". ");
         if (speakText) {
             stopPopupSpeak();
-            popupSpeak(speakText, aLang).catch(() => {});
+            popupSpeak(speakText, tgtL, { forceBrowser: true }).catch(() => {});
         }
     } catch (err) {
+        state.status = "idle";
         if (reviewQueue[reviewIndex] !== w) return;
         if (!document.body.contains(panel)) return;
         panel.innerHTML = `<div class="review-ai-translate-error">Błąd AI: ${escapeHtml(err.message)}</div>`;
+    }
+}
+
+function getReviewAiState(w) {
+    let state = reviewAiStates.get(w);
+    if (!state) {
+        state = {
+            translation: { status: "idle", result: null },
+        };
+        reviewAiStates.set(w, state);
+    }
+    return state;
+}
+
+function ensureReviewAiPanel(id) {
+    const card = document.getElementById("reviewCard");
+    const flashcard = card?.querySelector(".review-flashcard");
+    if (!card || !flashcard) return null;
+    let panel = card.querySelector(`#${id}`);
+    if (!panel) {
+        panel = document.createElement("div");
+        panel.id = id;
+        panel.className = "review-ai-translate";
+        flashcard.appendChild(panel);
+    }
+    return panel;
+}
+
+function renderReviewTranslationResult(panel, result) {
+    const speakText = [result.wordTr, result.sentTr, result.explanation]
+        .filter(Boolean)
+        .join(". ");
+    panel.innerHTML = `
+        <div class="review-ai-translate-label">Tłumaczenie AI</div>
+        <div class="review-ai-result-row">
+            <div class="review-ai-translate-word">${escapeHtml(result.wordTr || "—")}</div>
+            ${speakText ? `
+                <button class="review-speak-btn review-speak-sm" data-text="${escapeAttr(speakText)}" data-lang="${escapeAttr(result.targetLang)}" data-force-browser-tts="true" title="Odczytaj tłumaczenie i wyjaśnienie głosem systemowym" aria-label="Odczytaj tłumaczenie i wyjaśnienie głosem systemowym">${SPEAK_SVG}</button>
+            ` : ""}
+        </div>
+        ${result.sentTr ? `<div class="review-ai-translate-sentence">"${escapeHtml(result.sentTr)}"</div>` : ""}
+        ${result.explanation ? `<div class="review-ai-translate-explanation">${escapeHtml(result.explanation)}</div>` : ""}
+    `;
+    attachReviewSpeakHandlers(panel);
+}
+
+function restoreReviewAiPanels(w) {
+    const originalSideShown =
+        (reviewDirection === "normal" && !reviewAnswerShown) ||
+        (reviewDirection === "reverse" && reviewAnswerShown);
+    if (!originalSideShown) return;
+
+    const state = getReviewAiState(w);
+    if (state.translation.status === "done" && state.translation.result) {
+        const panel = ensureReviewAiPanel("reviewAiTranslate");
+        if (panel) renderReviewTranslationResult(panel, state.translation.result);
+    } else if (state.translation.status === "loading") {
+        const panel = ensureReviewAiPanel("reviewAiTranslate");
+        if (panel) {
+            panel.innerHTML = `<div class="review-ai-translate-loading"><span class="review-ai-spinner"></span>Tłumaczę (AI)…</div>`;
+        }
     }
 }
 
@@ -750,6 +828,7 @@ function renderAnswer(w) {
     // Attach TTS handlers
     attachReviewSpeakHandlers(card);
     attachReviewCardControls(card, w);
+    restoreReviewAiPanels(w);
     autoSpeakReviewCard(w, true);
 
     // Same as the question side: always force a full scroll back to the

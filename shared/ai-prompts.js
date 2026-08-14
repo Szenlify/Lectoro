@@ -61,11 +61,14 @@ Respond ONLY in this exact JSON format, nothing else:
         const sentencePart = sentence
             ? `\nZdanie z kontekstem: "${sentence}"`
             : "";
+        const sentenceInstruction = sentence
+            ? `Przetłumacz też podane zdanie na ${tgtLang} i krótko wyjaśnij sens całego zdania oraz znaczenie słowa w tym konkretnym kontekście.`
+            : `Gdy brak zdania wejściowego, ustaw "sentence_translation" na pusty ciąg znaków i nie twórz żadnego komunikatu zastępczego.`;
         return `Jesteś precyzyjnym tłumaczem słownikowym. Przetłumacz DOKŁADNIE i standardowo (bez stylizacji potocznej/filmowej) poniższe słowo z języka ${srcLang} na język ${tgtLang}.
 Słowo: "${word}"${sentencePart}
 
-Podaj najbardziej trafne, standardowe tłumaczenie słowa (uwzględniając kontekst zdania, jeśli podane), a jeśli zdanie zostało podane, przetłumacz też całe zdanie na ${tgtLang}. Odpowiedz WYŁĄCZNIE w tym dokładnym formacie JSON, bez żadnego dodatkowego tekstu:
-{"word_translation": "...", "sentence_translation": "..."}`;
+Podaj najbardziej trafne, standardowe tłumaczenie słowa (uwzględniając kontekst zdania, jeśli podane). ${sentenceInstruction} Dodaj bardzo krótkie, ale konkretne wyjaśnienie znaczenia lub użycia (maksymalnie 1–2 krótkie zdania) w języku ${tgtLang}. Bez lania wody i bez powtarzania samego tłumaczenia. Odpowiedz WYŁĄCZNIE w tym dokładnym formacie JSON, bez żadnego dodatkowego tekstu:
+{"word_translation": "...", "sentence_translation": "...", "explanation": "..."}`;
     },
 
     /**
