@@ -171,6 +171,53 @@
         if (iconEl) iconEl.classList.remove("visible");
     }
 
+    function extractCueText(node) {
+        const parts = [];
+
+        function walk(current) {
+            if (current.nodeType === Node.TEXT_NODE) {
+                parts.push(current.nodeValue || "");
+                return;
+            }
+
+            if (current.nodeType !== Node.ELEMENT_NODE) return;
+
+            if (current.localName?.toLowerCase() === "br") {
+                parts.push(" ");
+                return;
+            }
+
+            const children = Array.from(current.childNodes);
+
+            for (let i = 0; i < children.length; i += 1) {
+                walk(children[i]);
+
+                if (i < children.length - 1) {
+                    const currentNode = children[i];
+                    const nextNode = children[i + 1];
+
+                    const left = currentNode.textContent || "";
+                    const right = nextNode.textContent || "";
+
+                    if (
+                        left &&
+                        right &&
+                        !/\s$/.test(left) &&
+                        !/^\s/.test(right) &&
+                        /[\p{L}\p{N}]$/u.test(left) &&
+                        /^[\p{L}\p{N}]/u.test(right)
+                    ) {
+                        parts.push(" ");
+                    }
+                }
+            }
+        }
+
+        walk(node);
+
+        return parts.join("").replace(/\s+/g, " ").trim();
+    }
+
     // ═══════════════════════════════════════════════════════════════
     //  Icon Click → Translate
     // ═══════════════════════════════════════════════════════════════
@@ -329,17 +376,14 @@
         let previousBlock = null;
 
         for (const node of nodes) {
-            const start =
-                node === range.startContainer ? range.startOffset : 0;
+            const start = node === range.startContainer ? range.startOffset : 0;
             const end =
                 node === range.endContainer
                     ? range.endOffset
                     : node.data.length;
             if (end <= start) continue;
 
-            const block = node.parentElement?.closest(
-                READING_BLOCK_SELECTOR,
-            );
+            const block = node.parentElement?.closest(READING_BLOCK_SELECTOR);
             if (
                 segments.length > 0 &&
                 block &&
@@ -449,7 +493,11 @@
 
             return splitReadingOffsets(fullText)
                 .map(([start, end]) => {
-                    const rangeStart = getMappedPosition(segments, start, false);
+                    const rangeStart = getMappedPosition(
+                        segments,
+                        start,
+                        false,
+                    );
                     const rangeEnd = getMappedPosition(segments, end, true);
                     if (!rangeStart || !rangeEnd) return null;
 
@@ -977,13 +1025,8 @@
                 return false;
             const hasPlayerOwnedChildCue = Array.from(
                 element.querySelectorAll(binding.adapter.cueSelector),
-            ).some(
-                (child) => !isOwnUI(child) && !isLectoroElement(child),
-            );
-            return (
-                !binding.adapter.leafOnly ||
-                !hasPlayerOwnedChildCue
-            );
+            ).some((child) => !isOwnUI(child) && !isLectoroElement(child));
+            return !binding.adapter.leafOnly || !hasPlayerOwnedChildCue;
         });
     }
 
@@ -1013,9 +1056,11 @@
         const raw = typeof cue?.text === "string" ? cue.text.trim() : "";
         if (!raw) return "";
         if (!raw.includes("<")) return raw;
+
         const holder = document.createElement("div");
         holder.innerHTML = raw;
-        return holder.textContent.trim();
+
+        return extractCueText(holder);
     }
 
     function getNativeCueText(video) {
@@ -1194,11 +1239,9 @@
         refreshNativeTracks(session);
 
         video.addEventListener("play", () => activateVideo(video), { signal });
-        video.addEventListener(
-            "loadedmetadata",
-            () => activateVideo(video),
-            { signal },
-        );
+        video.addEventListener("loadedmetadata", () => activateVideo(video), {
+            signal,
+        });
         video.addEventListener(
             "emptied",
             () => {
@@ -1282,12 +1325,36 @@
         getCurrentText() {
             const video = this.getVideo();
             if (!video) return null;
+
+            // Netflix:
+            // najpierw próbujemy odczytać faktycznie wyrenderowane słowa.
+            // captureRenderedLines() wykorzystuje pozycje tekstu na ekranie
+            // i może odtworzyć brakujące spacje między osobnymi elementami.
+            if (isNetflixPage() && Netflix?.captureRenderedLines) {
+                const elements = this.getSubtitleElements();
+                const renderedLines = Netflix.captureRenderedLines(elements);
+
+                const renderedText = renderedLines
+                    .map((line) => line.text)
+                    .filter(Boolean)
+                    .join(" ")
+                    .replace(/\s+/g, " ")
+                    .trim();
+
+                if (renderedText) {
+                    return renderedText;
+                }
+            }
+
+            // Fallback dla innych playerów.
             const nativeText = getNativeCueText(video);
             if (nativeText) return nativeText;
+
             const text = this.getSubtitleElements()
                 .map((element) => element.textContent.trim())
                 .filter(Boolean)
                 .join(" ");
+
             return text || null;
         },
     };
@@ -1370,6 +1437,78 @@
         Netflix?.requestSeek?.(targetSeconds);
     }
 
+    let netflixSubtitleNavigationPending = false;
+
+    function getAdjacentCueTime(cues, currentTime, direction) {
+        if (!Array.isArray(cues) || cues.length === 0) return null;
+        if (direction > 0) {
+            const next = cues.find((cue) => cue.startTime > currentTime + 0.08);
+            return next?.startTime ?? null;
+        }
+
+        let previousIndex = -1;
+        for (let index = cues.length - 1; index >= 0; index -= 1) {
+            if (cues[index].startTime <= currentTime + 0.08) {
+                previousIndex = index;
+                break;
+            }
+        }
+        if (previousIndex < 0) return null;
+        const currentCue = cues[previousIndex];
+        const isInsideCurrentCue =
+            currentTime >= currentCue.startTime - 0.08 &&
+            currentTime <= currentCue.endTime + 0.15;
+        const targetIndex = isInsideCurrentCue
+            ? previousIndex - 1
+            : previousIndex;
+        return targetIndex >= 0 ? cues[targetIndex].startTime : null;
+    }
+
+    async function navigateNetflixSubtitle(video, direction) {
+        if (netflixSubtitleNavigationPending) return;
+        netflixSubtitleNavigationPending = true;
+        const wasPlaying = !video.paused;
+        try {
+            const nativeCues = getAllCues(video);
+            let targetTime = getAdjacentCueTime(
+                nativeCues,
+                video.currentTime,
+                direction,
+            );
+            if (targetTime === null) {
+                if (wasPlaying) video.pause();
+                QT.createHint("").show("Indeksuję napisy Netflixa…", 1200);
+                targetTime = await Netflix?.getAdjacentSubtitleTime?.(
+                    video.currentTime,
+                    direction,
+                );
+            }
+            if (!Number.isFinite(targetTime)) {
+                QT.createHint("").show(
+                    direction < 0
+                        ? "Brak wcześniejszego zdania w napisach"
+                        : "Brak następnego zdania w napisach",
+                    2200,
+                );
+                if (wasPlaying && video.paused) video.play().catch(() => {});
+                return;
+            }
+            requestNetflixSeek(targetTime);
+        } catch (error) {
+            console.warn(
+                "[Lectoro] Netflix subtitle navigation failed:",
+                error,
+            );
+            QT.createHint("").show(
+                "Nie udało się załadować osi napisów Netflixa",
+                2400,
+            );
+            if (wasPlaying && video.paused) video.play().catch(() => {});
+        } finally {
+            netflixSubtitleNavigationPending = false;
+        }
+    }
+
     async function captureVideoReviewScreenshot(video) {
         if (isNetflixPage())
             return (await Netflix.captureReviewImage(video)) || "";
@@ -1387,13 +1526,156 @@
     let lastHoveredSubWord = null;
     let subTooltipAnchor = null;
     let subCloseTimer = null;
+    // Netflix owns the subtitle DOM and its layout is sensitive to wrappers.
+    // Keep the native subtitle nodes untouched and put transparent word hitboxes
+    // over their actual rendered word rectangles instead.
+    let netflixSubtitleHitLayer = null;
+    let netflixSubtitleHitboxes = [];
+    let netflixSubtitleSourceEls = new Set();
+
+    function ensureNetflixSubtitleHitLayer() {
+        const parent =
+            document.fullscreenElement ||
+            document.webkitFullscreenElement ||
+            document.body;
+
+        if (netflixSubtitleHitLayer?.isConnected) {
+            if (netflixSubtitleHitLayer.parentElement !== parent) {
+                parent.appendChild(netflixSubtitleHitLayer);
+            }
+            return netflixSubtitleHitLayer;
+        }
+
+        netflixSubtitleHitLayer = document.createElement("div");
+        netflixSubtitleHitLayer.className =
+            PREFIX + "netflix-subtitle-hit-layer";
+
+        Object.assign(netflixSubtitleHitLayer.style, {
+            position: "fixed",
+            inset: "0px",
+            width: "100vw",
+            height: "100vh",
+            pointerEvents: "none",
+            zIndex: "2147483000",
+        });
+
+        parent.appendChild(netflixSubtitleHitLayer);
+        return netflixSubtitleHitLayer;
+    }
+
+    function clearNetflixSubtitleHitboxes() {
+        for (const hitbox of netflixSubtitleHitboxes) {
+            hitbox.remove();
+        }
+
+        netflixSubtitleHitboxes = [];
+        netflixSubtitleSourceEls.clear();
+    }
+
+    function createNetflixSubtitleHitboxes(el) {
+        const layer = ensureNetflixSubtitleHitLayer();
+
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+
+        let textNode;
+
+        while ((textNode = walker.nextNode())) {
+            const text = textNode.nodeValue || "";
+
+            for (const match of text.matchAll(/\S+/g)) {
+                const start = match.index ?? 0;
+                const end = start + match[0].length;
+
+                const range = document.createRange();
+
+                try {
+                    range.setStart(textNode, start);
+                    range.setEnd(textNode, end);
+                } catch (_) {
+                    range.detach?.();
+                    continue;
+                }
+
+                const rects = Array.from(range.getClientRects()).filter(
+                    (rect) => rect.width > 0 && rect.height > 0,
+                );
+
+                range.detach?.();
+
+                for (const rect of rects) {
+                    const hitbox = document.createElement("span");
+
+                    hitbox.className = PREFIX + "sub-word";
+                    hitbox.textContent = match[0];
+                    hitbox.dataset[PREFIX + "netflixHitbox"] = "1";
+
+                    Object.assign(hitbox.style, {
+                        position: "fixed",
+                        left: `${rect.left}px`,
+                        top: `${rect.top}px`,
+                        width: `${rect.width}px`,
+                        height: `${rect.height}px`,
+                        margin: "0",
+                        padding: "0",
+                        border: "0",
+                        background: "transparent",
+                        color: "transparent",
+                        textShadow: "none",
+                        lineHeight: "0",
+                        pointerEvents: "auto",
+                        cursor: "pointer",
+                        fontSize: "0px",
+                    });
+
+                    layer.appendChild(hitbox);
+                    netflixSubtitleHitboxes.push(hitbox);
+                }
+            }
+        }
+
+        netflixSubtitleSourceEls.add(el);
+    }
+
+    function refreshNetflixSubtitleHitboxes(els) {
+        if (!isNetflixPage()) return false;
+
+        const sourceElements = new Set(
+            els.filter((el) => el?.textContent?.trim()),
+        );
+
+        clearNetflixSubtitleHitboxes();
+        ensureNetflixSubtitleHitLayer();
+
+        for (const el of sourceElements) {
+            createNetflixSubtitleHitboxes(el);
+        }
+
+        return true;
+    }
+
+    function destroyNetflixSubtitleHitLayer() {
+        clearNetflixSubtitleHitboxes();
+        netflixSubtitleHitLayer?.remove();
+        netflixSubtitleHitLayer = null;
+    }
 
     function makeSubtitlesInteractive(
         els = PlayerAdapter.getSubtitleElements(),
     ) {
+        if (isNetflixPage()) {
+            refreshNetflixSubtitleHitboxes(els);
+            return;
+        }
+
+        // Remove the Netflix hit layer when the active player changes.
+        if (netflixSubtitleHitLayer) destroyNetflixSubtitleHitLayer();
+
+        // On non-Netflix players it is safe to keep the existing approach and
+        // split the subtitle element itself into word spans.
         for (const el of els) {
             const sourceText = el.textContent.trim();
             if (!sourceText) continue;
+
             if (
                 el.dataset[PREFIX + "bound"] &&
                 el.dataset[PREFIX + "source"] === sourceText &&
@@ -1401,15 +1683,18 @@
             ) {
                 continue;
             }
-            // if already split, ignore
+
             if (
                 el.querySelector(
                     `div:not(.${PREFIX}sub-word), span:not(.${PREFIX}sub-word)`,
                 )
-            )
+            ) {
                 continue;
+            }
+
             el.dataset[PREFIX + "bound"] = "1";
             el.dataset[PREFIX + "source"] = sourceText;
+
             QT.splitIntoWordSpans(el, PREFIX + "sub-word");
         }
     }
@@ -1479,11 +1764,7 @@
 
             const wordSpan = isOwnUI(e.target)
                 ? null
-                : QT.findWordAtPoint(
-                      e.clientX,
-                      e.clientY,
-                      PREFIX + "sub-word",
-                  );
+                : QT.findWordAtPoint(e.clientX, e.clientY, PREFIX + "sub-word");
 
             if (wordSpan && wordSpan !== lastHoveredSubWord) {
                 clearTimeout(subCloseTimer);
@@ -1509,7 +1790,10 @@
                     if (video && !video.paused) video.pause();
 
                     const rect = wordSpan.getBoundingClientRect();
-                    QT.showLoading(rect, "top");
+                    const subtitleTooltipPlacement = isNetflixPage()
+                        ? "bottom"
+                        : "top";
+                    QT.showLoading(rect, subtitleTooltipPlacement);
                     ensureSubtitleUiTracking();
 
                     try {
@@ -1524,26 +1808,21 @@
                             original: text,
                             translated: res.translated,
                         });
-                        QT.showTooltip(html, rect, "top");
+                        QT.showTooltip(html, rect, subtitleTooltipPlacement);
                         QT.attachTooltipHandlers();
                     } catch (err) {
-                        if (
-                            isSubHovering &&
-                            lastHoveredSubWord === wordSpan
-                        )
+                        if (isSubHovering && lastHoveredSubWord === wordSpan)
                             QT.showTooltip(
                                 `<div class="${PREFIX}error">⚠ ${QT.escapeHtml(err.message)}</div>`,
                                 rect,
-                                "top",
+                                subtitleTooltipPlacement,
                             );
                     }
                 }, 300);
             } else if (!wordSpan) {
                 clearTimeout(subHoverTimer);
                 if (lastHoveredSubWord) {
-                    lastHoveredSubWord.classList.remove(
-                        `${PREFIX}word-hover`,
-                    );
+                    lastHoveredSubWord.classList.remove(`${PREFIX}word-hover`);
                     lastHoveredSubWord = null;
                 }
                 // This also runs when leaving the tooltip after the word was
@@ -1560,12 +1839,9 @@
 
     // A cursor leaving the document produces no further mousemove events in
     // the page, so close immediately instead of leaving playback paused.
-    document.documentElement.addEventListener(
-        "mouseleave",
-        () => {
-            if (isSubHovering && !subClickLocked) closeSubTooltip();
-        },
-    );
+    document.documentElement.addEventListener("mouseleave", () => {
+        if (isSubHovering && !subClickLocked) closeSubTooltip();
+    });
 
     // Click: word translation + the full subtitle line it belongs to
     async function handleSubWordClick(wordSpan) {
@@ -1585,8 +1861,7 @@
         wordSpan.classList.add(`${PREFIX}word-hover`);
 
         const video = PlayerAdapter.getVideo();
-        if (!wasAlreadyHovering)
-            subWasPlaying = video ? !video.paused : false;
+        if (!wasAlreadyHovering) subWasPlaying = video ? !video.paused : false;
         if (video && !video.paused) video.pause();
 
         const text = wordSpan.textContent.trim();
@@ -1597,7 +1872,8 @@
 
         const sentence = PlayerAdapter.getCurrentText() || text;
         const rect = wordSpan.getBoundingClientRect();
-        QT.showLoading(rect, "top");
+        const subtitleTooltipPlacement = isNetflixPage() ? "bottom" : "top";
+        QT.showLoading(rect, subtitleTooltipPlacement);
         ensureSubtitleUiTracking();
 
         try {
@@ -1626,7 +1902,7 @@
                 fullTranslated,
                 speakFullLine: true,
             });
-            QT.showTooltip(html, rect, "top");
+            QT.showTooltip(html, rect, subtitleTooltipPlacement);
             QT.attachTooltipHandlers();
             QT.speak(text, srcLang);
         } catch (err) {
@@ -1634,7 +1910,7 @@
                 QT.showTooltip(
                     `<div class="${PREFIX}error">⚠ ${QT.escapeHtml(err.message)}</div>`,
                     rect,
-                    "top",
+                    subtitleTooltipPlacement,
                 );
         }
     }
@@ -2116,7 +2392,8 @@
     async function showWordClouds(video, opts = { skipSpeech: false }) {
         const modeRevision = opts.revision ?? subtitleModeRevision;
         if (modeRevision !== subtitleModeRevision) return;
-        const subEls = opts.sourceElements || PlayerAdapter.getSubtitleElements();
+        const subEls =
+            opts.sourceElements || PlayerAdapter.getSubtitleElements();
         if (subEls.length === 0) return;
         const fullText =
             opts.sourceText ||
@@ -2160,10 +2437,7 @@
                     wordSpans.push(span);
                     if (shouldTranslateWord(span.textContent))
                         span.classList.add(PREFIX + "word-cloud-highlight");
-                    else
-                        span.classList.remove(
-                            PREFIX + "word-cloud-highlight",
-                        );
+                    else span.classList.remove(PREFIX + "word-cloud-highlight");
                 });
         }
 
@@ -2240,22 +2514,48 @@
         const rect = getSubtitleRect(els);
         if (!rect) return null;
         const cs = window.getComputedStyle(els[0]);
+        const renderedLines = isNetflixPage()
+            ? Netflix?.captureRenderedLines?.(els) || []
+            : [];
+        const lineTexts =
+            renderedLines.length > 0
+                ? renderedLines.map((line) => line.text)
+                : els.map((el) => el.textContent.trim()).filter(Boolean);
         return {
             rect,
             fontSize: cs.fontSize,
             fontFamily: cs.fontFamily,
-            lineLengths: els.map(
-                (el) => el.textContent.trim().length || 1,
-            ),
+            fontStyle: cs.fontStyle,
+            fontWeight: cs.fontWeight,
+            lineHeight: cs.lineHeight,
+            letterSpacing: cs.letterSpacing,
+            wordSpacing: cs.wordSpacing,
+            textAlign: cs.textAlign,
+            lineTexts,
+            lineLengths: lineTexts.map((line) => line.length || 1),
+            lineWidths: renderedLines.map((line) => line.width),
         };
     }
 
     function captureSubtitleSnapshot() {
         const elements = PlayerAdapter.getSubtitleElements();
-        const domText = elements
-            .map((element) => element.textContent.trim())
-            .filter(Boolean)
-            .join(" ");
+
+        let domText = "";
+
+        if (isNetflixPage() && Netflix?.captureRenderedLines) {
+            domText = Netflix.captureRenderedLines(elements)
+                .map((line) => line.text)
+                .filter(Boolean)
+                .join(" ")
+                .replace(/\s+/g, " ")
+                .trim();
+        } else {
+            domText = elements
+                .map((element) => element.textContent.trim())
+                .filter(Boolean)
+                .join(" ");
+        }
+
         return {
             elements,
             text: domText || PlayerAdapter.getCurrentText(),
@@ -2325,24 +2625,58 @@
         if (!rect) return;
         if (liveEls.length > 0) {
             const cs = window.getComputedStyle(liveEls[0]);
-            translationOverlay.style.fontSize = cs.fontSize;
+            translationOverlay.style.setProperty(
+                "font-size",
+                cs.fontSize,
+                "important",
+            );
             translationOverlay.style.fontFamily = cs.fontFamily;
+            translationOverlay.style.fontStyle = cs.fontStyle;
+            translationOverlay.style.fontWeight = cs.fontWeight;
+            translationOverlay.style.lineHeight = cs.lineHeight;
+            translationOverlay.style.letterSpacing = cs.letterSpacing;
+            translationOverlay.style.wordSpacing = cs.wordSpacing;
+            translationOverlay.style.setProperty(
+                "text-align",
+                cs.textAlign,
+                "important",
+            );
         } else if (layout) {
-            translationOverlay.style.fontSize = layout.fontSize;
+            translationOverlay.style.setProperty(
+                "font-size",
+                layout.fontSize,
+                "important",
+            );
             translationOverlay.style.fontFamily = layout.fontFamily;
+            translationOverlay.style.fontStyle = layout.fontStyle;
+            translationOverlay.style.fontWeight = layout.fontWeight;
+            translationOverlay.style.lineHeight = layout.lineHeight;
+            translationOverlay.style.letterSpacing = layout.letterSpacing;
+            translationOverlay.style.wordSpacing = layout.wordSpacing;
+            translationOverlay.style.setProperty(
+                "text-align",
+                layout.textAlign,
+                "important",
+            );
         }
         translationOverlay.style.position = "fixed";
         translationOverlay.style.left = rect.left + "px";
         translationOverlay.style.width = rect.width + "px";
-        const overlayH = translationOverlay.offsetHeight || 40;
         const replacesNetflixSubtitles =
             isNetflixPage() &&
             document.documentElement.classList.contains(
                 "__qt_netflix-subtitles-hidden",
             ) &&
             !wordCloudActive;
+        // Netflix's native text box has no Lectoro padding. Removing it here
+        // keeps the copied line box at the same width and height.
+        translationOverlay.style.padding = replacesNetflixSubtitles
+            ? "0px"
+            : "8px";
+        const overlayH = translationOverlay.offsetHeight || 40;
         translationOverlay.style.top = replacesNetflixSubtitles
-            ? rect.top + Math.max(0, (rect.bottom - rect.top - overlayH) / 2) +
+            ? rect.top +
+              Math.max(0, (rect.bottom - rect.top - overlayH) / 2) +
               "px"
             : rect.top - overlayH - 26 + "px";
     }
@@ -2353,12 +2687,15 @@
         positionOverlay();
     }
 
-    function applyTranslation(translatedText, layout = translationAnchorLayout) {
+    function applyTranslation(
+        translatedText,
+        layout = translationAnchorLayout,
+    ) {
         const subEls = PlayerAdapter.getSubtitleElements();
+        const liveLayout =
+            subEls.length > 0 ? captureSubtitleLayout(subEls) : null;
         const lineLengths =
-            subEls.length > 0
-                ? subEls.map((el) => el.textContent.trim().length || 1)
-                : layout?.lineLengths || [];
+            liveLayout?.lineLengths || layout?.lineLengths || [];
         if (lineLengths.length === 0) {
             removeOverlay();
             return;
@@ -2366,7 +2703,10 @@
         const overlay = translationOverlay || createOverlay(layout);
         const words = translatedText.split(/\s+/).filter(Boolean);
         if (lineLengths.length <= 1) {
-            overlay.textContent = words.join(" ");
+            const line = document.createElement("div");
+            line.className = PREFIX + "sub-overlay-line";
+            line.textContent = words.join(" ");
+            overlay.replaceChildren(line);
         } else {
             const totalOrigLen = lineLengths.reduce((a, b) => a + b, 0);
             const totalWords = words.length;
@@ -2376,19 +2716,30 @@
                 if (i === lineLengths.length - 1) {
                     lines.push(words.slice(wordIdx).join(" "));
                 } else {
+                    const remainingLines = lineLengths.length - i;
+                    const remainingWords = totalWords - wordIdx;
+                    const proportionalShare = Math.round(
+                        (lineLength / totalOrigLen) * totalWords,
+                    );
                     const share = Math.max(
                         1,
-                        Math.round(
-                            (lineLength / totalOrigLen) * totalWords,
+                        Math.min(
+                            proportionalShare,
+                            remainingWords - (remainingLines - 1),
                         ),
                     );
                     lines.push(words.slice(wordIdx, wordIdx + share).join(" "));
                     wordIdx += share;
                 }
             });
-            overlay.innerHTML = lines
-                .map((line) => `<div>${line}</div>`)
-                .join("");
+            overlay.replaceChildren(
+                ...lines.map((text) => {
+                    const line = document.createElement("div");
+                    line.className = PREFIX + "sub-overlay-line";
+                    line.textContent = text;
+                    return line;
+                }),
+            );
         }
         positionOverlay(layout);
         eTranslateActive = true;
@@ -2736,16 +3087,14 @@
                 wordCloudActive ||
                 subtitleModeStarting ||
                 translationOverlay?.isConnected;
-
-            // Netflix must handle its own real arrow-key seek. Writing to the
-            // DRM video element's currentTime directly triggers M7375.
-            if (
-                isNetflixPage() &&
-                (key === "ArrowLeft" || key === "ArrowRight") &&
-                !subtitleUiOpen
-            ) {
-                return;
-            }
+            const isHorizontalSubtitleNavigation = [
+                "a",
+                "A",
+                "ArrowLeft",
+                "d",
+                "D",
+                "ArrowRight",
+            ].includes(key);
 
             e.preventDefault();
             e.stopPropagation();
@@ -2800,7 +3149,10 @@
                     eWasPlaying = false;
                     wordCloudWasPlaying = false;
                 }
-                return;
+                // A horizontal key should close the translation overlays and
+                // navigate during the same press. Previously the first press
+                // only closed the UI, which looked like broken seeking.
+                if (!isHorizontalSubtitleNavigation) return;
             }
 
             if (
@@ -2820,8 +3172,10 @@
                     const snapshot = captureSubtitleSnapshot();
                     const { text, elements, layout } = snapshot;
                     if (!text) return;
-                    const translationTask =
-                        createSubtitleTranslationTask(text, modeRevision);
+                    const translationTask = createSubtitleTranslationTask(
+                        text,
+                        modeRevision,
+                    );
                     if (isNetflixPage())
                         Netflix.setOriginalSubtitlesHidden(true);
                     if (data.wordCloudMode && data.subtitleTTS) {
@@ -2907,6 +3261,10 @@
             }
 
             if (key === "a" || key === "A" || key === "ArrowLeft") {
+                if (isNetflixPage()) {
+                    navigateNetflixSubtitle(video, -1);
+                    return;
+                }
                 let targetTime;
                 if (hasCues) {
                     const idx = getCurrentCueIndex(cues, video.currentTime);
@@ -2916,14 +3274,7 @@
                             ? cues[idx].startTime
                             : cues[Math.max(0, idx - 1)].startTime;
                 } else {
-                    targetTime = Math.max(
-                        0,
-                        video.currentTime - FALLBACK_SKIP,
-                    );
-                }
-                if (isNetflixPage()) {
-                    requestNetflixSeek(targetTime);
-                    return;
+                    targetTime = Math.max(0, video.currentTime - FALLBACK_SKIP);
                 }
                 video.currentTime = targetTime;
                 if (video.paused) video.play();
@@ -2931,6 +3282,10 @@
             }
 
             if (key === "d" || key === "D" || key === "ArrowRight") {
+                if (isNetflixPage()) {
+                    navigateNetflixSubtitle(video, 1);
+                    return;
+                }
                 let targetTime;
                 if (hasCues) {
                     const idx = getCurrentCueIndex(cues, video.currentTime);
@@ -2941,10 +3296,6 @@
                         video.duration || Infinity,
                         video.currentTime + FALLBACK_SKIP,
                     );
-                }
-                if (isNetflixPage()) {
-                    requestNetflixSeek(targetTime);
-                    return;
                 }
                 video.currentTime = targetTime;
                 if (video.paused) video.play();

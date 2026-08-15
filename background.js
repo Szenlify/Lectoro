@@ -406,6 +406,13 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 
 const MAX_CONTEXT_IMAGE_BYTES = 8 * 1024 * 1024;
+const MAX_NETFLIX_TIMED_TEXT_BYTES = 5 * 1024 * 1024;
+const NETFLIX_MEDIA_HOSTS = [
+    "netflix.com",
+    "nflxvideo.net",
+    "nflxso.net",
+    "nflximg.net",
+];
 
 function bytesToBase64(bytes) {
     let binary = "";
@@ -481,6 +488,51 @@ async function fetchContextImageDataUrl(rawUrl) {
     return `data:${contentType};base64,${base64}`;
 }
 
+function isAllowedNetflixMediaHost(hostname) {
+    const normalized = hostname.toLowerCase();
+    return NETFLIX_MEDIA_HOSTS.some(
+        (suffix) =>
+            normalized === suffix || normalized.endsWith("." + suffix),
+    );
+}
+
+async function fetchNetflixTimedText(rawUrl) {
+    const url = new URL(rawUrl);
+    if (
+        url.protocol !== "https:" ||
+        !isAllowedNetflixMediaHost(url.hostname)
+    ) {
+        throw new Error("Nieobsługiwany adres napisów Netflixa.");
+    }
+
+    const response = await fetch(url.href, {
+        credentials: "omit",
+        redirect: "follow",
+        referrerPolicy: "no-referrer",
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const finalUrl = new URL(response.url);
+    if (
+        finalUrl.protocol !== "https:" ||
+        !isAllowedNetflixMediaHost(finalUrl.hostname)
+    ) {
+        throw new Error("Niedozwolone przekierowanie napisów Netflixa.");
+    }
+
+    const declaredSize = Number(response.headers.get("content-length")) || 0;
+    if (declaredSize > MAX_NETFLIX_TIMED_TEXT_BYTES) {
+        throw new Error("Plik napisów Netflixa jest zbyt duży.");
+    }
+    const buffer = await response.arrayBuffer();
+    if (buffer.byteLength > MAX_NETFLIX_TIMED_TEXT_BYTES) {
+        throw new Error("Plik napisów Netflixa jest zbyt duży.");
+    }
+    return {
+        text: new TextDecoder("utf-8").decode(buffer),
+        contentType: response.headers.get("content-type") || "",
+    };
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "QT_CAPTURE_VISIBLE_TAB") {
         if (!sender.tab?.active || !Number.isInteger(sender.tab.windowId)) {
@@ -493,6 +545,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 quality: 88,
             })
             .then((dataUrl) => sendResponse({ dataUrl }))
+            .catch((error) => sendResponse({ error: error.message }));
+        return true;
+    }
+
+    if (message.type === "QT_FETCH_NETFLIX_TIMED_TEXT") {
+        if (!sender.tab?.url || !/^https:\/\/www\.netflix\.com\//i.test(sender.tab.url)) {
+            sendResponse({ error: "Żądanie nie pochodzi z karty Netflixa." });
+            return false;
+        }
+        fetchNetflixTimedText(message.url)
+            .then((result) => sendResponse(result))
             .catch((error) => sendResponse({ error: error.message }));
         return true;
     }

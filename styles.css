@@ -849,11 +849,11 @@ body.__qt_reels-active .ytp-caption-segment,
 body.__qt_reels-active .captions-text {
     background: transparent !important;
     color: #ffffff !important;
-    font-family: "Montserrat", "YouTube Sans", "Roboto", sans-serif !important;
-    font-weight: 800 !important;
+    font-family: "YouTube Sans", "Roboto", sans-serif !important;
+    font-weight: 700 !important;
 
-    /* Płynny rozmiar: min. 16px, optymalnie 2.2vw, max. 36px */
-    font-size: clamp(16px, 2.2vw, 36px) !important;
+    /* Płynny rozmiar: min. 16px, optymalnie 2.4vw, max. 66px */
+    font-size: clamp(16px, 2.4vw, 66px) !important;
 
     /* text-transform: uppercase; */
     letter-spacing: 0.02em;
@@ -1035,6 +1035,12 @@ body.__qt_reels-active .captions-text {
         0px 0.15em 0.3em rgba(0, 0, 0, 0.85);
     pointer-events: none;
     white-space: pre-wrap;
+    box-sizing: border-box;
+}
+
+.__qt_sub-overlay-line {
+    display: block;
+    white-space: nowrap;
 }
 
 .__qt_shimmer-bar {
@@ -1244,6 +1250,11 @@ body.__qt_reels-active .captions-text {
 
 .__qt_word-cloud-source-layer .__qt_wc-word {
     display: inline;
+}
+
+.__qt_word-cloud-source-line {
+    display: block;
+    white-space: nowrap;
 }
 
 html.__qt_netflix-subtitles-hidden .player-timedtext {
