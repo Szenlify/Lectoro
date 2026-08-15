@@ -27,6 +27,7 @@
         getElAudioEl,
         setElAudioEl,
     } = QT;
+    const Netflix = globalThis.LectoroNetflix || null;
 
     // ═══════════════════════════════════════════════════════════════
     //  State
@@ -888,14 +889,7 @@
             cueSelector: ".vjs-text-track-cue div",
             leafOnly: true,
         },
-        {
-            id: "netflix",
-            playerSelector: ".watch-video, [data-uia='video-canvas']",
-            containerSelector: ".player-timedtext",
-            cueSelector: ".player-timedtext-text-container span",
-            leafOnly: true,
-            documentFallback: true,
-        },
+        ...(Netflix?.captionAdapter ? [Netflix.captionAdapter] : []),
         {
             id: "shaka",
             playerSelector: ".shaka-video-container",
@@ -960,6 +954,10 @@
 
     function getAdapterElements(binding) {
         if (!binding?.container?.isConnected) return [];
+        const isLectoroElement = (element) =>
+            Array.from(element?.classList || []).some((className) =>
+                className.startsWith(PREFIX),
+            );
         const candidates = Array.from(
             new Set([
                 ...(binding.container.matches(binding.adapter.cueSelector)
@@ -971,10 +969,20 @@
             ]),
         );
         return candidates.filter((element) => {
-            if (isOwnUI(element) || !element.textContent?.trim()) return false;
+            if (
+                isOwnUI(element) ||
+                isLectoroElement(element) ||
+                !element.textContent?.trim()
+            )
+                return false;
+            const hasPlayerOwnedChildCue = Array.from(
+                element.querySelectorAll(binding.adapter.cueSelector),
+            ).some(
+                (child) => !isOwnUI(child) && !isLectoroElement(child),
+            );
             return (
                 !binding.adapter.leafOnly ||
-                !element.querySelector(binding.adapter.cueSelector)
+                !hasPlayerOwnedChildCue
             );
         });
     }
@@ -1352,6 +1360,20 @@
             }
         }
         return idx;
+    }
+
+    function isNetflixPage() {
+        return !!Netflix?.isPage?.();
+    }
+
+    function requestNetflixSeek(targetSeconds) {
+        Netflix?.requestSeek?.(targetSeconds);
+    }
+
+    async function captureVideoReviewScreenshot(video) {
+        if (isNetflixPage())
+            return (await Netflix.captureReviewImage(video)) || "";
+        return QT.captureVideoScreenshot(video) || "";
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -1733,8 +1755,9 @@
         saveBtn.addEventListener("click", async (ev) => {
             ev.stopPropagation();
             if (saveBtn.classList.contains("saved")) return;
-            const screenshot =
-                QT.captureVideoScreenshot(PlayerAdapter.getVideo()) || "";
+            const screenshot = await captureVideoReviewScreenshot(
+                PlayerAdapter.getVideo(),
+            );
             try {
                 await saveWord({
                     original: text,
@@ -1930,6 +1953,7 @@
     let eWasPlaying = false;
     let wordCloudActive = false;
     let wordCloudEls = [];
+    let wordCloudSourceLayers = [];
     let wordCloudWasPlaying = false;
     let subtitleModeRevision = 0;
     let subtitleModeStarting = false;
@@ -2018,6 +2042,8 @@
     function removeWordClouds() {
         wordCloudEls.forEach(({ cloud }) => cloud.remove());
         wordCloudEls = [];
+        wordCloudSourceLayers.forEach(({ layer }) => layer.remove());
+        wordCloudSourceLayers = [];
         document
             .querySelectorAll("." + PREFIX + "word-cloud-highlight")
             .forEach((el) => {
@@ -2090,52 +2116,76 @@
     async function showWordClouds(video, opts = { skipSpeech: false }) {
         const modeRevision = opts.revision ?? subtitleModeRevision;
         if (modeRevision !== subtitleModeRevision) return;
-        const subEls = PlayerAdapter.getSubtitleElements();
+        const subEls = opts.sourceElements || PlayerAdapter.getSubtitleElements();
         if (subEls.length === 0) return;
-        const fullText = subEls
-            .map((el) => el.textContent.trim())
-            .filter(Boolean)
-            .join(" ");
+        const fullText =
+            opts.sourceText ||
+            subEls
+                .map((el) => el.textContent.trim())
+                .filter(Boolean)
+                .join(" ");
         if (!fullText) return;
 
         wordCloudWasPlaying = !video.paused;
-        video.pause();
         wordCloudActive = true;
 
         const wordSpans = [];
-        for (const el of subEls) {
-            if (!el.textContent.trim()) continue;
-            eOriginalContents.push({ el, html: el.innerHTML });
-            QT.splitIntoWordSpans(el, PREFIX + "wc-word");
-            el.querySelectorAll("." + PREFIX + "wc-word").forEach((span) => {
-                wordSpans.push(span);
-                if (shouldTranslateWord(span.textContent))
-                    span.classList.add(PREFIX + "word-cloud-highlight");
-                else span.classList.remove(PREFIX + "word-cloud-highlight");
-            });
+        const parent =
+            document.fullscreenElement ||
+            document.webkitFullscreenElement ||
+            document.body;
+        const detachedSourceLayers = isNetflixPage();
+        for (const sourceEl of subEls) {
+            if (!sourceEl.textContent.trim()) continue;
+            let wordContainer = sourceEl;
+            if (detachedSourceLayers) {
+                wordContainer = Netflix?.createWordCloudSourceLayer?.({
+                    source: sourceEl,
+                    parent,
+                    prefix: PREFIX,
+                    splitIntoWordSpans: QT.splitIntoWordSpans,
+                });
+                if (!wordContainer) continue;
+                wordCloudSourceLayers.push({ layer: wordContainer });
+            } else {
+                eOriginalContents.push({
+                    el: sourceEl,
+                    html: sourceEl.innerHTML,
+                });
+                QT.splitIntoWordSpans(sourceEl, PREFIX + "wc-word");
+            }
+            wordContainer
+                .querySelectorAll("." + PREFIX + "wc-word")
+                .forEach((span) => {
+                    wordSpans.push(span);
+                    if (shouldTranslateWord(span.textContent))
+                        span.classList.add(PREFIX + "word-cloud-highlight");
+                    else
+                        span.classList.remove(
+                            PREFIX + "word-cloud-highlight",
+                        );
+                });
         }
+
+        video.pause();
 
         if (wordSpans.length === 0) {
             removeWordClouds();
+            if (!opts.keepOriginalHidden)
+                Netflix?.setOriginalSubtitlesHidden?.(false);
             if (wordCloudWasPlaying) resumeVideoAfterSubtitleClose(video);
             return;
         }
 
-        const targetLang = await getTargetLang();
-        if (modeRevision !== subtitleModeRevision) return;
-        let translatedFullText = fullText;
-        try {
-            const translated = await googleTranslate(fullText, targetLang);
-            if (modeRevision !== subtitleModeRevision) return;
-            translatedFullText = translated?.translated || fullText;
-            if (!opts.skipSpeech && translatedFullText?.trim()) {
-                speak(translatedFullText, targetLang, {
-                    isCancelled: () =>
-                        modeRevision !== subtitleModeRevision,
-                }).catch(() => {});
-            }
-        } catch (err) {}
-        if (modeRevision !== subtitleModeRevision) return;
+        const translation = await (opts.translationTask ||
+            createSubtitleTranslationTask(fullText, modeRevision));
+        if (!translation || modeRevision !== subtitleModeRevision) return;
+        const { targetLang, translatedText: translatedFullText } = translation;
+        if (!opts.skipSpeech && translatedFullText?.trim()) {
+            speak(translatedFullText, targetLang, {
+                isCancelled: () => modeRevision !== subtitleModeRevision,
+            }).catch(() => {});
+        }
 
         const translatableSpans = wordSpans.filter((span) =>
             shouldTranslateWord(span.textContent),
@@ -2158,13 +2208,13 @@
         if (modeRevision !== subtitleModeRevision) return;
 
         const subFontSizePx =
-            parseFloat(window.getComputedStyle(subEls[0]).fontSize) || 16;
+            parseFloat(
+                window.getComputedStyle(
+                    wordCloudSourceLayers[0]?.layer || subEls[0],
+                ).fontSize,
+            ) || 16;
         const cloudFontSize = Math.max(11, Math.min(22, subFontSizePx * 0.35));
 
-        const parent =
-            document.fullscreenElement ||
-            document.webkitFullscreenElement ||
-            document.body;
         translatableSpans.forEach((span, i) => {
             const translated = translations[i];
             if (!translated) return;
@@ -2183,8 +2233,51 @@
     }
 
     let translationOverlay = null;
-    function getSubtitleRect() {
-        const els = PlayerAdapter.getSubtitleElements();
+    let translationAnchorLayout = null;
+    function captureSubtitleLayout(elements = null) {
+        const els = elements || PlayerAdapter.getSubtitleElements();
+        if (els.length === 0) return null;
+        const rect = getSubtitleRect(els);
+        if (!rect) return null;
+        const cs = window.getComputedStyle(els[0]);
+        return {
+            rect,
+            fontSize: cs.fontSize,
+            fontFamily: cs.fontFamily,
+            lineLengths: els.map(
+                (el) => el.textContent.trim().length || 1,
+            ),
+        };
+    }
+
+    function captureSubtitleSnapshot() {
+        const elements = PlayerAdapter.getSubtitleElements();
+        const domText = elements
+            .map((element) => element.textContent.trim())
+            .filter(Boolean)
+            .join(" ");
+        return {
+            elements,
+            text: domText || PlayerAdapter.getCurrentText(),
+            layout: captureSubtitleLayout(elements),
+        };
+    }
+
+    async function createSubtitleTranslationTask(text, modeRevision) {
+        const targetLang = await getTargetLang();
+        if (modeRevision !== subtitleModeRevision) return null;
+        try {
+            const { translated } = await googleTranslate(text, targetLang);
+            if (modeRevision !== subtitleModeRevision) return null;
+            return { targetLang, translatedText: translated || text };
+        } catch (_) {
+            if (modeRevision !== subtitleModeRevision) return null;
+            return { targetLang, translatedText: text };
+        }
+    }
+
+    function getSubtitleRect(elements = null) {
+        const els = elements || PlayerAdapter.getSubtitleElements();
         if (els.length === 0) return null;
         let top = Infinity,
             bottom = -Infinity,
@@ -2202,8 +2295,9 @@
         return { top, bottom, left, right, width: right - left };
     }
 
-    function createOverlay() {
+    function createOverlay(layout = null) {
         removeOverlay();
+        translationAnchorLayout = layout;
         translationOverlay = document.createElement("div");
         translationOverlay.className = PREFIX + "sub-overlay";
         const parent =
@@ -2220,57 +2314,72 @@
             translationOverlay.remove();
             translationOverlay = null;
         }
+        translationAnchorLayout = null;
     }
 
-    function positionOverlay() {
+    function positionOverlay(layout = translationAnchorLayout) {
         if (!translationOverlay) return;
-        const rect = getSubtitleRect();
+        const liveEls = PlayerAdapter.getSubtitleElements();
+        const liveRect = getSubtitleRect(liveEls);
+        const rect = liveRect || layout?.rect;
         if (!rect) return;
-        const subEls = PlayerAdapter.getSubtitleElements();
-        if (subEls.length > 0) {
-            const cs = window.getComputedStyle(subEls[0]);
+        if (liveEls.length > 0) {
+            const cs = window.getComputedStyle(liveEls[0]);
             translationOverlay.style.fontSize = cs.fontSize;
             translationOverlay.style.fontFamily = cs.fontFamily;
+        } else if (layout) {
+            translationOverlay.style.fontSize = layout.fontSize;
+            translationOverlay.style.fontFamily = layout.fontFamily;
         }
         translationOverlay.style.position = "fixed";
         translationOverlay.style.left = rect.left + "px";
         translationOverlay.style.width = rect.width + "px";
         const overlayH = translationOverlay.offsetHeight || 40;
-        translationOverlay.style.top = rect.top - overlayH - 26 + "px";
+        const replacesNetflixSubtitles =
+            isNetflixPage() &&
+            document.documentElement.classList.contains(
+                "__qt_netflix-subtitles-hidden",
+            ) &&
+            !wordCloudActive;
+        translationOverlay.style.top = replacesNetflixSubtitles
+            ? rect.top + Math.max(0, (rect.bottom - rect.top - overlayH) / 2) +
+              "px"
+            : rect.top - overlayH - 26 + "px";
     }
 
-    function showSubLoading() {
-        const overlay = createOverlay();
+    function showSubLoading(layout = null) {
+        const overlay = createOverlay(layout);
         overlay.innerHTML = `<div class="${PREFIX}shimmer-bar"><div class="${PREFIX}shimmer-line"></div><div class="${PREFIX}shimmer-line ${PREFIX}shimmer-short"></div></div>`;
         positionOverlay();
     }
 
-    function applyTranslation(translatedText) {
+    function applyTranslation(translatedText, layout = translationAnchorLayout) {
         const subEls = PlayerAdapter.getSubtitleElements();
-        if (subEls.length === 0) {
+        const lineLengths =
+            subEls.length > 0
+                ? subEls.map((el) => el.textContent.trim().length || 1)
+                : layout?.lineLengths || [];
+        if (lineLengths.length === 0) {
             removeOverlay();
             return;
         }
-        const overlay = translationOverlay || createOverlay();
+        const overlay = translationOverlay || createOverlay(layout);
         const words = translatedText.split(/\s+/).filter(Boolean);
-        if (subEls.length <= 1) {
+        if (lineLengths.length <= 1) {
             overlay.textContent = words.join(" ");
         } else {
-            const origLengths = subEls.map(
-                (el) => el.textContent.trim().length || 1,
-            );
-            const totalOrigLen = origLengths.reduce((a, b) => a + b, 0);
+            const totalOrigLen = lineLengths.reduce((a, b) => a + b, 0);
             const totalWords = words.length;
             let wordIdx = 0;
             const lines = [];
-            subEls.forEach((el, i) => {
-                if (i === subEls.length - 1) {
+            lineLengths.forEach((lineLength, i) => {
+                if (i === lineLengths.length - 1) {
                     lines.push(words.slice(wordIdx).join(" "));
                 } else {
                     const share = Math.max(
                         1,
                         Math.round(
-                            (origLengths[i] / totalOrigLen) * totalWords,
+                            (lineLength / totalOrigLen) * totalWords,
                         ),
                     );
                     lines.push(words.slice(wordIdx, wordIdx + share).join(" "));
@@ -2281,7 +2390,7 @@
                 .map((line) => `<div>${line}</div>`)
                 .join("");
         }
-        positionOverlay();
+        positionOverlay(layout);
         eTranslateActive = true;
     }
 
@@ -2294,23 +2403,16 @@
         if (modeRevision !== subtitleModeRevision) return;
         const text = sourceText || PlayerAdapter.getCurrentText();
         if (!text) return;
-        showSubLoading();
-        try {
-            const targetLang = await getTargetLang();
-            if (modeRevision !== subtitleModeRevision) return;
-            const { translated } = await googleTranslate(text, targetLang);
-            if (modeRevision !== subtitleModeRevision) return;
-            const translatedText = translated || text;
-            applyTranslation(translatedText);
-            if (options.speakTranslated)
-                await speak(translatedText, targetLang, {
-                    isCancelled: () =>
-                        modeRevision !== subtitleModeRevision,
-                });
-        } catch (err) {
-            if (modeRevision !== subtitleModeRevision) return;
-            applyTranslation(text);
-        }
+        const layout = options.layout || captureSubtitleLayout();
+        showSubLoading(layout);
+        const translation = await (options.translationTask ||
+            createSubtitleTranslationTask(text, modeRevision));
+        if (!translation || modeRevision !== subtitleModeRevision) return;
+        applyTranslation(translation.translatedText, layout);
+        if (options.speakTranslated)
+            await speak(translation.translatedText, translation.targetLang, {
+                isCancelled: () => modeRevision !== subtitleModeRevision,
+            });
     }
 
     function restoreOriginal() {
@@ -2318,6 +2420,7 @@
         subtitleModeStarting = false;
         removeOverlay();
         removeWordClouds();
+        Netflix?.setOriginalSubtitlesHidden?.(false);
         for (const item of eOriginalContents) {
             if (item.el && item.html !== undefined)
                 item.el.innerHTML = item.html;
@@ -2498,8 +2601,8 @@
             pausedForSave = true;
         }
 
+        const screenshot = await captureVideoReviewScreenshot(video);
         flashCapture();
-        const screenshot = QT.captureVideoScreenshot(video) || "";
         showSaveToast("saving", { text });
 
         try {
@@ -2628,6 +2731,22 @@
             const video = PlayerAdapter.getVideo();
             if (!video) return;
 
+            const subtitleUiOpen =
+                eTranslateActive ||
+                wordCloudActive ||
+                subtitleModeStarting ||
+                translationOverlay?.isConnected;
+
+            // Netflix must handle its own real arrow-key seek. Writing to the
+            // DRM video element's currentTime directly triggers M7375.
+            if (
+                isNetflixPage() &&
+                (key === "ArrowLeft" || key === "ArrowRight") &&
+                !subtitleUiOpen
+            ) {
+                return;
+            }
+
             e.preventDefault();
             e.stopPropagation();
             e.stopImmediatePropagation();
@@ -2671,12 +2790,7 @@
             ensureControlsHidden();
             clearTimeout(_controlBarTimer);
 
-            if (
-                eTranslateActive ||
-                wordCloudActive ||
-                subtitleModeStarting ||
-                translationOverlay?.isConnected
-            ) {
+            if (subtitleUiOpen) {
                 try {
                     restoreOriginal();
                 } finally {
@@ -2703,26 +2817,51 @@
                 const handleSubtitleAction = (data) => {
                     if (modeRevision !== subtitleModeRevision) return;
                     subtitleModeStarting = false;
-                    const text = PlayerAdapter.getCurrentText();
+                    const snapshot = captureSubtitleSnapshot();
+                    const { text, elements, layout } = snapshot;
                     if (!text) return;
+                    const translationTask =
+                        createSubtitleTranslationTask(text, modeRevision);
+                    if (isNetflixPage())
+                        Netflix.setOriginalSubtitlesHidden(true);
                     if (data.wordCloudMode && data.subtitleTTS) {
                         eWasPlaying = !video.paused;
-                        if (eWasPlaying) video.pause();
                         showWordClouds(video, {
                             skipSpeech: true,
                             revision: modeRevision,
-                        }).catch(() => removeWordClouds());
+                            sourceText: text,
+                            sourceElements: elements,
+                            translationTask,
+                            keepOriginalHidden: true,
+                        }).catch((error) => {
+                            console.warn(
+                                "[Lectoro] Word cloud mode failed:",
+                                error,
+                            );
+                            removeWordClouds();
+                        });
                         doSentenceTranslation(video, text, {
                             speakTranslated: true,
                             revision: modeRevision,
+                            layout,
+                            translationTask,
                         });
                     } else if (data.wordCloudMode) {
                         showWordClouds(video, {
                             skipSpeech: false,
                             revision: modeRevision,
-                        }).catch(() => {
+                            sourceText: text,
+                            sourceElements: elements,
+                            translationTask,
+                            keepOriginalHidden: false,
+                        }).catch((error) => {
+                            console.warn(
+                                "[Lectoro] Word cloud mode failed:",
+                                error,
+                            );
                             if (modeRevision !== subtitleModeRevision) return;
                             removeWordClouds();
+                            Netflix?.setOriginalSubtitlesHidden?.(false);
                             if (wordCloudWasPlaying)
                                 resumeVideoAfterSubtitleClose(video);
                         });
@@ -2732,11 +2871,15 @@
                         doSentenceTranslation(video, text, {
                             speakTranslated: true,
                             revision: modeRevision,
+                            layout,
+                            translationTask,
                         });
                     } else {
                         doSentenceTranslation(video, text, {
                             speakTranslated: false,
                             revision: modeRevision,
+                            layout,
+                            translationTask,
                         });
                     }
                 };
@@ -2764,34 +2907,46 @@
             }
 
             if (key === "a" || key === "A" || key === "ArrowLeft") {
+                let targetTime;
                 if (hasCues) {
                     const idx = getCurrentCueIndex(cues, video.currentTime);
-                    video.currentTime =
+                    targetTime =
                         video.currentTime - cues[idx].startTime > 1.5 &&
                         idx >= 0
                             ? cues[idx].startTime
                             : cues[Math.max(0, idx - 1)].startTime;
                 } else {
-                    video.currentTime = Math.max(
+                    targetTime = Math.max(
                         0,
                         video.currentTime - FALLBACK_SKIP,
                     );
                 }
+                if (isNetflixPage()) {
+                    requestNetflixSeek(targetTime);
+                    return;
+                }
+                video.currentTime = targetTime;
                 if (video.paused) video.play();
                 return;
             }
 
             if (key === "d" || key === "D" || key === "ArrowRight") {
+                let targetTime;
                 if (hasCues) {
                     const idx = getCurrentCueIndex(cues, video.currentTime);
-                    video.currentTime =
+                    targetTime =
                         cues[Math.min(cues.length - 1, idx + 1)].startTime;
                 } else {
-                    video.currentTime = Math.min(
+                    targetTime = Math.min(
                         video.duration || Infinity,
                         video.currentTime + FALLBACK_SKIP,
                     );
                 }
+                if (isNetflixPage()) {
+                    requestNetflixSeek(targetTime);
+                    return;
+                }
+                video.currentTime = targetTime;
                 if (video.paused) video.play();
             }
         },

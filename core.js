@@ -665,6 +665,13 @@
 
     async function captureMediaScreenshot(media) {
         if (media instanceof HTMLVideoElement) {
+            if (globalThis.LectoroNetflix?.isPage?.()) {
+                return (
+                    (await globalThis.LectoroNetflix.captureReviewImage(
+                        media,
+                    )) || null
+                );
+            }
             if (media.readyState >= 2) {
                 const frame = drawMediaToDataUrl(media);
                 if (frame) return frame;
@@ -705,6 +712,12 @@
     }
 
     async function captureContextScreenshot() {
+        if (globalThis.LectoroNetflix?.isPage?.()) {
+            const video = document.querySelector("video");
+            return video
+                ? await globalThis.LectoroNetflix.captureReviewImage(video)
+                : null;
+        }
         const candidates = getVisibleMediaCandidates().slice(0, 3);
         for (const media of candidates) {
             try {

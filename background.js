@@ -482,6 +482,21 @@ async function fetchContextImageDataUrl(rawUrl) {
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === "QT_CAPTURE_VISIBLE_TAB") {
+        if (!sender.tab?.active || !Number.isInteger(sender.tab.windowId)) {
+            sendResponse({ error: "Karta Netflixa nie jest aktywna." });
+            return false;
+        }
+        chrome.tabs
+            .captureVisibleTab(sender.tab.windowId, {
+                format: "jpeg",
+                quality: 88,
+            })
+            .then((dataUrl) => sendResponse({ dataUrl }))
+            .catch((error) => sendResponse({ error: error.message }));
+        return true;
+    }
+
     if (message.type === "QT_FETCH_CONTEXT_IMAGE") {
         fetchContextImageDataUrl(message.url)
             .then((dataUrl) => sendResponse({ dataUrl }))

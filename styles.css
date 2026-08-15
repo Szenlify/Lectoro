@@ -1231,6 +1231,31 @@ body.__qt_reels-active .captions-text {
     height: 100%;
 }
 
+/* Netflix replaces its subtitle nodes immediately after pausing. This stable
+   visual copy keeps word-by-word highlights alive without touching its DOM. */
+.__qt_word-cloud-source-layer {
+    position: fixed;
+    z-index: 2147483646;
+    box-sizing: border-box;
+    pointer-events: none;
+    margin: 0;
+    padding: 0;
+}
+
+.__qt_word-cloud-source-layer .__qt_wc-word {
+    display: inline;
+}
+
+html.__qt_netflix-subtitles-hidden .player-timedtext {
+    visibility: hidden !important;
+}
+
+html.__qt_netflix-capturing [class^="__qt_"],
+html.__qt_netflix-capturing [class*=" __qt_"],
+html.__qt_netflix-capturing [id^="__qt_"] {
+    visibility: hidden !important;
+}
+
 .__qt_word-cloud {
     position: fixed;
     z-index: 2147483647;
