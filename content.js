@@ -1701,25 +1701,38 @@
 
     function closeSubTooltip() {
         if (!isSubHovering) return;
+
         const shouldResumeVideo = subWasPlaying;
+
         isSubHovering = false;
         subWasPlaying = false;
         subClickLocked = false;
         QT.hoverClickActive = false;
+
         clearTimeout(subHoverTimer);
         clearTimeout(subCloseTimer);
+
+        subHoverTimer = null;
         subCloseTimer = null;
+
         subTooltipAnchor = null;
+
         if (lastHoveredSubWord) {
             lastHoveredSubWord.classList.remove(`${PREFIX}word-hover`);
             lastHoveredSubWord = null;
         }
+
         QT.hideTooltip();
+
         if (shouldResumeVideo) {
             const video = PlayerAdapter.getVideo();
+
             if (video && video.paused) {
                 try {
-                    video.play()?.catch(() => {});
+                    const promise = video.play();
+                    if (promise?.catch) {
+                        promise.catch(() => {});
+                    }
                 } catch (_) {}
             }
         }
@@ -1730,11 +1743,18 @@
     // (which floats above/below it) without the video resuming prematurely.
     function scheduleCloseSubTooltip() {
         if (subCloseTimer !== null) return;
-        clearTimeout(subCloseTimer);
+
         subCloseTimer = setTimeout(() => {
             subCloseTimer = null;
-            if (QT.getTooltipEl()?.matches(":hover")) return;
+
+            const tooltip = QT.getTooltipEl();
+
+            if (tooltip?.matches(":hover")) {
+                return;
+            }
+
             if (subClickLocked) return;
+
             closeSubTooltip();
         }, 350);
     }
@@ -1746,18 +1766,27 @@
                 if (isSubHovering && !subClickLocked) closeSubTooltip();
                 return;
             }
-            if (isReading) return;
-            if (typeof eTranslateActive !== "undefined" && eTranslateActive)
+            if (
+                isReading ||
+                (typeof eTranslateActive !== "undefined" && eTranslateActive) ||
+                (typeof wordCloudActive !== "undefined" && wordCloudActive)
+            ) {
+                if (isSubHovering && !subClickLocked) {
+                    closeSubTooltip();
+                }
                 return;
-            if (typeof wordCloudActive !== "undefined" && wordCloudActive)
-                return;
+            }
+
             if (subClickLocked) return;
 
             // Keep the subtitle tooltip open only while the cursor is over the
             // tooltip itself. Other extension UI must not pin it open.
             const tooltip = QT.getTooltipEl();
-            if (tooltip?.contains(e.target)) {
+
+            if (tooltip && tooltip.contains(e.target)) {
+                clearTimeout(subHoverTimer);
                 clearTimeout(subCloseTimer);
+                subHoverTimer = null;
                 subCloseTimer = null;
                 return;
             }
@@ -1775,30 +1804,42 @@
                 wordSpan.classList.add(`${PREFIX}word-hover`);
 
                 clearTimeout(subHoverTimer);
+                const video = PlayerAdapter.getVideo();
+
+                if (!isSubHovering) {
+                    subWasPlaying = video ? !video.paused : false;
+                }
+
+                isSubHovering = true;
+                subTooltipAnchor = wordSpan;
+
+                // Pauza od razu po wejściu na słowo
+                if (video && !video.paused) {
+                    try {
+                        video.pause();
+                    } catch (_) {}
+                }
+
+                clearTimeout(subHoverTimer);
+
                 subHoverTimer = setTimeout(async () => {
                     if (lastHoveredSubWord !== wordSpan) return;
+
                     const text = wordSpan.textContent.trim();
                     if (!text) return;
-
-                    if (!isSubHovering) {
-                        const video = PlayerAdapter.getVideo();
-                        subWasPlaying = video ? !video.paused : false;
-                    }
-                    isSubHovering = true;
-                    subTooltipAnchor = wordSpan;
-                    const video = PlayerAdapter.getVideo();
-                    if (video && !video.paused) video.pause();
 
                     const rect = wordSpan.getBoundingClientRect();
                     const subtitleTooltipPlacement = isNetflixPage()
                         ? "bottom"
                         : "top";
+
                     QT.showLoading(rect, subtitleTooltipPlacement);
                     ensureSubtitleUiTracking();
 
                     try {
                         const targetLang = await QT.getTargetLang();
                         const res = await subCache.get(text, targetLang);
+
                         if (!isSubHovering || lastHoveredSubWord !== wordSpan)
                             return;
 
@@ -1808,17 +1849,20 @@
                             original: text,
                             translated: res.translated,
                         });
+
                         QT.showTooltip(html, rect, subtitleTooltipPlacement);
+
                         QT.attachTooltipHandlers();
                     } catch (err) {
-                        if (isSubHovering && lastHoveredSubWord === wordSpan)
+                        if (isSubHovering && lastHoveredSubWord === wordSpan) {
                             QT.showTooltip(
                                 `<div class="${PREFIX}error">⚠ ${QT.escapeHtml(err.message)}</div>`,
                                 rect,
                                 subtitleTooltipPlacement,
                             );
+                        }
                     }
-                }, 300);
+                }, 0);
             } else if (!wordSpan) {
                 clearTimeout(subHoverTimer);
                 if (lastHoveredSubWord) {
