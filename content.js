@@ -2691,7 +2691,7 @@
             const cs = window.getComputedStyle(liveEls[0]);
             translationOverlay.style.setProperty(
                 "font-size",
-                cs.fontSize,
+                parseFloat(cs.fontSize) / 1.2 + "px",
                 "important",
             );
             translationOverlay.style.fontFamily = cs.fontFamily;

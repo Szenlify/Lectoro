@@ -359,7 +359,7 @@
                 utter.lang = lang;
                 const voice = pickBestVoice("", lang);
                 if (voice) utter.voice = voice;
-                utter.rate = 1.3;
+                utter.rate = 1.1;
                 window.speechSynthesis.speak(utter);
                 resolve(utter);
                 return;
@@ -368,7 +368,7 @@
             chrome.storage.local.get(
                 {
                     speechVoice: "",
-                    speechRate: 1.3,
+                    speechRate: 1.1,
                     ttsVolume: 1,
                 },
                 async (data) => {
@@ -389,7 +389,7 @@
                     utter.lang = lang;
                     utter.rate = Math.max(
                         0.1,
-                        Math.min(10, Number(data.speechRate) || 1.3),
+                        Math.min(10, Number(data.speechRate) || 1.1),
                     );
                     utter.volume = volume;
                     const voice = pickBestVoice(data.speechVoice, lang);
