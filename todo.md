@@ -30,6 +30,8 @@
 
 16. popraw prompty AI tak aby byly krotkie, po angielsku, zeby jak najmniej tokenow ai zuzywalo i idealnie dopracowane
 
+1. po Nacisnieciu Enter,S itp niech kazdy klawisz WSAD, E , Enter itp kasuje tooltipa i wznawia video
+
 firebase login
 firebase deploy --only functions --project extension-eng"
 lub
