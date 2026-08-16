@@ -32,6 +32,8 @@
 
 1. po Nacisnieciu Enter,S itp niech kazdy klawisz WSAD, E , Enter itp kasuje tooltipa i wznawia video
 
+1. Klawisz "Z" jesli jest plan Basic lub Pro to tlumaczenia ma robic AI tak jak za pomoca Enter poprostu tlumaczenie bez wyjasnienia
+
 firebase login
 firebase deploy --only functions --project extension-eng"
 lub
