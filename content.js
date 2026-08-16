@@ -2742,7 +2742,7 @@
             ? rect.top +
               Math.max(0, (rect.bottom - rect.top - overlayH) / 2) +
               "px"
-            : rect.top - overlayH - 26 + "px";
+            : rect.top - overlayH - 36 + "px";
     }
 
     function showSubLoading(layout = null) {
