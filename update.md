@@ -656,3 +656,14 @@ Lectoro nie wymaga pełnego przepisania. Rdzeń biznesowy i zabezpieczenie płat
 - automatyczny build i testy regresji.
 
 Po tych zmianach kod powinien być krótszy o około 20–30%, znacznie lżejszy w codziennym działaniu i bezpieczniejszy kosztowo. Przy miksie 10% płacących obecne ceny mają zdrową marżę infrastrukturalną zarówno przy 1 000, jak i 10 000 użytkowników, pod warunkiem kontroli ElevenLabs, podatków i nadużyć.
+
+
+Platformy najbardziej otwarte na przechwytywanie napisów  
+
+1. YouTube (Najłatwiejszy)Jak działa: Pobiera napisy przez proste zapytania sieciowe (timedtext) w formacie JSON/XML lub renderuje je w znanej strukturze DOM (.ytp-caption-segment).  Wnioski: Idealny zestaw danych (posiada znaczniki czasu, tekst i opcjonalnie automatyczne tłumaczenia).
+
+2. Netflix  Jak działa: Renderuje napisy bezpośrednio w warstwie HTML (.player-timedtext) lub przesyła je w pakietach JSON/TTML.  Wnioski: Bardzo stabilne źródło dla wtyczek językowych. Wymaga jedynie reagowania na ew. rzadkie zmiany klas CSS w odtwarzaczu.  
+
+3. Disney+ & Max (HBO)Jak działa: Obie platformy korzystają z odtwarzaczy bazujących na standardzie HTML5 (np. Shaka Player) i plikach WebVTT/TTML.  Wnioski: Napisy trafiają do kontenerów tekstowych w DOM (np. .shaka-text-container), skąd wtyczka może łatwo czytać tekst w czasie rzeczywistym.  
+
+4. Amazon Prime VideoJak działa: Napisy są osadzane w przejrzystej strukturze HTML (np. .atvwebplayersdk-captions-text).  Wnioski: Bardzo łatwy odczyt przez standardowy podgląd zmian w drzewie DOM.  
