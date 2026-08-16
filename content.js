@@ -2004,7 +2004,7 @@
 
         aiShimmerEl.innerHTML = `
         <span class="${PREFIX}ai-loader-label">Analizuje...</span>
-    `;  
+    `;
 
         parent.appendChild(aiShimmerEl);
 
@@ -2281,7 +2281,6 @@
     let subtitleUiTrackingFrame = null;
     const wordCloudCache = QT.createTranslateCache(300);
     const SIMPLE_WORDS = new Set([
-        "a",
         "an",
         "and",
         "are",
@@ -2291,10 +2290,11 @@
         "but",
         "by",
         "can",
+        "can't",
         "could",
+        "did",
         "do",
         "does",
-        "did",
         "for",
         "from",
         "had",
@@ -2304,7 +2304,6 @@
         "her",
         "here",
         "his",
-        "i",
         "if",
         "in",
         "into",
@@ -2343,6 +2342,7 @@
         "why",
         "will",
         "with",
+        "won't",
         "would",
         "you",
         "your",
@@ -2352,11 +2352,31 @@
     function shouldTranslateWord(rawText) {
         const text = (rawText || "").trim();
         if (!text) return false;
+
+        // Pomijamy słowa zawierające cyfry
         if (/\d/.test(text)) return false;
+
+        // Pomijamy, jeśli nie ma żadnych liter (np. same znaki zapytania)
         if (/^[^A-Za-z]+$/.test(text)) return false;
-        const lettersOnly = text.replace(/[^A-Za-z]/g, "");
-        if (!lettersOnly || lettersOnly.length <= 1) return false;
-        return !SIMPLE_WORDS.has(lettersOnly.toLowerCase());
+
+        // Zostawiamy tylko litery i apostrofy, zamieniamy na małe litery
+        const cleanWord = text.replace(/[^A-Za-z']/g, "").toLowerCase();
+
+        // 1. Sprawdzamy pojedyncze litery (np. "a", "i", "w", "z").
+        // Jeśli długość to 1 lub 0, NIE tłumaczymy.
+        if (cleanWord.length <= 1) return false;
+
+        // 2. Jeśli całe słowo (np. "he", "can't", "won't") jest na liście, NIE tłumaczymy
+        if (SIMPLE_WORDS.has(cleanWord)) return false;
+
+        // 3. Usuwamy najpopularniejsze angielskie końcówki skrótowe
+        const baseWord = cleanWord.replace(/(n't|'s|'ll|'d|'re|'ve|'m)$/, "");
+
+        // 4. Jeśli po odcięciu końcówki (np. z "I'm" zostało "i") jest to 1 litera, NIE tłumaczymy
+        if (baseWord.length <= 1) return false;
+
+        // 5. Ostateczne sprawdzenie: czy rdzeń słowa (np. "he" z "he's") jest na liście?
+        return !SIMPLE_WORDS.has(baseWord);
     }
 
     function removeWordClouds() {
