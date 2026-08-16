@@ -1993,19 +1993,19 @@
      *  covering/altering the subtitle text itself. */
     function showAiShimmer(rect) {
         removeAiShimmer();
+
         const parent =
             document.fullscreenElement ||
             document.webkitFullscreenElement ||
             document.body;
+
         aiShimmerEl = document.createElement("div");
         aiShimmerEl.className = `${PREFIX}ai-loader`;
+
         aiShimmerEl.innerHTML = `
-            <span class="${PREFIX}ai-loader-orb">
-                <span class="${PREFIX}ai-loader-ring"></span>
-                <span class="${PREFIX}ai-loader-ring ${PREFIX}ai-loader-ring2"></span>
-                <span class="${PREFIX}ai-loader-core">✨</span>
-            </span>
-            <span class="${PREFIX}ai-loader-label">AI analizuje</span>`;
+        <span class="${PREFIX}ai-loader-label">Analizuje...</span>
+    `;  
+
         parent.appendChild(aiShimmerEl);
 
         positionAiShimmer(rect);

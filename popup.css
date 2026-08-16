@@ -3,8 +3,8 @@
 :root {
     --bg-deep: #041a24;
     --bg-mid: #10101f;
-    --glass: rgba(255, 255, 255, 0.035);
-    --glass-border: rgba(255, 255, 255, 0.06);
+    --glass: #ffffff09;
+    --glass-border: #ffffff0f;
     --glass-hover: rgba(255, 255, 255, 0.065);
     --glass-strong: rgba(255, 255, 255, 0.08);
     --accent: #818cf8;
