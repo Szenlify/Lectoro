@@ -667,3 +667,5 @@ Platformy najbardziej otwarte na przechwytywanie napisów
 3. Disney+ & Max (HBO)Jak działa: Obie platformy korzystają z odtwarzaczy bazujących na standardzie HTML5 (np. Shaka Player) i plikach WebVTT/TTML.  Wnioski: Napisy trafiają do kontenerów tekstowych w DOM (np. .shaka-text-container), skąd wtyczka może łatwo czytać tekst w czasie rzeczywistym.  
 
 4. Amazon Prime VideoJak działa: Napisy są osadzane w przejrzystej strukturze HTML (np. .atvwebplayersdk-captions-text).  Wnioski: Bardzo łatwy odczyt przez standardowy podgląd zmian w drzewie DOM.  
+
+

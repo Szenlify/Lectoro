@@ -35,7 +35,9 @@ Respond ONLY in this exact JSON format, nothing else:
         return `You are a language learning assistant. The user is watching a video and didn't understand the following sentence:
 "${sentence}"
 
-Please explain what this sentence means briefly and concisely. Provide a direct translation to ${targetLang} and a short explanation of any idioms or difficult words if present.
+Please explain what this sentence means briefly and concisely. Provide a translation to ${targetLang}. 
+IMPORTANT: If the sentence is an idiom, slang, or contains figurative language, the "translation" field MUST contain its MOST COMMON, universally understood natural equivalent in ${targetLang}. Do NOT use literal word-for-word translations, and strictly AVOID obscure, regional, or overly creative slang expressions.
+In the "explanation" field, provide a short breakdown of the grammar, idioms, or difficult words used, including the literal translation if it helps with understanding.
 
 The explanation must be written in ${targetLang}.
 Respond ONLY in this exact JSON format, nothing else:

@@ -1,6 +1,6 @@
 // ── Settings: load & save language ────────────────────────────────
 chrome.storage.local.get(
-    { targetLang: "pl", speechVoice: "", speechRate: 1.3, ttsVolume: 1 },
+    { targetLang: "pl", speechVoice: "", speechRate: 1.1, ttsVolume: 1 },
     (data) => {
         select.value = data.targetLang;
         rateRange.value = data.speechRate;
