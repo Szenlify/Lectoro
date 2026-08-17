@@ -584,7 +584,7 @@
             utter.lang = lang;
             utter.rate = Math.max(
                 0.1,
-                Math.min(10, Number(settings.speechRate) || 1.3),
+                Math.min(10, Number(settings.speechRate) || 1.1),
             );
             const volume =
                 settings.ttsVolume !== undefined
@@ -749,12 +749,12 @@
         };
 
         if (!chrome?.storage?.local) {
-            start({ speechVoice: "", speechRate: 1.3, ttsVolume: 1 });
+            start({ speechVoice: "", speechRate: 1.1, ttsVolume: 1 });
             return;
         }
 
         chrome.storage.local.get(
-            { speechVoice: "", speechRate: 1.3, ttsVolume: 1 },
+            { speechVoice: "", speechRate: 1.1, ttsVolume: 1 },
             start,
         );
     }
