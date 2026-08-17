@@ -97,13 +97,7 @@ function loadWords() {
 
         wordListEl.innerHTML = sorted
             .map((w, i) => {
-                const date = new Date(w.timestamp).toLocaleDateString("pl-PL", {
-                    day: "2-digit",
-                    month: "2-digit",
-                    year: "2-digit",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                });
+                const date = SharedUtils.formatDate(w.timestamp);
                 const isNew = !w.downloaded ? " new-item" : "";
                 let sentenceHtml = "";
                 if (w.sentence) {

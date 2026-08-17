@@ -4,8 +4,7 @@
 const {
     update: srUpdate,
     previewLabel,
-    formatIntervalDays,
-    formatIntervalMinutes,
+    formatInterval,
     ensure: ensureSR,
 } = SRS; // shared/srs.js
 

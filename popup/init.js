@@ -1,4 +1,4 @@
-const { escapeHtml, escapeAttr, isDueForReview, countDueWords } = SharedUtils;
+const { escapeHtml, escapeAttr, isDueForReview, countDueWords, dateTag, csvCell } = SharedUtils;
 
 // ── Elements ──────────────────────────────────────────────────────
 const select = document.getElementById("targetLang");
@@ -139,17 +139,6 @@ function downloadFile(content, filename, mimeType) {
 }
 
 // ── Utils ─────────────────────────────────────────────────────────
-function dateTag() {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function csvCell(str) {
-    if (str.includes(";") || str.includes('"') || str.includes("\n")) {
-        return '"' + str.replace(/"/g, '""') + '"';
-    }
-    return str;
-}
 
 function buildReviewSpeakText(word, sentence) {
     if (!word) return "";

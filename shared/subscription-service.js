@@ -9,7 +9,9 @@ const SubscriptionService = (() => {
     const Config = SubscriptionConfig;
 
     function currentMonth() {
-        return new Date().toISOString().slice(0, 7);
+        return typeof SharedUtils !== "undefined" && SharedUtils.currentMonth
+            ? SharedUtils.currentMonth()
+            : new Date().toISOString().slice(0, 7);
     }
 
     function freeProfile(uid = "") {

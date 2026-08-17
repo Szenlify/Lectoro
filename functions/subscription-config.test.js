@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
     SUBSCRIPTION_LIMITS,
+    currentMonth,
     normalizePlan,
     countCharacters,
     checkAiLimit,
@@ -116,4 +117,8 @@ test("ElevenLabs enforces per-request and monthly character quotas", () => {
 
 test("character counting handles Unicode code points", () => {
     assert.equal(countCharacters("  A😀B  "), 3);
+});
+
+test("currentMonth returns YYYY-MM format", () => {
+    assert.match(currentMonth(), /^\d{4}-\d{2}$/);
 });

@@ -245,18 +245,9 @@ function renderElevenLabsUsage(subscription) {
 }
 
 function formatNextUsageRenewalDate(month) {
-    const match = /^(\d{4})-(\d{2})$/.exec(month || "");
-    const now = new Date();
-    const year = match ? Number(match[1]) : now.getUTCFullYear();
-    const monthIndex = match ? Number(match[2]) - 1 : now.getUTCMonth();
-    const renewalDate = new Date(Date.UTC(year, monthIndex + 1, 1));
-
-    return new Intl.DateTimeFormat("pl-PL", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-        timeZone: "UTC",
-    }).format(renewalDate);
+    return typeof SharedUtils !== "undefined" && SharedUtils.formatNextUsageRenewalDate
+        ? SharedUtils.formatNextUsageRenewalDate(month)
+        : "";
 }
 
 async function refreshAiUsageUI() {

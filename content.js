@@ -24,8 +24,6 @@
         runDismiss,
         cleanTextForTTS,
         pickBestVoice,
-        getElAudioEl,
-        setElAudioEl,
     } = QT;
     const Netflix = globalThis.LectoroNetflix || null;
 
@@ -172,50 +170,9 @@
     }
 
     function extractCueText(node) {
-        const parts = [];
-
-        function walk(current) {
-            if (current.nodeType === Node.TEXT_NODE) {
-                parts.push(current.nodeValue || "");
-                return;
-            }
-
-            if (current.nodeType !== Node.ELEMENT_NODE) return;
-
-            if (current.localName?.toLowerCase() === "br") {
-                parts.push(" ");
-                return;
-            }
-
-            const children = Array.from(current.childNodes);
-
-            for (let i = 0; i < children.length; i += 1) {
-                walk(children[i]);
-
-                if (i < children.length - 1) {
-                    const currentNode = children[i];
-                    const nextNode = children[i + 1];
-
-                    const left = currentNode.textContent || "";
-                    const right = nextNode.textContent || "";
-
-                    if (
-                        left &&
-                        right &&
-                        !/\s$/.test(left) &&
-                        !/^\s/.test(right) &&
-                        /[\p{L}\p{N}]$/u.test(left) &&
-                        /^[\p{L}\p{N}]/u.test(right)
-                    ) {
-                        parts.push(" ");
-                    }
-                }
-            }
-        }
-
-        walk(node);
-
-        return parts.join("").replace(/\s+/g, " ").trim();
+        return typeof SharedUtils !== "undefined" && SharedUtils.extractSubtitleText
+            ? SharedUtils.extractSubtitleText(node)
+            : (node?.textContent || "").replace(/\s+/g, " ").trim();
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -554,16 +511,6 @@
             lastSpeechCancelAt = Date.now();
         } catch (error) {
             console.warn("[Lectoro] Could not cancel speech:", error);
-        }
-
-        try {
-            const audio = getElAudioEl();
-            if (audio) {
-                audio.pause();
-                setElAudioEl(null);
-            }
-        } catch (error) {
-            console.warn("[Lectoro] Could not stop audio:", error);
         }
     }
 
@@ -1534,10 +1481,7 @@
     let netflixSubtitleSourceEls = new Set();
 
     function ensureNetflixSubtitleHitLayer() {
-        const parent =
-            document.fullscreenElement ||
-            document.webkitFullscreenElement ||
-            document.body;
+        const parent = QT.getOverlayParent();
 
         if (netflixSubtitleHitLayer?.isConnected) {
             if (netflixSubtitleHitLayer.parentElement !== parent) {
@@ -1994,10 +1938,7 @@
     function showAiShimmer(rect) {
         removeAiShimmer();
 
-        const parent =
-            document.fullscreenElement ||
-            document.webkitFullscreenElement ||
-            document.body;
+        const parent = QT.getOverlayParent();
 
         aiShimmerEl = document.createElement("div");
         aiShimmerEl.className = `${PREFIX}ai-loader`;
@@ -2279,7 +2220,7 @@
     let subtitleModeStarting = false;
     let subtitleResumeRevision = 0;
     let subtitleUiTrackingFrame = null;
-    const wordCloudCache = QT.createTranslateCache(300);
+    const wordCloudCache = subCache;
     const SIMPLE_WORDS = new Set([
         "an",
         "and",
@@ -2471,10 +2412,7 @@
         wordCloudActive = true;
 
         const wordSpans = [];
-        const parent =
-            document.fullscreenElement ||
-            document.webkitFullscreenElement ||
-            document.body;
+        const parent = QT.getOverlayParent();
         const detachedSourceLayers = isNetflixPage();
         for (const sourceEl of subEls) {
             if (!sourceEl.textContent.trim()) continue;
@@ -2848,13 +2786,6 @@
         } else {
             try {
                 window.speechSynthesis?.cancel();
-            } catch (_) {}
-            try {
-                const audio = getElAudioEl();
-                if (audio) {
-                    audio.pause();
-                    setElAudioEl(null);
-                }
             } catch (_) {}
         }
     }

@@ -20,7 +20,9 @@ const GeminiProxy = (() => {
     const USAGE_KEY = "aiUsageCache";
 
     function currentMonth() {
-        return new Date().toISOString().slice(0, 7);
+        return typeof SharedUtils !== "undefined" && SharedUtils.currentMonth
+            ? SharedUtils.currentMonth()
+            : new Date().toISOString().slice(0, 7);
     }
 
     function matchesConfiguredAiLimit(usage) {
@@ -135,6 +137,10 @@ const GeminiProxy = (() => {
     }
 
     function openPlans() {
+        if (typeof SubscriptionService !== "undefined" && typeof SubscriptionService.openPlans === "function") {
+            SubscriptionService.openPlans();
+            return;
+        }
         const localPlans =
             typeof document !== "undefined"
                 ? document.getElementById("aiPlansSection")
@@ -152,9 +158,15 @@ const GeminiProxy = (() => {
     }
 
     function showUpgradePrompt(usage) {
+        if (typeof SubscriptionService !== "undefined" && typeof SubscriptionService.showUpgradePrompt === "function") {
+            SubscriptionService.showUpgradePrompt({
+                feature: "ai",
+                plan: usage?.plan,
+                message: `W tym miesiącu użyto ${Number(usage?.used || usage?.limit || 0)} z ${Number(usage?.limit || 0)} kredytów.`,
+            });
+            return;
+        }
         if (typeof document === "undefined") return;
-        // Inside the extension popup the plans section is already available:
-        // navigate to it directly instead of covering the popup with a toast.
         if (document.getElementById("aiPlansSection")) {
             openPlans();
             return;

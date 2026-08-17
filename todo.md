@@ -20,9 +20,10 @@
 
 10. przy wybiorze glosy probka glosu do oczytu (zapisana w projekcie tak zeby nie generowaly kosztow)
 
-11. popraw prompty AI tak aby byly krotkie, po angielsku, zeby jak najmniej tokenow ai zuzywalo i idealnie dopracowane
+11. popraw prompty AI tak aby byly krotkie, po angielsku, zeby mniej tokenow ai zuzywalo i idealnie dopracowane
 
-12. po Nacisnieciu Enter,S itp niech kazdy klawisz WSAD, E , Enter itp kasuje tooltipa i wznawia video
+12. po Nacisnieciu Enter ,S  niech kazdy klawisz WSAD itp kasuje tooltipa i wznawia video
+dla przykladu tlumacze za pomoca "Enter" AI, video sie pauzuje i drukie klikniecie Enter zamyka tooltip tlumaczenia i wznawia wideo a chcialbym dodatkowo aby klawisze WSAD tez zamykaly tooltip i wznawialy wideo
 
 13. Klawisz "Z" jesli jest plan Basic lub Pro to tlumaczenia ma robic AI tak jak za pomoca Enter poprostu tlumaczenie bez wyjasnienia
 
@@ -73,7 +74,7 @@ Platformy najbardziej otwarte na przechwytywanie napisów
 
 4. Amazon Prime VideoJak działa: Napisy są osadzane w przejrzystej strukturze HTML (np. .atvwebplayersdk-captions-text). Wnioski: Bardzo łatwy odczyt przez standardowy podgląd zmian w drzewie DOM.
 
-Wciel się w rolę doświadczonego Software Architekta i Senior Developera. Twoim zadaniem jest przeprowadzenie dogłębnego audytu (Code Review) dostarczonego przeze mnie kodu projektu. Zależy mi na maksymalnym uporządkowaniu architektury.
+Wciel się w rolę doświadczonego Software Architekta i Senior Developera. Twoim zadaniem jest przeprowadzenie dogłębnego audytu (Code Review) kodu projektu. Zależy mi na maksymalnym uporządkowaniu architektury.
 
 Przeanalizuj kod pod kątem trzech głównych obszarów:
 
@@ -84,14 +85,6 @@ Przeanalizuj kod pod kątem trzech głównych obszarów:
    Znajdź fragmenty kodu, które są skopiowane lub realizują dokładnie tę samą logikę w minimalnie różny sposób w wielu miejscach. Zwróć uwagę nie tylko na identyczne linie, ale też na powtarzające się wzorce (np. identyczne wywołania API, powtarzająca się logika walidacji czy transformacji danych).
 
 3. Centralizacja Logiki (Single Source of Truth)
-   Zaproponuj plan refaktoryzacji, który przeniesie rozproszoną logikę do jednego, spójnego miejsca. Inne pliki powinny jedynie importować gotowe metody/funkcje, stając się "głupimi" konsumentami logiki biznesowej. Zastanów się, czy logikę lepiej wydzielić do klasycznych funkcji pomocniczych (utils), dedykowanych serwisów (services), czy – jeśli to frontend – do niestandardowych hooków (custom hooks).
+   Zaproponuj plan refaktoryzacji, który przeniesie rozproszoną logikę do jednego, spójnego miejsca. Inne pliki powinny jedynie importować gotowe metody/funkcje, stając się "głupimi" konsumentami logiki biznesowej. Zastanów się, czy logikę lepiej wydzielić do klasycznych funkcji pomocniczych (utils), dedykowanych serwisów (services)
 
-Oczekiwany format Twojej odpowiedzi:
 
-🗑️ Raport Martwego Kodu: Zwięzła lista elementów do usunięcia (plik + nazwa funkcji/zmiennej).
-
-👯 Raport Duplikacji: Wskazanie plików, które powielają tę samą logikę.
-
-🏗️ Architektura Docelowa: Propozycja nowej struktury plików (np. gdzie stworzyć nowy plik bazowy i jak go nazwać).
-
-💻 Kod "Przed i Po": Krótkie, konkretne przykłady kodu pokazujące, jak będzie wyglądał scentralizowany plik z logiką oraz jak odchudzi to pliki, które będą z niego korzystać.

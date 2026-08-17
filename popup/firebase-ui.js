@@ -58,12 +58,9 @@ function renderSyncUI() {
         chrome.storage.local.get(
             { lastFirebaseSync: null, pendingFirebaseChanges: {} },
             (data) => {
-                const lastSyncText = data.lastFirebaseSync
-                    ? new Date(data.lastFirebaseSync).toLocaleTimeString("pl-PL", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                      })
-                    : "nigdy";
+                const lastSyncText = typeof SharedUtils !== "undefined" && SharedUtils.formatTime
+                    ? SharedUtils.formatTime(data.lastFirebaseSync)
+                    : (data.lastFirebaseSync ? new Date(data.lastFirebaseSync).toLocaleTimeString("pl-PL") : "nigdy");
                 const pendingCount = Object.keys(data.pendingFirebaseChanges || {}).length;
 
                 container.innerHTML = `

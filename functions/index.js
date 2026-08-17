@@ -7,6 +7,7 @@ const admin = require("firebase-admin");
 const {
     SUBSCRIPTION_PLANS,
     SUBSCRIPTION_LIMITS,
+    currentMonth,
     normalizePlan,
     getPlanLimits,
     checkAiLimit,
@@ -30,10 +31,6 @@ function setCorsHeaders(res) {
     res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
     res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
     res.set("Access-Control-Expose-Headers", "X-Lectoro-Plan, X-Lectoro-TTS-Used");
-}
-
-function currentMonth() {
-    return new Date().toISOString().slice(0, 7);
 }
 
 function usageForMonth(value, resetDate, month) {

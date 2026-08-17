@@ -412,58 +412,9 @@
     }
 
     function extractSubtitleText(node) {
-        const parts = [];
-
-        function walk(current) {
-            if (current.nodeType === Node.TEXT_NODE) {
-                const text = current.nodeValue || "";
-                if (text) parts.push(text);
-                return;
-            }
-
-            if (current.nodeType !== Node.ELEMENT_NODE) return;
-
-            const tagName = current.localName?.toLowerCase();
-
-            if (tagName === "br") {
-                parts.push(" ");
-                return;
-            }
-
-            const children = Array.from(current.childNodes);
-
-            for (let index = 0; index < children.length; index += 1) {
-                const beforeLength = parts.length;
-                walk(children[index]);
-
-                if (
-                    index < children.length - 1 &&
-                    parts.length > beforeLength
-                ) {
-                    const next = children[index + 1];
-
-                    if (next?.nodeType === Node.ELEMENT_NODE) {
-                        const left = parts[parts.length - 1] || "";
-                        const right = next.textContent || "";
-
-                        if (
-                            left &&
-                            right &&
-                            !/\s$/.test(left) &&
-                            !/^\s/.test(right) &&
-                            /[\p{L}\p{N}]$/u.test(left) &&
-                            /^[\p{L}\p{N}]/u.test(right)
-                        ) {
-                            parts.push(" ");
-                        }
-                    }
-                }
-            }
-        }
-
-        walk(node);
-
-        return parts.join("").replace(/\s+/g, " ").trim();
+        return typeof SharedUtils !== "undefined" && SharedUtils.extractSubtitleText
+            ? SharedUtils.extractSubtitleText(node)
+            : (node?.textContent || "").replace(/\s+/g, " ").trim();
     }
 
     function parseTtml(text) {

@@ -192,11 +192,16 @@
         return validation;
     }
 
+    function currentMonth() {
+        return new Date().toISOString().slice(0, 7);
+    }
+
     return Object.freeze({
         SUBSCRIPTION_PLANS,
         SUBSCRIPTION_LIMITS,
         LIMIT_ERROR_CODES,
         SubscriptionLimitError,
+        currentMonth,
         normalizePlan,
         getPlanLimits,
         countCharacters,
