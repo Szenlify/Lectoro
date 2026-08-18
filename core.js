@@ -854,6 +854,8 @@
         const els = document.elementsFromPoint(x, y);
         for (const el of els) {
             if (el.classList?.contains(wordClass)) return el;
+            const closest = el.closest?.(`.${wordClass}`);
+            if (closest) return closest;
         }
         return null;
     }

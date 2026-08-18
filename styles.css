@@ -603,27 +603,51 @@ html[data-lectoro-ai-limit-reached] .__qt_save-ai-btn {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   YouTube CC Subtitles
+   Video CC Subtitles Word Interactivity (YouTube, Netflix, Lookmovie, etc.)
    ═══════════════════════════════════════════════════════════════ */
+
+.ytp-caption-window-container,
+.ytp-caption-window-bottom,
+.ytp-caption-window-rollup,
+.caption-window {
+    pointer-events: auto !important;
+}
+
+.ytp-caption-segment,
+.caption-visual-line {
+    pointer-events: auto !important;
+    user-select: text !important;
+}
 
 .ytp-caption-segment.__qt_clickable {
     position: relative;
 }
 
-.__qt_yt-word {
+.__qt_sub-word,
+.__qt_yt-word,
+.__qt_nf-word,
+.__qt_lm-word {
     cursor: pointer !important;
     display: inline !important;
-    background: none !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
-    padding: 0 !important;
-    transition: none !important;
+    pointer-events: auto !important;
+    border-radius: 4px !important;
+    padding: 0 2px !important;
+    margin: 0 -1px !important;
+    transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease !important;
 }
 
+.__qt_sub-word:hover,
+.__qt_sub-word.__qt_word-hover,
 .__qt_yt-word:hover,
-.__qt_yt-word.__qt_yt-word-hover {
-    background: none !important;
-    box-shadow: none !important;
+.__qt_yt-word.__qt_yt-word-hover,
+.__qt_nf-word:hover,
+.__qt_nf-word.__qt_nf-word-hover,
+.__qt_lm-word:hover,
+.__qt_lm-word.__qt_lm-word-hover {
+    background: rgba(74, 108, 247, 0.45) !important;
+    color: #ffffff !important;
+    text-shadow: 0 0 6px rgba(0, 0, 0, 0.9) !important;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2) inset !important;
 }
 
 .__qt_yt-sub-hint {
@@ -1195,6 +1219,45 @@ body.__qt_reels-active .captions-text {
 
 html.__qt_netflix-subtitles-hidden .player-timedtext {
     visibility: hidden !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Netflix Player Control Suppression & Stabilization
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Always hide Netflix 'Report Issue' flag button / intrusive badges */
+.watch-video--flag-container,
+.watch-video--report-problem-container,
+[data-uia="control-flag"],
+[data-uia="report-problem-button"] {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
+}
+
+/* Hide Netflix controls when navigating with hotkeys (WSAD, Enter, etc.) */
+html.__qt_netflix-hide-controls .watch-video--bottom-controls-container,
+html.__qt_netflix-hide-controls .watch-video--top-controls-container,
+html.__qt_netflix-hide-controls .watch-video--back-container,
+html.__qt_netflix-hide-controls .PlayerControlsNeo__bottom-controls,
+html.__qt_netflix-hide-controls .PlayerControlsNeo__all-controls,
+html.__qt_netflix-hide-controls .PlayerControlsNeo__button-control-row,
+html.__qt_netflix-hide-controls .watch-video--seek-feedback-container,
+html.__qt_netflix-hide-controls .watch-video--center-controls-container,
+html.__qt_netflix-hide-controls [data-uia="watch-video-back-button"] {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transition: opacity 0.15s ease, visibility 0.15s ease !important;
+}
+
+/* Keep Netflix controls & subtitles steady during word hover so subtitles do not drop */
+html.__qt_netflix-hover-active .watch-video--bottom-controls-container,
+html.__qt_netflix-hover-active .PlayerControlsNeo__bottom-controls {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
 }
 
 html.__qt_netflix-capturing [class^="__qt_"],

@@ -179,6 +179,10 @@
 
     function refreshNetflixSubtitleHitboxes(els) {
         if (!isNetflixPage()) return false;
+        const currentActiveText = (isSubHovering && lastHoveredSubWord)
+            ? lastHoveredSubWord.textContent?.trim()
+            : null;
+
         const sourceElements = new Set(
             els.filter((el) => el?.textContent?.trim()),
         );
@@ -186,6 +190,18 @@
         ensureNetflixSubtitleHitLayer();
         for (const el of sourceElements) {
             createNetflixSubtitleHitboxes(el);
+        }
+
+        if (currentActiveText && isSubHovering) {
+            const rehitbox = netflixSubtitleHitboxes.find(
+                (h) => h.textContent?.trim() === currentActiveText,
+            );
+            if (rehitbox) {
+                lastHoveredSubWord = rehitbox;
+                subTooltipAnchor = rehitbox;
+                rehitbox.classList.add(`${PREFIX}word-hover`);
+                QT.positionTooltip(rehitbox.getBoundingClientRect(), "top");
+            }
         }
         return true;
     }
@@ -216,14 +232,6 @@
                 continue;
             }
 
-            if (
-                el.querySelector(
-                    `div:not(.${PREFIX}sub-word), span:not(.${PREFIX}sub-word)`,
-                )
-            ) {
-                continue;
-            }
-
             el.dataset[PREFIX + "bound"] = "1";
             el.dataset[PREFIX + "source"] = sourceText;
             QT.splitIntoWordSpans(el, PREFIX + "sub-word");
@@ -235,6 +243,10 @@
         globalThis.LectoroPlayerRegistry.onSubtitleChange((elements) => {
             makeSubtitlesInteractive(elements);
         });
+        const initialSubs = globalThis.LectoroPlayerRegistry.getSubtitleElements?.();
+        if (Array.isArray(initialSubs) && initialSubs.length > 0) {
+            makeSubtitlesInteractive(initialSubs);
+        }
     }
 
     // ── Word Tooltip (Hover & Click) ──────────────────────────────
@@ -247,6 +259,8 @@
         subWasPlaying = false;
         subClickLocked = false;
         if (typeof QT !== "undefined") QT.hoverClickActive = false;
+
+        document.documentElement.classList.remove(`${PREFIX}netflix-hover-active`);
 
         clearTimeout(subHoverTimer);
         clearTimeout(subCloseTimer);
@@ -337,6 +351,9 @@
 
                 isSubHovering = true;
                 subTooltipAnchor = wordSpan;
+                if (isNetflixPage()) {
+                    document.documentElement.classList.add(`${PREFIX}netflix-hover-active`);
+                }
 
                 if (video && !video.paused) {
                     try {
@@ -350,7 +367,7 @@
                     if (!text) return;
 
                     const rect = wordSpan.getBoundingClientRect();
-                    const subtitleTooltipPlacement = isNetflixPage() ? "bottom" : "top";
+                    const subtitleTooltipPlacement = "top";
 
                     QT.showLoading(rect, subtitleTooltipPlacement);
                     ensureSubtitleUiTracking();
@@ -408,6 +425,9 @@
         QT.hoverClickActive = true;
         isSubHovering = true;
         subTooltipAnchor = wordSpan;
+        if (isNetflixPage()) {
+            document.documentElement.classList.add(`${PREFIX}netflix-hover-active`);
+        }
 
         if (lastHoveredSubWord && lastHoveredSubWord !== wordSpan) {
             lastHoveredSubWord.classList.remove(`${PREFIX}word-hover`);
@@ -428,7 +448,7 @@
 
         const sentence = registry?.getCurrentText() || text;
         const rect = wordSpan.getBoundingClientRect();
-        const subtitleTooltipPlacement = isNetflixPage() ? "bottom" : "top";
+        const subtitleTooltipPlacement = "top";
         QT.showLoading(rect, subtitleTooltipPlacement);
         ensureSubtitleUiTracking();
 
@@ -772,7 +792,8 @@
 
         if (isSubHovering && subTooltipAnchor) {
             if (subTooltipAnchor.isConnected) {
-                QT.positionTooltip(subTooltipAnchor.getBoundingClientRect(), "top");
+                const placement = isNetflixPage() ? "bottom" : "top";
+                QT.positionTooltip(subTooltipAnchor.getBoundingClientRect(), placement);
             } else {
                 closeSubTooltip();
             }

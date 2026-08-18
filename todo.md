@@ -87,8 +87,8 @@ Przeanalizuj kod pod kątem trzech głównych obszarów:
    Znajdź fragmenty kodu, które są skopiowane lub realizują dokładnie tę samą logikę w minimalnie różny sposób w wielu miejscach. Zwróć uwagę nie tylko na identyczne linie, ale też na powtarzające się wzorce (np. identyczne wywołania API, powtarzająca się logika walidacji czy transformacji danych).
 
 1. nie czytaj znaku ♪ zawsze go wycinaj z TTS
-2. Web Speech API
-3. Hover na slowach na napisach w filmach powinien byc tiptool ktory pokazuje tlumaczenia slow teraz nic sie nie pokazuje po najechaniu na slowo w filmach
+2. Web Speech API (Naprawiono – asynchroniczne pobieranie głosów i pre-warming)
+3. Hover na slowach na napisach w filmach (Naprawiono – usunięto sub-word z isOwnUI, poprawiono dzielenie słów i pointer-events)
 
 3. Centralizacja Logiki (Single Source of Truth)
    Zaproponuj plan refaktoryzacji, który przeniesie rozproszoną logikę do jednego, spójnego miejsca. Inne pliki powinny jedynie importować gotowe metody/funkcje, stając się "głupimi" konsumentami logiki biznesowej. Zastanów się, czy logikę lepiej wydzielić do klasycznych funkcji pomocniczych (utils), dedykowanych serwisów (services)

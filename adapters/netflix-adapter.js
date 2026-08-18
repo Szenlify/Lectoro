@@ -556,6 +556,40 @@
         }
     }
 
+    let netflixControlsTimer = null;
+    const NETFLIX_HIDE_CONTROLS_CLASS = "__qt_netflix-hide-controls";
+
+    function ensureControlsHidden() {
+        if (!isPage()) return;
+        document.documentElement.classList.add(NETFLIX_HIDE_CONTROLS_CLASS);
+        clearTimeout(netflixControlsTimer);
+        netflixControlsTimer = setTimeout(() => {
+            document.documentElement.classList.remove(NETFLIX_HIDE_CONTROLS_CLASS);
+        }, 3000);
+    }
+
+    function initNetflixControlsManagement() {
+        if (!isPage()) return;
+        window.addEventListener(
+            "mousemove",
+            () => {
+                if (
+                    document.documentElement.classList.contains(
+                        NETFLIX_HIDE_CONTROLS_CLASS,
+                    )
+                ) {
+                    document.documentElement.classList.remove(
+                        NETFLIX_HIDE_CONTROLS_CLASS,
+                    );
+                    clearTimeout(netflixControlsTimer);
+                }
+            },
+            { passive: true },
+        );
+    }
+
+    initNetflixControlsManagement();
+
     // Attach manifest listener
     window.addEventListener(MANIFEST_EVENT, acceptTimedTextManifest);
     window.dispatchEvent(new CustomEvent(MANIFEST_REQUEST_EVENT));
@@ -591,6 +625,7 @@
             });
         },
         requestSeek,
+        ensureControlsHidden,
         setOriginalSubtitlesHidden,
         captureReviewImage,
         ensureSubtitleIndex,

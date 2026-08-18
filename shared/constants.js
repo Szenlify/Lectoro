@@ -93,7 +93,7 @@
     /** Check if a target element is part of Lectoro's own overlay / tooltip / cloud UI */
     function isOwnUI(target) {
         if (!target) return false;
-        const selector = `#${UI_IDS.ICON}, #${UI_IDS.TOOLTIP}, #${UI_IDS.REVIEW_TOAST}, #${UI_IDS.SAVE_TOAST}, #${UI_IDS.SPEED_OVERLAY}, .${UI_CLASSES.WORD_CLOUD}, .${PREFIX}word-cloud, .${UI_CLASSES.SUB_WORD}`;
+        const selector = `#${UI_IDS.ICON}, #${UI_IDS.TOOLTIP}, #${UI_IDS.REVIEW_TOAST}, #${UI_IDS.SAVE_TOAST}, #${UI_IDS.SPEED_OVERLAY}, .${UI_CLASSES.WORD_CLOUD}, .${PREFIX}word-cloud`;
         return !!target.closest?.(selector);
     }
 

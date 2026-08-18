@@ -111,6 +111,11 @@
                 globalThis.LectoroLookmovieAdapter.clearControlBarTimer();
             }
 
+            // Hide Netflix controls & badges when navigating via keyboard hotkeys
+            if (globalThis.LectoroNetflixAdapter?.ensureControlsHidden) {
+                globalThis.LectoroNetflixAdapter.ensureControlsHidden();
+            }
+
             // Close existing subtitle overlay UI if open
             if (subtitleUiOpen) {
                 try {

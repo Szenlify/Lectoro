@@ -326,7 +326,6 @@
                 if (now - session.lastFallbackAt < CAPTION_FALLBACK_MS) return;
                 session.lastFallbackAt = now;
                 session.nativeText = getNativeCueText(video);
-                if (hasEnabledNativeCaptionTrack(video)) return;
                 refreshCaptionBinding(session, !session.binding);
             },
             { signal },
