@@ -6,11 +6,9 @@
 
 3. na netflix jak tlumacze cale zdanie to jak nie ruszam myszka i napisy opadaja wtedy kiedy chowa sie dolny pasek playera to tez tlumaczenie opada a adapter napisow nie opada wiec chcialbym aby tlumaczenie tez nie opadalo
 
-4. jak naciskam jakis przycisk WSAD strzalki to pokazuje sie na dole pasek sterowania netflix, niech go nie pokazuje oraz jak najade kursorem na slowo, hover to film sie nie stopuje, zrob identycznie jak na youtubie neich stopuje sie video po najechaniu
-
 5. dodaj na netflixie ze po kazdym wypowiedzianym zdaniu i opcje 1. moze byc zatrzymany film 2. wstrzymuje sie na 1s/2s/3s z paskiem ladowania na samej gorze od prawej do lewej
 
-6. też na youtubie niech pobiera napisy json i niech bedzie opcja jak na netflixie zeby przewijal do poczatku napisow lub do konca
+6. też na youtubie niech pobiera napisy od youtube i niech bedzie opcja jak na netflixie zeby przewijal do poczatku napisow lub do konca
 
 7. napisy reel niech sie pojawiaja tam gdzie jest najciemniejsze miejsce na filmiku ale zawsze tak aby byly cale widoczne
 
@@ -86,7 +84,7 @@ Przeanalizuj kod pod kątem trzech głównych obszarów:
 2. Wykrywanie Duplikacji (Zasada DRY - Don't Repeat Yourself)
    Znajdź fragmenty kodu, które są skopiowane lub realizują dokładnie tę samą logikę w minimalnie różny sposób w wielu miejscach. Zwróć uwagę nie tylko na identyczne linie, ale też na powtarzające się wzorce (np. identyczne wywołania API, powtarzająca się logika walidacji czy transformacji danych).
 
-1. nie czytaj znaku ♪ zawsze go wycinaj z TTS
+1. nie czytaj znaku ♪ zawsze go wycinaj z TTS (Naprawiono – usunięto nutki, opisy w nawiasach kwadratowych i zbędne znaki specjalne w SSOT cleanTextForTTS)
 2. Web Speech API (Naprawiono – asynchroniczne pobieranie głosów i pre-warming)
 3. Hover na slowach na napisach w filmach (Naprawiono – usunięto sub-word z isOwnUI, poprawiono dzielenie słów i pointer-events)
 

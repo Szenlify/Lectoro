@@ -770,7 +770,7 @@
         if (rect.width === 0 && rect.height === 0) return;
         const cloudRect = cloud.getBoundingClientRect();
         let left = rect.left + (rect.width - cloudRect.width) / 2;
-        let top = rect.top - cloudRect.height - 6;
+        let top = rect.top - cloudRect.height + 12;
         left = Math.max(4, Math.min(left, window.innerWidth - cloudRect.width - 4));
         if (top < 4) top = rect.bottom + 4;
         cloud.style.left = left + "px";

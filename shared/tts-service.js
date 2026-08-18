@@ -23,9 +23,9 @@
         }
         return String(text ?? "")
             .replace(/<[^>]*>/g, " ")
-            .replace(/[<>]/g, "")
-            .replace(/#/g, "")
-            .replace(/♪/g, "")
+            .replace(/[♪♫♬♩]/g, " ")
+            .replace(/\[[^\]]*\]/g, " ")
+            .replace(/[<>#~*_^|\\/@$%&=+]/g, " ")
             .replace(/\s{2,}/g, " ")
             .trim();
     }
@@ -291,7 +291,6 @@
     return Object.freeze({
         speak,
         speakBrowser,
-        speakBrowserDirect,
         ensureVoices,
         cancel,
         pickVoice,
