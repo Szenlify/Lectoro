@@ -613,6 +613,19 @@ html[data-lectoro-ai-limit-reached] .__qt_save-ai-btn {
     pointer-events: auto !important;
 }
 
+/* Stabilize YouTube Subtitles - Prevent jumping/dropping when bottom control bar auto-hides */
+.html5-video-player .caption-window,
+.html5-video-player .ytp-caption-window-bottom,
+.html5-video-player .ytp-caption-window-rollup,
+.ytp-caption-window-container .caption-window {
+    transition: none !important;
+}
+
+.watch-video--evidence-overlay-container {
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
 .ytp-caption-segment,
 .caption-visual-line {
     pointer-events: auto !important;
@@ -907,6 +920,13 @@ body.__qt_reels-active .captions-text {
 /* ═══════════════════════════════════════════════════════════════
    Netflix CC Subtitles
    ═══════════════════════════════════════════════════════════════ */
+
+/* Stabilize Netflix Subtitles - Prevent jumping/dropping when bottom control bar auto-hides */
+.player-timedtext {
+    bottom: 12% !important;
+    transition: none !important;
+    transform: none !important;
+}
 
 .player-timedtext-text-container {
     text-align: center !important;

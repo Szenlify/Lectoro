@@ -147,9 +147,7 @@
 
             const tipRect = tip.getBoundingClientRect();
             let left = rect.left + (rect.width - tipRect.width) / 2;
-            let top = preferredPosition === "bottom"
-                ? rect.bottom + gap
-                : rect.top - tipRect.height - gap;
+            let top = rect.top - tipRect.height - gap;
 
             top = Math.max(4, Math.min(top, window.innerHeight - tipRect.height - 4));
             left = Math.max(4, Math.min(left, window.innerWidth - tipRect.width - 4));
@@ -166,9 +164,7 @@
 
             const tipRect = tip.getBoundingClientRect();
             let left = rect.left + scrollX + (rect.width - tipRect.width) / 2;
-            let top = preferredPosition === "bottom"
-                ? rect.bottom + scrollY + gap
-                : rect.top + scrollY - tipRect.height - gap;
+            let top = rect.top + scrollY - tipRect.height - gap;
 
             const maxTop = scrollY + document.documentElement.clientHeight - tipRect.height - 4;
             const maxLeft = scrollX + document.documentElement.clientWidth - tipRect.width - 4;
