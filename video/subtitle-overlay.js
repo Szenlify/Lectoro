@@ -25,9 +25,6 @@
     let subTooltipAnchor = null;
     let subCloseTimer = null;
 
-    let netflixSubtitleHitLayer = null;
-    let netflixSubtitleHitboxes = [];
-    let netflixSubtitleSourceEls = new Set();
 
     let aiTooltipActive = false;
     let aiWasPlaying = false;
@@ -86,130 +83,28 @@
         return globalThis.LectoroPlayerRegistry;
     }
 
-    // ── Netflix Hitbox Layer ──────────────────────────────────────
-
-    function ensureNetflixSubtitleHitLayer() {
-        const parent = QT.getOverlayParent();
-        if (netflixSubtitleHitLayer?.isConnected) {
-            if (netflixSubtitleHitLayer.parentElement !== parent) {
-                parent.appendChild(netflixSubtitleHitLayer);
-            }
-            return netflixSubtitleHitLayer;
-        }
-
-        netflixSubtitleHitLayer = document.createElement("div");
-        netflixSubtitleHitLayer.className = PREFIX + "netflix-subtitle-hit-layer";
-        Object.assign(netflixSubtitleHitLayer.style, {
-            position: "fixed",
-            inset: "0px",
-            width: "100vw",
-            height: "100vh",
-            pointerEvents: "none",
-            zIndex: "2147483000",
-        });
-
-        parent.appendChild(netflixSubtitleHitLayer);
-        return netflixSubtitleHitLayer;
-    }
-
-    function clearNetflixSubtitleHitboxes() {
-        for (const hitbox of netflixSubtitleHitboxes) {
-            hitbox.remove();
-        }
-        netflixSubtitleHitboxes = [];
-        netflixSubtitleSourceEls.clear();
-    }
-
-    function createNetflixSubtitleHitboxes(el) {
-        const layer = ensureNetflixSubtitleHitLayer();
-        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
-        let textNode;
-
-        while ((textNode = walker.nextNode())) {
-            const text = textNode.nodeValue || "";
-            for (const match of text.matchAll(/\S+/g)) {
-                const start = match.index ?? 0;
-                const end = start + match[0].length;
-                const range = document.createRange();
-
-                try {
-                    range.setStart(textNode, start);
-                    range.setEnd(textNode, end);
-                } catch (_) {
-                    range.detach?.();
-                    continue;
-                }
-
-                const rects = Array.from(range.getClientRects()).filter(
-                    (rect) => rect.width > 0 && rect.height > 0,
-                );
-                range.detach?.();
-
-                for (const rect of rects) {
-                    const hitbox = document.createElement("span");
-                    hitbox.className = PREFIX + "sub-word";
-                    hitbox.textContent = match[0];
-                    hitbox.dataset[PREFIX + "netflixHitbox"] = "1";
-
-                    Object.assign(hitbox.style, {
-                        position: "fixed",
-                        left: `${rect.left}px`,
-                        top: `${rect.top}px`,
-                        width: `${rect.width}px`,
-                        height: `${rect.height}px`,
-                        margin: "0",
-                        padding: "0",
-                        border: "0",
-                        background: "transparent",
-                        color: "transparent",
-                        textShadow: "none",
-                        lineHeight: "0",
-                        pointerEvents: "auto",
-                        cursor: "pointer",
-                        fontSize: "0px",
-                    });
-
-                    layer.appendChild(hitbox);
-                    netflixSubtitleHitboxes.push(hitbox);
-                }
-            }
-        }
-        netflixSubtitleSourceEls.add(el);
-    }
+    // ── Netflix Hitbox Delegation (Single Source of Truth in NetflixAdapter) ────
 
     function refreshNetflixSubtitleHitboxes(els) {
-        if (!isNetflixPage()) return false;
+        if (!isNetflixPage() || !globalThis.LectoroNetflixAdapter?.refreshSubtitleHitboxes) {
+            return false;
+        }
         const currentActiveText = (isSubHovering && lastHoveredSubWord)
             ? lastHoveredSubWord.textContent?.trim()
             : null;
 
-        const sourceElements = new Set(
-            els.filter((el) => el?.textContent?.trim()),
+        const result = globalThis.LectoroNetflixAdapter.refreshSubtitleHitboxes(
+            els,
+            currentActiveText,
         );
-        clearNetflixSubtitleHitboxes();
-        ensureNetflixSubtitleHitLayer();
-        for (const el of sourceElements) {
-            createNetflixSubtitleHitboxes(el);
-        }
 
-        if (currentActiveText && isSubHovering) {
-            const rehitbox = netflixSubtitleHitboxes.find(
-                (h) => h.textContent?.trim() === currentActiveText,
-            );
-            if (rehitbox) {
-                lastHoveredSubWord = rehitbox;
-                subTooltipAnchor = rehitbox;
-                rehitbox.classList.add(`${PREFIX}word-hover`);
-                QT.positionTooltip(rehitbox.getBoundingClientRect(), "top");
-            }
+        if (result?.matchedRehitbox && isSubHovering) {
+            lastHoveredSubWord = result.matchedRehitbox;
+            subTooltipAnchor = result.matchedRehitbox;
+            result.matchedRehitbox.classList.add(`${PREFIX}word-hover`);
+            QT.positionTooltip(result.matchedRehitbox.getBoundingClientRect(), "top");
         }
         return true;
-    }
-
-    function destroyNetflixSubtitleHitLayer() {
-        clearNetflixSubtitleHitboxes();
-        netflixSubtitleHitLayer?.remove();
-        netflixSubtitleHitLayer = null;
     }
 
     function makeSubtitlesInteractive(els = getPlayerRegistry()?.getSubtitleElements() || []) {
@@ -218,7 +113,7 @@
             return;
         }
 
-        if (netflixSubtitleHitLayer) destroyNetflixSubtitleHitLayer();
+        globalThis.LectoroNetflixAdapter?.destroySubtitleHitLayer?.();
 
         for (const el of els) {
             const sourceText = el.textContent.trim();

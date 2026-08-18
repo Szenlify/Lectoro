@@ -1241,6 +1241,38 @@ html.__qt_netflix-subtitles-hidden .player-timedtext {
     visibility: hidden !important;
 }
 
+/* Netflix High-Performance Subtitle Hitbox Layer & Object Pool */
+.__qt_netflix-subtitle-hit-layer {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 2147483000;
+}
+
+.__qt_netflix-hitbox {
+    position: fixed;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: transparent;
+    text-shadow: none;
+    line-height: 0;
+    pointer-events: auto;
+    cursor: pointer;
+    font-size: 0px;
+    user-select: none;
+    box-sizing: border-box;
+}
+
+.__qt_netflix-hitbox.__qt_word-hover {
+    background: rgba(74, 108, 247, 0.45) !important;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.3) inset !important;
+    border-radius: 4px !important;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    Netflix Player Control Suppression & Stabilization
    ═══════════════════════════════════════════════════════════════ */

@@ -498,7 +498,14 @@ function isAllowedNetflixMediaHost(hostname) {
     );
 }
 
+const netflixTimedTextCache = new Map();
+const MAX_NETFLIX_CACHE_ENTRIES = 25;
+
 async function fetchNetflixTimedText(rawUrl) {
+    if (netflixTimedTextCache.has(rawUrl)) {
+        return netflixTimedTextCache.get(rawUrl);
+    }
+
     const url = new URL(rawUrl);
     if (
         url.protocol !== "https:" ||
@@ -529,10 +536,19 @@ async function fetchNetflixTimedText(rawUrl) {
     if (buffer.byteLength > MAX_NETFLIX_TIMED_TEXT_BYTES) {
         throw new Error("Plik napisów Netflixa jest zbyt duży.");
     }
-    return {
+
+    const result = {
         text: new TextDecoder("utf-8").decode(buffer),
         contentType: response.headers.get("content-type") || "",
     };
+
+    if (netflixTimedTextCache.size >= MAX_NETFLIX_CACHE_ENTRIES) {
+        const oldestKey = netflixTimedTextCache.keys().next().value;
+        if (oldestKey) netflixTimedTextCache.delete(oldestKey);
+    }
+    netflixTimedTextCache.set(rawUrl, result);
+
+    return result;
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

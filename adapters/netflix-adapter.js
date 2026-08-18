@@ -1,7 +1,7 @@
 /**
  * Lectoro – Netflix Player Caption Adapter & Controller (Single Source of Truth)
- * Coordinates timed text downloads, cue indexing, DOM subtitle hit layers,
- * video seeking, and review screenshot capturing for Netflix.
+ * High-performance subtitle indexing, pooled DOM hitboxes, video seeking,
+ * eager pre-fetching, and fast review artwork for Netflix.
  */
 (() => {
     "use strict";
@@ -15,7 +15,8 @@
     const MANIFEST_EVENT = "__lectoro_netflix_timed_text_manifest";
     const MANIFEST_REQUEST_EVENT = "__lectoro_netflix_timed_text_manifest_request";
     const HIDDEN_CLASS = "__qt_netflix-subtitles-hidden";
-    const CAPTURING_CLASS = "__qt_netflix-capturing";
+    const NETFLIX_HIDE_CONTROLS_CLASS = "__qt_netflix-hide-controls";
+    const PREFIX = "__qt_";
 
     let timedTextManifest = null;
     let cueIndex = [];
@@ -23,6 +24,11 @@
     let cueIndexPromise = null;
     let trackRequestSequence = 0;
     const manifestWaiters = new Set();
+
+    // Hitbox Layer & Object Pool (Zero DOM churn)
+    let netflixSubtitleHitLayer = null;
+    const hitboxPool = [];
+    let activeHitboxCount = 0;
 
     function getSubtitleService() {
         return (
@@ -86,6 +92,15 @@
         cueIndexPromise = null;
         for (const resolve of manifestWaiters) resolve(manifest);
         manifestWaiters.clear();
+
+        // Eager background indexing (pre-warm subtitle timeline before user presses A/D)
+        if (typeof requestIdleCallback === "function") {
+            requestIdleCallback(() => ensureSubtitleIndex().catch(() => {}), {
+                timeout: 1500,
+            });
+        } else {
+            setTimeout(() => ensureSubtitleIndex().catch(() => {}), 100);
+        }
     }
 
     function waitForTimedTextManifest(timeoutMs = 2500) {
@@ -292,6 +307,133 @@
         return targetIndex >= 0 ? cues[targetIndex].startTime : 0;
     }
 
+    // ── High-Performance Hitbox Layer & Object Pool ──────────────────────
+
+    function ensureHitboxLayer() {
+        const parent =
+            (typeof QT !== "undefined" && QT.getOverlayParent?.()) ||
+            document.body ||
+            document.documentElement;
+
+        if (netflixSubtitleHitLayer?.isConnected) {
+            if (netflixSubtitleHitLayer.parentElement !== parent) {
+                parent.appendChild(netflixSubtitleHitLayer);
+            }
+            return netflixSubtitleHitLayer;
+        }
+
+        netflixSubtitleHitLayer = document.createElement("div");
+        netflixSubtitleHitLayer.className = `${PREFIX}netflix-subtitle-hit-layer`;
+        parent.appendChild(netflixSubtitleHitLayer);
+        return netflixSubtitleHitLayer;
+    }
+
+    function clearSubtitleHitboxes() {
+        for (let i = 0; i < activeHitboxCount; i++) {
+            hitboxPool[i].style.display = "none";
+            hitboxPool[i].classList.remove(`${PREFIX}word-hover`);
+        }
+        activeHitboxCount = 0;
+    }
+
+    function getPooledHitbox(index) {
+        if (index < hitboxPool.length) {
+            return hitboxPool[index];
+        }
+        const layer = ensureHitboxLayer();
+        const hitbox = document.createElement("span");
+        hitbox.className = `${PREFIX}sub-word ${PREFIX}netflix-hitbox`;
+        hitbox.dataset[`${PREFIX}netflixHitbox`] = "1";
+        layer.appendChild(hitbox);
+        hitboxPool.push(hitbox);
+        return hitbox;
+    }
+
+    /**
+     * Efficiently refreshes hitboxes using Object Pooling and minimal layout thrashing.
+     */
+    function refreshSubtitleHitboxes(elements, activeHoverText = null) {
+        if (!isPage()) return [];
+
+        const sourceElements = (elements || []).filter(
+            (el) => el?.textContent?.trim(),
+        );
+
+        if (sourceElements.length === 0) {
+            clearSubtitleHitboxes();
+            return [];
+        }
+
+        let assignedCount = 0;
+        let matchedRehitbox = null;
+
+        for (const element of sourceElements) {
+            const walker = document.createTreeWalker(
+                element,
+                NodeFilter.SHOW_TEXT,
+            );
+            let textNode;
+
+            while ((textNode = walker.nextNode())) {
+                const text = textNode.nodeValue || "";
+                for (const match of text.matchAll(/\S+/g)) {
+                    const start = match.index ?? 0;
+                    const end = start + match[0].length;
+                    const range = document.createRange();
+
+                    try {
+                        range.setStart(textNode, start);
+                        range.setEnd(textNode, end);
+                    } catch (_) {
+                        range.detach?.();
+                        continue;
+                    }
+
+                    const rect = Array.from(range.getClientRects()).find(
+                        (r) => r.width > 0 && r.height > 0,
+                    );
+                    range.detach?.();
+                    if (!rect) continue;
+
+                    const hitbox = getPooledHitbox(assignedCount++);
+                    const word = match[0];
+                    hitbox.textContent = word;
+
+                    hitbox.style.left = `${Math.round(rect.left)}px`;
+                    hitbox.style.top = `${Math.round(rect.top)}px`;
+                    hitbox.style.width = `${Math.round(rect.width)}px`;
+                    hitbox.style.height = `${Math.round(rect.height)}px`;
+                    hitbox.style.display = "block";
+
+                    if (activeHoverText && word === activeHoverText && !matchedRehitbox) {
+                        matchedRehitbox = hitbox;
+                    }
+                }
+            }
+        }
+
+        // Hide unused spans in the pool
+        for (let i = assignedCount; i < activeHitboxCount; i++) {
+            hitboxPool[i].style.display = "none";
+            hitboxPool[i].classList.remove(`${PREFIX}word-hover`);
+        }
+        activeHitboxCount = assignedCount;
+
+        const activeList = hitboxPool.slice(0, activeHitboxCount);
+        return {
+            hitboxes: activeList,
+            matchedRehitbox,
+        };
+    }
+
+    function destroySubtitleHitLayer() {
+        clearSubtitleHitboxes();
+        netflixSubtitleHitLayer?.remove();
+        netflixSubtitleHitLayer = null;
+        hitboxPool.length = 0;
+        activeHitboxCount = 0;
+    }
+
     function captureRenderedLines(elements) {
         const tokens = [];
         let order = 0;
@@ -420,84 +562,6 @@
         return layer;
     }
 
-    function loadImage(src) {
-        return new Promise((resolve) => {
-            const image = new Image();
-            image.onload = () => resolve(image);
-            image.onerror = () => resolve(null);
-            image.src = src;
-        });
-    }
-
-    function isMostlyBlack(canvas) {
-        const ctx = canvas.getContext("2d", { willReadFrequently: true });
-        if (!ctx) return true;
-        const sampleX = Math.floor(canvas.width * 0.1);
-        const sampleY = Math.floor(canvas.height * 0.08);
-        const sampleWidth = Math.max(1, Math.floor(canvas.width * 0.8));
-        const sampleHeight = Math.max(1, Math.floor(canvas.height * 0.7));
-        const data = ctx.getImageData(
-            sampleX,
-            sampleY,
-            sampleWidth,
-            sampleHeight,
-        ).data;
-        const pixelCount = sampleWidth * sampleHeight;
-        const stride = Math.max(1, Math.floor(pixelCount / 5000));
-        let sampled = 0;
-        let nearlyBlack = 0;
-        for (let pixel = 0; pixel < pixelCount; pixel += stride) {
-            const offset = pixel * 4;
-            const brightness =
-                data[offset] * 0.2126 +
-                data[offset + 1] * 0.7152 +
-                data[offset + 2] * 0.0722;
-            sampled += 1;
-            if (brightness < 10) nearlyBlack += 1;
-        }
-        return sampled === 0 || nearlyBlack / sampled > 0.985;
-    }
-
-    async function cropVisibleTabToVideo(dataUrl, video) {
-        const image = await loadImage(dataUrl);
-        if (!image || !video?.isConnected) return null;
-
-        const rect = video.getBoundingClientRect();
-        const left = Math.max(0, rect.left);
-        const top = Math.max(0, rect.top);
-        const right = Math.min(window.innerWidth, rect.right);
-        const bottom = Math.min(window.innerHeight, rect.bottom);
-        if (right <= left || bottom <= top) return null;
-
-        const scaleX = image.naturalWidth / window.innerWidth;
-        const scaleY = image.naturalHeight / window.innerHeight;
-        const sourceWidth = (right - left) * scaleX;
-        const sourceHeight = (bottom - top) * scaleY;
-        const maxWidth = 640;
-        const outputScale = Math.min(1, maxWidth / sourceWidth);
-
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.max(1, Math.round(sourceWidth * outputScale));
-        canvas.height = Math.max(1, Math.round(sourceHeight * outputScale));
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return null;
-
-        ctx.drawImage(
-            image,
-            left * scaleX,
-            top * scaleY,
-            sourceWidth,
-            sourceHeight,
-            0,
-            0,
-            canvas.width,
-            canvas.height,
-        );
-
-        if (isMostlyBlack(canvas)) return null;
-        return canvas.toDataURL("image/jpeg", 0.86);
-    }
-
     function requestArtworkUrl() {
         const pageArtwork =
             document.querySelector("video")?.poster ||
@@ -512,7 +576,7 @@
                     handleResponse,
                 );
                 resolve(null);
-            }, 500);
+            }, 300);
             const handleResponse = (event) => {
                 clearTimeout(timer);
                 window.removeEventListener(
@@ -537,27 +601,17 @@
         return response?.dataUrl || null;
     }
 
-    async function captureReviewImage(video) {
+    /**
+     * Fast review image capture for Netflix.
+     * DRM prevents video canvas capture (returns black frame), so we directly fetch high-res artwork.
+     */
+    async function captureReviewImage() {
         if (!isPage()) return null;
-        document.documentElement.classList.add(CAPTURING_CLASS);
-        try {
-            await new Promise((resolve) =>
-                requestAnimationFrame(() => requestAnimationFrame(resolve)),
-            );
-            const response = await sendMessage({
-                type: "QT_CAPTURE_VISIBLE_TAB",
-            });
-            const cropped = response?.dataUrl
-                ? await cropVisibleTabToVideo(response.dataUrl, video)
-                : null;
-            return cropped || (await captureArtwork());
-        } finally {
-            document.documentElement.classList.remove(CAPTURING_CLASS);
-        }
+        return (await captureArtwork()) || "";
     }
 
     let netflixControlsTimer = null;
-    const NETFLIX_HIDE_CONTROLS_CLASS = "__qt_netflix-hide-controls";
+    let mouseMoveRaf = null;
 
     function ensureControlsHidden() {
         if (!isPage()) return;
@@ -573,16 +627,20 @@
         window.addEventListener(
             "mousemove",
             () => {
-                if (
-                    document.documentElement.classList.contains(
-                        NETFLIX_HIDE_CONTROLS_CLASS,
-                    )
-                ) {
-                    document.documentElement.classList.remove(
-                        NETFLIX_HIDE_CONTROLS_CLASS,
-                    );
-                    clearTimeout(netflixControlsTimer);
-                }
+                if (mouseMoveRaf) return;
+                mouseMoveRaf = requestAnimationFrame(() => {
+                    mouseMoveRaf = null;
+                    if (
+                        document.documentElement.classList.contains(
+                            NETFLIX_HIDE_CONTROLS_CLASS,
+                        )
+                    ) {
+                        document.documentElement.classList.remove(
+                            NETFLIX_HIDE_CONTROLS_CLASS,
+                        );
+                        clearTimeout(netflixControlsTimer);
+                    }
+                });
             },
             { passive: true },
         );
@@ -604,7 +662,7 @@
         documentFallback: true,
 
         isPage,
-        matchVideo(video) {
+        matchVideo() {
             return isPage();
         },
         getContainer(video) {
@@ -630,6 +688,9 @@
         captureReviewImage,
         ensureSubtitleIndex,
         getAdjacentSubtitleTime,
+        refreshSubtitleHitboxes,
+        clearSubtitleHitboxes,
+        destroySubtitleHitLayer,
         createWordCloudSourceLayer,
         captureRenderedLines,
     });
