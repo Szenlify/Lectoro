@@ -1,6 +1,6 @@
 /**
  * Lectoro – Video Keyboard Hotkeys & Navigation Manager
- * Handles WSAD, Enter, Z, Space, Speed, Reels, and subtitle seeking across video players.
+ * Handles WSAD, Enter, Z, Space, Speed, and subtitle seeking across video players.
  */
 (() => {
     "use strict";
@@ -13,7 +13,6 @@
         "e", "E",
         "Enter",
         "q", "Q",
-        "r", "R",
         "z", "Z",
         "[", "{", "]", "}",
         "Home", "PageUp",
@@ -75,12 +74,6 @@
                 currentRate = Math.round(currentRate * 100) / 100;
                 video.playbackRate = currentRate;
                 overlay?.showSpeedOverlay(currentRate);
-                return;
-            }
-
-            // Reels Mode Toggle: R
-            if (key === "r" || key === "R") {
-                overlay?.setReelsMode(!overlay.isReelsMode());
                 return;
             }
 
@@ -246,11 +239,15 @@
 
             // Previous Subtitle / Seek Backward: A / ArrowLeft
             if (key === "a" || key === "A" || key === "ArrowLeft") {
+                const isNetflix =
+                    (typeof registry?.isNetflixPage === "function" && registry.isNetflixPage()) ||
+                    /(^|\.)netflix\.com$/i.test(window.location.hostname);
+
                 if (typeof registry?.navigateSubtitle === "function") {
                     registry.navigateSubtitle(video, -1);
-                } else if (typeof registry?.navigateNetflixSubtitle === "function" && registry.isNetflixPage()) {
+                } else if (typeof registry?.navigateNetflixSubtitle === "function" && isNetflix) {
                     registry.navigateNetflixSubtitle(video, -1);
-                } else {
+                } else if (!isNetflix) {
                     video.currentTime = Math.max(0, video.currentTime - FALLBACK_SKIP_SECONDS);
                     if (video.paused) video.play().catch?.(() => {});
                 }
@@ -259,17 +256,22 @@
 
             // Next Subtitle / Seek Forward: D / ArrowRight
             if (key === "d" || key === "D" || key === "ArrowRight") {
+                const isNetflix =
+                    (typeof registry?.isNetflixPage === "function" && registry.isNetflixPage()) ||
+                    /(^|\.)netflix\.com$/i.test(window.location.hostname);
+
                 if (typeof registry?.navigateSubtitle === "function") {
                     registry.navigateSubtitle(video, 1);
-                } else if (typeof registry?.navigateNetflixSubtitle === "function" && registry.isNetflixPage()) {
+                } else if (typeof registry?.navigateNetflixSubtitle === "function" && isNetflix) {
                     registry.navigateNetflixSubtitle(video, 1);
-                } else {
+                } else if (!isNetflix) {
                     video.currentTime = Math.min(
                         video.duration || Infinity,
                         video.currentTime + FALLBACK_SKIP_SECONDS,
                     );
                     if (video.paused) video.play().catch?.(() => {});
                 }
+                return;
             }
         },
         true,

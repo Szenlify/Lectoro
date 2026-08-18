@@ -549,6 +549,11 @@
             );
         }
 
+        // On Netflix, NEVER use +-3s fallback seeking
+        if (isNetflixPage()) {
+            return;
+        }
+
         if (!Number.isFinite(targetTime)) {
             const fallbackDelta = direction > 0 ? 3 : -3;
             targetTime = Math.max(

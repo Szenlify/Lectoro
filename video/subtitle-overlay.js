@@ -41,7 +41,6 @@
     let aiShimmerEl = null;
     let aiExplainKeydownHandler = null;
 
-    let reelsMode = false;
     let speedOverlayEl = null;
     let speedOverlayTimer = null;
 
@@ -95,6 +94,16 @@
 
     // ── Universal Custom Subtitle Layer (Single Source of Truth) ──
 
+    function getPlatformName() {
+        const hostname = (typeof window !== "undefined" && window.location?.hostname) || "";
+        if (/(^|\.)youtube\.com$/i.test(hostname)) return "youtube";
+        if (/(^|\.)netflix\.com$/i.test(hostname)) return "netflix";
+        if (/lookmovie/i.test(hostname)) return "lookmovie";
+        const regType = getPlayerRegistry()?.type;
+        if (regType) return regType;
+        return "generic";
+    }
+
     function ensureCustomSubtitlesLayer() {
         if (customSubLayerEl && customSubLayerEl.isConnected) {
             return { layer: customSubLayerEl, box: customSubBoxEl };
@@ -104,22 +113,27 @@
             ? QT.getOverlayParent()
             : (document.fullscreenElement || document.body);
 
+        const platform = getPlatformName();
+
         customSubLayerEl = document.createElement("div");
         customSubLayerEl.id = `${PREFIX}custom_subtitles_layer`;
         customSubLayerEl.className = `${PREFIX}custom-subtitles-layer`;
+        customSubLayerEl.setAttribute("data-platform", platform);
 
         customSubBoxEl = document.createElement("div");
         customSubBoxEl.className = `${PREFIX}custom-subtitles-box`;
+        customSubBoxEl.setAttribute("data-platform", platform);
         customSubBoxEl.style.opacity = "0";
+
+        if (document.body && !document.body.hasAttribute("data-lectoro-platform")) {
+            document.body.setAttribute("data-lectoro-platform", platform);
+        }
 
         customSubLayerEl.appendChild(customSubBoxEl);
         parent.appendChild(customSubLayerEl);
 
         return { layer: customSubLayerEl, box: customSubBoxEl };
     }
-
-    let lineTimestamps = new Map();
-    let lineEvaporateTimer = null;
 
     function isYouTubePage() {
         return /(^|\.)youtube\.com$/i.test(window.location.hostname) || getPlayerRegistry()?.type === "youtube";
@@ -195,23 +209,12 @@
             // Responsive bottom offset:
             // Netflix needs ~11%-14% (min 78px) so subtitles are clearly above bottom controls and letterboxing.
             // YouTube needs ~8%-10% (min 48px).
-            // Reels mode needs ~24% (min 120px).
             const isNetflix = isNetflixPage();
             const baseBottomPx = isNetflix
                 ? Math.max(78, Math.round(visibleHeight * 0.12))
                 : Math.max(48, Math.round(visibleHeight * 0.08));
-            const reelsBottomPx = Math.max(120, Math.round(visibleHeight * 0.24));
 
-            layer.style.setProperty(
-                "--lectoro-sub-bottom",
-                reelsMode ? `${reelsBottomPx}px` : `${baseBottomPx}px`
-            );
-
-            if (reelsMode) {
-                layer.classList.add(`${PREFIX}reels-active`);
-            } else {
-                layer.classList.remove(`${PREFIX}reels-active`);
-            }
+            layer.style.setProperty("--lectoro-sub-bottom", `${baseBottomPx}px`);
         });
     }
 
@@ -221,14 +224,10 @@
             .map((l) => (typeof l === "string" ? l.trim() : ""))
             .filter(Boolean);
 
-        clearTimeout(lineEvaporateTimer);
-        lineEvaporateTimer = null;
-
         if (rawCleanLines.length === 0) {
             activeLines = [];
             activeText = "";
             activeWordSpans = [];
-            lineTimestamps.clear();
             box.innerHTML = "";
             box.style.opacity = "0";
             box.style.pointerEvents = "none";
@@ -238,62 +237,7 @@
             return;
         }
 
-        const now = Date.now();
-
-        // Update timestamps for new lines
-        for (const line of rawCleanLines) {
-            if (!lineTimestamps.has(line)) {
-                lineTimestamps.set(line, now);
-            }
-        }
-
-        // Clean up timestamps for lines that are no longer present
-        for (const key of Array.from(lineTimestamps.keys())) {
-            if (!rawCleanLines.includes(key)) {
-                lineTimestamps.delete(key);
-            }
-        }
-
-        let displayLines = [...rawCleanLines];
-
-        // YouTube auto-generated / rolling speech mode:
-        // When multiple lines are present, older lines evaporate after 1.0s of presence
-        if (isYouTubePage() && rawCleanLines.length > 1) {
-            const latestLine = rawCleanLines[rawCleanLines.length - 1];
-            let nextEvaporateIn = Infinity;
-
-            displayLines = rawCleanLines.filter((line, index) => {
-                // Keep the latest active line always
-                if (index === rawCleanLines.length - 1) return true;
-
-                const firstSeen = lineTimestamps.get(line) || now;
-                const age = now - firstSeen;
-                const EVAPORATE_MS = 1000; // 1 second evaporation for older lines
-
-                if (age >= EVAPORATE_MS) {
-                    return false; // Evaporated!
-                }
-
-                // Schedule re-render for when this line expires
-                const remaining = EVAPORATE_MS - age;
-                if (remaining < nextEvaporateIn) {
-                    nextEvaporateIn = remaining;
-                }
-                return true;
-            });
-
-            // If all older lines evaporated, keep only latest
-            if (displayLines.length === 0) {
-                displayLines = [latestLine];
-            }
-
-            if (Number.isFinite(nextEvaporateIn) && nextEvaporateIn > 0 && nextEvaporateIn < 5000) {
-                lineEvaporateTimer = setTimeout(() => {
-                    renderCustomSubtitles(rawCleanLines);
-                }, nextEvaporateIn + 10);
-            }
-        }
-
+        const displayLines = rawCleanLines;
         const newText = displayLines.join(" ");
         if (newText === activeText && box.children.length === displayLines.length) {
             syncCustomSubtitlePosition();
@@ -609,7 +553,7 @@
         true,
     );
 
-    // ── AI Explanations & Reels Mode ──────────────────────────────
+    // ── AI Explanations ──────────────────────────────────────────
 
     function showAiShimmer(rect) {
         removeAiShimmer();
@@ -801,19 +745,6 @@
         }
     }
 
-    function setReelsMode(on) {
-        reelsMode = on;
-        if (on) {
-            document.body.classList.add(`${PREFIX}reels-active`);
-            if (customSubLayerEl) customSubLayerEl.classList.add(`${PREFIX}reels-active`);
-            QT.createHint("").show("Reels ON 🎬", 2500);
-        } else {
-            document.body.classList.remove(`${PREFIX}reels-active`);
-            if (customSubLayerEl) customSubLayerEl.classList.remove(`${PREFIX}reels-active`);
-            QT.createHint("").show("Reels OFF", 2000);
-        }
-        syncCustomSubtitlePosition();
-    }
 
     function showSpeedOverlay(speed) {
         if (!speedOverlayEl) {
@@ -1445,8 +1376,6 @@
         restoreOriginal,
         resumeVideoAfterSubtitleClose,
         saveCurrentSentenceToReview,
-        setReelsMode,
-        isReelsMode: () => reelsMode,
         showSpeedOverlay,
         captureSubtitleSnapshot,
         createSubtitleTranslationTask,

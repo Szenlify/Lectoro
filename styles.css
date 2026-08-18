@@ -656,7 +656,7 @@ video::cue {
     align-items: center !important;
     justify-content: center !important;
     text-align: center !important;
-    max-width: min(90%, 960px) !important;
+    max-width: min(80%, 860px) !important;
     margin-bottom:  78px !important;
     pointer-events: auto !important;
     user-select: text !important;
@@ -668,7 +668,7 @@ video::cue {
     margin: 2.5px 0 !important;
     color: #ffffff !important;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Inter, sans-serif !important;
-    font-size: clamp(25px, 6vw, 55px) !important;
+    font-size: clamp(18px, 2.5vw, 32px) !important;
     font-weight: 600 !important;
     line-height: 1.35 !important;
     letter-spacing: 0.015em !important;
@@ -684,7 +684,29 @@ video::cue {
         0px 0.15em 0.35em rgba(0, 0, 0, 0.9) !important;
     white-space: pre-wrap !important;
     word-break: break-word !important;
-    
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Platform-Specific Subtitle Font Sizes (YouTube / Netflix / LookMovie)
+   Tutaj możesz bezpośrednio ustawić rozmiar dla każdej platformy:
+   ═══════════════════════════════════════════════════════════════ */
+
+/* 1. YouTube */
+[data-platform="youtube"] .__qt_custom-sub-line,
+body[data-lectoro-platform="youtube"] .__qt_custom-sub-line {
+    font-size: clamp(18px, 2vw, 40px) !important;
+}
+
+/* 2. Netflix */
+[data-platform="netflix"] .__qt_custom-sub-line,
+body[data-lectoro-platform="netflix"] .__qt_custom-sub-line {
+    font-size: clamp(23px, 4vw, 50px) !important;
+}
+
+/* 3. LookMovie / Video.js */
+[data-platform="lookmovie"] .__qt_custom-sub-line,
+body[data-lectoro-platform="lookmovie"] .__qt_custom-sub-line {
+ font-size: clamp(23px, 4vw, 50px) !important;
 }
 
 .__qt_sub-word {
@@ -703,36 +725,6 @@ video::cue {
     color: #ffffff !important;
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25) inset !important;
     text-shadow: 0 0 8px rgba(0, 0, 0, 0.95) !important;
-}
-
-/* Reels Mode (R hotkey) on Universal Subtitles */
-body.__qt_reels-active .__qt_custom-subtitles-box,
-.__qt_custom-subtitles-layer.__qt_reels-active .__qt_custom-subtitles-box {
-    margin-bottom: var(--lectoro-reels-bottom, 22%) !important;
-    max-width: min(85%, 820px) !important;
-}
-
-body.__qt_reels-active .__qt_custom-sub-line,
-.__qt_custom-subtitles-layer.__qt_reels-active .__qt_custom-sub-line {
-    background: transparent !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    border: none !important;
-    box-shadow: none !important;
-    font-family: "YouTube Sans", "Roboto", system-ui, sans-serif !important;
-    font-weight: 800 !important;
-    font-size: clamp(20px, 3vw, 55px) !important;
-    letter-spacing: 0.03em !important;
-    text-shadow:
-        -0.07em -0.07em 0 #000,
-        0.07em -0.07em 0 #000,
-        -0.07em 0.07em 0 #000,
-        0.07em 0.07em 0 #000,
-        -0.07em 0px 0 #000,
-        0.07em 0px 0 #000,
-        0px -0.07em 0 #000,
-        0px 0.07em 0 #000,
-        0px 0.15em 0.35em rgba(0, 0, 0, 0.9) !important;
 }
 
 .__qt_yt-sub-hint {
