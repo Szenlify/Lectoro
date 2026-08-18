@@ -1,42 +1,33 @@
 /**
- * Lectoro – YouTube Player Caption Adapter
+ * Lectoro – YouTube Player Caption Adapter (DRY)
  * Handles YouTube HTML5 video player and caption rendering.
  */
 (() => {
     "use strict";
 
-    const YouTubeAdapter = {
-        id: "youtube",
-        name: "YouTube",
-        playerSelector: "#movie_player, .html5-video-player",
-        containerSelector: ".ytp-caption-window-container",
-        cueSelector: ".ytp-caption-segment",
-        leafOnly: false,
-        documentFallback: false,
+    const { createDomAdapter } = globalThis.LectoroBaseAdapter || {};
 
-        isPage() {
-            return /(^|\.)youtube\.com$/i.test(window.location.hostname);
-        },
-
-        matchVideo(video) {
-            if (!video) return false;
-            return !!video.closest(this.playerSelector);
-        },
-
-        getContainer(video) {
-            const player = video.closest(this.playerSelector) || document;
-            return player.querySelector(this.containerSelector);
-        },
-
-        getCueElements(container) {
-            if (!container || !container.isConnected) return [];
-            const candidates = Array.from(container.querySelectorAll(this.cueSelector));
-            return (globalThis.LectoroBaseAdapter?.filterCueCandidates || ((x) => x))(candidates, {
-                leafOnly: false,
-                cueSelector: this.cueSelector,
-            });
-        },
-    };
+    const YouTubeAdapter = typeof createDomAdapter === "function"
+        ? createDomAdapter({
+              id: "youtube",
+              name: "YouTube",
+              playerSelector: "#movie_player, .html5-video-player",
+              containerSelector: ".ytp-caption-window-container",
+              cueSelector: ".ytp-caption-segment",
+              leafOnly: false,
+              isPage: () => /(^|\.)youtube\.com$/i.test(window.location.hostname),
+          })
+        : {
+              id: "youtube",
+              name: "YouTube",
+              playerSelector: "#movie_player, .html5-video-player",
+              containerSelector: ".ytp-caption-window-container",
+              cueSelector: ".ytp-caption-segment",
+              isPage: () => /(^|\.)youtube\.com$/i.test(window.location.hostname),
+              matchVideo: (video) => !!video?.closest?.("#movie_player, .html5-video-player"),
+              getContainer: (video) => (video?.closest?.("#movie_player, .html5-video-player") || document).querySelector(".ytp-caption-window-container"),
+              getCueElements: (container) => container ? Array.from(container.querySelectorAll(".ytp-caption-segment")) : [],
+          };
 
     globalThis.LectoroYouTubeAdapter = YouTubeAdapter;
 })();

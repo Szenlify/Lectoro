@@ -1,0 +1,276 @@
+/**
+ * Lectoro – Universal TTS & Speech Synthesis Service (SSOT)
+ * Single Source of Truth for Web Speech API, ElevenLabs neural voices,
+ * voice selection heuristics, audio caching, safety timeouts, and cancellation.
+ */
+(function initTtsService(root, factory) {
+    const api = factory();
+    if (typeof module !== "undefined" && module.exports) module.exports = api;
+    if (root) {
+        root.SharedTtsService = api;
+        root.TtsService = api;
+    }
+})(typeof globalThis !== "undefined" ? globalThis : this, function createTtsService() {
+    "use strict";
+
+    let activeAudio = null;
+    let globalSpeechToken = 0;
+    let cachedRandomElevenLabsVoices = [];
+    let lastRandomElevenLabsVoiceId = "";
+    let providerError = null;
+
+    function cleanText(text) {
+        if (typeof SharedUtils !== "undefined" && SharedUtils.cleanTextForTTS) {
+            return SharedUtils.cleanTextForTTS(text);
+        }
+        return String(text ?? "")
+            .replace(/<[^>]*>/g, " ")
+            .replace(/[<>]/g, "")
+            .replace(/#/g, "")
+            .replace(/\s{2,}/g, " ")
+            .trim();
+    }
+
+    function getSafetyTimeout(text, rate = 1) {
+        const words = String(text || "").trim().split(/\s+/).filter(Boolean);
+        const estimatedMs = (words.length / Math.max(0.5, Number(rate) * 1.5 || 1.5)) * 1000;
+        return Math.min(300000, Math.max(6000, estimatedMs + 6000));
+    }
+
+    async function getTtsSettings() {
+        if (!chrome?.storage?.local) {
+            return {
+                ttsMode: "browser",
+                speechVoice: "",
+                speechRate: 1.1,
+                ttsVolume: 1,
+                elVoiceId: "",
+            };
+        }
+        const data = await chrome.storage.local.get({
+            ttsMode: "browser",
+            speechVoice: "",
+            speechRate: 1.1,
+            ttsVolume: 1,
+            elVoiceId: "",
+        });
+        const rawVol = data.ttsVolume !== undefined ? Number(data.ttsVolume) : 1;
+        return {
+            ttsMode: data.ttsMode || "browser",
+            speechVoice: data.speechVoice || "",
+            speechRate: Math.max(0.1, Math.min(10, Number(data.speechRate) || 1.1)),
+            ttsVolume: Number.isFinite(rawVol) ? Math.max(0, Math.min(1, rawVol)) : 1,
+            elVoiceId: data.elVoiceId || "",
+        };
+    }
+
+    function pickVoice(savedVoiceName, lang) {
+        if (typeof SharedUtils !== "undefined" && SharedUtils.pickBestVoice) {
+            return SharedUtils.pickBestVoice(savedVoiceName, lang);
+        }
+        const voices = window.speechSynthesis?.getVoices?.() || [];
+        if (!voices.length) return null;
+
+        const base = (lang || "en").split("-")[0].toLowerCase();
+        const langVoices = voices.filter((v) => (v.lang || "").toLowerCase().startsWith(base));
+
+        if (savedVoiceName && savedVoiceName !== "random") {
+            const exact = (langVoices.length ? langVoices : voices).find((v) => v.name === savedVoiceName);
+            if (exact) return exact;
+        }
+
+        if (!langVoices.length) return null;
+
+        if (savedVoiceName === "random") {
+            return langVoices[Math.floor(Math.random() * langVoices.length)];
+        }
+
+        const googleVoice = langVoices.find((v) => /google/i.test(v.name));
+        return googleVoice || langVoices[0];
+    }
+
+    /**
+     * Stop all in-progress speech playback immediately.
+     */
+    function cancel() {
+        globalSpeechToken += 1;
+        try {
+            window.speechSynthesis?.cancel();
+        } catch (_) {}
+        if (activeAudio) {
+            try {
+                activeAudio.pause();
+                activeAudio = null;
+            } catch (_) {}
+        }
+    }
+
+    async function pickRandomElevenLabsVoiceId() {
+        let voices = cachedRandomElevenLabsVoices;
+        if (!voices.length && typeof SubscriptionService !== "undefined") {
+            voices = await SubscriptionService.getElevenLabsVoices("review");
+            cachedRandomElevenLabsVoices = voices || [];
+        }
+        const voiceIds = voices
+            .map((v) => v?.voice_id)
+            .filter((id) => id && id !== "random");
+        if (!voiceIds.length) {
+            throw new Error("Brak dostępnych głosów ElevenLabs.");
+        }
+        const candidates =
+            voiceIds.length > 1
+                ? voiceIds.filter((id) => id !== lastRandomElevenLabsVoiceId)
+                : voiceIds;
+        const voiceId = candidates[Math.floor(Math.random() * candidates.length)];
+        lastRandomElevenLabsVoiceId = voiceId;
+        return voiceId;
+    }
+
+    /**
+     * Internal direct browser synthesis without resetting tokens.
+     */
+    function speakBrowserDirect(cleanedText, lang, settings, { rate = null, volume = null, isCancelled = null } = {}) {
+        if (!cleanedText) return null;
+        if (isCancelled?.()) return null;
+
+        const utter = new SpeechSynthesisUtterance(cleanedText);
+        utter.lang = lang || "en";
+        utter.rate = rate !== null ? rate : settings.speechRate;
+        utter.volume = volume !== null ? volume : settings.ttsVolume;
+        const voice = pickVoice(settings.speechVoice, lang);
+        if (voice) utter.voice = voice;
+
+        try {
+            window.speechSynthesis?.speak(utter);
+            return utter;
+        } catch (error) {
+            console.warn("[Lectoro TTS] SpeechSynthesis error:", error);
+            return null;
+        }
+    }
+
+    /**
+     * Speak text using Web Speech API (browser synthesizer).
+     */
+    async function speakBrowser(text, lang = "en", { rate = null, volume = null, isCancelled = null } = {}) {
+        const cleaned = cleanText(text);
+        if (!cleaned) return null;
+
+        cancel();
+        const currentToken = globalSpeechToken;
+        const settings = await getTtsSettings();
+
+        if (isCancelled?.() || currentToken !== globalSpeechToken) return null;
+
+        return speakBrowserDirect(cleaned, lang, settings, {
+            rate,
+            volume,
+            isCancelled: () => isCancelled?.() || currentToken !== globalSpeechToken,
+        });
+    }
+
+    /**
+     * Universal speak function respecting user settings and optional ElevenLabs / AudioCache.
+     */
+    async function speak(
+        text,
+        lang = "en",
+        {
+            forceBrowser = false,
+            useConfiguredRate = true,
+            cacheFirst = false,
+            cacheNotBefore = 0,
+            isCancelled = null,
+        } = {},
+    ) {
+        const cleaned = cleanText(text);
+        if (!cleaned) return { type: "none", obj: null };
+
+        cancel();
+        const currentToken = globalSpeechToken;
+        const settings = await getTtsSettings();
+
+        if (isCancelled?.() || currentToken !== globalSpeechToken) {
+            return { type: "none", obj: null };
+        }
+
+        const useElevenLabs =
+            !forceBrowser &&
+            settings.ttsMode === "elevenlabs" &&
+            !!settings.elVoiceId &&
+            typeof SubscriptionService !== "undefined" &&
+            typeof AudioCache !== "undefined";
+
+        if (useElevenLabs) {
+            try {
+                const targetVoiceId =
+                    settings.elVoiceId === "random"
+                        ? await pickRandomElevenLabsVoiceId()
+                        : settings.elVoiceId;
+
+                if (isCancelled?.() || currentToken !== globalSpeechToken) {
+                    return { type: "none", obj: null };
+                }
+
+                const cacheKey = `${cleaned}|${targetVoiceId}`;
+                let blob = await AudioCache.get(cacheKey, { notBefore: cacheNotBefore });
+
+                if (!blob) {
+                    if (providerError) {
+                        const err = new Error(providerError.message);
+                        err.code = providerError.code;
+                        throw err;
+                    }
+                    const validation = await SubscriptionService.checkElevenLabs(cleaned);
+                    if (typeof SubscriptionConfig !== "undefined") {
+                        SubscriptionConfig.assertAllowed(validation);
+                    }
+                    blob = await SubscriptionService.synthesizeElevenLabs(
+                        cleaned,
+                        targetVoiceId,
+                        "review",
+                    );
+                    await AudioCache.set(cacheKey, blob);
+                }
+
+                if (isCancelled?.() || currentToken !== globalSpeechToken) {
+                    return { type: "none", obj: null };
+                }
+
+                const url = URL.createObjectURL(blob);
+                const audio = new Audio(url);
+                audio.volume = settings.ttsVolume;
+                activeAudio = audio;
+                audio.addEventListener("ended", () => URL.revokeObjectURL(url), { once: true });
+                audio.addEventListener("error", () => URL.revokeObjectURL(url), { once: true });
+                await audio.play();
+                return { type: "audio", obj: audio };
+            } catch (err) {
+                console.warn("[Lectoro TTS] ElevenLabs fallback to browser voice:", err.message || err);
+                if (["ELEVENLABS_PROVIDER_DISABLED", "ELEVENLABS_PROVIDER_QUOTA"].includes(err?.code)) {
+                    providerError = { code: err.code, message: err.message };
+                }
+            }
+        }
+
+        // Fallback or default to Browser Speech
+        const utter = speakBrowserDirect(cleaned, lang, settings, {
+            rate: useConfiguredRate ? settings.speechRate : 1.0,
+            volume: settings.ttsVolume,
+            isCancelled: () => isCancelled?.() || currentToken !== globalSpeechToken,
+        });
+
+        return { type: "utter", obj: utter };
+    }
+
+    return Object.freeze({
+        speak,
+        speakBrowser,
+        speakBrowserDirect,
+        cancel,
+        pickVoice,
+        getTtsSettings,
+        cleanText,
+        getSafetyTimeout,
+    });
+});

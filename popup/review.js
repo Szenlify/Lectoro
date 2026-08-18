@@ -717,6 +717,19 @@ async function aiTranslateReviewCard() {
     if (state.status === "loading") return;
     if (state.status === "done") {
         restoreReviewAiPanels(w);
+        const res = state.result;
+        if (res) {
+            const speakText = [res.wordTr, res.sentTr, res.explanation]
+                .filter(Boolean)
+                .join(". ");
+            if (speakText) {
+                stopPopupSpeak();
+                popupSpeak(speakText, res.targetLang || tgtL, {
+                    forceBrowser: true,
+                    useConfiguredRate: true,
+                }).catch(() => {});
+            }
+        }
         return;
     }
 
@@ -770,9 +783,7 @@ async function aiTranslateReviewCard() {
 
         renderReviewTranslationResult(panel, state.result);
 
-        // AI-generated text always uses the free system/browser voice. This
-        // avoids sending translations or explanations to ElevenLabs even when
-        // that provider is selected for ordinary review-card speech.
+        // AI-generated text always uses the free system/browser voice.
         const speakText = [wordTr, sentTr, explanation]
             .filter(Boolean)
             .join(". ");
@@ -781,7 +792,9 @@ async function aiTranslateReviewCard() {
             popupSpeak(speakText, tgtL, {
                 forceBrowser: true,
                 useConfiguredRate: true,
-            }).catch(() => {});
+            }).catch((ttsErr) => {
+                console.warn("[Lectoro] AI Review TTS error:", ttsErr);
+            });
         }
     } catch (err) {
         state.status = "idle";

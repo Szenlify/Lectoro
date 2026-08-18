@@ -2,8 +2,10 @@
 
 try {
     importScripts(
+        "shared/constants.js",
         "functions/subscription-config.js",
         "shared/utils.js",
+        "shared/word-repository.js",
         "firebase/firebase-config.js",
         "firebase/firebase-sync.js",
         "shared/subscription-service.js",
@@ -587,8 +589,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 chrome.scripting.executeScript({
                     target,
                     files: [
+                        "shared/constants.js",
                         "functions/subscription-config.js",
                         "shared/utils.js",
+                        "shared/word-repository.js",
+                        "shared/translator-service.js",
+                        "shared/tts-service.js",
+                        "shared/audio-cache.js",
+                        "shared/srs.js",
                         "shared/ai-prompts.js",
                         "firebase/firebase-config.js",
                         "firebase/firebase-sync.js",

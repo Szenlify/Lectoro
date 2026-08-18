@@ -1,11 +1,11 @@
 /**
- * Lectoro – Base Video Adapter Helpers & Contract
- * Shared interfaces and helper utilities for player caption adapters.
+ * Lectoro – Base Video Adapter & Adapter Factory (DRY)
+ * Provides shared interfaces, cue filtering, and standard DOM adapter factory.
  */
 (() => {
     "use strict";
 
-    const PREFIX = "__qt_";
+    const PREFIX = (typeof LectoroConstants !== "undefined" && LectoroConstants.PREFIX) || "__qt_";
 
     function isLectoroElement(element) {
         return Array.from(element?.classList || []).some((className) =>
@@ -14,6 +14,9 @@
     }
 
     function isOwnUI(target) {
+        if (typeof LectoroConstants !== "undefined" && typeof LectoroConstants.isOwnUI === "function") {
+            return LectoroConstants.isOwnUI(target);
+        }
         if (typeof QT !== "undefined" && typeof QT.isOwnUI === "function") {
             return QT.isOwnUI(target);
         }
@@ -43,10 +46,56 @@
         });
     }
 
+    /**
+     * Factory function to create standard DOM caption adapters without boilerplate.
+     */
+    function createDomAdapter({
+        id,
+        name,
+        playerSelector,
+        containerSelector,
+        cueSelector,
+        leafOnly = false,
+        documentFallback = false,
+        isPage = null,
+        extraProps = {},
+    }) {
+        return {
+            id,
+            name,
+            playerSelector,
+            containerSelector,
+            cueSelector,
+            leafOnly,
+            documentFallback,
+            isPage: isPage || (() => true),
+            matchVideo(video) {
+                if (!video) return false;
+                return playerSelector ? !!video.closest(playerSelector) : true;
+            },
+            getContainer(video) {
+                const player = (playerSelector && video ? video.closest(playerSelector) : null) || document;
+                return player.querySelector(containerSelector);
+            },
+            getCueElements(container) {
+                if (!container || !container.isConnected) return [];
+                const candidates = Array.from(
+                    new Set([
+                        ...(container.matches?.(cueSelector) ? [container] : []),
+                        ...container.querySelectorAll(cueSelector),
+                    ]),
+                );
+                return filterCueCandidates(candidates, { leafOnly, cueSelector });
+            },
+            ...extraProps,
+        };
+    }
+
     globalThis.LectoroBaseAdapter = Object.freeze({
         PREFIX,
         isOwnUI,
         isLectoroElement,
         filterCueCandidates,
+        createDomAdapter,
     });
 })();

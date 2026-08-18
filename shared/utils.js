@@ -205,25 +205,25 @@
             const voices = window.speechSynthesis?.getVoices?.() || [];
             if (!voices.length) return null;
 
-            // Only use Google voices
-            const googleVoices = voices.filter((v) => /google/i.test(v.name));
+            const baseLang = (lang || "en").split("-")[0].toLowerCase();
+            const langVoices = voices.filter((v) =>
+                (v.lang || "").toLowerCase().startsWith(baseLang),
+            );
 
             if (savedVoiceName && savedVoiceName !== "random") {
-                const exact = googleVoices.find((v) => v.name === savedVoiceName);
+                const exact = (langVoices.length ? langVoices : voices).find((v) => v.name === savedVoiceName);
                 if (exact) return exact;
             }
 
-            const baseLang = (lang || "en").split("-")[0].toLowerCase();
-            const langVoices = googleVoices.filter((v) =>
-                v.lang.toLowerCase().startsWith(baseLang),
-            );
             if (!langVoices.length) return null;
 
             if (savedVoiceName === "random") {
                 return langVoices[Math.floor(Math.random() * langVoices.length)];
             }
 
-            return langVoices[0];
+            // Prefer Google voices if available, otherwise take first voice matching language
+            const googleVoice = langVoices.find((v) => /google/i.test(v.name));
+            return googleVoice || langVoices[0];
         },
     };
 

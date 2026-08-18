@@ -1,85 +1,57 @@
-// ── Filter state ──────────────────────────────────────────────────
-let currentFilter = "all";
-let wordSearchQuery = "";
+/**
+ * Lectoro – Words List Tab (Popup)
+ * Displays saved words, filtering, editing, and deletion using SharedWordRepository.
+ */
+(() => {
+    "use strict";
 
-document.querySelectorAll(".filter-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-        document
-            .querySelectorAll(".filter-btn")
-            .forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-        currentFilter = btn.dataset.filter;
+    let currentFilter = "all";
+    let wordSearchQuery = "";
+
+    document.querySelectorAll(".filter-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            document
+                .querySelectorAll(".filter-btn")
+                .forEach((b) => b.classList.remove("active"));
+            btn.classList.add("active");
+            currentFilter = btn.dataset.filter;
+            loadWords();
+        });
+    });
+
+    const wordSearchInput = document.getElementById("wordSearch");
+    wordSearchInput?.addEventListener("input", (e) => {
+        wordSearchQuery = e.target.value;
         loadWords();
     });
-});
 
-const wordSearchInput = document.getElementById("wordSearch");
-wordSearchInput?.addEventListener("input", (e) => {
-    wordSearchQuery = e.target.value;
-    loadWords();
-});
-
-// ── Time helpers ──────────────────────────────────────────────────
-function startOfDay() {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d.getTime();
-}
-function startOfWeek() {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    d.setDate(d.getDate() - d.getDay() + (d.getDay() === 0 ? -6 : 1));
-    return d.getTime();
-}
-function startOfMonth() {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    d.setDate(1);
-    return d.getTime();
-}
-
-// ── Filter words ──────────────────────────────────────────────────
-function filterWords(words) {
-    let result;
-    switch (currentFilter) {
-        case "today":
-            result = words.filter((w) => w.timestamp >= startOfDay());
-            break;
-        case "week":
-            result = words.filter((w) => w.timestamp >= startOfWeek());
-            break;
-        case "month":
-            result = words.filter((w) => w.timestamp >= startOfMonth());
-            break;
-        case "new":
-            result = words.filter((w) => !w.downloaded);
-            break;
-        default:
-            result = words;
+    /**
+     * Filter words collection using SharedWordRepository.
+     */
+    function filterWords(words) {
+        if (typeof SharedWordRepository !== "undefined") {
+            return SharedWordRepository.filterWords(words, {
+                filter: currentFilter,
+                query: wordSearchQuery,
+            });
+        }
+        return words;
     }
 
-    const q = wordSearchQuery.trim().toLowerCase();
-    if (q) {
-        result = result.filter((w) => {
-            return (
-                (w.original || "").toLowerCase().includes(q) ||
-                (w.translated || "").toLowerCase().includes(q) ||
-                (w.sentence || "").toLowerCase().includes(q) ||
-                (w.sentenceTranslated || "").toLowerCase().includes(q)
-            );
-        });
-    }
+    /**
+     * Load & render words in the popup Words list.
+     */
+    async function loadWords() {
+        const words = typeof SharedWordRepository !== "undefined"
+            ? await SharedWordRepository.getStoredWords()
+            : [];
+        const filtered = filterWords(words);
 
-    return result;
-}
+        if (statsEl) {
+            statsEl.textContent = `${filtered.length} z ${words.length} słów`;
+        }
 
-// ── Load & render words ───────────────────────────────────────────
-function loadWords() {
-    chrome.storage.local.get({ savedWords: [] }, (data) => {
-        const all = data.savedWords || [];
-        const filtered = filterWords(all);
-
-        statsEl.textContent = `${filtered.length} z ${all.length} słów`;
+        if (!wordListEl) return;
 
         if (filtered.length === 0) {
             wordListEl.innerHTML = `
@@ -92,20 +64,17 @@ function loadWords() {
             return;
         }
 
-        // Sort newest first
-        const sorted = [...filtered].sort((a, b) => b.timestamp - a.timestamp);
+        const sorted = [...filtered].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
         wordListEl.innerHTML = sorted
             .map((w, i) => {
-                const date = SharedUtils.formatDate(w.timestamp);
+                const date = typeof SharedUtils !== "undefined" ? SharedUtils.formatDate(w.timestamp) : "";
                 const isNew = !w.downloaded ? " new-item" : "";
                 let sentenceHtml = "";
                 if (w.sentence) {
-                    const highlighted = SharedUtils.highlightWordInSentence(
-                        w.sentence,
-                        w.original,
-                        "wi-cloze"
-                    );
+                    const highlighted = typeof SharedUtils !== "undefined"
+                        ? SharedUtils.highlightWordInSentence(w.sentence, w.original, "wi-cloze")
+                        : escapeHtml(w.sentence);
                     sentenceHtml = `<div class="wi-sentence">${highlighted}</div>`;
                     if (w.sentenceTranslated) {
                         sentenceHtml += `<div class="wi-sentence" style="color:rgba(255,255,255,0.25);">${escapeHtml(w.sentenceTranslated)}</div>`;
@@ -122,7 +91,7 @@ function loadWords() {
                         <button class="wi-edit" type="button" data-index="${i}" title="Edytuj" aria-label="Edytuj ${escapeAttr(w.original)}">
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>
                         </button>
-                        <button class="wi-delete" type="button" data-original="${escapeAttr(w.original)}" data-ts="${w.timestamp}" title="Usuń" aria-label="Usuń ${escapeAttr(w.original)}">✕</button>
+                        <button class="wi-delete" type="button" data-id="${escapeAttr(w.id || "")}" data-original="${escapeAttr(w.original)}" data-ts="${w.timestamp}" title="Usuń" aria-label="Usuń ${escapeAttr(w.original)}">✕</button>
                     </div>
                 </div>`;
             })
@@ -140,115 +109,87 @@ function loadWords() {
         // Delete handlers
         wordListEl.querySelectorAll(".wi-delete").forEach((btn) => {
             btn.addEventListener("click", () => {
+                const id = btn.dataset.id;
                 const orig = btn.dataset.original;
-                const ts = parseInt(btn.dataset.ts);
-                deleteWord(orig, ts);
+                const ts = parseInt(btn.dataset.ts, 10);
+                deleteWord(id || orig, ts);
             });
         });
-    });
-}
+    }
 
-// ── Delete word ───────────────────────────────────────────────────
-function deleteWord(original, timestamp) {
-    if (
-        !confirm(
-            `Czy na pewno chcesz usunąć zapis „${original}” wraz z przypisanym zdaniem?`,
-        )
-    )
-        return;
+    async function deleteWord(idOrOriginal, timestamp) {
+        if (!confirm(`Czy na pewno chcesz usunąć to słowo wraz z przypisanym zdaniem?`)) {
+            return;
+        }
+        if (typeof SharedWordRepository !== "undefined") {
+            await SharedWordRepository.deleteWord(idOrOriginal, timestamp);
+        }
+        loadWords();
+    }
 
-    chrome.storage.local.get({ savedWords: [] }, (data) => {
-        const words = data.savedWords.filter(
-            (w) => !(w.original === original && w.timestamp === timestamp),
-        );
-        chrome.storage.local.set({ savedWords: words }, () => {
-            if (chrome.runtime.lastError) {
-                console.error(
-                    "[Lectoro] Nie udało się usunąć słowa:",
-                    chrome.runtime.lastError.message,
-                );
+    function showWordEditForm(item, word) {
+        item.classList.add("is-editing");
+        item.innerHTML = `
+            <form class="wi-edit-form">
+                <label>Oryginał</label>
+                <input class="wi-edit-original" name="original" type="text" value="${escapeAttr(word.original)}" required>
+
+                <label>Tłumaczenie</label>
+                <input name="translated" type="text" value="${escapeAttr(word.translated)}" required>
+
+                <label>Zdanie (oryginał)</label>
+                <textarea name="sentence" rows="2">${escapeHtml(word.sentence || "")}</textarea>
+
+                <label>Zdanie (tłumaczenie)</label>
+                <textarea name="sentenceTranslated" rows="2">${escapeHtml(word.sentenceTranslated || "")}</textarea>
+
+                <div class="wi-edit-actions">
+                    <button class="wi-edit-cancel" type="button">Anuluj</button>
+                    <button class="wi-edit-save" type="submit">Zapisz</button>
+                </div>
+            </form>`;
+
+        const form = item.querySelector(".wi-edit-form");
+        item.querySelector(".wi-edit-cancel")?.addEventListener("click", loadWords);
+        form?.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const formData = new FormData(form);
+            const edits = {
+                original: String(formData.get("original") || "").trim(),
+                translated: String(formData.get("translated") || "").trim(),
+                sentence: String(formData.get("sentence") || "").trim(),
+                sentenceTranslated: String(formData.get("sentenceTranslated") || "").trim(),
+            };
+            if (!edits.original || !edits.translated) {
+                form.querySelector("input:invalid")?.reportValidity();
+                return;
             }
-            loadWords();
+            await saveWordEdits(word, edits);
         });
-    });
-}
 
-// ── Edit word / sentence ─────────────────────────────────────────
-function showWordEditForm(item, word) {
-    item.classList.add("is-editing");
-    item.innerHTML = `
-        <form class="wi-edit-form">
-            <label>Oryginał</label>
-            <input class="wi-edit-original" name="original" type="text" value="${escapeAttr(word.original)}" required>
+        item.querySelector(".wi-edit-original")?.focus();
+    }
 
-            <label>Tłumaczenie</label>
-            <input name="translated" type="text" value="${escapeAttr(word.translated)}" required>
-
-            <label>Zdanie (oryginał)</label>
-            <textarea name="sentence" rows="2">${escapeHtml(word.sentence || "")}</textarea>
-
-            <label>Zdanie (tłumaczenie)</label>
-            <textarea name="sentenceTranslated" rows="2">${escapeHtml(word.sentenceTranslated || "")}</textarea>
-
-            <div class="wi-edit-actions">
-                <button class="wi-edit-cancel" type="button">Anuluj</button>
-                <button class="wi-edit-save" type="submit">Zapisz</button>
-            </div>
-        </form>`;
-
-    const form = item.querySelector(".wi-edit-form");
-    item.querySelector(".wi-edit-cancel")?.addEventListener("click", loadWords);
-    form?.addEventListener("submit", (event) => {
-        event.preventDefault();
-        const formData = new FormData(form);
-        const edits = {
-            original: String(formData.get("original") || "").trim(),
-            translated: String(formData.get("translated") || "").trim(),
-            sentence: String(formData.get("sentence") || "").trim(),
-            sentenceTranslated: String(
-                formData.get("sentenceTranslated") || "",
-            ).trim(),
-        };
-        if (!edits.original || !edits.translated) {
-            form.querySelector("input:invalid")?.reportValidity();
-            return;
-        }
-        saveWordEdits(word, edits);
-    });
-
-    item.querySelector(".wi-edit-original")?.focus();
-}
-
-function saveWordEdits(word, edits) {
-    chrome.storage.local.get({ savedWords: [] }, (data) => {
-        const words = data.savedWords || [];
-        const index = words.findIndex((candidate) =>
-            word.id
-                ? candidate.id === word.id
-                : candidate.original === word.original &&
-                  candidate.timestamp === word.timestamp,
-        );
-        if (index === -1) {
-            loadWords();
-            return;
-        }
-
+    async function saveWordEdits(word, edits) {
         const editedAt = Date.now();
-        words[index] = {
-            ...words[index],
-            ...edits,
-            id: words[index].id || SharedUtils.generateId(),
-            updatedAt: editedAt,
-            ttsCacheInvalidatedAt: editedAt,
-        };
-        chrome.storage.local.set({ savedWords: words }, () => {
-            if (chrome.runtime.lastError) {
-                console.error(
-                    "[Lectoro] Nie udało się zapisać edycji:",
-                    chrome.runtime.lastError.message,
-                );
-            }
-            loadWords();
-        });
-    });
-}
+        if (typeof SharedWordRepository !== "undefined") {
+            await SharedWordRepository.updateWord(
+                (candidate) =>
+                    word.id
+                        ? candidate.id === word.id
+                        : candidate.original === word.original && candidate.timestamp === word.timestamp,
+                (existing) => ({
+                    ...existing,
+                    ...edits,
+                    id: existing.id || SharedUtils?.generateId?.() || String(editedAt),
+                    updatedAt: editedAt,
+                    ttsCacheInvalidatedAt: editedAt,
+                }),
+            );
+        }
+        loadWords();
+    }
+
+    globalThis.loadWords = loadWords;
+    globalThis.filterWords = filterWords;
+})();

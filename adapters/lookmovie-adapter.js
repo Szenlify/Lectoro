@@ -1,16 +1,17 @@
 /**
- * Lectoro – LookMovie / Video.js Player Caption Adapter
+ * Lectoro – LookMovie / Video.js Player Caption Adapter (DRY)
  * Handles LookMovie (and any Video.js based video player) captions and control-bar auto-hiding.
  */
 (() => {
     "use strict";
 
     let controlBarTimer = null;
+    const HIDE_CLASS = "__qt_hide-controls";
 
     function ensureControlsHidden() {
         const vjsEl = document.querySelector(".video-js");
-        if (vjsEl && !vjsEl.classList.contains("__qt_hide-controls")) {
-            vjsEl.classList.add("__qt_hide-controls");
+        if (vjsEl && !vjsEl.classList.contains(HIDE_CLASS)) {
+            vjsEl.classList.add(HIDE_CLASS);
         }
     }
 
@@ -18,66 +19,55 @@
         const vjsEl = document.querySelector(".video-js");
         if (!vjsEl || vjsEl.__qtMouseBound) return;
         vjsEl.__qtMouseBound = true;
-        vjsEl.classList.add("__qt_hide-controls");
+        vjsEl.classList.add(HIDE_CLASS);
         vjsEl.addEventListener("mousemove", () => {
-            vjsEl.classList.remove("__qt_hide-controls");
+            vjsEl.classList.remove(HIDE_CLASS);
             clearTimeout(controlBarTimer);
             controlBarTimer = setTimeout(() => {
-                vjsEl.classList.add("__qt_hide-controls");
+                vjsEl.classList.add(HIDE_CLASS);
             }, 3000);
         });
         vjsEl.addEventListener("mouseleave", () => {
             clearTimeout(controlBarTimer);
-            vjsEl.classList.add("__qt_hide-controls");
+            vjsEl.classList.add(HIDE_CLASS);
         });
     }
 
-    // Initialize Video.js control bar listeners
     initControlBarHide();
-    document.addEventListener("fullscreenchange", () =>
-        setTimeout(initControlBarHide, 200),
-    );
-    document.addEventListener("webkitfullscreenchange", () =>
-        setTimeout(initControlBarHide, 200),
-    );
+    document.addEventListener("fullscreenchange", () => setTimeout(initControlBarHide, 200));
+    document.addEventListener("webkitfullscreenchange", () => setTimeout(initControlBarHide, 200));
 
-    const LookmovieAdapter = {
-        id: "videojs",
-        name: "Video.js / LookMovie",
-        playerSelector: ".video-js",
-        containerSelector: ".vjs-text-track-display",
-        cueSelector: ".vjs-text-track-cue div",
-        leafOnly: true,
-        documentFallback: false,
+    const { createDomAdapter } = globalThis.LectoroBaseAdapter || {};
 
-        isPage() {
-            return /(^|\.)lookmovie/i.test(window.location.hostname);
-        },
-
-        matchVideo(video) {
-            if (!video) return false;
-            return !!video.closest(this.playerSelector);
-        },
-
-        getContainer(video) {
-            const player = video.closest(this.playerSelector) || document;
-            return player.querySelector(this.containerSelector);
-        },
-
-        getCueElements(container) {
-            if (!container || !container.isConnected) return [];
-            const candidates = Array.from(container.querySelectorAll(this.cueSelector));
-            return (globalThis.LectoroBaseAdapter?.filterCueCandidates || ((x) => x))(candidates, {
-                leafOnly: true,
-                cueSelector: this.cueSelector,
-            });
-        },
-
-        ensureControlsHidden,
-        clearControlBarTimer() {
-            clearTimeout(controlBarTimer);
-        },
-    };
+    const LookmovieAdapter = typeof createDomAdapter === "function"
+        ? createDomAdapter({
+              id: "videojs",
+              name: "Video.js / LookMovie",
+              playerSelector: ".video-js",
+              containerSelector: ".vjs-text-track-display",
+              cueSelector: ".vjs-text-track-cue div",
+              leafOnly: true,
+              isPage: () => /(^|\.)lookmovie/i.test(window.location.hostname),
+              extraProps: {
+                  ensureControlsHidden,
+                  clearControlBarTimer() {
+                      clearTimeout(controlBarTimer);
+                  },
+              },
+          })
+        : {
+              id: "videojs",
+              name: "Video.js / LookMovie",
+              playerSelector: ".video-js",
+              containerSelector: ".vjs-text-track-display",
+              cueSelector: ".vjs-text-track-cue div",
+              leafOnly: true,
+              isPage: () => /(^|\.)lookmovie/i.test(window.location.hostname),
+              ensureControlsHidden,
+              clearControlBarTimer() {
+                  clearTimeout(controlBarTimer);
+              },
+          };
 
     globalThis.LectoroLookmovieAdapter = LookmovieAdapter;
 })();

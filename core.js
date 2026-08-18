@@ -1,52 +1,39 @@
 /**
  * Quick Translator – Core Module
- * Shared constants, utilities, UI, translation, TTS, storage,
- * and reusable subtitle helpers used by all site-specific modules.
+ * Shared UI tooltips, context screenshot capture, and subtitle helpers.
+ * Delegates translation, TTS, word repository, and constants to SSOT shared services.
  *
  * Exposes: window.QT
  */
 (() => {
     "use strict";
 
-    // ── Constants ──────────────────────────────────────────────────
+    const C = typeof LectoroConstants !== "undefined"
+        ? LectoroConstants
+        : {
+              PREFIX: "__qt_",
+              UI_IDS: { ICON: "__qt_icon", TOOLTIP: "__qt_tooltip", REVIEW_TOAST: "__qt_review_toast" },
+              SVG_ICONS: {},
+              langTag: (c) => c?.toUpperCase() || "?",
+              isOwnUI: () => false,
+          };
+
     const { escapeHtml, escapeAttr, cleanTextForTTS, pickBestVoice } =
-        SharedUtils;
-    const PREFIX = "__qt_";
-    const ICON_ID = PREFIX + "icon";
-    const TOOLTIP_ID = PREFIX + "tooltip";
+        typeof SharedUtils !== "undefined"
+            ? SharedUtils
+            : {
+                  escapeHtml: (s) => String(s || ""),
+                  escapeAttr: (s) => String(s || ""),
+                  cleanTextForTTS: (s) => String(s || ""),
+                  pickBestVoice: () => null,
+              };
 
-    // ── SVG Icons ──────────────────────────────────────────────────
-    const SVG = {
-        TRANSLATE: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/></svg>`,
-        SPEAKER: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`,
-        SAVE: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`,
-        SAVE_CHECK: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#4ecdc4" stroke="#4ecdc4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`,
-        SAVE_SENTENCE: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`,
-        SAVE_SENTENCE_CHECK: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#4ecdc4" stroke="#4ecdc4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`,
-        SAVE_AI: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>`,
-        SAVE_AI_CHECK: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#a78bfa" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>`,
-        READ: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>`,
-        AI: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 6 6 1-4.5 4.25L17 20l-5-3.75L7 20l.5-6.75L3 9l6-1 3-6z"/><path d="M8 13h8"/><path d="M8 17h8"/></svg>`,
-        IMAGE_SEARCH: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`,
-    };
-
-    // ── Language Names ─────────────────────────────────────────────
-    const LANG_NAMES = {
-        pl: "PL",
-        en: "EN",
-    };
-
-    function langTag(code) {
-        return LANG_NAMES[code] || code?.toUpperCase() || "?";
-    }
-
-    // ── Pre-load Voices ────────────────────────────────────────────
-    window.speechSynthesis?.getVoices();
-    if (window.speechSynthesis?.onvoiceschanged !== undefined) {
-        window.speechSynthesis.onvoiceschanged = () => {
-            window.speechSynthesis.getVoices();
-        };
-    }
+    const PREFIX = C.PREFIX || "__qt_";
+    const ICON_ID = C.UI_IDS?.ICON || `${PREFIX}icon`;
+    const TOOLTIP_ID = C.UI_IDS?.TOOLTIP || `${PREFIX}tooltip`;
+    const SVG = C.SVG_ICONS || {};
+    const langTag = C.langTag || ((c) => c?.toUpperCase() || "?");
+    const isOwnUI = C.isOwnUI || ((target) => !!target?.closest?.(`#${ICON_ID}, #${TOOLTIP_ID}`));
 
     // ── Internal State ─────────────────────────────────────────────
     let tooltipEl = null;
@@ -63,36 +50,36 @@
     const dismissHandlers = [];
 
     // ── Review-due toast notification ──────────────────────────────
-    chrome.runtime.onMessage.addListener((msg) => {
-        if (
-            window === window.top &&
-            msg.type === "QT_REVIEW_DUE" &&
-            msg.count > 0
-        ) {
-            showReviewDueToast(msg.count);
-        }
-    });
+    if (typeof chrome !== "undefined" && chrome.runtime?.onMessage) {
+        chrome.runtime.onMessage.addListener((msg) => {
+            if (
+                window === window.top &&
+                msg.type === (C.MESSAGE_TYPES?.REVIEW_DUE || "QT_REVIEW_DUE") &&
+                msg.count > 0
+            ) {
+                showReviewDueToast(msg.count);
+            }
+        });
+    }
 
     function showReviewDueToast(count) {
-        // Don't duplicate
-        const existing = document.getElementById(PREFIX + "review_toast");
+        const toastId = C.UI_IDS?.REVIEW_TOAST || `${PREFIX}review_toast`;
+        const existing = document.getElementById(toastId);
         if (existing) existing.remove();
 
         const toast = document.createElement("div");
-        toast.id = PREFIX + "review_toast";
+        toast.id = toastId;
         toast.innerHTML = `<span style="margin-right:6px">🧠</span> ${count === 1 ? "Pojawiła się powtórka!" : `Pojawiły się ${count} powtórki!`}`;
         document.body.appendChild(toast);
 
-        // Trigger enter animation
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
-                toast.classList.add(PREFIX + "toast_visible");
+                toast.classList.add(`${PREFIX}toast_visible`);
             });
         });
 
-        // Auto-dismiss after 4s
         setTimeout(() => {
-            toast.classList.remove(PREFIX + "toast_visible");
+            toast.classList.remove(`${PREFIX}toast_visible`);
             setTimeout(() => toast.remove(), 400);
         }, 4000);
     }
@@ -102,25 +89,16 @@
         lastMouseY = e.clientY;
     });
 
-    // ═══════════════════════════════════════════════════════════════
-    //  Utility Functions
-    // ═══════════════════════════════════════════════════════════════
-
     /** Strip [bracketed] content (e.g. [Applause], [Music]) */
     function stripBrackets(text) {
-        return text
+        return String(text || "")
             .replace(/\[.*?\]/g, "")
             .replace(/\s{2,}/g, " ")
             .trim();
     }
 
-    /** Check if a DOM element is part of our UI */
-    function isOwnUI(target) {
-        return !!target?.closest?.(`#${ICON_ID}, #${TOOLTIP_ID}`);
-    }
-
     // ═══════════════════════════════════════════════════════════════
-    //  UI – Overlay Parent
+    //  UI – Overlay Parent & Tooltip
     // ═══════════════════════════════════════════════════════════════
 
     /**
@@ -135,15 +113,12 @@
         );
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    //  UI – Tooltip
-    // ═══════════════════════════════════════════════════════════════
-
     function getTooltip() {
         if (tooltipEl) {
             const parent = getOverlayParent();
-            if (tooltipEl.parentElement !== parent)
+            if (tooltipEl.parentElement !== parent) {
                 parent.appendChild(tooltipEl);
+            }
             return tooltipEl;
         }
         tooltipEl = document.createElement("div");
@@ -171,19 +146,12 @@
 
             const tipRect = tip.getBoundingClientRect();
             let left = rect.left + (rect.width - tipRect.width) / 2;
-            let top;
-            if (preferredPosition === "bottom") {
-                top = rect.bottom + gap;
-            } else {
-                top = rect.top - tipRect.height - gap;
-            }
+            let top = preferredPosition === "bottom"
+                ? rect.bottom + gap
+                : rect.top - tipRect.height - gap;
 
-            top = Math.max(4, top);
-            top = Math.min(top, window.innerHeight - tipRect.height - 4);
-            left = Math.max(
-                4,
-                Math.min(left, window.innerWidth - tipRect.width - 4),
-            );
+            top = Math.max(4, Math.min(top, window.innerHeight - tipRect.height - 4));
+            left = Math.max(4, Math.min(left, window.innerWidth - tipRect.width - 4));
 
             tip.style.left = `${left}px`;
             tip.style.top = `${top}px`;
@@ -197,33 +165,15 @@
 
             const tipRect = tip.getBoundingClientRect();
             let left = rect.left + scrollX + (rect.width - tipRect.width) / 2;
-            let top;
+            let top = preferredPosition === "bottom"
+                ? rect.bottom + scrollY + gap
+                : rect.top + scrollY - tipRect.height - gap;
 
-            if (preferredPosition === "bottom") {
-                top = rect.bottom + scrollY + gap;
-            } else {
-                top = rect.top + scrollY - tipRect.height - gap;
-            }
+            const maxTop = scrollY + document.documentElement.clientHeight - tipRect.height - 4;
+            const maxLeft = scrollX + document.documentElement.clientWidth - tipRect.width - 4;
 
-            top = Math.max(scrollY + 4, top);
-            top = Math.min(
-                top,
-                scrollY +
-                    document.documentElement.clientHeight -
-                    tipRect.height -
-                    4,
-            );
-
-            left = Math.max(
-                scrollX + 4,
-                Math.min(
-                    left,
-                    scrollX +
-                        document.documentElement.clientWidth -
-                        tipRect.width -
-                        4,
-                ),
-            );
+            top = Math.max(scrollY + 4, Math.min(top, maxTop));
+            left = Math.max(scrollX + 4, Math.min(left, maxLeft));
 
             tip.style.left = `${left}px`;
             tip.style.top = `${top}px`;
@@ -273,15 +223,12 @@
         );
     }
 
-    /** Hide all UI: tooltip + registered cleanup handlers */
     function hideAll() {
         hideTooltip();
-        cleanupHandlers.forEach((fn) => fn());
+        cleanupHandlers.forEach((fn) => {
+            try { fn(); } catch (_) {}
+        });
     }
-
-    // ═══════════════════════════════════════════════════════════════
-    //  Dismiss & Cleanup Registration
-    // ═══════════════════════════════════════════════════════════════
 
     function addCleanup(fn) {
         cleanupHandlers.push(fn);
@@ -290,179 +237,9 @@
         dismissHandlers.push(fn);
     }
     function runDismiss() {
-        dismissHandlers.forEach((fn) => fn());
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    //  Google Translate (free, no key)
-    // ═══════════════════════════════════════════════════════════════
-
-    async function googleTranslate(text, targetLang) {
-        const url =
-            "https://translate.googleapis.com/translate_a/single" +
-            "?client=gtx&sl=auto&tl=" +
-            encodeURIComponent(targetLang) +
-            "&dt=t&q=" +
-            encodeURIComponent(text);
-
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-
-        const translated = data[0].map((s) => s[0]).join("");
-        const detectedLang = data[2] || "auto";
-        return { translated, detectedLang };
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    //  Translation Cache Factory
-    // ═══════════════════════════════════════════════════════════════
-
-    function createTranslateCache(maxSize = 200) {
-        const cache = new Map();
-        return {
-            async get(text, targetLang) {
-                const key = `${text}|${targetLang}`;
-                if (cache.has(key)) return cache.get(key);
-                const result = await googleTranslate(text, targetLang);
-                cache.set(key, result);
-                if (cache.size > maxSize)
-                    cache.delete(cache.keys().next().value);
-                return result;
-            },
-            clear() {
-                cache.clear();
-            },
-            get size() {
-                return cache.size;
-            },
-        };
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    //  TTS – browser voices outside Review
-    // ═══════════════════════════════════════════════════════════════
-
-    function speak(text, lang, options = {}) {
-        const cleanedText = cleanTextForTTS(text);
-        if (!cleanedText?.trim()) return Promise.resolve(null);
-
-        window.speechSynthesis.cancel();
-
-        return new Promise((resolve) => {
-            if (!chrome?.storage?.sync) {
-                if (options.isCancelled?.()) {
-                    resolve(null);
-                    return;
-                }
-                const utter = new SpeechSynthesisUtterance(cleanedText);
-                utter.lang = lang;
-                const voice = pickBestVoice("", lang);
-                if (voice) utter.voice = voice;
-                utter.rate = 1.1;
-                window.speechSynthesis.speak(utter);
-                resolve(utter);
-                return;
-            }
-
-            chrome.storage.local.get(
-                {
-                    speechVoice: "",
-                    speechRate: 1.1,
-                    ttsVolume: 1,
-                },
-                async (data) => {
-                    if (options.isCancelled?.()) {
-                        resolve(null);
-                        return;
-                    }
-                    data ||= {};
-                    const rawVolume =
-                        data.ttsVolume !== undefined
-                            ? Number(data.ttsVolume)
-                            : 1;
-                    const volume = Number.isFinite(rawVolume)
-                        ? Math.max(0, Math.min(1, rawVolume))
-                        : 1;
-                    // ElevenLabs belongs exclusively to popup/review TTS.
-                    const utter = new SpeechSynthesisUtterance(cleanedText);
-                    utter.lang = lang;
-                    utter.rate = Math.max(
-                        0.1,
-                        Math.min(10, Number(data.speechRate) || 1.1),
-                    );
-                    utter.volume = volume;
-                    const voice = pickBestVoice(data.speechVoice, lang);
-                    if (voice) utter.voice = voice;
-                    window.speechSynthesis.speak(utter);
-                    resolve(utter);
-                },
-            );
+        dismissHandlers.forEach((fn) => {
+            try { fn(); } catch (_) {}
         });
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    //  Storage
-    // ═══════════════════════════════════════════════════════════════
-
-    function getTargetLang() {
-        return new Promise((resolve) => {
-            if (chrome?.storage?.local) {
-                chrome.storage.local.get({ targetLang: "pl" }, (d) =>
-                    resolve(d.targetLang),
-                );
-            } else {
-                resolve("pl");
-            }
-        });
-    }
-
-    let saveWordQueue = Promise.resolve();
-
-    function saveWord(entry) {
-        const operation = saveWordQueue.then(() => saveWordNow(entry));
-        saveWordQueue = operation.catch(() => {});
-        return operation;
-    }
-
-    async function saveWordNow(entry) {
-        if (!chrome?.storage?.local) {
-            return { saved: false, reason: "STORAGE_UNAVAILABLE" };
-        }
-        const data = await chrome.storage.local.get({ savedWords: [] });
-        const words = data.savedWords || [];
-        const exists = words.some(
-            (w) =>
-                w.original === entry.original &&
-                w.translated === entry.translated &&
-                (w.sentence || "") === (entry.sentence || "") &&
-                (w.aiSentence || "") === (entry.aiSentence || ""),
-        );
-        if (exists) return { saved: false, duplicate: true };
-
-        const validation = await SubscriptionService.checkSrsSave(words.length);
-        try {
-            SubscriptionConfig.assertAllowed(validation);
-        } catch (error) {
-            SubscriptionService.showUpgradePrompt(validation);
-            throw error;
-        }
-
-        // Stable id so edits/syncs never change this word's identity.
-        if (!entry.id) entry.id = SharedUtils.generateId();
-        if (!entry.sr) {
-            entry.sr = {
-                step: 0,
-                easeFactor: 2.5,
-                interval: 0,
-                nextReview: Date.now(),
-                lastReview: null,
-            };
-        }
-        entry.updatedAt = Date.now();
-        words.push(entry);
-        await chrome.storage.local.set({ savedWords: words });
-        return { saved: true, entry, validation };
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -477,14 +254,8 @@
         const bottom = Number(rect.bottom);
         if (![left, top, right, bottom].every(Number.isFinite)) return;
 
-        const x = Math.max(
-            0,
-            Math.min(window.innerWidth - 1, (left + right) / 2),
-        );
-        const y = Math.max(
-            0,
-            Math.min(window.innerHeight - 1, (top + bottom) / 2),
-        );
+        const x = Math.max(0, Math.min(window.innerWidth - 1, (left + right) / 2));
+        const y = Math.max(0, Math.min(window.innerHeight - 1, (top + bottom) / 2));
         const anchorElement = document
             .elementsFromPoint(x, y)
             .find((element) => !isOwnUI(element));
@@ -512,12 +283,7 @@
     function getSharedContainerBonus(anchorElement, media) {
         let ancestor = anchorElement;
         for (let depth = 0; ancestor && depth < 14; depth += 1) {
-            if (
-                ancestor === document.body ||
-                ancestor === document.documentElement
-            ) {
-                break;
-            }
+            if (ancestor === document.body || ancestor === document.documentElement) break;
             if (ancestor.contains?.(media)) return 2_000 - depth * 120;
             ancestor = ancestor.parentElement;
         }
@@ -543,42 +309,25 @@
                   top: viewportHeight / 2,
                   bottom: viewportHeight / 2,
               };
-        const anchorRoot = getMediaContextRoot(
-            screenshotContext?.anchorElement,
-        );
+        const anchorRoot = getMediaContextRoot(screenshotContext?.anchorElement);
 
         return Array.from(document.querySelectorAll("img, video, canvas"))
             .filter((media) => !isOwnUI(media))
             .map((media) => {
                 const rect = media.getBoundingClientRect();
-                const visibleWidth = Math.max(
-                    0,
-                    Math.min(rect.right, viewportWidth) - Math.max(rect.left, 0),
-                );
-                const visibleHeight = Math.max(
-                    0,
-                    Math.min(rect.bottom, viewportHeight) - Math.max(rect.top, 0),
-                );
+                const visibleWidth = Math.max(0, Math.min(rect.right, viewportWidth) - Math.max(rect.left, 0));
+                const visibleHeight = Math.max(0, Math.min(rect.bottom, viewportHeight) - Math.max(rect.top, 0));
                 const visibleArea = visibleWidth * visibleHeight;
                 const area = Math.max(1, rect.width * rect.height);
-                return {
-                    media,
-                    rect,
-                    visibleArea,
-                    visibleRatio: visibleArea / area,
-                };
+                return { media, rect, visibleArea, visibleRatio: visibleArea / area };
             })
             .filter(({ media, rect, visibleArea }) => {
-                const mediaLabel = `${media.className || ""} ${
-                    media.getAttribute?.("alt") || ""
-                }`.toLowerCase();
+                const mediaLabel = `${media.className || ""} ${media.getAttribute?.("alt") || ""}`.toLowerCase();
                 const isSmallDecorativeImage =
                     media instanceof HTMLImageElement &&
                     rect.width <= 200 &&
                     rect.height <= 200 &&
-                    /avatar|profile|emoji|icon|logo|badge|reaction/.test(
-                        mediaLabel,
-                    );
+                    /avatar|profile|emoji|icon|logo|badge|reaction/.test(mediaLabel);
                 if (
                     rect.width < 64 ||
                     rect.height < 64 ||
@@ -589,23 +338,15 @@
                     return false;
                 }
                 const style = window.getComputedStyle(media);
-                return (
-                    style.display !== "none" &&
-                    style.visibility !== "hidden" &&
-                    Number(style.opacity || 1) > 0.05
-                );
+                return style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity || 1) > 0.05;
             })
             .map(({ media, rect, visibleRatio }) => {
-                let score = distanceBetweenRects(anchorRect, rect);
-                score += (1 - Math.min(1, visibleRatio)) * 250;
-
+                let score = distanceBetweenRects(anchorRect, rect) + (1 - Math.min(1, visibleRatio)) * 250;
                 const mediaRoot = getMediaContextRoot(media);
                 if (anchorRoot && mediaRoot === anchorRoot) score -= 100_000;
                 const anchorElement = screenshotContext?.anchorElement;
                 score -= getSharedContainerBonus(anchorElement, media);
-                if (anchorElement && media.contains(anchorElement))
-                    score -= 200_000;
-
+                if (anchorElement && media.contains(anchorElement)) score -= 200_000;
                 return { media, score };
             })
             .sort((a, b) => a.score - b.score)
@@ -614,10 +355,8 @@
 
     function drawMediaToDataUrl(media) {
         try {
-            const sourceWidth =
-                media.videoWidth || media.naturalWidth || media.width;
-            const sourceHeight =
-                media.videoHeight || media.naturalHeight || media.height;
+            const sourceWidth = media.videoWidth || media.naturalWidth || media.width;
+            const sourceHeight = media.videoHeight || media.naturalHeight || media.height;
             if (!sourceWidth || !sourceHeight) return null;
 
             const MAX = 640;
@@ -642,7 +381,7 @@
         if (!url || !chrome?.runtime?.sendMessage) return Promise.resolve(null);
         return new Promise((resolve) => {
             chrome.runtime.sendMessage(
-                { type: "QT_FETCH_CONTEXT_IMAGE", url },
+                { type: C.MESSAGE_TYPES?.FETCH_CONTEXT_IMAGE || "QT_FETCH_CONTEXT_IMAGE", url },
                 (response) => {
                     if (chrome.runtime.lastError || !response?.dataUrl) {
                         resolve(null);
@@ -665,12 +404,8 @@
 
     async function captureMediaScreenshot(media) {
         if (media instanceof HTMLVideoElement) {
-            if (globalThis.LectoroNetflix?.isPage?.()) {
-                return (
-                    (await globalThis.LectoroNetflix.captureReviewImage(
-                        media,
-                    )) || null
-                );
+            if (globalThis.LectoroNetflixAdapter?.isPage?.()) {
+                return (await globalThis.LectoroNetflixAdapter.captureReviewImage(media)) || null;
             }
             if (media.readyState >= 2) {
                 const frame = drawMediaToDataUrl(media);
@@ -678,9 +413,7 @@
             }
             if (media.poster) {
                 const posterData = await requestImageDataUrl(media.poster);
-                const posterImage = posterData
-                    ? await loadImage(posterData)
-                    : null;
+                const posterImage = posterData ? await loadImage(posterData) : null;
                 return posterImage ? drawMediaToDataUrl(posterImage) : null;
             }
             return null;
@@ -697,11 +430,6 @@
         return fetchedImage ? drawMediaToDataUrl(fetchedImage) : null;
     }
 
-    /**
-     * Capture a screenshot of the current video frame as a base64 JPEG.
-     * An explicit video is required to avoid selecting unrelated off-screen
-     * players on ordinary web pages.
-     */
     function captureVideoScreenshot(videoOverride = null) {
         if (!videoOverride || videoOverride.readyState < 2) return null;
         const screenshot = drawMediaToDataUrl(videoOverride);
@@ -712,11 +440,9 @@
     }
 
     async function captureContextScreenshot() {
-        if (globalThis.LectoroNetflix?.isPage?.()) {
+        if (globalThis.LectoroNetflixAdapter?.isPage?.()) {
             const video = document.querySelector("video");
-            return video
-                ? await globalThis.LectoroNetflix.captureReviewImage(video)
-                : null;
+            return video ? await globalThis.LectoroNetflixAdapter.captureReviewImage(video) : null;
         }
         const candidates = getVisibleMediaCandidates().slice(0, 3);
         for (const media of candidates) {
@@ -729,89 +455,9 @@
     }
 
     // ═══════════════════════════════════════════════════════════════
-    //  Gemini AI API Base
+    //  Shared Tooltip HTML Builder & Handlers
     // ═══════════════════════════════════════════════════════════════
 
-    async function geminiRequest(
-        prompt,
-        { temperature = 0.8, maxOutputTokens = 200 } = {},
-    ) {
-        // Bezpieczne proxy – klucz Gemini API jest TYLKO na serwerze Firebase.
-        // GeminiProxy weryfikuje token Firebase Auth i sprawdza plan użytkownika.
-        if (typeof GeminiProxy === "undefined") {
-            throw new Error(
-                "GeminiProxy niedostępny – sprawdź kolejność skryptów.",
-            );
-        }
-        return GeminiProxy.requestJSON(prompt, {
-            temperature,
-            maxOutputTokens,
-        });
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    //  Gemini AI – Wrappers
-    // ═══════════════════════════════════════════════════════════════
-
-    async function geminiGenerateSentence(word, translated, srcLang, tgtLang) {
-        const prompt = AIPrompts.sentenceExample(
-            word,
-            translated,
-            srcLang,
-            tgtLang,
-        );
-
-        const parsed = await geminiRequest(prompt, {
-            temperature: 0.8,
-            maxOutputTokens: 200,
-        });
-        return {
-            sentence: parsed.sentence || "",
-            translation: parsed.translation || "",
-        };
-    }
-
-    async function geminiExplainSentence(sentence, targetLang) {
-        const prompt = AIPrompts.explainSentence(sentence, targetLang);
-
-        const parsed = await geminiRequest(prompt, {
-            temperature: 0.7,
-            maxOutputTokens: 250,
-        });
-        return {
-            translation: parsed.translation || "",
-            explanation: parsed.explanation || "",
-        };
-    }
-
-    async function geminiMovieTranslate(text, targetLang) {
-        const prompt = AIPrompts.movieTranslate(text, targetLang);
-
-        const parsed = await geminiRequest(prompt, {
-            temperature: 0.8,
-            maxOutputTokens: 260,
-        });
-        return {
-            translation: parsed.translation || "",
-            explanation: parsed.explanation || "",
-        };
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    //  Shared Tooltip HTML Builder
-    // ═══════════════════════════════════════════════════════════════
-
-    /**
-     * Build a standard translation tooltip.
-     * @param {Object} opts
-     * @param {string} opts.srcLang       - detected source language code
-     * @param {string} opts.targetLang    - target language code
-     * @param {string} opts.original      - original word/phrase
-     * @param {string} opts.translated    - translated word/phrase
-     * @param {string|null} opts.fullLine        - full sentence (original)
-     * @param {string|null} opts.fullTranslated  - full sentence (translated)
-     * @param {boolean} opts.speakFullLine       - show speak buttons on full-line rows
-     */
     function buildTooltipHtml({
         srcLang,
         targetLang,
@@ -823,18 +469,15 @@
     }) {
         const P = PREFIX;
         const cleanFullLine = fullLine ? stripBrackets(fullLine) : "";
-        const cleanFullTranslated = fullTranslated
-            ? stripBrackets(fullTranslated)
-            : "";
+        const cleanFullTranslated = fullTranslated ? stripBrackets(fullTranslated) : "";
 
-        // Full-line section (sentence context)
         let fullLineHtml = "";
         if (fullLine && fullTranslated && cleanFullLine) {
             const speakOrig = speakFullLine
-                ? `<button class="${P}speak" data-text="${escapeAttr(cleanFullLine)}" data-lang="${escapeAttr(srcLang)}" title="Odczytaj zdanie">${SVG.SPEAKER}</button>`
+                ? `<button class="${P}speak" data-text="${escapeAttr(cleanFullLine)}" data-lang="${escapeAttr(srcLang)}" title="Odczytaj zdanie">${SVG.SPEAKER || "🔊"}</button>`
                 : "";
             const speakTrans = speakFullLine
-                ? `<button class="${P}speak" data-text="${escapeAttr(cleanFullTranslated)}" data-lang="${escapeAttr(targetLang)}" title="Odczytaj tłumaczenie zdania">${SVG.SPEAKER}</button>`
+                ? `<button class="${P}speak" data-text="${escapeAttr(cleanFullTranslated)}" data-lang="${escapeAttr(targetLang)}" title="Odczytaj tłumaczenie zdania">${SVG.SPEAKER || "🔊"}</button>`
                 : "";
 
             fullLineHtml = `
@@ -850,7 +493,6 @@
                 </div>`;
         }
 
-        // Common data attributes for all save buttons
         const dataAttrs = `data-src="${escapeAttr(original)}" data-translated="${escapeAttr(translated)}" data-src-lang="${escapeAttr(srcLang)}" data-tgt-lang="${escapeAttr(targetLang)}" data-sentence="${escapeAttr(cleanFullLine)}" data-sentence-translated="${escapeAttr(cleanFullTranslated)}"`;
 
         return `
@@ -862,16 +504,16 @@
                     <span class="${P}label">${langTag(srcLang)}</span>
                     <span class="${P}text ${P}original">${escapeHtml(original)}</span>
                     <span class="${P}word-actions">
-                        <button class="${P}speak" data-text="${escapeAttr(original)}" data-lang="${escapeAttr(srcLang)}" title="Odczytaj oryginał">${SVG.SPEAKER}</button>
-                        <button class="${P}img-search" data-word="${escapeAttr(original)}" title="Szukaj obrazu w Google (nowa karta)">${SVG.IMAGE_SEARCH}</button>
+                        <button class="${P}speak" data-text="${escapeAttr(original)}" data-lang="${escapeAttr(srcLang)}" title="Odczytaj oryginał">${SVG.SPEAKER || "🔊"}</button>
+                        <button class="${P}img-search" data-word="${escapeAttr(original)}" title="Szukaj obrazu w Google (nowa karta)">${SVG.IMAGE_SEARCH || "🔍"}</button>
                     </span>
                 </div>
                 <div class="${P}row">
                     <span class="${P}label">${langTag(targetLang)}</span>
                     <span class="${P}text ${P}translated">${escapeHtml(translated)}</span>
                     <span class="${P}word-actions">
-                        <button class="${P}speak" data-text="${escapeAttr(translated)}" data-lang="${escapeAttr(targetLang)}" title="Odczytaj tłumaczenie">${SVG.SPEAKER}</button>
-                        <button class="${P}img-search" data-word="${escapeAttr(translated)}" title="Szukaj obrazu w Google (nowa karta)">${SVG.IMAGE_SEARCH}</button>
+                        <button class="${P}speak" data-text="${escapeAttr(translated)}" data-lang="${escapeAttr(targetLang)}" title="Odczytaj tłumaczenie">${SVG.SPEAKER || "🔊"}</button>
+                        <button class="${P}img-search" data-word="${escapeAttr(translated)}" title="Szukaj obrazu w Google (nowa karta)">${SVG.IMAGE_SEARCH || "🔍"}</button>
                     </span>
                 </div>
                 ${fullLineHtml}
@@ -879,20 +521,16 @@
             <div class="${P}ai-result" id="${P}ai-result" style="display:none;"></div>
             <div class="${P}save-footer">
                 <button class="${P}save-word-btn ${P}save-footer-btn" ${dataAttrs} title="Zapisz samo słowo">
-                    ${SVG.SAVE} <span>Słowo</span>
+                    ${SVG.SAVE || "💾"} <span>Słowo</span>
                 </button>
                 <button class="${P}save-sentence-footer-btn ${P}save-footer-btn" ${dataAttrs} title="Zapisz z aktualnym zdaniem" ${!cleanFullLine ? 'disabled style="opacity:0.35;cursor:default;"' : ""}>
-                    ${SVG.SAVE_SENTENCE} <span>Zdanie</span>
+                    ${SVG.SAVE_SENTENCE || "📄"} <span>Zdanie</span>
                 </button>
                 <button class="${P}save-ai-btn ${P}save-footer-btn" ${dataAttrs} title="Zapisz z mądrym zdaniem AI (Gemini)">
-                    ${SVG.SAVE_AI} <span>AI</span>
+                    ${SVG.SAVE_AI || "✨"} <span>AI</span>
                 </button>
             </div>`;
     }
-
-    // ═══════════════════════════════════════════════════════════════
-    //  Shared Tooltip Handler Attacher
-    // ═══════════════════════════════════════════════════════════════
 
     function stopTooltipSpeech(cancelSpeech = true) {
         tooltipSpeechToken += 1;
@@ -907,29 +545,23 @@
             ?.querySelectorAll(`.${PREFIX}speak.speaking`)
             .forEach((btn) => btn.classList.remove("speaking"));
 
-        if (cancelSpeech) window.speechSynthesis?.cancel();
+        if (cancelSpeech) {
+            if (typeof SharedTtsService !== "undefined") {
+                SharedTtsService.cancel();
+            } else {
+                window.speechSynthesis?.cancel();
+            }
+        }
     }
 
-    function getSpeechSafetyTimeout(text, rate = 1) {
-        const words = String(text || "").trim().split(/\s+/).filter(Boolean);
-        const estimatedMs = (words.length / Math.max(0.5, rate * 2)) * 1000;
-        return Math.min(300000, Math.max(12000, estimatedMs + 10000));
-    }
-
-    /** Attach TTS + save handlers to all buttons in the current tooltip */
     function attachTooltipHandlers() {
         if (!tooltipEl) return;
 
-        // TTS speak buttons
+        // TTS buttons
         tooltipEl.querySelectorAll(`.${PREFIX}speak`).forEach((btn) => {
             btn.addEventListener("click", (ev) => {
                 ev.stopPropagation();
-
-                // The active speaker button doubles as a stop button.
-                if (
-                    activeTooltipSpeechButton === btn &&
-                    btn.classList.contains("speaking")
-                ) {
+                if (activeTooltipSpeechButton === btn && btn.classList.contains("speaking")) {
                     stopTooltipSpeech();
                     return;
                 }
@@ -944,7 +576,11 @@
                     stopTooltipSpeech(false);
                 };
 
-                speak(btn.dataset.text, btn.dataset.lang, {
+                const speakFn = typeof SharedTtsService !== "undefined"
+                    ? SharedTtsService.speakBrowser
+                    : (text, lang, opts) => QT.speak(text, lang, opts);
+
+                speakFn(btn.dataset.text, btn.dataset.lang, {
                     isCancelled: () => token !== tooltipSpeechToken,
                 })
                     .then((result) => {
@@ -953,50 +589,37 @@
                             onDone();
                             return;
                         }
-
                         if (result instanceof HTMLAudioElement) {
-                            result.addEventListener("ended", onDone, {
-                                once: true,
-                            });
-                            result.addEventListener("error", onDone, {
-                                once: true,
-                            });
+                            result.addEventListener("ended", onDone, { once: true });
+                            result.addEventListener("error", onDone, { once: true });
                         } else {
-                            result.addEventListener?.("end", onDone, {
-                                once: true,
-                            });
-                            result.addEventListener?.("error", onDone, {
-                                once: true,
-                            });
-                            // Fallback for older SpeechSynthesisUtterance
-                            // implementations without EventTarget helpers.
+                            result.addEventListener?.("end", onDone, { once: true });
+                            result.addEventListener?.("error", onDone, { once: true });
                             if (!result.addEventListener) {
                                 result.onend = onDone;
                                 result.onerror = onDone;
                             }
                         }
-
-                        tooltipSpeechTimer = setTimeout(
-                            onDone,
-                            getSpeechSafetyTimeout(btn.dataset.text),
-                        );
+                        const timeout = typeof SharedTtsService !== "undefined"
+                            ? SharedTtsService.getSafetyTimeout(btn.dataset.text)
+                            : 12000;
+                        tooltipSpeechTimer = setTimeout(onDone, timeout);
                     })
                     .catch(onDone);
             });
         });
 
-        // Google Images search buttons (open in new tab)
+        // Google Images Search buttons
         tooltipEl.querySelectorAll(`.${PREFIX}img-search`).forEach((btn) => {
             btn.addEventListener("click", (ev) => {
                 ev.stopPropagation();
-                const word = ("meaning " + btn.dataset.word || "").trim();
+                const word = ("meaning " + (btn.dataset.word || "")).trim();
                 if (!word) return;
                 const url = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(word)}`;
                 window.open(url, "_blank", "noopener,noreferrer");
             });
         });
 
-        /** Helper: build base save entry from a button's data attributes */
         async function buildSaveEntry(btn, screenshotPromise = null) {
             const screenshot = screenshotPromise
                 ? await screenshotPromise
@@ -1016,72 +639,62 @@
             };
         }
 
-        // Save word only (no sentence)
+        // Save Word Only
         const saveWordBtn = tooltipEl.querySelector(`.${PREFIX}save-word-btn`);
         if (saveWordBtn) {
             saveWordBtn.addEventListener("click", async (ev) => {
                 ev.stopPropagation();
                 try {
-                    await saveWord(await buildSaveEntry(saveWordBtn));
-                    saveWordBtn.innerHTML = SVG.SAVE_CHECK + " <span>Zapisano!</span>";
+                    const entry = await buildSaveEntry(saveWordBtn);
+                    await QT.saveWord(entry);
+                    saveWordBtn.innerHTML = `${SVG.SAVE_CHECK || "✓"} <span>Zapisano!</span>`;
                     saveWordBtn.classList.add("saved");
                 } catch (error) {
-                    saveWordBtn.innerHTML = SVG.SAVE + " <span>Limit planu</span>";
+                    saveWordBtn.innerHTML = `${SVG.SAVE || "💾"} <span>Limit planu</span>`;
                     saveWordBtn.title = error.message;
                 }
             });
         }
 
-        // Save with current sentence
-        const saveSentenceBtn = tooltipEl.querySelector(
-            `.${PREFIX}save-sentence-footer-btn`,
-        );
+        // Save Sentence
+        const saveSentenceBtn = tooltipEl.querySelector(`.${PREFIX}save-sentence-footer-btn`);
         if (saveSentenceBtn && !saveSentenceBtn.disabled) {
             saveSentenceBtn.addEventListener("click", async (ev) => {
                 ev.stopPropagation();
-                const entry = await buildSaveEntry(saveSentenceBtn);
-                entry.sentence = saveSentenceBtn.dataset.sentence || "";
-                entry.sentenceTranslated =
-                    saveSentenceBtn.dataset.sentenceTranslated || "";
                 try {
-                    await saveWord(entry);
-                    saveSentenceBtn.innerHTML = SVG.SAVE_SENTENCE_CHECK + " <span>Zapisano!</span>";
+                    const entry = await buildSaveEntry(saveSentenceBtn);
+                    entry.sentence = saveSentenceBtn.dataset.sentence || "";
+                    entry.sentenceTranslated = saveSentenceBtn.dataset.sentenceTranslated || "";
+                    await QT.saveWord(entry);
+                    saveSentenceBtn.innerHTML = `${SVG.SAVE_SENTENCE_CHECK || "✓"} <span>Zapisano!</span>`;
                     saveSentenceBtn.classList.add("saved");
                 } catch (error) {
-                    saveSentenceBtn.innerHTML = SVG.SAVE_SENTENCE + " <span>Limit planu</span>";
+                    saveSentenceBtn.innerHTML = `${SVG.SAVE_SENTENCE || "📄"} <span>Limit planu</span>`;
                     saveSentenceBtn.title = error.message;
                 }
             });
         }
 
-        // Save with AI-generated sentence (Gemini)
+        // Save AI Sentence
         const saveAiBtn = tooltipEl.querySelector(`.${PREFIX}save-ai-btn`);
         if (saveAiBtn) {
             saveAiBtn.addEventListener("click", async (ev) => {
                 ev.stopPropagation();
-                if (
-                    saveAiBtn.classList.contains("saved") ||
-                    saveAiBtn.classList.contains("loading")
-                )
-                    return;
+                if (saveAiBtn.classList.contains("saved") || saveAiBtn.classList.contains("loading")) return;
 
                 saveAiBtn.classList.add("loading");
                 saveAiBtn.innerHTML = `<span class="${PREFIX}spinner-small"></span> <span>Generuję…</span>`;
                 const screenshotPromise = captureContextScreenshot();
-
-                const aiResultEl = tooltipEl.querySelector(
-                    `#${PREFIX}ai-result`,
-                );
+                const aiResultEl = tooltipEl.querySelector(`#${PREFIX}ai-result`);
 
                 try {
-                    const result = await geminiGenerateSentence(
+                    const result = await QT.geminiGenerateSentence(
                         saveAiBtn.dataset.src,
                         saveAiBtn.dataset.translated,
                         saveAiBtn.dataset.srcLang,
                         saveAiBtn.dataset.tgtLang,
                     );
 
-                    // Show AI sentence in tooltip
                     if (aiResultEl) {
                         aiResultEl.style.display = "block";
                         aiResultEl.innerHTML = `
@@ -1090,30 +703,24 @@
                             <div class="${PREFIX}ai-translation">${escapeHtml(result.translation)}</div>`;
                     }
 
-                    const entry = await buildSaveEntry(
-                        saveAiBtn,
-                        screenshotPromise,
-                    );
+                    const entry = await buildSaveEntry(saveAiBtn, screenshotPromise);
                     entry.aiSentence = result.sentence;
                     entry.aiSentenceTranslated = result.translation;
-                    // Also use AI sentence as the main sentence for Anki cloze
                     entry.sentence = result.sentence;
                     entry.sentenceTranslated = result.translation;
-                    await saveWord(entry);
+                    await QT.saveWord(entry);
 
-                    saveAiBtn.innerHTML =
-                        SVG.SAVE_AI_CHECK + " <span>Zapisano!</span>";
+                    saveAiBtn.innerHTML = `${SVG.SAVE_AI_CHECK || "✓"} <span>Zapisano!</span>`;
                     saveAiBtn.classList.remove("loading");
                     saveAiBtn.classList.add("saved");
                 } catch (err) {
                     console.error("[Lectoro] Gemini AI error:", err);
                     saveAiBtn.classList.remove("loading");
                     const limitReached =
-                        GeminiProxy?.isLimitError?.(err) ||
-                        SubscriptionService?.isLimitError?.(err);
+                        typeof GeminiProxy !== "undefined" && GeminiProxy.isLimitError?.(err);
                     saveAiBtn.innerHTML = limitReached
-                        ? SVG.SAVE_AI + " <span>AI</span>"
-                        : SVG.SAVE_AI + ` <span style="color:#f87171;">Błąd</span>`;
+                        ? `${SVG.SAVE_AI || "✨"} <span>AI</span>`
+                        : `${SVG.SAVE_AI || "✨"} <span style="color:#f87171;">Błąd</span>`;
 
                     if (aiResultEl) {
                         aiResultEl.style.display = limitReached ? "none" : "block";
@@ -1124,7 +731,7 @@
 
                     if (!limitReached) {
                         setTimeout(() => {
-                            saveAiBtn.innerHTML = SVG.SAVE_AI + " <span>AI</span>";
+                            saveAiBtn.innerHTML = `${SVG.SAVE_AI || "✨"} <span>AI</span>`;
                         }, 3000);
                     }
                 }
@@ -1133,21 +740,16 @@
     }
 
     // ═══════════════════════════════════════════════════════════════
-    //  Subtitle – Buffer Factory
+    //  Subtitle Helpers
     // ═══════════════════════════════════════════════════════════════
 
-    /**
-     * Creates a subtitle history buffer.
-     * Accumulates subtitle text over time for sentence extraction.
-     */
     function createSubtitleBuffer(maxSize = 3000, keepSize = 2000) {
         let buffer = "";
         let lastSegment = "";
 
         return {
-            /** Append new subtitle text, de-duplicating overlaps */
             append(text) {
-                const trimmed = text.trim();
+                const trimmed = (text || "").trim();
                 if (!trimmed || trimmed === lastSegment) return;
                 if (buffer.endsWith(trimmed)) return;
 
@@ -1159,8 +761,7 @@
 
                 const newPart = trimmed.substring(overlap);
                 if (newPart) {
-                    buffer +=
-                        (buffer && !buffer.endsWith(" ") ? " " : "") + newPart;
+                    buffer += (buffer && !buffer.endsWith(" ") ? " " : "") + newPart;
                 }
                 lastSegment = trimmed;
 
@@ -1168,8 +769,6 @@
                     buffer = buffer.substring(buffer.length - keepSize);
                 }
             },
-
-            /** Extract the sentence containing the given word */
             extractSentence(word) {
                 const idx = buffer.lastIndexOf(word);
                 if (idx === -1) return null;
@@ -1193,7 +792,6 @@
                 const sentence = buffer.substring(start, end).trim();
                 return sentence.length > word.length + 2 ? sentence : null;
             },
-
             clear() {
                 buffer = "";
                 lastSegment = "";
@@ -1204,54 +802,33 @@
         };
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    //  Subtitle – Word Splitter
-    // ═══════════════════════════════════════════════════════════════
-
-    /** Split an element's text content into individual clickable word spans */
     function splitIntoWordSpans(el, wordClass) {
         const text = el.textContent;
         if (!text.trim()) return;
 
-        // Preserve original font-style (italic from <i>/<em> tags or inline/CSS styles)
         const hasItalicChild = !!el.querySelector("i, em");
         const computedStyle = window.getComputedStyle(el).fontStyle;
-        const originalFontStyle =
-            hasItalicChild || computedStyle === "italic" ? "italic" : "";
+        const originalFontStyle = hasItalicChild || computedStyle === "italic" ? "italic" : "";
 
         el.textContent = "";
-
         const parts = text.match(/\S+|\s+/g) || [];
         for (const part of parts) {
             if (/\S/.test(part)) {
                 const span = document.createElement("span");
                 span.className = wordClass;
                 span.textContent = part;
-                if (originalFontStyle) {
-                    span.style.fontStyle = originalFontStyle;
-                }
+                if (originalFontStyle) span.style.fontStyle = originalFontStyle;
                 el.appendChild(span);
             } else {
                 el.appendChild(document.createTextNode(part));
             }
         }
-
-        // Also preserve font-style on the parent element itself
-        if (originalFontStyle) {
-            el.style.fontStyle = originalFontStyle;
-        }
+        if (originalFontStyle) el.style.fontStyle = originalFontStyle;
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    //  Subtitle – Hint Factory
-    // ═══════════════════════════════════════════════════════════════
-
-    /** Create a popup hint element (e.g. "hover on a word to translate") */
     function createHint(className, getParent) {
         let el = null;
         let timer = null;
-        // Default to the fullscreen-aware overlay parent so hints stay
-        // visible even when the page/video is in native fullscreen mode.
         const parentFn = getParent || getOverlayParent;
 
         return {
@@ -1267,22 +844,11 @@
                 el.textContent = msg;
                 el.classList.add("visible");
                 clearTimeout(timer);
-                timer = setTimeout(
-                    () => el.classList.remove("visible"),
-                    duration,
-                );
+                timer = setTimeout(() => el.classList.remove("visible"), duration);
             },
         };
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    //  Subtitle – Find Word at Point
-    // ═══════════════════════════════════════════════════════════════
-
-    /**
-     * Find a word span at screen coordinates using elementsFromPoint.
-     * Works through invisible overlay divs (Netflix, LookMovie, etc.)
-     */
     function findWordAtPoint(x, y, wordClass) {
         const els = document.elementsFromPoint(x, y);
         for (const el of els) {
@@ -1291,15 +857,10 @@
         return null;
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    //  Video Control Helpers
-    // ═══════════════════════════════════════════════════════════════
-
     function getVideo() {
         return document.querySelector("video");
     }
 
-    /** Pause the video if playing. Returns true if it was playing. */
     function pauseVideo() {
         const v = getVideo();
         if (v && !v.paused) {
@@ -1309,24 +870,21 @@
         return false;
     }
 
-    /** Resume the video if it's paused. */
     function resumeVideo() {
         const v = getVideo();
         if (v && v.paused) v.play();
     }
 
     // ═══════════════════════════════════════════════════════════════
-    //  Expose Global Namespace
+    //  Expose Global Namespace (Backward Compatible)
     // ═══════════════════════════════════════════════════════════════
 
     window.QT = {
-        // Constants
         PREFIX,
         ICON_ID,
         TOOLTIP_ID,
         SVG,
 
-        // Utilities
         escapeHtml,
         escapeAttr,
         stripBrackets,
@@ -1334,7 +892,6 @@
         langTag,
         isOwnUI,
 
-        // UI
         getOverlayParent,
         showTooltip,
         positionTooltip,
@@ -1344,40 +901,61 @@
         getTooltipEl: () => tooltipEl,
         getMousePos: () => ({ x: lastMouseX, y: lastMouseY }),
 
-        // Translation
-        translate: googleTranslate,
-        createTranslateCache,
+        // Translation – delegates to SharedTranslatorService
+        translate: (text, lang) =>
+            typeof SharedTranslatorService !== "undefined"
+                ? SharedTranslatorService.translate(text, lang)
+                : Promise.reject(new Error("Translator unavailable")),
+        createTranslateCache: (size) =>
+            typeof SharedTranslatorService !== "undefined"
+                ? SharedTranslatorService.createTranslateCache(size)
+                : new Map(),
 
-        // TTS
-        speak,
+        // TTS – delegates to SharedTtsService
+        speak: (text, lang, opts) =>
+            typeof SharedTtsService !== "undefined"
+                ? SharedTtsService.speakBrowser(text, lang, opts)
+                : window.speechSynthesis?.speak(new SpeechSynthesisUtterance(text)),
         pickBestVoice,
 
-        // Storage
-        getTargetLang,
-        saveWord,
+        // Storage – delegates to SharedWordRepository and SharedTranslatorService
+        getTargetLang: () =>
+            typeof SharedTranslatorService !== "undefined"
+                ? SharedTranslatorService.getTargetLang()
+                : Promise.resolve("pl"),
+        saveWord: (entry) =>
+            typeof SharedWordRepository !== "undefined"
+                ? SharedWordRepository.saveWord(entry)
+                : Promise.reject(new Error("WordRepository unavailable")),
 
-        // AI & Screenshot
-        geminiGenerateSentence,
-        geminiExplainSentence,
-        geminiMovieTranslate,
+        // AI & Screenshots – delegates to SharedTranslatorService
+        geminiGenerateSentence: (w, t, s, tgt) =>
+            typeof SharedTranslatorService !== "undefined"
+                ? SharedTranslatorService.generateSentence(w, t, s, tgt)
+                : Promise.reject(new Error("TranslatorService unavailable")),
+        geminiExplainSentence: (s, tgt) =>
+            typeof SharedTranslatorService !== "undefined"
+                ? SharedTranslatorService.explainSentence(s, tgt)
+                : Promise.reject(new Error("TranslatorService unavailable")),
+        geminiMovieTranslate: (t, tgt) =>
+            typeof SharedTranslatorService !== "undefined"
+                ? SharedTranslatorService.movieTranslate(t, tgt)
+                : Promise.reject(new Error("TranslatorService unavailable")),
         captureVideoScreenshot,
+        captureContextScreenshot,
 
-        // Tooltip
         buildTooltipHtml,
         attachTooltipHandlers,
 
-        // Subtitle utilities
         createSubtitleBuffer,
         splitIntoWordSpans,
         createHint,
         findWordAtPoint,
 
-        // Cleanup & dismiss
         addCleanup,
         addDismissHandler,
         runDismiss,
 
-        // Video
         getVideo,
         pauseVideo,
         resumeVideo,
