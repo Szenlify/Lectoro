@@ -700,13 +700,13 @@ body[data-lectoro-platform="youtube"] .__qt_custom-sub-line {
 /* 2. Netflix */
 [data-platform="netflix"] .__qt_custom-sub-line,
 body[data-lectoro-platform="netflix"] .__qt_custom-sub-line {
-    font-size: clamp(23px, 4vw, 50px) !important;
+    font-size: clamp(23px, 4vw, 60px) !important;
 }
 
 /* 3. LookMovie / Video.js */
 [data-platform="lookmovie"] .__qt_custom-sub-line,
 body[data-lectoro-platform="lookmovie"] .__qt_custom-sub-line {
- font-size: clamp(23px, 4vw, 50px) !important;
+ font-size: clamp(23px, 4vw, 60px) !important;
 }
 
 .__qt_sub-word {
