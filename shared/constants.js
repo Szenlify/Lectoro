@@ -22,7 +22,6 @@
         SAVE_TOAST: `${PREFIX}save_toast`,
         AI_RESULT: `${PREFIX}ai-result`,
         SPEED_OVERLAY: `${PREFIX}speed-overlay`,
-        NETFLIX_HIT_LAYER: `${PREFIX}netflix-subtitle-hit-layer`,
     });
 
     const UI_CLASSES = Object.freeze({
@@ -38,6 +37,8 @@
 
     const EVENT_NAMES = Object.freeze({
         NETFLIX_SEEK: "__lectoro_netflix_seek",
+        NETFLIX_PAUSE: "__lectoro_netflix_pause",
+        NETFLIX_PLAY: "__lectoro_netflix_play",
         NETFLIX_ARTWORK_REQUEST: "__lectoro_netflix_artwork_request",
         NETFLIX_ARTWORK_RESPONSE: "__lectoro_netflix_artwork_response",
         NETFLIX_TRACK_REQUEST: "__lectoro_netflix_track_request",

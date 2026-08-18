@@ -158,6 +158,26 @@
         });
     }
 
+    function dispatchSubtitleChange(session) {
+        if (!session || session !== videoSessions.get(activeVideo)) return;
+        const adapterElements = getAdapterElements(session.binding);
+        let lines = globalThis.LectoroBaseAdapter?.extractCueLines?.(adapterElements) || [];
+        if (lines.length === 0 && session.video?.textTracks) {
+            const native = getNativeCueText(session.video);
+            if (native) lines = [native];
+        }
+        const fullText = lines.join(" ").trim();
+        if (typeof subtitleChangeCallback === "function") {
+            subtitleChangeCallback({
+                lines,
+                fullText,
+                elements: adapterElements,
+                session,
+                video: session.video,
+            });
+        }
+    }
+
     function queueSubtitleDomScan(session) {
         if (
             session !== videoSessions.get(session.video) ||
@@ -171,10 +191,7 @@
         session.domFrame = requestAnimationFrame(() => {
             session.domFrame = null;
             if (session !== videoSessions.get(activeVideo)) return;
-            const elements = getAdapterElements(session.binding);
-            if (typeof subtitleChangeCallback === "function") {
-                subtitleChangeCallback(elements, session);
-            }
+            dispatchSubtitleChange(session);
         });
     }
 
@@ -228,6 +245,9 @@
                 "cuechange",
                 () => {
                     session.nativeText = getNativeCueText(session.video);
+                    if (session === videoSessions.get(activeVideo)) {
+                        queueSubtitleDomScan(session);
+                    }
                 },
                 { signal: session.controller.signal },
             );
@@ -554,6 +574,40 @@
         return "";
     }
 
+    function pauseVideo(video = null) {
+        const targetVideo = video || PlayerRegistry.getVideo();
+        if (!targetVideo) return false;
+        const session = videoSessions.get(targetVideo);
+        const adapter = session?.binding?.adapter;
+        if (typeof adapter?.pauseVideo === "function") {
+            adapter.pauseVideo(targetVideo);
+            return true;
+        }
+        if (!targetVideo.paused) {
+            try {
+                targetVideo.pause();
+                return true;
+            } catch (_) {}
+        }
+        return false;
+    }
+
+    function playVideo(video = null) {
+        const targetVideo = video || PlayerRegistry.getVideo();
+        if (!targetVideo) return;
+        const session = videoSessions.get(targetVideo);
+        const adapter = session?.binding?.adapter;
+        if (typeof adapter?.playVideo === "function") {
+            adapter.playVideo(targetVideo);
+            return;
+        }
+        if (targetVideo.paused) {
+            try {
+                targetVideo.play()?.catch?.(() => {});
+            } catch (_) {}
+        }
+    }
+
     const PlayerRegistry = {
         get type() {
             const session = videoSessions.get(this.getVideo());
@@ -570,6 +624,8 @@
             if (first) activateVideo(first);
             return first;
         },
+        pauseVideo,
+        playVideo,
         getSubtitleContainer() {
             const video = this.getVideo();
             if (!video) return null;
@@ -580,6 +636,10 @@
             return session?.binding?.container || null;
         },
         getSubtitleElements() {
+            if (globalThis.LectoroSubtitleOverlay?.getCustomSubtitleElements) {
+                const customEls = globalThis.LectoroSubtitleOverlay.getCustomSubtitleElements();
+                if (customEls.length > 0) return customEls;
+            }
             const video = this.getVideo();
             if (!video) return [];
             const session = videoSessions.get(video);
@@ -588,31 +648,53 @@
             }
             return getAdapterElements(session?.binding);
         },
+        getCurrentLines() {
+            if (globalThis.LectoroSubtitleOverlay?.getActiveLines) {
+                const customLines = globalThis.LectoroSubtitleOverlay.getActiveLines();
+                if (customLines.length > 0) return customLines;
+            }
+            const video = this.getVideo();
+            if (!video) return [];
+            const session = videoSessions.get(video);
+            if (session && !session.binding?.container?.isConnected) {
+                refreshCaptionBinding(session);
+            }
+            const adapterElements = getAdapterElements(session?.binding);
+            if (adapterElements.length > 0) {
+                const lines = globalThis.LectoroBaseAdapter?.extractCueLines?.(adapterElements) || [];
+                if (lines.length > 0) return lines;
+            }
+            const nativeText = getNativeCueText(video);
+            if (nativeText) return [nativeText];
+            return [];
+        },
         getCurrentText() {
+            if (globalThis.LectoroSubtitleOverlay?.getActiveText) {
+                const customText = globalThis.LectoroSubtitleOverlay.getActiveText();
+                if (customText) return customText;
+            }
             const video = this.getVideo();
             if (!video) return null;
-
-            if (isNetflixPage() && globalThis.LectoroNetflixAdapter?.captureRenderedLines) {
-                const elements = this.getSubtitleElements();
-                const renderedLines = globalThis.LectoroNetflixAdapter.captureRenderedLines(elements);
-                const renderedText = renderedLines
-                    .map((line) => line.text)
-                    .filter(Boolean)
-                    .join(" ")
-                    .replace(/\s+/g, " ")
-                    .trim();
-                if (renderedText) return renderedText;
-            }
 
             const nativeText = getNativeCueText(video);
             if (nativeText) return nativeText;
 
-            const text = this.getSubtitleElements()
-                .map((element) => element.textContent.trim())
-                .filter(Boolean)
-                .join(" ");
+            const lines = this.getCurrentLines();
+            if (lines.length > 0) return lines.join(" ");
 
-            return text || null;
+            const elements = this.getSubtitleElements();
+            if (elements.length === 0) return null;
+
+            const texts = elements
+                .map((element) => {
+                    if (typeof SharedUtils !== "undefined" && SharedUtils.extractSubtitleText) {
+                        return SharedUtils.extractSubtitleText(element);
+                    }
+                    return element.textContent.trim();
+                })
+                .filter(Boolean);
+
+            return Array.from(new Set(texts)).join(" ") || null;
         },
         onSubtitleChange(callback) {
             subtitleChangeCallback = callback;

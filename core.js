@@ -800,12 +800,42 @@
     }
 
     function splitIntoWordSpans(el, wordClass) {
+        if (!el || isOwnUI(el)) return;
         const text = el.textContent;
-        if (!text.trim()) return;
+        if (!text || !text.trim()) return;
 
         const hasItalicChild = !!el.querySelector("i, em");
         const computedStyle = window.getComputedStyle(el).fontStyle;
         const originalFontStyle = hasItalicChild || computedStyle === "italic" ? "italic" : "";
+
+        // Preserve <br> line breaks and child elements
+        const childNodes = Array.from(el.childNodes);
+        if (childNodes.some((n) => n.nodeName === "BR" || n.nodeType === Node.ELEMENT_NODE)) {
+            el.innerHTML = "";
+            for (const child of childNodes) {
+                if (child.nodeName === "BR") {
+                    el.appendChild(document.createElement("br"));
+                } else if (child.nodeType === Node.TEXT_NODE) {
+                    const parts = child.nodeValue.match(/\S+|\s+/g) || [];
+                    for (const part of parts) {
+                        if (/\S/.test(part)) {
+                            const span = document.createElement("span");
+                            span.className = wordClass;
+                            span.textContent = part;
+                            if (originalFontStyle) span.style.fontStyle = originalFontStyle;
+                            el.appendChild(span);
+                        } else {
+                            el.appendChild(document.createTextNode(part));
+                        }
+                    }
+                } else if (child.nodeType === Node.ELEMENT_NODE) {
+                    splitIntoWordSpans(child, wordClass);
+                    el.appendChild(child);
+                }
+            }
+            if (originalFontStyle) el.style.fontStyle = originalFontStyle;
+            return;
+        }
 
         el.textContent = "";
         const parts = text.match(/\S+|\s+/g) || [];
@@ -847,12 +877,33 @@
     }
 
     function findWordAtPoint(x, y, wordClass) {
+        if (!x && !y) return null;
         const els = document.elementsFromPoint(x, y);
         for (const el of els) {
             if (el.classList?.contains(wordClass)) return el;
             const closest = el.closest?.(`.${wordClass}`);
             if (closest) return closest;
         }
+
+        // Instant Tokenization Fallback:
+        // If cursor is over any subtitle cue that hasn't been tokenized yet, tokenize immediately!
+        for (const el of els) {
+            if (isOwnUI(el)) continue;
+            const subContainer = el.closest?.(
+                ".player-timedtext, .player-timedtext-text-container, .ytp-caption-window-container, .vjs-text-track-display, [data-uia='video-canvas']"
+            );
+            if (subContainer) {
+                const target = el.tagName === "SPAN" || el.tagName === "DIV" ? el : el.querySelector?.("span, div");
+                if (target && target.textContent?.trim() && !target.querySelector(`.${wordClass}`)) {
+                    splitIntoWordSpans(target, wordClass);
+                    const newlyFound = Array.from(document.elementsFromPoint(x, y)).find(
+                        (n) => n.classList?.contains(wordClass)
+                    );
+                    if (newlyFound) return newlyFound;
+                }
+            }
+        }
+
         return null;
     }
 
@@ -860,8 +911,11 @@
         return document.querySelector("video");
     }
 
-    function pauseVideo() {
-        const v = getVideo();
+    function pauseVideo(video = null) {
+        if (globalThis.LectoroPlayerRegistry?.pauseVideo) {
+            return globalThis.LectoroPlayerRegistry.pauseVideo(video);
+        }
+        const v = video || getVideo();
         if (v && !v.paused) {
             v.pause();
             return true;
@@ -869,8 +923,12 @@
         return false;
     }
 
-    function resumeVideo() {
-        const v = getVideo();
+    function resumeVideo(video = null) {
+        if (globalThis.LectoroPlayerRegistry?.playVideo) {
+            globalThis.LectoroPlayerRegistry.playVideo(video);
+            return;
+        }
+        const v = video || getVideo();
         if (v && v.paused) v.play();
     }
 

@@ -138,6 +138,15 @@
                 const modeRevision = overlay?.nextSubtitleModeRevision();
                 if (!modeRevision) return;
 
+                // Immediately pause video synchronously so subtitle state is frozen
+                if (video && !video.paused) {
+                    if (typeof registry?.pauseVideo === "function") {
+                        registry.pauseVideo(video);
+                    } else {
+                        video.pause();
+                    }
+                }
+
                 const handleSubtitleAction = (data) => {
                     if (modeRevision !== overlay.subtitleModeRevision) return;
                     overlay.resetSubtitleModeStarting();
@@ -220,9 +229,17 @@
             // Play / Pause Toggle: W / ArrowUp
             if (key === "w" || key === "W" || key === "ArrowUp") {
                 if (video.paused) {
-                    video.play().catch?.(() => {});
+                    if (typeof registry?.playVideo === "function") {
+                        registry.playVideo(video);
+                    } else {
+                        video.play().catch?.(() => {});
+                    }
                 } else {
-                    video.pause();
+                    if (typeof registry?.pauseVideo === "function") {
+                        registry.pauseVideo(video);
+                    } else {
+                        video.pause();
+                    }
                 }
                 return;
             }

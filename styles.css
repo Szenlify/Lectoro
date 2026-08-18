@@ -603,22 +603,28 @@ html[data-lectoro-ai-limit-reached] .__qt_save-ai-btn {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   Video CC Subtitles Word Interactivity (YouTube, Netflix, Lookmovie, etc.)
+   Universal Native Subtitle Clean Hiding (DRY / Single Source of Truth)
+   Cleanly hides native subtitle displays across Netflix, YouTube, Lookmovie,
+   Video.js, Shaka, Plyr, JWPlayer, Clappr, and native HTML5 video tracks.
    ═══════════════════════════════════════════════════════════════ */
 
+.player-timedtext,
+.player-timedtext-text-container,
 .ytp-caption-window-container,
+.caption-window,
 .ytp-caption-window-bottom,
 .ytp-caption-window-rollup,
-.caption-window {
-    pointer-events: auto !important;
-}
-
-/* Stabilize YouTube Subtitles - Prevent jumping/dropping when bottom control bar auto-hides */
-.html5-video-player .caption-window,
-.html5-video-player .ytp-caption-window-bottom,
-.html5-video-player .ytp-caption-window-rollup,
-.ytp-caption-window-container .caption-window {
-    transition: none !important;
+.vjs-text-track-display,
+.vjs-text-track-cue,
+.shaka-text-container,
+.jw-captions,
+.plyr__captions,
+.clappr-subtitle,
+.cc-line,
+video::cue {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
 }
 
 .watch-video--evidence-overlay-container {
@@ -626,41 +632,107 @@ html[data-lectoro-ai-limit-reached] .__qt_save-ai-btn {
     pointer-events: none !important;
 }
 
-.ytp-caption-segment,
-.caption-visual-line {
+/* ═══════════════════════════════════════════════════════════════
+   Lectoro Universal Custom Subtitles (SSOT & Responsive)
+   ═══════════════════════════════════════════════════════════════ */
+
+.__qt_custom-subtitles-layer {
+    position: fixed !important;
+    z-index: 2147483645 !important;
+    pointer-events: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: flex-end !important;
+    justify-content: center !important;
+    overflow: visible !important;
+    transition: opacity 0.15s ease !important;
+}
+
+.__qt_custom-subtitles-box {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    max-width: min(90%, 960px) !important;
+    margin-bottom:  78px !important;
     pointer-events: auto !important;
     user-select: text !important;
+    transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), opacity 0s ease !important;
 }
 
-.ytp-caption-segment.__qt_clickable {
-    position: relative;
+.__qt_custom-sub-line {
+    display: inline-block !important;
+    margin: 2.5px 0 !important;
+    color: #ffffff !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Inter, sans-serif !important;
+    font-size: clamp(25px, 6vw, 55px) !important;
+    font-weight: 600 !important;
+    line-height: 1.35 !important;
+    letter-spacing: 0.015em !important;
+    text-shadow:
+        -0.07em -0.07em 0 #000,
+        0.07em -0.07em 0 #000,
+        -0.07em 0.07em 0 #000,
+        0.07em 0.07em 0 #000,
+        -0.07em 0px 0 #000,
+        0.07em 0px 0 #000,
+        0px -0.07em 0 #000,
+        0px 0.07em 0 #000,
+        0px 0.15em 0.35em rgba(0, 0, 0, 0.9) !important;
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+    
 }
 
-.__qt_sub-word,
-.__qt_yt-word,
-.__qt_nf-word,
-.__qt_lm-word {
+.__qt_sub-word {
     cursor: pointer !important;
     display: inline !important;
     pointer-events: auto !important;
     border-radius: 4px !important;
     padding: 0 2px !important;
-    margin: 0 -1px !important;
-    transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease !important;
+    margin: 0 1px !important;
+    transition: background-color 0.12s ease, color 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease !important;
 }
 
 .__qt_sub-word:hover,
-.__qt_sub-word.__qt_word-hover,
-.__qt_yt-word:hover,
-.__qt_yt-word.__qt_yt-word-hover,
-.__qt_nf-word:hover,
-.__qt_nf-word.__qt_nf-word-hover,
-.__qt_lm-word:hover,
-.__qt_lm-word.__qt_lm-word-hover {
-    background: rgba(74, 108, 247, 0.45) !important;
+.__qt_sub-word.__qt_word-hover {
+    background: rgba(74, 108, 247, 0.55) !important;
     color: #ffffff !important;
-    text-shadow: 0 0 6px rgba(0, 0, 0, 0.9) !important;
-    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2) inset !important;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25) inset !important;
+    text-shadow: 0 0 8px rgba(0, 0, 0, 0.95) !important;
+}
+
+/* Reels Mode (R hotkey) on Universal Subtitles */
+body.__qt_reels-active .__qt_custom-subtitles-box,
+.__qt_custom-subtitles-layer.__qt_reels-active .__qt_custom-subtitles-box {
+    margin-bottom: var(--lectoro-reels-bottom, 22%) !important;
+    max-width: min(85%, 820px) !important;
+}
+
+body.__qt_reels-active .__qt_custom-sub-line,
+.__qt_custom-subtitles-layer.__qt_reels-active .__qt_custom-sub-line {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    font-family: "YouTube Sans", "Roboto", system-ui, sans-serif !important;
+    font-weight: 800 !important;
+    font-size: clamp(20px, 3vw, 55px) !important;
+    letter-spacing: 0.03em !important;
+    text-shadow:
+        -0.07em -0.07em 0 #000,
+        0.07em -0.07em 0 #000,
+        -0.07em 0.07em 0 #000,
+        0.07em 0.07em 0 #000,
+        -0.07em 0px 0 #000,
+        0.07em 0px 0 #000,
+        0px -0.07em 0 #000,
+        0px 0.07em 0 #000,
+        0px 0.15em 0.35em rgba(0, 0, 0, 0.9) !important;
 }
 
 .__qt_yt-sub-hint {
@@ -868,161 +940,12 @@ html[data-lectoro-ai-limit-reached] .__qt_save-ai-btn {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   YouTube Reels-style Caption Styling (R key toggle)
-   Only restyles the existing native captions: moved ~30% above the
-   bottom edge, white text with a black outline, transparent background.
+   Universal Subtitle Hints & Notifications
    ═══════════════════════════════════════════════════════════════ */
 
-/* Pozycjonowanie i kontener napisów */
-/* Pozycjonowanie i kontener napisów */
-body.__qt_reels-active .caption-window {
-    top: auto !important;
-    bottom: 22% !important;
-    width: 60% !important;
-}
-
-/* Stylizacja i płynne skalowanie tekstu */
-body.__qt_reels-active .ytp-caption-segment,
-body.__qt_reels-active .captions-text {
-    background: transparent !important;
-    color: #ffffff !important;
-    font-family: "YouTube Sans", "Roboto", sans-serif !important;
-    font-weight: 700 !important;
-
-    /* Płynny rozmiar: min. 16px, optymalnie 2.4vw, max. 66px */
-    font-size: clamp(16px, 2.4vw, 42px) !important;
-
-    /* text-transform: uppercase; */
-    letter-spacing: 0.02em;
-    line-height: 1.2;
-    padding: 0.2em 0.5em !important;
-    display: inline-block !important;
-
-    /* Obrys i cień skalujące się razem z wielkością czcionki (jednostki em) */
-    text-shadow:
-        -0.07em -0.07em 0 #000,
-        0.07em -0.07em 0 #000,
-        -0.07em 0.07em 0 #000,
-        0.07em 0.07em 0 #000,
-        -0.07em 0px 0 #000,
-        0.07em 0px 0 #000,
-        0px -0.07em 0 #000,
-        0px 0.07em 0 #000,
-        0px 0.15em 0.3em rgba(0, 0, 0, 0.85);
-}
-
-/* Opcjonalna korekta pod tryb pełnoekranowy (Fullscreen) */
-:fullscreen body.__qt_reels-active .ytp-caption-segment,
-:fullscreen body.__qt_reels-active .captions-text {
-    font-size: clamp(22px, 2.2vw, 56px) !important;
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   Netflix CC Subtitles
-   ═══════════════════════════════════════════════════════════════ */
-
-/* Stabilize Netflix Subtitles - Prevent jumping/dropping when bottom control bar auto-hides */
-.player-timedtext {
-    bottom: 12% !important;
-    transition: none !important;
-    transform: none !important;
-}
-
-.player-timedtext-text-container {
-    text-align: center !important;
-}
-
-.player-timedtext-text-container > div {
-    display: block !important;
-    text-align: center !important;
-}
-
-.player-timedtext-text-container span {
-    display: inline !important;
-    white-space: normal !important;
-}
-
-.player-timedtext-text-container span.__qt_clickable {
-    position: relative;
-    display: inline !important;
-    white-space: normal !important;
-    word-wrap: break-word !important;
-}
-
-.__qt_nf-word {
-    cursor: pointer !important;
-    display: inline !important;
-    background: none !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
-    padding: 0 !important;
-    white-space: normal !important;
-    transition: none !important;
-}
-
-.__qt_nf-word.__qt_nf-word-hover {
-    background: none !important;
-    box-shadow: none !important;
-}
-
-.__qt_nf-sub-hint {
-    position: fixed;
-    z-index: 2147483647;
-    bottom: 90px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(74, 108, 247, 0.9);
-    color: #fff;
-    font-size: 12px;
-    padding: 6px 14px;
-    border-radius: 20px;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.4s ease;
-    white-space: nowrap;
-}
-
-.__qt_nf-sub-hint.visible {
-    opacity: 1;
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   LookMovie2 – Subtitle Interaction (no visual overrides)
-   ═══════════════════════════════════════════════════════════════ */
-
-/* Only enable pointer-events on cues so hover/click translation works */
-.vjs-text-track-cue {
-    pointer-events: auto !important;
-    cursor: text !important;
-    -webkit-user-select: text !important;
-    user-select: text !important;
-}
-
-.vjs-text-track-cue div {
-    pointer-events: auto !important;
-    cursor: text !important;
-    -webkit-user-select: text !important;
-    user-select: text !important;
-}
-
-.__qt_lm-word {
-    cursor: pointer !important;
-    display: inline !important;
-    background: none !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    white-space: normal !important;
-    transition: none !important;
-}
-
-.__qt_lm-word:hover,
-.__qt_lm-word.__qt_lm-word-hover {
-    background: none !important;
-    box-shadow: none !important;
-}
-
+.__qt_sub-hint,
+.__qt_yt-sub-hint,
+.__qt_nf-sub-hint,
 .__qt_lm-sub-hint {
     position: fixed;
     z-index: 2147483647;
@@ -1030,16 +953,25 @@ body.__qt_reels-active .captions-text {
     left: 50%;
     transform: translateX(-50%);
     background: rgba(74, 108, 247, 0.9);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     color: #fff;
-    font-size: 12px;
-    padding: 6px 14px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 7px 16px;
     border-radius: 20px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     pointer-events: none;
     opacity: 0;
-    transition: opacity 0.4s ease;
+    transition: opacity 0.3s ease;
     white-space: nowrap;
 }
 
+.__qt_sub-hint.visible,
+.__qt_yt-sub-hint.visible,
+.__qt_nf-sub-hint.visible,
 .__qt_lm-sub-hint.visible {
     opacity: 1;
 }
@@ -1241,37 +1173,7 @@ html.__qt_netflix-subtitles-hidden .player-timedtext {
     visibility: hidden !important;
 }
 
-/* Netflix High-Performance Subtitle Hitbox Layer & Object Pool */
-.__qt_netflix-subtitle-hit-layer {
-    position: fixed;
-    inset: 0;
-    width: 100vw;
-    height: 100vh;
-    pointer-events: none;
-    z-index: 2147483000;
-}
 
-.__qt_netflix-hitbox {
-    position: fixed;
-    margin: 0;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: transparent;
-    text-shadow: none;
-    line-height: 0;
-    pointer-events: auto;
-    cursor: pointer;
-    font-size: 0px;
-    user-select: none;
-    box-sizing: border-box;
-}
-
-.__qt_netflix-hitbox.__qt_word-hover {
-    background: rgba(74, 108, 247, 0.45) !important;
-    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.3) inset !important;
-    border-radius: 4px !important;
-}
 
 /* ═══════════════════════════════════════════════════════════════
    Netflix Player Control Suppression & Stabilization
@@ -1304,13 +1206,7 @@ html.__qt_netflix-hide-controls [data-uia="watch-video-back-button"] {
     transition: opacity 0.15s ease, visibility 0.15s ease !important;
 }
 
-/* Keep Netflix controls & subtitles steady during word hover so subtitles do not drop */
-html.__qt_netflix-hover-active .watch-video--bottom-controls-container,
-html.__qt_netflix-hover-active .PlayerControlsNeo__bottom-controls {
-    opacity: 1 !important;
-    visibility: visible !important;
-    pointer-events: auto !important;
-}
+
 
 html.__qt_netflix-capturing [class^="__qt_"],
 html.__qt_netflix-capturing [class*=" __qt_"],

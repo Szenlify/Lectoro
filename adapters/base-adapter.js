@@ -91,11 +91,35 @@
         };
     }
 
+    /**
+     * Extracts clean, trimmed line strings from cue elements,
+     * preserving multi-line breaks where present.
+     */
+    function extractCueLines(elements) {
+        if (!Array.isArray(elements) || elements.length === 0) return [];
+        const lines = [];
+        for (const el of elements) {
+            if (!el || isOwnUI(el) || isLectoroElement(el)) continue;
+            let text = "";
+            if (typeof SharedUtils !== "undefined" && SharedUtils.extractSubtitleText) {
+                text = SharedUtils.extractSubtitleText(el);
+            } else {
+                text = (el.textContent || "").replace(/\s+/g, " ").trim();
+            }
+            if (text && !lines.includes(text)) {
+                lines.push(text);
+            }
+        }
+        return lines;
+    }
+
     globalThis.LectoroBaseAdapter = Object.freeze({
         PREFIX,
         isOwnUI,
         isLectoroElement,
         filterCueCandidates,
         createDomAdapter,
+        extractCueLines,
     });
 })();
+

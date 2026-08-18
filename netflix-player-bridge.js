@@ -7,6 +7,8 @@
     "use strict";
 
     const SEEK_EVENT = "__lectoro_netflix_seek";
+    const PAUSE_EVENT = "__lectoro_netflix_pause";
+    const PLAY_EVENT = "__lectoro_netflix_play";
     const ARTWORK_REQUEST_EVENT = "__lectoro_netflix_artwork_request";
     const ARTWORK_RESPONSE_EVENT = "__lectoro_netflix_artwork_response";
     const TRACK_REQUEST_EVENT = "__lectoro_netflix_track_request";
@@ -317,7 +319,33 @@
         };
     }
 
-    // ── 4. Event Listeners for Seek & Track Navigation ────────────────────
+    // ── 4. Event Listeners for Seek, Playback & Track Navigation ─────────
+    window.addEventListener(PAUSE_EVENT, () => {
+        try {
+            const player = getNetflixPlayer();
+            if (player?.pause) {
+                player.pause();
+                return;
+            }
+        } catch (_) {}
+        try {
+            document.querySelector("video")?.pause();
+        } catch (_) {}
+    });
+
+    window.addEventListener(PLAY_EVENT, () => {
+        try {
+            const player = getNetflixPlayer();
+            if (player?.play) {
+                player.play();
+                return;
+            }
+        } catch (_) {}
+        try {
+            document.querySelector("video")?.play()?.catch?.(() => {});
+        } catch (_) {}
+    });
+
     window.addEventListener(SEEK_EVENT, (event) => {
         const requestedMs = Number(event.detail?.targetMs);
         if (!Number.isFinite(requestedMs) || requestedMs < 0) return;

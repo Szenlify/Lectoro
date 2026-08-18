@@ -1,13 +1,15 @@
 /**
  * Lectoro – Netflix Player Caption Adapter & Controller (Single Source of Truth)
- * High-performance subtitle indexing, pooled DOM hitboxes, video seeking,
- * eager pre-fetching, and fast review artwork for Netflix.
+ * Unified DOM caption adapter (matching YouTube & LookMovie), subtitle indexing,
+ * video seeking, eager pre-fetching, and fast review artwork for Netflix.
  */
 (() => {
     "use strict";
 
     const HOST_RE = /(^|\.)netflix\.com$/i;
     const SEEK_EVENT = "__lectoro_netflix_seek";
+    const PAUSE_EVENT = "__lectoro_netflix_pause";
+    const PLAY_EVENT = "__lectoro_netflix_play";
     const ARTWORK_REQUEST_EVENT = "__lectoro_netflix_artwork_request";
     const ARTWORK_RESPONSE_EVENT = "__lectoro_netflix_artwork_response";
     const TRACK_REQUEST_EVENT = "__lectoro_netflix_track_request";
@@ -16,7 +18,6 @@
     const MANIFEST_REQUEST_EVENT = "__lectoro_netflix_timed_text_manifest_request";
     const HIDDEN_CLASS = "__qt_netflix-subtitles-hidden";
     const NETFLIX_HIDE_CONTROLS_CLASS = "__qt_netflix-hide-controls";
-    const PREFIX = "__qt_";
 
     let timedTextManifest = null;
     let cueIndex = [];
@@ -24,11 +25,6 @@
     let cueIndexPromise = null;
     let trackRequestSequence = 0;
     const manifestWaiters = new Set();
-
-    // Hitbox Layer & Object Pool (Zero DOM churn)
-    let netflixSubtitleHitLayer = null;
-    const hitboxPool = [];
-    let activeHitboxCount = 0;
 
     function getSubtitleService() {
         return (
@@ -73,6 +69,32 @@
             try {
                 video.currentTime = Math.max(0, targetSeconds);
                 if (video.paused) video.play?.().catch?.(() => {});
+            } catch (_) {}
+        }
+    }
+
+    function pauseVideo(videoFallback = null) {
+        window.dispatchEvent(new CustomEvent(PAUSE_EVENT));
+        const video =
+            videoFallback instanceof HTMLVideoElement
+                ? videoFallback
+                : document.querySelector("video");
+        if (video && !video.paused) {
+            try {
+                video.pause();
+            } catch (_) {}
+        }
+    }
+
+    function playVideo(videoFallback = null) {
+        window.dispatchEvent(new CustomEvent(PLAY_EVENT));
+        const video =
+            videoFallback instanceof HTMLVideoElement
+                ? videoFallback
+                : document.querySelector("video");
+        if (video && video.paused) {
+            try {
+                video.play()?.catch?.(() => {});
             } catch (_) {}
         }
     }
@@ -307,261 +329,6 @@
         return targetIndex >= 0 ? cues[targetIndex].startTime : 0;
     }
 
-    // ── High-Performance Hitbox Layer & Object Pool ──────────────────────
-
-    function ensureHitboxLayer() {
-        const parent =
-            (typeof QT !== "undefined" && QT.getOverlayParent?.()) ||
-            document.body ||
-            document.documentElement;
-
-        if (netflixSubtitleHitLayer?.isConnected) {
-            if (netflixSubtitleHitLayer.parentElement !== parent) {
-                parent.appendChild(netflixSubtitleHitLayer);
-            }
-            return netflixSubtitleHitLayer;
-        }
-
-        netflixSubtitleHitLayer = document.createElement("div");
-        netflixSubtitleHitLayer.className = `${PREFIX}netflix-subtitle-hit-layer`;
-        parent.appendChild(netflixSubtitleHitLayer);
-        return netflixSubtitleHitLayer;
-    }
-
-    function clearSubtitleHitboxes() {
-        for (let i = 0; i < activeHitboxCount; i++) {
-            hitboxPool[i].style.display = "none";
-            hitboxPool[i].classList.remove(`${PREFIX}word-hover`);
-        }
-        activeHitboxCount = 0;
-    }
-
-    function getPooledHitbox(index) {
-        if (index < hitboxPool.length) {
-            return hitboxPool[index];
-        }
-        const layer = ensureHitboxLayer();
-        const hitbox = document.createElement("span");
-        hitbox.className = `${PREFIX}sub-word ${PREFIX}netflix-hitbox`;
-        hitbox.dataset[`${PREFIX}netflixHitbox`] = "1";
-        layer.appendChild(hitbox);
-        hitboxPool.push(hitbox);
-        return hitbox;
-    }
-
-    /**
-     * Efficiently refreshes hitboxes using Object Pooling and minimal layout thrashing.
-     */
-    function refreshSubtitleHitboxes(elements, activeHoverText = null) {
-        if (!isPage()) return [];
-
-        const sourceElements = (elements || []).filter(
-            (el) => el?.textContent?.trim(),
-        );
-
-        if (sourceElements.length === 0) {
-            clearSubtitleHitboxes();
-            return [];
-        }
-
-        let assignedCount = 0;
-        let matchedRehitbox = null;
-
-        for (const element of sourceElements) {
-            const walker = document.createTreeWalker(
-                element,
-                NodeFilter.SHOW_TEXT,
-            );
-            let textNode;
-
-            while ((textNode = walker.nextNode())) {
-                const text = textNode.nodeValue || "";
-                for (const match of text.matchAll(/\S+/g)) {
-                    const start = match.index ?? 0;
-                    const end = start + match[0].length;
-                    const range = document.createRange();
-
-                    try {
-                        range.setStart(textNode, start);
-                        range.setEnd(textNode, end);
-                    } catch (_) {
-                        range.detach?.();
-                        continue;
-                    }
-
-                    const rect = Array.from(range.getClientRects()).find(
-                        (r) => r.width > 0 && r.height > 0,
-                    );
-                    range.detach?.();
-                    if (!rect) continue;
-
-                    const hitbox = getPooledHitbox(assignedCount++);
-                    const word = match[0];
-                    hitbox.textContent = word;
-
-                    hitbox.style.left = `${Math.round(rect.left)}px`;
-                    hitbox.style.top = `${Math.round(rect.top)}px`;
-                    hitbox.style.width = `${Math.round(rect.width)}px`;
-                    hitbox.style.height = `${Math.round(rect.height)}px`;
-                    hitbox.style.display = "block";
-
-                    if (activeHoverText && word === activeHoverText && !matchedRehitbox) {
-                        matchedRehitbox = hitbox;
-                    }
-                }
-            }
-        }
-
-        // Hide unused spans in the pool
-        for (let i = assignedCount; i < activeHitboxCount; i++) {
-            hitboxPool[i].style.display = "none";
-            hitboxPool[i].classList.remove(`${PREFIX}word-hover`);
-        }
-        activeHitboxCount = assignedCount;
-
-        const activeList = hitboxPool.slice(0, activeHitboxCount);
-        return {
-            hitboxes: activeList,
-            matchedRehitbox,
-        };
-    }
-
-    function destroySubtitleHitLayer() {
-        clearSubtitleHitboxes();
-        netflixSubtitleHitLayer?.remove();
-        netflixSubtitleHitLayer = null;
-        hitboxPool.length = 0;
-        activeHitboxCount = 0;
-    }
-
-    function captureRenderedLines(elements) {
-        const tokens = [];
-        let order = 0;
-
-        for (const element of elements || []) {
-            const walker = document.createTreeWalker(
-                element,
-                NodeFilter.SHOW_TEXT,
-            );
-            let node;
-            while ((node = walker.nextNode())) {
-                const text = node.nodeValue || "";
-                for (const match of text.matchAll(/\S+/g)) {
-                    const range = document.createRange();
-                    range.setStart(node, match.index);
-                    range.setEnd(node, match.index + match[0].length);
-                    const rect = Array.from(range.getClientRects()).find(
-                        (item) => item.width > 0 && item.height > 0,
-                    );
-                    range.detach?.();
-                    if (!rect) continue;
-                    tokens.push({
-                        text: match[0],
-                        top: rect.top,
-                        bottom: rect.bottom,
-                        left: rect.left,
-                        right: rect.right,
-                        order: order++,
-                    });
-                }
-            }
-        }
-
-        if (tokens.length === 0) {
-            return (elements || [])
-                .map((element) => element.textContent.trim())
-                .filter(Boolean)
-                .map((text) => ({ text, width: 0 }));
-        }
-
-        const rows = [];
-        for (const token of tokens) {
-            const center = (token.top + token.bottom) / 2;
-            let row = rows.find(
-                (candidate) =>
-                    Math.abs(candidate.center - center) <=
-                    Math.max(2, (token.bottom - token.top) * 0.25),
-            );
-            if (!row) {
-                row = {
-                    center,
-                    top: token.top,
-                    bottom: token.bottom,
-                    left: token.left,
-                    right: token.right,
-                    tokens: [],
-                };
-                rows.push(row);
-            }
-            row.tokens.push(token);
-            row.top = Math.min(row.top, token.top);
-            row.bottom = Math.max(row.bottom, token.bottom);
-            row.left = Math.min(row.left, token.left);
-            row.right = Math.max(row.right, token.right);
-        }
-
-        return rows
-            .sort((left, right) => left.top - right.top)
-            .map((row) => ({
-                text: row.tokens
-                    .sort((left, right) => left.order - right.order)
-                    .map((token) => token.text)
-                    .join(" "),
-                width: row.right - row.left,
-            }));
-    }
-
-    function createWordCloudSourceLayer({
-        source,
-        parent,
-        prefix,
-        splitIntoWordSpans,
-    }) {
-        const rect = source.getBoundingClientRect();
-        if (rect.width === 0 || rect.height === 0) return null;
-
-        const cs = window.getComputedStyle(source);
-        const renderedLines = captureRenderedLines([source]);
-        const layer = document.createElement("div");
-        layer.className = prefix + "word-cloud-source-layer";
-        Object.assign(layer.style, {
-            left: rect.left + "px",
-            top: rect.top + "px",
-            width: rect.width + "px",
-            minHeight: rect.height + "px",
-            color: cs.color,
-            backgroundColor: cs.backgroundColor,
-            fontFamily: cs.fontFamily,
-            fontSize: cs.fontSize,
-            fontStyle: cs.fontStyle,
-            fontWeight: cs.fontWeight,
-            letterSpacing: cs.letterSpacing,
-            lineHeight: cs.lineHeight,
-            paddingTop: cs.paddingTop,
-            paddingRight: cs.paddingRight,
-            paddingBottom: cs.paddingBottom,
-            paddingLeft: cs.paddingLeft,
-            textAlign: cs.textAlign,
-            textShadow: cs.textShadow,
-            wordSpacing: cs.wordSpacing,
-            whiteSpace: cs.whiteSpace,
-        });
-
-        const lineElements = renderedLines.map((line) => {
-            const lineElement = document.createElement("div");
-            lineElement.className = prefix + "word-cloud-source-line";
-            lineElement.textContent = line.text;
-            layer.appendChild(lineElement);
-            return lineElement;
-        });
-        parent.appendChild(layer);
-
-        for (const lineElement of lineElements) {
-            splitIntoWordSpans(lineElement, prefix + "wc-word");
-        }
-        return layer;
-    }
-
     function requestArtworkUrl() {
         const pageArtwork =
             document.querySelector("video")?.poster ||
@@ -652,48 +419,67 @@
     window.addEventListener(MANIFEST_EVENT, acceptTimedTextManifest);
     window.dispatchEvent(new CustomEvent(MANIFEST_REQUEST_EVENT));
 
-    const NetflixAdapter = Object.freeze({
-        id: "netflix",
-        name: "Netflix",
-        playerSelector: ".watch-video, [data-uia='video-canvas']",
-        containerSelector: ".player-timedtext",
-        cueSelector: ".player-timedtext-text-container span",
-        leafOnly: true,
-        documentFallback: true,
+    const { createDomAdapter } = globalThis.LectoroBaseAdapter || {};
 
-        isPage,
-        matchVideo() {
-            return isPage();
-        },
-        getContainer(video) {
-            const player = video?.closest?.(this.playerSelector) || document;
-            return player.querySelector(this.containerSelector);
-        },
-        getCueElements(container) {
-            if (!container || !container.isConnected) return [];
-            const candidates = Array.from(
-                container.querySelectorAll(this.cueSelector),
-            );
-            return (
-                globalThis.LectoroBaseAdapter?.filterCueCandidates ||
-                ((x) => x)
-            )(candidates, {
-                leafOnly: true,
-                cueSelector: this.cueSelector,
-            });
-        },
-        requestSeek,
-        ensureControlsHidden,
-        setOriginalSubtitlesHidden,
-        captureReviewImage,
-        ensureSubtitleIndex,
-        getAdjacentSubtitleTime,
-        refreshSubtitleHitboxes,
-        clearSubtitleHitboxes,
-        destroySubtitleHitLayer,
-        createWordCloudSourceLayer,
-        captureRenderedLines,
-    });
+    const NetflixAdapter = typeof createDomAdapter === "function"
+        ? createDomAdapter({
+              id: "netflix",
+              name: "Netflix",
+              playerSelector: ".watch-video, [data-uia='video-canvas'], .nf-player-container",
+              containerSelector: ".player-timedtext",
+              cueSelector: ".player-timedtext-text-container span",
+              leafOnly: true,
+              documentFallback: true,
+              isPage,
+              extraProps: {
+                  requestSeek,
+                  pauseVideo,
+                  playVideo,
+                  ensureControlsHidden,
+                  setOriginalSubtitlesHidden,
+                  captureReviewImage,
+                  ensureSubtitleIndex,
+                  getAdjacentSubtitleTime,
+              },
+          })
+        : {
+              id: "netflix",
+              name: "Netflix",
+              playerSelector: ".watch-video, [data-uia='video-canvas'], .nf-player-container",
+              containerSelector: ".player-timedtext",
+              cueSelector: ".player-timedtext-text-container span",
+              leafOnly: true,
+              documentFallback: true,
+              isPage,
+              matchVideo: () => isPage(),
+              getContainer: (video) => {
+                  const player =
+                      video?.closest?.(".watch-video, [data-uia='video-canvas'], .nf-player-container") ||
+                      document;
+                  return player.querySelector(".player-timedtext");
+              },
+              getCueElements: (container) => {
+                  if (!container || !container.isConnected) return [];
+                  const candidates = Array.from(
+                      container.querySelectorAll(".player-timedtext-text-container span"),
+                  );
+                  return (
+                      globalThis.LectoroBaseAdapter?.filterCueCandidates ||
+                      ((x) => x)
+                  )(candidates, {
+                      leafOnly: true,
+                      cueSelector: ".player-timedtext-text-container span",
+                  });
+              },
+              requestSeek,
+              pauseVideo,
+              playVideo,
+              ensureControlsHidden,
+              setOriginalSubtitlesHidden,
+              captureReviewImage,
+              ensureSubtitleIndex,
+              getAdjacentSubtitleTime,
+          };
 
     globalThis.LectoroNetflixAdapter = NetflixAdapter;
     globalThis.LectoroNetflix = NetflixAdapter;
