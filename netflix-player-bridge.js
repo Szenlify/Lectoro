@@ -1,3 +1,8 @@
+/**
+ * Lectoro – Netflix Main-World Player Bridge
+ * Injected into the page's MAIN world to interface with Netflix's internal videoPlayer API,
+ * intercept timed text manifests, and bridge player seek / track events to Lectoro.
+ */
 (() => {
     "use strict";
 
@@ -7,23 +12,26 @@
     const TRACK_REQUEST_EVENT = "__lectoro_netflix_track_request";
     const TRACK_RESPONSE_EVENT = "__lectoro_netflix_track_response";
     const MANIFEST_EVENT = "__lectoro_netflix_timed_text_manifest";
-    const MANIFEST_REQUEST_EVENT =
-        "__lectoro_netflix_timed_text_manifest_request";
+    const MANIFEST_REQUEST_EVENT = "__lectoro_netflix_timed_text_manifest_request";
 
     let latestTimedTextManifest = null;
     let latestTimedTextSignature = "";
 
     function getNetflixPlayer() {
-        const videoPlayer =
-            window.netflix?.appContext?.state?.playerApp?.getAPI?.()
-                ?.videoPlayer;
-        const sessionIds = videoPlayer?.getAllPlayerSessionIds?.() || [];
-        const sessionId =
-            sessionIds.find((id) => String(id).includes("watch")) ||
-            sessionIds[0];
-        return sessionId
-            ? videoPlayer.getVideoPlayerBySessionId(sessionId)
-            : null;
+        try {
+            const videoPlayer =
+                window.netflix?.appContext?.state?.playerApp?.getAPI?.()
+                    ?.videoPlayer;
+            const sessionIds = videoPlayer?.getAllPlayerSessionIds?.() || [];
+            const sessionId =
+                sessionIds.find((id) => String(id).includes("watch")) ||
+                sessionIds[0];
+            return sessionId
+                ? videoPlayer.getVideoPlayerBySessionId(sessionId)
+                : null;
+        } catch (_) {
+            return null;
+        }
     }
 
     function primitiveTrackData(track) {
@@ -43,6 +51,7 @@
             "description",
             "trackType",
             "rawTrackType",
+            "isForcedNarrative",
         ];
         for (const key of knownKeys) {
             try {
@@ -71,7 +80,7 @@
     function collectDownloadUrls(downloadable) {
         const urls = [];
         const visit = (value, depth = 0) => {
-            if (depth > 4 || value == null) return;
+            if (depth > 5 || value == null) return;
             if (typeof value === "string") {
                 if (/^https:\/\//i.test(value)) urls.push(value);
                 return;
@@ -91,12 +100,21 @@
     }
 
     function getTimedTextTracks(payload) {
-        const tracks = payload?.timedtexttracks || payload?.textTracks;
+        const tracks =
+            payload?.timedtexttracks ||
+            payload?.timedTextTracks ||
+            payload?.textTracks ||
+            payload?.tracks;
         return Array.isArray(tracks) ? tracks : null;
     }
 
     function normalizeDownloads(track) {
-        const rawDownloads = track.ttDownloadables || track.downloadables || {};
+        const rawDownloads =
+            track.ttDownloadables ||
+            track.downloadables ||
+            track.downloadUrls ||
+            {};
+
         const entries = Array.isArray(rawDownloads)
             ? rawDownloads.map((download, index) => [
                   download?.contentProfile ||
@@ -106,6 +124,7 @@
                   download,
               ])
             : Object.entries(rawDownloads);
+
         return entries
             .map(([profile, downloadable]) => ({
                 profile,
@@ -115,6 +134,7 @@
     }
 
     function normalizeTimedTextManifest(payload) {
+        if (!payload || typeof payload !== "object") return null;
         const tracks = getTimedTextTracks(payload);
         if (!Array.isArray(tracks) || tracks.length === 0) return null;
 
@@ -143,6 +163,7 @@
                 };
             })
             .filter(Boolean);
+
         if (normalizedTracks.length === 0) return null;
         return {
             movieId: String(payload.movieId || payload.videoId || ""),
@@ -151,30 +172,33 @@
     }
 
     function findTimedTextPayload(data) {
+        if (!data || typeof data !== "object") return null;
+
         const directCandidates = [
             data,
             data?.result,
             data?.result?.result,
             data?.value,
+            data?.manifest,
         ];
         for (const candidate of directCandidates) {
             if (getTimedTextTracks(candidate)) return candidate;
         }
 
-        // Netflix has used both `timedtexttracks` and `textTracks`, and the
-        // manifest can be wrapped by an additional response object. Keep this
-        // search bounded because JSON.parse is also used for unrelated data.
         const queue = [{ value: data, depth: 0 }];
         const visited = new WeakSet();
         let inspected = 0;
+
         while (queue.length > 0 && inspected < 500) {
             const { value, depth } = queue.shift();
             if (!value || typeof value !== "object" || visited.has(value))
                 continue;
             visited.add(value);
             inspected += 1;
+
             if (getTimedTextTracks(value)) return value;
             if (depth >= 4) continue;
+
             for (const child of Object.values(value)) {
                 if (child && typeof child === "object") {
                     queue.push({ value: child, depth: depth + 1 });
@@ -185,6 +209,9 @@
     }
 
     function publishTimedTextManifest(manifest) {
+        if (!manifest || !Array.isArray(manifest.tracks) || manifest.tracks.length === 0) {
+            return;
+        }
         const signature = JSON.stringify(manifest);
         if (signature === latestTimedTextSignature) return;
         latestTimedTextManifest = manifest;
@@ -194,35 +221,96 @@
         );
     }
 
-    const nativeJsonParse = JSON.parse;
-    JSON.parse = function lectoraNetflixJsonParse(...args) {
-        const data = nativeJsonParse.apply(this, args);
+    function tryExtractManifest(data) {
         try {
             const payload = findTimedTextPayload(data);
             const manifest = normalizeTimedTextManifest(payload);
-            if (manifest) queueMicrotask(() => publishTimedTextManifest(manifest));
+            if (manifest) {
+                queueMicrotask(() => publishTimedTextManifest(manifest));
+            }
         } catch (_) {}
+    }
+
+    // ── 1. Intercept JSON.parse ──────────────────────────────────────────
+    const nativeJsonParse = JSON.parse;
+    JSON.parse = function lectoraNetflixJsonParse(...args) {
+        const data = nativeJsonParse.apply(this, args);
+        tryExtractManifest(data);
         return data;
     };
 
+    // ── 2. Intercept window.fetch (clone response if manifest/timedtext) ──
+    if (typeof window.fetch === "function") {
+        const nativeFetch = window.fetch;
+        window.fetch = async function lectoraNetflixFetch(...args) {
+            const response = await nativeFetch.apply(this, args);
+            try {
+                const url = typeof args[0] === "string" ? args[0] : args[0]?.url || "";
+                if (
+                    url.includes("manifest") ||
+                    url.includes("timedtext") ||
+                    url.includes("cadmium") ||
+                    url.includes("metadata")
+                ) {
+                    response
+                        .clone()
+                        .json()
+                        .then((data) => tryExtractManifest(data))
+                        .catch(() => {});
+                }
+            } catch (_) {}
+            return response;
+        };
+    }
+
+    // ── 3. Intercept XMLHttpRequest ──────────────────────────────────────
+    if (typeof window.XMLHttpRequest === "function") {
+        const originalSend = XMLHttpRequest.prototype.send;
+        XMLHttpRequest.prototype.send = function (...args) {
+            this.addEventListener("load", () => {
+                try {
+                    const responseText = this.responseText;
+                    if (
+                        responseText &&
+                        (responseText.includes("timedtexttracks") ||
+                            responseText.includes("timedTextTracks") ||
+                            responseText.includes("ttDownloadables"))
+                    ) {
+                        const data = nativeJsonParse(responseText);
+                        tryExtractManifest(data);
+                    }
+                } catch (_) {}
+            });
+            return originalSend.apply(this, args);
+        };
+    }
+
+    // ── 4. Event Listeners for Seek & Track Navigation ────────────────────
     window.addEventListener(SEEK_EVENT, (event) => {
         const requestedMs = Number(event.detail?.targetMs);
         if (!Number.isFinite(requestedMs) || requestedMs < 0) return;
 
         try {
             const player = getNetflixPlayer();
-            if (!player?.seek) return;
+            if (player?.seek) {
+                const durationMs = Number(player.getDuration?.());
+                const targetMs = Number.isFinite(durationMs)
+                    ? Math.min(requestedMs, durationMs)
+                    : requestedMs;
+                player.seek(targetMs);
+                player.play?.();
+                return;
+            }
+        } catch (_) {}
 
-            const durationMs = Number(player.getDuration?.());
-            const targetMs = Number.isFinite(durationMs)
-                ? Math.min(requestedMs, durationMs)
-                : requestedMs;
-            player.seek(targetMs);
-            player.play?.();
-        } catch (_) {
-            // Netflix's private player API can be unavailable while an episode
-            // is loading. A later key press will retry with the active session.
-        }
+        // Fallback: direct HTML video seek if player API not ready
+        try {
+            const video = document.querySelector("video");
+            if (video) {
+                video.currentTime = requestedMs / 1000;
+                video.play?.().catch?.(() => {});
+            }
+        } catch (_) {}
     });
 
     window.addEventListener(ARTWORK_REQUEST_EVENT, () => {
@@ -243,7 +331,10 @@
     window.addEventListener(TRACK_REQUEST_EVENT, (event) => {
         let track = null;
         try {
-            track = primitiveTrackData(getNetflixPlayer()?.getTextTrack?.());
+            const player = getNetflixPlayer();
+            track =
+                primitiveTrackData(player?.getTimedTextTrack?.()) ||
+                primitiveTrackData(player?.getTextTrack?.());
         } catch (_) {}
         window.dispatchEvent(
             new CustomEvent(TRACK_RESPONSE_EVENT, {
@@ -262,6 +353,21 @@
                     detail: latestTimedTextManifest,
                 }),
             );
+        } else {
+            // Attempt to read directly from player API if available
+            try {
+                const player = getNetflixPlayer();
+                const tracks =
+                    player?.getTimedTextTrackList?.() ||
+                    player?.getTextTrackList?.();
+                if (Array.isArray(tracks) && tracks.length > 0) {
+                    const manifest = normalizeTimedTextManifest({
+                        movieId: String(player.getMovieId?.() || ""),
+                        timedtexttracks: tracks,
+                    });
+                    if (manifest) publishTimedTextManifest(manifest);
+                }
+            } catch (_) {}
         }
     });
 })();

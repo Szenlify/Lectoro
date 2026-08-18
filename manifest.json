@@ -38,11 +38,6 @@
             "world": "MAIN"
         },
         {
-            "matches": ["https://www.netflix.com/*"],
-            "js": ["netflix.js"],
-            "run_at": "document_start"
-        },
-        {
             "matches": ["<all_urls>"],
             "css": ["styles.css"],
             "js": [
@@ -53,6 +48,7 @@
                 "firebase/firebase-sync.js",
                 "shared/subscription-service.js",
                 "shared/gemini-proxy.js",
+                "shared/subtitle-service.js",
                 "core.js",
                 "adapters/base-adapter.js",
                 "adapters/youtube-adapter.js",

@@ -594,6 +594,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                         "firebase/firebase-sync.js",
                         "shared/subscription-service.js",
                         "shared/gemini-proxy.js",
+                        "shared/subtitle-service.js",
                         "core.js",
                         "adapters/base-adapter.js",
                         "adapters/youtube-adapter.js",

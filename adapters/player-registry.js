@@ -417,6 +417,13 @@
 
     function getAdjacentCueTime(cues, currentTime, direction) {
         if (!Array.isArray(cues) || cues.length === 0) return null;
+        if (globalThis.SharedSubtitleService?.findAdjacentCueTime) {
+            return globalThis.SharedSubtitleService.findAdjacentCueTime(
+                cues,
+                currentTime,
+                direction,
+            );
+        }
         if (direction > 0) {
             const next = cues.find((cue) => cue.startTime > currentTime + 0.08);
             return next?.startTime ?? null;
@@ -446,46 +453,96 @@
         const wasPlaying = !video.paused;
         try {
             const nativeCues = getAllCues(video);
-            let targetTime = getAdjacentCueTime(
-                nativeCues,
-                video.currentTime,
-                direction,
-            );
+            let targetTime = null;
+            if (nativeCues.length > 0) {
+                targetTime = getAdjacentCueTime(
+                    nativeCues,
+                    video.currentTime,
+                    direction,
+                );
+            }
             if (targetTime === null) {
-                if (wasPlaying) video.pause();
-                if (typeof QT !== "undefined") {
-                    QT.createHint("").show("Indeksuję napisy Netflixa…", 1200);
-                }
                 targetTime = await globalThis.LectoroNetflixAdapter?.getAdjacentSubtitleTime?.(
                     video,
                     direction,
                 );
             }
             if (!Number.isFinite(targetTime)) {
-                if (typeof QT !== "undefined") {
+                if (typeof QT !== "undefined" && QT.createHint) {
                     QT.createHint("").show(
                         direction < 0
                             ? "Brak wcześniejszego zdania w napisach"
                             : "Brak następnego zdania w napisach",
-                        2200,
+                        1800,
                     );
                 }
                 if (wasPlaying && video.paused) video.play().catch(() => {});
                 return;
             }
-            globalThis.LectoroNetflixAdapter?.requestSeek?.(targetTime);
+            globalThis.LectoroNetflixAdapter?.requestSeek?.(targetTime, video);
         } catch (error) {
             console.warn("[Lectoro] Netflix subtitle navigation failed:", error);
-            if (typeof QT !== "undefined") {
+            if (typeof QT !== "undefined" && QT.createHint) {
                 QT.createHint("").show(
                     "Nie udało się załadować osi napisów Netflixa",
-                    2400,
+                    2200,
                 );
             }
             if (wasPlaying && video.paused) video.play().catch(() => {});
         } finally {
             netflixSubtitleNavigationPending = false;
         }
+    }
+
+    async function navigateSubtitle(video, direction) {
+        if (!video) return;
+        if (isNetflixPage()) {
+            return navigateNetflixSubtitle(video, direction);
+        }
+
+        const session = videoSessions.get(video);
+        const adapter = session?.binding?.adapter;
+        if (typeof adapter?.getAdjacentSubtitleTime === "function") {
+            try {
+                const targetTime = await adapter.getAdjacentSubtitleTime(
+                    video,
+                    direction,
+                );
+                if (Number.isFinite(targetTime)) {
+                    if (typeof adapter.requestSeek === "function") {
+                        adapter.requestSeek(targetTime, video);
+                    } else {
+                        video.currentTime = targetTime;
+                    }
+                    if (video.paused) video.play().catch?.(() => {});
+                    return;
+                }
+            } catch (_) {}
+        }
+
+        const nativeCues = getAllCues(video);
+        let targetTime = null;
+        if (nativeCues.length > 0) {
+            targetTime = getAdjacentCueTime(
+                nativeCues,
+                video.currentTime,
+                direction,
+            );
+        }
+
+        if (!Number.isFinite(targetTime)) {
+            const fallbackDelta = direction > 0 ? 3 : -3;
+            targetTime = Math.max(
+                0,
+                Math.min(
+                    video.duration || Infinity,
+                    video.currentTime + fallbackDelta,
+                ),
+            );
+        }
+
+        video.currentTime = targetTime;
+        if (video.paused) video.play().catch?.(() => {});
     }
 
     async function captureVideoReviewScreenshot(video) {
@@ -565,6 +622,7 @@
         getCurrentCueIndex,
         getAdjacentCueTime,
         navigateNetflixSubtitle,
+        navigateSubtitle,
         captureVideoReviewScreenshot,
         isNetflixPage,
         findCaptionBinding,

@@ -225,53 +225,30 @@
 
             // Previous Subtitle / Seek Backward: A / ArrowLeft
             if (key === "a" || key === "A" || key === "ArrowLeft") {
-                if (registry.isNetflixPage()) {
+                if (typeof registry?.navigateSubtitle === "function") {
+                    registry.navigateSubtitle(video, -1);
+                } else if (typeof registry?.navigateNetflixSubtitle === "function" && registry.isNetflixPage()) {
                     registry.navigateNetflixSubtitle(video, -1);
-                    return;
-                }
-
-                const cues = registry.getAllCues(video);
-                const hasCues = cues.length > 0;
-                let targetTime;
-
-                if (hasCues) {
-                    const idx = registry.getCurrentCueIndex(cues, video.currentTime);
-                    targetTime =
-                        video.currentTime - cues[idx].startTime > 1.5 && idx >= 0
-                            ? cues[idx].startTime
-                            : cues[Math.max(0, idx - 1)].startTime;
                 } else {
-                    targetTime = Math.max(0, video.currentTime - FALLBACK_SKIP_SECONDS);
+                    video.currentTime = Math.max(0, video.currentTime - FALLBACK_SKIP_SECONDS);
+                    if (video.paused) video.play().catch?.(() => {});
                 }
-
-                video.currentTime = targetTime;
-                if (video.paused) video.play().catch?.(() => {});
                 return;
             }
 
             // Next Subtitle / Seek Forward: D / ArrowRight
             if (key === "d" || key === "D" || key === "ArrowRight") {
-                if (registry.isNetflixPage()) {
+                if (typeof registry?.navigateSubtitle === "function") {
+                    registry.navigateSubtitle(video, 1);
+                } else if (typeof registry?.navigateNetflixSubtitle === "function" && registry.isNetflixPage()) {
                     registry.navigateNetflixSubtitle(video, 1);
-                    return;
-                }
-
-                const cues = registry.getAllCues(video);
-                const hasCues = cues.length > 0;
-                let targetTime;
-
-                if (hasCues) {
-                    const idx = registry.getCurrentCueIndex(cues, video.currentTime);
-                    targetTime = cues[Math.min(cues.length - 1, idx + 1)].startTime;
                 } else {
-                    targetTime = Math.min(
+                    video.currentTime = Math.min(
                         video.duration || Infinity,
                         video.currentTime + FALLBACK_SKIP_SECONDS,
                     );
+                    if (video.paused) video.play().catch?.(() => {});
                 }
-
-                video.currentTime = targetTime;
-                if (video.paused) video.play().catch?.(() => {});
             }
         },
         true,
