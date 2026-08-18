@@ -66,6 +66,8 @@ function subscriptionProfile(uid, plan, data = {}, month = currentMonth()) {
         uid,
         plan: normalizePlan(plan),
         subscriptionStatus: data.subscriptionStatus || "active",
+        stripeCurrentPeriodEnd: data.stripeCurrentPeriodEnd || null,
+        stripeCancelAtPeriodEnd: !!data.stripeCancelAtPeriodEnd,
         usage: {
             ai: {
                 month,

@@ -301,12 +301,25 @@ async function refreshAiUsageUI() {
             ? Math.min(100, Math.round((used / limit) * 100))
             : 0;
 
+        const currentPlan = SubscriptionConfig.normalizePlan(
+            subscription?.plan || usage?.plan,
+        );
+        const isPaidPlan = currentPlan !== "free";
+
         if (renewalDate) {
-            renewalDate.textContent = formatNextUsageRenewalDate(usage.month);
+            if (isPaidPlan) {
+                const renewalTimestamp =
+                    subscription?.stripeCurrentPeriodEnd ||
+                    usage?.month ||
+                    subscription?.usage?.ai?.month ||
+                    null;
+                renewalDate.textContent = formatNextUsageRenewalDate(renewalTimestamp);
+            } else {
+                renewalDate.textContent = "";
+            }
         }
 
-        if (plan)
-            plan.textContent = `PLAN ${(usage.plan || "free").toUpperCase()}`;
+        if (plan) plan.textContent = `PLAN ${currentPlan.toUpperCase()}`;
         if (value) value.textContent = `${used} / ${limit}`;
         if (fill) fill.style.width = `${percentage}%`;
         if (track) {
@@ -320,12 +333,20 @@ async function refreshAiUsageUI() {
         if (limitReached) {
             card?.classList.add("is-empty");
             if (title) title.textContent = "Kredyty zostały wykorzystane";
-            info.textContent = "Funkcje AI są chwilowo wstrzymane";
+            if (isPaidPlan) {
+                info.textContent = "Limit odnowi się:";
+            } else {
+                info.textContent = "Limit w planie Free nie odnawia się";
+            }
         } else {
             if (percentage >= 80) card?.classList.add("is-warning");
             if (title)
                 title.textContent = `${left.toLocaleString("pl-PL")} kredytów pozostało`;
-            info.textContent = "Limit odnawia się co miesiąc";
+            if (isPaidPlan) {
+                info.textContent = "Limit odnawia się:";
+            } else {
+                info.textContent = "Pakiet jednorazowy (plan Free)";
+            }
         }
     } else {
         if (title) title.textContent = "Dane chwilowo niedostępne";

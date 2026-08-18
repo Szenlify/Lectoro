@@ -89,19 +89,38 @@
             return new Date(timestamp).toLocaleTimeString("pl-PL", options);
         },
 
-        /** Format next monthly quota renewal date */
-        formatNextUsageRenewalDate(month) {
-            const match = /^(\d{4})-(\d{2})$/.exec(month || "");
-            const now = new Date();
-            const year = match ? Number(match[1]) : now.getUTCFullYear();
-            const monthIndex = match ? Number(match[2]) - 1 : now.getUTCMonth();
-            const renewalDate = new Date(Date.UTC(year, monthIndex + 1, 1));
+        /** Format next monthly quota renewal date (supports Stripe timestamp in seconds/ms or YYYY-MM) */
+        formatNextUsageRenewalDate(timestampOrMonth = null) {
+            let renewalDate = null;
+            if (typeof timestampOrMonth === "number" && timestampOrMonth > 0) {
+                const ms = timestampOrMonth < 10000000000 ? timestampOrMonth * 1000 : timestampOrMonth;
+                renewalDate = new Date(ms);
+            } else if (timestampOrMonth instanceof Date) {
+                renewalDate = timestampOrMonth;
+            } else if (typeof timestampOrMonth === "string" && timestampOrMonth.trim()) {
+                const num = Number(timestampOrMonth);
+                if (!isNaN(num) && num > 0) {
+                    const ms = num < 10000000000 ? num * 1000 : num;
+                    renewalDate = new Date(ms);
+                } else {
+                    const match = /^(\d{4})-(\d{2})$/.exec(timestampOrMonth.trim());
+                    if (match) {
+                        const year = Number(match[1]);
+                        const monthIndex = Number(match[2]) - 1;
+                        renewalDate = new Date(Date.UTC(year, monthIndex + 1, 1));
+                    }
+                }
+            }
+
+            if (!renewalDate || isNaN(renewalDate.getTime())) {
+                const now = new Date();
+                renewalDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+            }
 
             return new Intl.DateTimeFormat("pl-PL", {
                 day: "numeric",
                 month: "long",
                 year: "numeric",
-                timeZone: "UTC",
             }).format(renewalDate);
         },
 

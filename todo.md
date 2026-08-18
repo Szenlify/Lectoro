@@ -17,8 +17,7 @@ dla przykladu tlumacze za pomoca "Enter" AI, video sie pauzuje i drukie klikniec
 
 13. Klawisz "Z" jesli jest plan Basic lub Pro to tlumaczenia ma robic AI tak jak za pomoca Enter poprostu tlumaczenie bez wyjasnienia
 
-
-15. Tłumaczenia w locie na stronach: Wyłącznie Web Speech API (wbudowana synteza mowy w przeglądarkę – darmowa, natychmiastowa, zero obciążenia serwera). oraz w powtorkach rewiew zrob z Web Speech API opcje pod klikniecie i pod przycik "spacja" nagrywanie slowa/zdania ktore musze powtorzyc tak samo jak w powtorce oraz niech pokazuje litery na zielono ktore dobrze wypowiedziane a na czerwono te co zle to bedzie opcja shadowing ze sprawdzaniem wymowy
+15. w powtorkach rewiew zrob z Web Speech API opcje pod klikniecie przycik "spacja" nagrywanie slowa/zdania ktore musze powtorzyc tak samo jak w powtorce oraz niech pokazuje litery na zielono ktore dobrze wypowiedziane a na czerwono te co zle to bedzie opcja shadowing ze sprawdzaniem wymowy. niech w czasie sluchaia bedzie ikona ktora emituje sluchanie
 
 firebase login
 firebase deploy --only functions --project extension-eng"

@@ -142,3 +142,17 @@ test("cleanCardText strips subtitle artifacts, music tags, speaker markers and c
         assert.equal(SharedUtils.cleanTextForTTS(input), expected);
     }
 });
+
+test("formatNextUsageRenewalDate correctly formats Stripe timestamps and months", () => {
+    const SharedUtils = require("../shared/utils");
+    assert.equal(
+        SharedUtils.formatNextUsageRenewalDate(1787140800),
+        "19 sierpnia 2026",
+    );
+    assert.equal(
+        SharedUtils.formatNextUsageRenewalDate("2026-08"),
+        "1 września 2026",
+    );
+    assert.ok(SharedUtils.formatNextUsageRenewalDate(null));
+    assert.ok(SharedUtils.formatNextUsageRenewalDate(""));
+});
