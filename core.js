@@ -18,13 +18,21 @@
               isOwnUI: () => false,
           };
 
-    const { escapeHtml, escapeAttr, cleanTextForTTS, pickBestVoice, ensureVoices } =
+    const {
+        escapeHtml,
+        escapeAttr,
+        cleanTextForTTS,
+        cleanCardText,
+        pickBestVoice,
+        ensureVoices,
+    } =
         typeof SharedUtils !== "undefined"
             ? SharedUtils
             : {
                   escapeHtml: (s) => String(s || ""),
                   escapeAttr: (s) => String(s || ""),
                   cleanTextForTTS: (s) => String(s || ""),
+                  cleanCardText: (s) => String(s || ""),
                   pickBestVoice: () => null,
                   ensureVoices: () => Promise.resolve([]),
               };
@@ -356,7 +364,7 @@
             const sourceHeight = media.videoHeight || media.naturalHeight || media.height;
             if (!sourceWidth || !sourceHeight) return null;
 
-            const MAX = 640;
+            const MAX = 480;
             const scale = Math.min(MAX / sourceWidth, MAX / sourceHeight, 1);
             const width = Math.max(1, Math.round(sourceWidth * scale));
             const height = Math.max(1, Math.round(sourceHeight * scale));
@@ -365,10 +373,15 @@
             canvas.height = height;
             const ctx = canvas.getContext("2d");
             if (!ctx) return null;
-            ctx.fillStyle = "#fff";
+            ctx.fillStyle = "#12131c";
             ctx.fillRect(0, 0, width, height);
             ctx.drawImage(media, 0, 0, width, height);
-            return canvas.toDataURL("image/jpeg", 0.86);
+
+            const webpUrl = canvas.toDataURL("image/webp", 0.75);
+            if (webpUrl && webpUrl.startsWith("data:image/webp")) {
+                return webpUrl;
+            }
+            return canvas.toDataURL("image/jpeg", 0.80);
         } catch (_) {
             return null;
         }
@@ -618,12 +631,13 @@
         });
 
         async function buildSaveEntry(btn, screenshotPromise = null) {
+            const clean = typeof cleanCardText === "function" ? cleanCardText : (s) => String(s || "").trim();
             const screenshot = screenshotPromise
                 ? await screenshotPromise
                 : await captureContextScreenshot();
             return {
-                original: btn.dataset.src,
-                translated: btn.dataset.translated,
+                original: clean(btn.dataset.src) || String(btn.dataset.src || "").trim(),
+                translated: clean(btn.dataset.translated) || String(btn.dataset.translated || "").trim(),
                 srcLang: btn.dataset.srcLang,
                 tgtLang: btn.dataset.tgtLang,
                 sentence: "",
@@ -658,10 +672,11 @@
         if (saveSentenceBtn && !saveSentenceBtn.disabled) {
             saveSentenceBtn.addEventListener("click", async (ev) => {
                 ev.stopPropagation();
+                const clean = typeof cleanCardText === "function" ? cleanCardText : (s) => String(s || "").trim();
                 try {
                     const entry = await buildSaveEntry(saveSentenceBtn);
-                    entry.sentence = saveSentenceBtn.dataset.sentence || "";
-                    entry.sentenceTranslated = saveSentenceBtn.dataset.sentenceTranslated || "";
+                    entry.sentence = clean(saveSentenceBtn.dataset.sentence || "");
+                    entry.sentenceTranslated = clean(saveSentenceBtn.dataset.sentenceTranslated || "");
                     await QT.saveWord(entry);
                     saveSentenceBtn.innerHTML = `${SVG.SAVE_SENTENCE_CHECK || "✓"} <span>Zapisano!</span>`;
                     saveSentenceBtn.classList.add("saved");
@@ -683,6 +698,7 @@
                 saveAiBtn.innerHTML = `<span class="${PREFIX}spinner-small"></span> <span>Generuję…</span>`;
                 const screenshotPromise = captureContextScreenshot();
                 const aiResultEl = tooltipEl.querySelector(`#${PREFIX}ai-result`);
+                const clean = typeof cleanCardText === "function" ? cleanCardText : (s) => String(s || "").trim();
 
                 try {
                     const result = await QT.geminiGenerateSentence(
@@ -692,19 +708,22 @@
                         saveAiBtn.dataset.tgtLang,
                     );
 
+                    const cleanedSentence = clean(result.sentence) || result.sentence;
+                    const cleanedTranslation = clean(result.translation) || result.translation;
+
                     if (aiResultEl) {
                         aiResultEl.style.display = "block";
                         aiResultEl.innerHTML = `
                             <div class="${PREFIX}ai-label">✨ AI zdanie:</div>
-                            <div class="${PREFIX}ai-text">${escapeHtml(result.sentence)}</div>
-                            <div class="${PREFIX}ai-translation">${escapeHtml(result.translation)}</div>`;
+                            <div class="${PREFIX}ai-text">${escapeHtml(cleanedSentence)}</div>
+                            <div class="${PREFIX}ai-translation">${escapeHtml(cleanedTranslation)}</div>`;
                     }
 
                     const entry = await buildSaveEntry(saveAiBtn, screenshotPromise);
-                    entry.aiSentence = result.sentence;
-                    entry.aiSentenceTranslated = result.translation;
-                    entry.sentence = result.sentence;
-                    entry.sentenceTranslated = result.translation;
+                    entry.aiSentence = cleanedSentence;
+                    entry.aiSentenceTranslated = cleanedTranslation;
+                    entry.sentence = cleanedSentence;
+                    entry.sentenceTranslated = cleanedTranslation;
                     await QT.saveWord(entry);
 
                     saveAiBtn.innerHTML = `${SVG.SAVE_AI_CHECK || "✓"} <span>Zapisano!</span>`;

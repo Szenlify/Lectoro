@@ -1,8 +1,6 @@
-/** Secure Gemini proxy and subscription quota API. */
 const { onRequest } = require("firebase-functions/v2/https");
-const { onDocumentWritten } = require("firebase-functions/v2/firestore");
 const { setGlobalOptions } = require("firebase-functions/v2");
-const { defineSecret } = require("firebase-functions/params");
+const { defineSecret, defineString } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const {
     SUBSCRIPTION_PLANS,
@@ -14,6 +12,14 @@ const {
     checkElevenLabsLimit,
 } = require("./subscription-config");
 const { isReviewContext } = require("./elevenlabs-policy");
+const {
+    getCachedAudio,
+    saveCachedAudio,
+    saveCardImage,
+    deleteCardImage,
+    deleteCardImages,
+    deleteAllUserImages,
+} = require("./r2-storage");
 
 admin.initializeApp();
 setGlobalOptions({ region: "europe-west1" });
@@ -21,6 +27,21 @@ setGlobalOptions({ region: "europe-west1" });
 // environment variable without Cloud Run's env/secret name collision.
 const geminiApiKey = defineSecret("LECTORO_GEMINI_API_KEY");
 const elevenLabsApiKey = defineSecret("ELEVENLABS_API_KEY");
+const r2AccessKeyId = defineSecret("R2_ACCESS_KEY_ID");
+const r2SecretAccessKey = defineSecret("R2_SECRET_ACCESS_KEY");
+const r2AccountId = defineSecret("R2_ACCOUNT_ID");
+const r2BucketName = defineSecret("R2_BUCKET_NAME");
+const r2PublicUrl = defineSecret("R2_PUBLIC_URL");
+
+function getR2Config() {
+    return {
+        accountId: r2AccountId.value() || process.env.R2_ACCOUNT_ID || "",
+        accessKeyId: r2AccessKeyId.value() || process.env.R2_ACCESS_KEY_ID || "",
+        secretAccessKey: r2SecretAccessKey.value() || process.env.R2_SECRET_ACCESS_KEY || "",
+        bucketName: r2BucketName.value() || process.env.R2_BUCKET_NAME || "lectoro-media",
+        publicUrl: r2PublicUrl.value() || process.env.R2_PUBLIC_URL || "",
+    };
+}
 
 // Stripe endpoints live in a separate module so the AI/TTS proxy remains easy
 // to audit. Firebase Admin has already been initialized above.
@@ -30,7 +51,10 @@ function setCorsHeaders(res) {
     res.set("Access-Control-Allow-Origin", "*");
     res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
     res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-    res.set("Access-Control-Expose-Headers", "X-Lectoro-Plan, X-Lectoro-TTS-Used");
+    res.set(
+        "Access-Control-Expose-Headers",
+        "X-Lectoro-Plan, X-Lectoro-TTS-Used, X-Lectoro-Cache",
+    );
 }
 
 function usageForMonth(value, resetDate, month) {
@@ -131,46 +155,20 @@ function elevenLabsClientError(details) {
     };
 }
 
-/**
- * Admin workflow: edit subscriptionPlans/{uid}.plan in Firebase Console.
- * Keeping this control document separate avoids invoking the trigger whenever
- * ordinary monthly usage counters in users/{uid} change.
- */
-exports.syncUserPlanClaim = onDocumentWritten("subscriptionPlans/{uid}", async (event) => {
-    const snapshot = event.data?.after;
-    if (!snapshot?.exists) return;
-    const requestedPlan = String(snapshot.data()?.plan || "").trim().toLowerCase();
-    if (!Object.prototype.hasOwnProperty.call(SUBSCRIPTION_LIMITS, requestedPlan)) {
-        console.warn(
-            `[syncUserPlanClaim] Ignoring invalid plan for ${event.params.uid}: ${requestedPlan}`,
-        );
-        return;
-    }
-
-    const uid = event.params.uid;
-    const user = await admin.auth().getUser(uid);
-    if (normalizePlan(user.customClaims?.plan) === requestedPlan) return;
-    await admin.auth().setCustomUserClaims(uid, {
-        ...(user.customClaims || {}),
-        plan: requestedPlan,
-    });
-    await admin.firestore().collection("users").doc(uid).set(
-        {
-            plan: requestedPlan,
-            subscriptionStatus: "active",
-            planUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-        { merge: true },
-    );
-    console.log(`[syncUserPlanClaim] ${uid} -> ${requestedPlan}`);
-});
-
 exports.geminiProxy = onRequest(
     {
         cors: false,
         timeoutSeconds: 60,
         memory: "256MiB",
-        secrets: [geminiApiKey, elevenLabsApiKey],
+        secrets: [
+            geminiApiKey,
+            elevenLabsApiKey,
+            r2AccessKeyId,
+            r2SecretAccessKey,
+            r2AccountId,
+            r2BucketName,
+            r2PublicUrl,
+        ],
     },
     async (req, res) => {
         setCorsHeaders(res);
@@ -225,6 +223,52 @@ exports.geminiProxy = onRequest(
             });
         }
 
+        if (req.body?.action === "uploadCardImage") {
+            const { wordId, imageBase64, contentType = "image/webp" } = req.body || {};
+            if (!imageBase64 || typeof imageBase64 !== "string") {
+                return res.status(400).json({ error: "Brak danych obrazu." });
+            }
+            const base64Data = imageBase64.includes(",")
+                ? imageBase64.split(",")[1]
+                : imageBase64;
+            const buffer = Buffer.from(base64Data, "base64");
+            if (buffer.length > 5 * 1024 * 1024) {
+                return res.status(413).json({ error: "Obraz jest zbyt duży (max 5MB)." });
+            }
+            const r2Config = getR2Config();
+            const result = await saveCardImage(r2Config, uid, wordId, buffer, contentType);
+            if (!result) {
+                return res.status(503).json({
+                    error: "Magazyn Cloudflare R2 nie jest skonfigurowany.",
+                });
+            }
+            return res.status(200).json({
+                ok: true,
+                key: result.key,
+                url: result.publicUrl,
+            });
+        }
+
+        if (req.body?.action === "deleteCardImage") {
+            const { wordId, wordIds } = req.body || {};
+            const r2Config = getR2Config();
+            if (Array.isArray(wordIds) && wordIds.length > 0) {
+                const count = await deleteCardImages(r2Config, uid, wordIds);
+                return res.status(200).json({ ok: true, deleted: count });
+            }
+            if (wordId) {
+                const ok = await deleteCardImage(r2Config, uid, wordId);
+                return res.status(200).json({ ok });
+            }
+            return res.status(400).json({ error: "Brak wordId lub wordIds." });
+        }
+
+        if (req.body?.action === "deleteAllUserImages") {
+            const r2Config = getR2Config();
+            const count = await deleteAllUserImages(r2Config, uid);
+            return res.status(200).json({ ok: true, deletedCount: count });
+        }
+
         if (req.body?.action === "elevenLabsVoices") {
             if (!isReviewContext(req.body?.context)) {
                 return res.status(403).json({
@@ -272,6 +316,27 @@ exports.geminiProxy = onRequest(
             if (!/^[a-zA-Z0-9_-]{10,64}$/.test(voiceId)) {
                 return res.status(400).json({ error: "Nieprawidłowy identyfikator głosu ElevenLabs." });
             }
+
+            // 1. Central R2 Cache Check: if already synthesized, serve for free without deducting quota!
+            const r2Config = getR2Config();
+            try {
+                const cached = await getCachedAudio(r2Config, voiceId, text);
+                if (cached && cached.buffer && cached.buffer.length > 0) {
+                    res.set("Content-Type", cached.contentType || "audio/mpeg");
+                    res.set("Cache-Control", "public, max-age=31536000, immutable");
+                    res.set("X-Lectoro-Plan", claimedPlan);
+                    res.set("X-Lectoro-Cache", "HIT");
+                    res.set(
+                        "X-Lectoro-TTS-Used",
+                        String(userData.elevenLabsCharactersThisMonth || 0),
+                    );
+                    return res.status(200).send(cached.buffer);
+                }
+            } catch (cacheError) {
+                console.warn("[geminiProxy] R2 cache check warning:", cacheError.message);
+            }
+
+            // 2. Cache Miss: check plan entitlements & deduct characters
             let reservation = null;
             try {
                 reservation = await db.runTransaction(async (transaction) => {
@@ -351,9 +416,16 @@ exports.geminiProxy = onRequest(
                     });
                 }
                 const audio = Buffer.from(await ttsResponse.arrayBuffer());
+
+                // Asynchronously cache in Cloudflare R2 for future requests
+                saveCachedAudio(r2Config, voiceId, text, audio).catch((err) =>
+                    console.warn("[geminiProxy] Async R2 save error:", err.message),
+                );
+
                 res.set("Content-Type", ttsResponse.headers.get("content-type") || "audio/mpeg");
                 res.set("Cache-Control", "private, no-store");
                 res.set("X-Lectoro-Plan", claimedPlan);
+                res.set("X-Lectoro-Cache", "MISS");
                 res.set(
                     "X-Lectoro-TTS-Used",
                     String(

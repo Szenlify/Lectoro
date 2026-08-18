@@ -171,3 +171,86 @@ test("subscription refresh reuses returned AI usage without a second request", a
     assert.deepEqual(requestedActions, ["subscription"]);
     assert.equal(storageWrites, 1);
 });
+
+test("GeminiProxy.uploadCardImage sends image to backend and returns url", async (t) => {
+    let sentBody = null;
+    global.FirebaseSync = {
+        getUser: async () => ({ uid: "user-1" }),
+        getValidToken: async () => "token-1",
+    };
+    global.chrome = {
+        storage: { local: { get: async () => ({}), set: async () => {} } },
+    };
+    global.fetch = async (_url, options) => {
+        sentBody = JSON.parse(options.body);
+        return {
+            ok: true,
+            json: async () => ({
+                ok: true,
+                key: "images/user-1/word-1.webp",
+                url: "https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev/images/user-1/word-1.webp",
+            }),
+        };
+    };
+    t.after(() => {
+        delete global.FirebaseSync;
+        delete global.chrome;
+        delete global.fetch;
+        delete require.cache[require.resolve("../shared/gemini-proxy")];
+    });
+
+    const GeminiProxy = require("../shared/gemini-proxy");
+    const result = await GeminiProxy.uploadCardImage(
+        "word-1",
+        "data:image/webp;base64,UklGRkAAAABXRUJQVlA4IDQAAADwAQCdASoBAAEAAQAcJaACdLoB+AA/v2y0AAAA",
+    );
+
+    assert.ok(result);
+    assert.equal(
+        result.url,
+        "https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev/images/user-1/word-1.webp",
+    );
+    assert.equal(sentBody.action, "uploadCardImage");
+    assert.equal(sentBody.wordId, "word-1");
+    assert.equal(sentBody.contentType, "image/webp");
+});
+
+test("GeminiProxy.deleteCardImage and deleteAllUserImages send correct actions", async (t) => {
+    const sentBodies = [];
+    global.FirebaseSync = {
+        getUser: async () => ({ uid: "user-1" }),
+        getValidToken: async () => "token-1",
+    };
+    global.chrome = {
+        storage: { local: { get: async () => ({}), set: async () => {} } },
+    };
+    global.fetch = async (_url, options) => {
+        sentBodies.push(JSON.parse(options.body));
+        return {
+            ok: true,
+            json: async () => ({ ok: true, deletedCount: 5 }),
+        };
+    };
+    t.after(() => {
+        delete global.FirebaseSync;
+        delete global.chrome;
+        delete global.fetch;
+        delete require.cache[require.resolve("../shared/gemini-proxy")];
+    });
+
+    const GeminiProxy = require("../shared/gemini-proxy");
+
+    const singleDeleted = await GeminiProxy.deleteCardImage("word-1");
+    assert.equal(singleDeleted, true);
+    assert.equal(sentBodies[0].action, "deleteCardImage");
+    assert.equal(sentBodies[0].wordId, "word-1");
+
+    const batchDeleted = await GeminiProxy.deleteCardImage(["w1", "w2"]);
+    assert.equal(batchDeleted, true);
+    assert.equal(sentBodies[1].action, "deleteCardImage");
+    assert.deepEqual(sentBodies[1].wordIds, ["w1", "w2"]);
+
+    const allDeleted = await GeminiProxy.deleteAllUserImages();
+    assert.equal(allDeleted, 5);
+    assert.equal(sentBodies[2].action, "deleteAllUserImages");
+});

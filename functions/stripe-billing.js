@@ -1,8 +1,13 @@
-/** Stripe Checkout, customer portal and webhook integration for Lectoro plans. */
 const { onRequest } = require("firebase-functions/v2/https");
-const { defineSecret } = require("firebase-functions/params");
+const { defineSecret, defineString } = require("firebase-functions/params");
 const admin = require("firebase-admin");
-const Stripe = require("stripe");
+let StripeSdk = null;
+function getStripeSdk() {
+    if (!StripeSdk) {
+        StripeSdk = require("stripe");
+    }
+    return StripeSdk;
+}
 const { SUBSCRIPTION_PLANS, normalizePlan } = require("./subscription-config");
 
 const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");
@@ -18,6 +23,7 @@ const ENTITLED_STATUSES = new Set(["active", "trialing"]);
 function stripeClient() {
     const key = stripeSecretKey.value();
     if (!key) throw new Error("STRIPE_SECRET_KEY is not configured");
+    const Stripe = getStripeSdk();
     return new Stripe(key, { maxNetworkRetries: 2 });
 }
 

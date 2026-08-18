@@ -116,14 +116,35 @@
             return words.filter((w) => SharedUtils.isDueForReview(w, now)).length;
         },
 
-        cleanTextForTTS(text) {
-            return String(text ?? "")
+        /**
+         * Cleans subtitle artifacts, music notes, bracketed sound descriptions,
+         * chevrons (>>), speaker labels, HTML tags and formatting from card and TTS text.
+         */
+        cleanCardText(text) {
+            if (!text) return "";
+            let s = String(text)
+                .replace(/\u00A0/g, " ")
                 .replace(/<[^>]*>/g, " ")
-                .replace(/[♪♫♬♩]/g, " ")
+                .replace(/[♪♫♬♩♭♮♯]/g, " ")
                 .replace(/\[[^\]]*\]/g, " ")
-                .replace(/[<>#~*_^|\\/@$%&=+]/g, " ")
+                .replace(
+                    /\((?:music|applause|laughter|screaming|coughing|sighs|footsteps|sound|snorts|groans|chuckles|giggles|cheering|whispering|gasping|singing|sobbing|crying|instrumental|upbeat music|dramatic music|soft music|ambient sound)[^)]*\)/gi,
+                    " ",
+                )
+                .replace(/(?:^|\s)(?:>>+|<<+|»+|«+)(?:\s|$)/g, " ")
+                .replace(
+                    /^(?:[A-Z0-9\s_-]{2,20}:|speaker\s*\d+:|narrator:|man:|woman:|boy:|girl:|person\s*\d+:)\s*/i,
+                    "",
+                )
+                .replace(/[<>~*^|\\@$%&=+]/g, " ")
+                .replace(/[\r\n\t]+/g, " ")
                 .replace(/\s{2,}/g, " ")
                 .trim();
+            return s.replace(/^[,\s:;>«»<\\/|~*#—–-]+/, "").trim();
+        },
+
+        cleanTextForTTS(text) {
+            return SharedUtils.cleanCardText(text);
         },
 
         /**

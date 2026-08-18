@@ -618,15 +618,23 @@
             const screenshot = await getPlayerRegistry()?.captureVideoReviewScreenshot(
                 getPlayerRegistry().getVideo(),
             );
+            const clean =
+                typeof SharedUtils !== "undefined" && typeof SharedUtils.cleanCardText === "function"
+                    ? SharedUtils.cleanCardText
+                    : (s) => String(s || "").trim();
+            const cleanedText = clean(text) || text;
+            const cleanedTranslation = clean(translation) || translation || cleanedText;
+            const cleanedExplanation = clean(explanation);
+
             try {
                 await QT.saveWord({
-                    original: text,
-                    translated: translation || text,
+                    original: cleanedText,
+                    translated: cleanedTranslation,
                     srcLang: "en",
                     tgtLang: targetLang,
                     sentence: "",
                     sentenceTranslated: "",
-                    aiSentence: explanation || "",
+                    aiSentence: cleanedExplanation || "",
                     aiSentenceTranslated: "",
                     screenshot,
                     url: window.location.href,
@@ -1310,18 +1318,25 @@
             pausedForSave = true;
         }
 
+        const clean =
+            typeof SharedUtils !== "undefined" && typeof SharedUtils.cleanCardText === "function"
+                ? SharedUtils.cleanCardText
+                : (s) => String(s || "").trim();
+        const cleanedText = clean(text) || text;
+
         const screenshot = await registry.captureVideoReviewScreenshot(video);
         flashCapture();
-        showSaveToast("saving", { text });
+        showSaveToast("saving", { text: cleanedText });
 
         try {
             const targetLang = await QT.getTargetLang();
-            const { translated, detectedLang } = await QT.translate(text, targetLang);
+            const { translated, detectedLang } = await QT.translate(cleanedText, targetLang);
             const srcLang = typeof detectedLang === "string" ? detectedLang : "auto";
+            const cleanedTranslated = clean(translated) || translated || cleanedText;
 
             await QT.saveWord({
-                original: text,
-                translated: translated || text,
+                original: cleanedText,
+                translated: cleanedTranslated,
                 srcLang,
                 tgtLang: targetLang,
                 sentence: "",
@@ -1336,8 +1351,8 @@
 
             const duration = 2800;
             showSaveToast("success", {
-                text,
-                translated: translated || text,
+                text: cleanedText,
+                translated: cleanedTranslated,
                 thumb: screenshot,
                 duration,
             });

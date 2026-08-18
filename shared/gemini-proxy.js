@@ -350,10 +350,134 @@ const GeminiProxy = (() => {
         return JSON.parse(jsonMatch[0]);
     }
 
+    /**
+     * Upload user review card screenshot to Cloudflare R2 via geminiProxy.
+     *
+     * @param {string} wordId - ID of the flashcard
+     * @param {string} imageBase64 - Base64 data URL or pure base64
+     * @param {string} [contentType="image/webp"] - MIME type
+     * @returns {Promise<{key: string, url: string}|null>}
+     */
+    async function uploadCardImage(wordId, imageBase64, contentType = "image/webp") {
+        if (!wordId || !imageBase64 || typeof imageBase64 !== "string") {
+            return null;
+        }
+        const token = await getToken();
+        if (!token) {
+            return null;
+        }
+
+        let resolvedContentType = contentType;
+        if (imageBase64.startsWith("data:")) {
+            const match = imageBase64.match(/^data:(image\/[a-zA-Z0-9.-]+);base64,/);
+            if (match) {
+                resolvedContentType = match[1];
+            }
+        }
+
+        try {
+            const res = await fetch(PROXY_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    action: "uploadCardImage",
+                    wordId,
+                    imageBase64,
+                    contentType: resolvedContentType,
+                }),
+            });
+
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                console.warn("[GeminiProxy] R2 uploadCardImage failed:", res.status, data?.error);
+                return null;
+            }
+
+            const data = await res.json();
+            if (data?.ok && data?.url) {
+                return { key: data.key, url: data.url };
+            }
+            return null;
+        } catch (error) {
+            console.warn("[GeminiProxy] R2 uploadCardImage network error:", error.message);
+            return null;
+        }
+    }
+
+    /**
+     * Delete one or multiple card images from Cloudflare R2 via geminiProxy.
+     *
+     * @param {string|string[]} wordIdOrIds - Word ID or array of Word IDs
+     * @returns {Promise<boolean>}
+     */
+    async function deleteCardImage(wordIdOrIds) {
+        if (!wordIdOrIds) return false;
+        const token = await getToken();
+        if (!token) return false;
+
+        const payload = {
+            action: "deleteCardImage",
+        };
+        if (Array.isArray(wordIdOrIds)) {
+            if (wordIdOrIds.length === 0) return true;
+            payload.wordIds = wordIdOrIds;
+        } else {
+            payload.wordId = String(wordIdOrIds);
+        }
+
+        try {
+            const res = await fetch(PROXY_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify(payload),
+            });
+            return res.ok;
+        } catch (error) {
+            console.warn("[GeminiProxy] R2 deleteCardImage network error:", error.message);
+            return false;
+        }
+    }
+
+    /**
+     * Delete all images belonging to the current user from Cloudflare R2.
+     *
+     * @returns {Promise<number>} - Count of deleted images
+     */
+    async function deleteAllUserImages() {
+        const token = await getToken();
+        if (!token) return 0;
+
+        try {
+            const res = await fetch(PROXY_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ action: "deleteAllUserImages" }),
+            });
+            if (!res.ok) return 0;
+            const data = await res.json();
+            return data?.deletedCount || 0;
+        } catch (error) {
+            console.warn("[GeminiProxy] R2 deleteAllUserImages network error:", error.message);
+            return 0;
+        }
+    }
+
     // Eksport
     return {
         request,
         requestJSON,
+        uploadCardImage,
+        deleteCardImage,
+        deleteAllUserImages,
         refreshUsage,
         getCachedUsage,
         normalizeUsage,

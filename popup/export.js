@@ -169,16 +169,29 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
             // Screenshot image
             if (w.screenshot) {
                 const ts = (w.timestamp || Date.now()).toString(36);
-                const imgFile = `qt_screenshot_${ts}.jpg`;
-                // Convert base64 data URL to binary
-                const base64 = w.screenshot.split(",")[1];
-                const binaryStr = atob(base64);
-                const imgData = new Uint8Array(binaryStr.length);
-                for (let j = 0; j < binaryStr.length; j++) {
-                    imgData[j] = binaryStr.charCodeAt(j);
+                if (w.screenshot.startsWith("data:")) {
+                    const mime =
+                        w.screenshot.match(/^data:(image\/[a-zA-Z0-9.-]+);base64,/)?.[1] ||
+                        "image/jpeg";
+                    const ext = mime.includes("webp")
+                        ? "webp"
+                        : mime.includes("png")
+                          ? "png"
+                          : "jpg";
+                    const imgFile = `qt_screenshot_${ts}.${ext}`;
+                    const base64 = w.screenshot.split(",")[1] || "";
+                    if (base64) {
+                        const binaryStr = atob(base64);
+                        const imgData = new Uint8Array(binaryStr.length);
+                        for (let j = 0; j < binaryStr.length; j++) {
+                            imgData[j] = binaryStr.charCodeAt(j);
+                        }
+                        files.push({ name: imgFile, data: imgData });
+                        backText += `<br><br><img src="${imgFile}">`;
+                    }
+                } else if (/^https?:\/\//i.test(w.screenshot)) {
+                    backText += `<br><br><img src="${escapeAttr(w.screenshot)}">`;
                 }
-                files.push({ name: imgFile, data: imgData });
-                backText += `<br><br><img src="${imgFile}">`;
             }
 
             // One sound on back only: sentence audio if sentence exists, otherwise word audio
@@ -283,26 +296,26 @@ document.getElementById("exportCsv").addEventListener("click", () => {
 // buildQuizHtml, buildInteractiveQuizHtml.
 
 // ── Clear visible words ───────────────────────────────────────────
-document.getElementById("clearAll").addEventListener("click", () => {
+document.getElementById("clearAll").addEventListener("click", async () => {
     if (!confirm("Usunąć widoczne słowa?")) return;
-    chrome.storage.local.get({ savedWords: [] }, (data) => {
-        const visibleWords = filterWords(data.savedWords);
+    const words = typeof SharedWordRepository !== "undefined"
+        ? await SharedWordRepository.getStoredWords()
+        : (await chrome.storage.local.get({ savedWords: [] })).savedWords || [];
+    const visibleWords = filterWords(words);
+    if (visibleWords.length === 0) return;
+
+    if (typeof SharedWordRepository !== "undefined") {
+        await SharedWordRepository.deleteWords(visibleWords);
+    } else {
         const toRemove = new Set(
             visibleWords.map((w) => w.original + "|" + w.timestamp),
         );
-        const remaining = data.savedWords.filter(
+        const remaining = words.filter(
             (w) => !toRemove.has(w.original + "|" + w.timestamp),
         );
-        chrome.storage.local.set({ savedWords: remaining }, () => {
-            if (chrome.runtime.lastError) {
-                console.error(
-                    "[Lectoro] Nie udało się usunąć słów:",
-                    chrome.runtime.lastError.message,
-                );
-            }
-            loadWords();
-        });
-    });
+        await chrome.storage.local.set({ savedWords: remaining });
+    }
+    loadWords();
 });
 
 // ── Mark exported words as downloaded ─────────────────────────────

@@ -257,6 +257,9 @@ const FirebaseSync = (() => {
         f.ttsCacheInvalidatedAt = {
             integerValue: String(word.ttsCacheInvalidatedAt || 0),
         };
+        if (word.screenshot) {
+            f.screenshot = { stringValue: word.screenshot };
+        }
 
         // SR data (flattened for simpler REST handling)
         if (word.sr) {
@@ -284,6 +287,7 @@ const FirebaseSync = (() => {
             sentenceTranslated: fields.sentenceTranslated?.stringValue || "",
             srcLang: fields.srcLang?.stringValue || "",
             tgtLang: fields.tgtLang?.stringValue || "",
+            screenshot: fields.screenshot?.stringValue || "",
             timestamp: parseInt(fields.timestamp?.integerValue || "0"),
             downloaded: fields.downloaded?.booleanValue || false,
             updatedAt: parseInt(fields.updatedAt?.integerValue || "0"),

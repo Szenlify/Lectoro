@@ -1,16 +1,10 @@
 [TODO]
 
-1. zdjecia od powtorek do claudflare R2 w webp w malej rozdzielczosci
-
 2. zrob w kazdym jezyku aby był text UI nagłowki wszystkie w zaleznosci jaki zalezny jest język a jako defaul jest angielski [na pozniej jako ostatnie]
-
-3. na netflix jak tlumacze cale zdanie to jak nie ruszam myszka i napisy opadaja wtedy kiedy chowa sie dolny pasek playera to tez tlumaczenie opada a adapter napisow nie opada wiec chcialbym aby tlumaczenie tez nie opadalo
 
 5. dodaj na netflixie ze po kazdym wypowiedzianym zdaniu i opcje 1. moze byc zatrzymany film 2. wstrzymuje sie na 1s/2s/3s z paskiem ladowania na samej gorze od prawej do lewej
 
-6. też na youtubie niech pobiera napisy od youtube i niech bedzie opcja jak na netflixie zeby przewijal do poczatku napisow lub do konca
-
-7. napisy reel niech sie pojawiaja tam gdzie jest najciemniejsze miejsce na filmiku ale zawsze tak aby byly cale widoczne
+6. pobieranie napisow youtube api
 
 8. piracka biblioteka
 

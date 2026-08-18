@@ -122,3 +122,23 @@ test("character counting handles Unicode code points", () => {
 test("currentMonth returns YYYY-MM format", () => {
     assert.match(currentMonth(), /^\d{4}-\d{2}$/);
 });
+
+test("cleanCardText strips subtitle artifacts, music tags, speaker markers and chevrons", () => {
+    const SharedUtils = require("../shared/utils");
+    const cases = [
+        ["[music] >> If you going then I will go.", "If you going then I will go."],
+        ["♪ Never gonna give you up ♪", "Never gonna give you up"],
+        [">> (music playing) >> Hey guys, welcome back!", "Hey guys, welcome back!"],
+        ["[Applause] - Wait, is that true?", "Wait, is that true?"],
+        ["NARRATOR: In a world where anything is possible.", "In a world where anything is possible."],
+        ["<b>Hello</b> <font color=\"#fff\">world</font>", "Hello world"],
+        ["[screaming] [laughter] Just do it!", "Just do it!"],
+        ["  >>  Let's do this!  ", "Let's do this!"],
+        ["SPEAKER 1: Exactly what I thought.", "Exactly what I thought."],
+    ];
+
+    for (const [input, expected] of cases) {
+        assert.equal(SharedUtils.cleanCardText(input), expected);
+        assert.equal(SharedUtils.cleanTextForTTS(input), expected);
+    }
+});

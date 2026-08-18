@@ -75,8 +75,31 @@
         if (!chrome?.storage?.local) {
             return { saved: false, reason: "STORAGE_UNAVAILABLE" };
         }
+
+        const clean =
+            typeof SharedUtils !== "undefined" && typeof SharedUtils.cleanCardText === "function"
+                ? SharedUtils.cleanCardText
+                : (t) => String(t || "").trim();
+
+        const cleanedOriginal = clean(entry?.original) || String(entry?.original || "").trim();
+        const cleanedTranslated = clean(entry?.translated) || String(entry?.translated || "").trim();
+        const cleanedSentence = clean(entry?.sentence);
+        const cleanedSentenceTranslated = clean(entry?.sentenceTranslated);
+        const cleanedAiSentence = clean(entry?.aiSentence);
+        const cleanedAiSentenceTranslated = clean(entry?.aiSentenceTranslated);
+
+        const sanitizedEntry = {
+            ...entry,
+            original: cleanedOriginal,
+            translated: cleanedTranslated,
+            sentence: cleanedSentence,
+            sentenceTranslated: cleanedSentenceTranslated,
+            aiSentence: cleanedAiSentence,
+            aiSentenceTranslated: cleanedAiSentenceTranslated,
+        };
+
         const words = await getStoredWords();
-        if (isDuplicateEntry(words, entry)) {
+        if (isDuplicateEntry(words, sanitizedEntry)) {
             return { saved: false, duplicate: true };
         }
 
@@ -95,16 +118,35 @@
 
         const now = Date.now();
         const newEntry = {
-            ...entry,
-            id: entry.id || generateId(),
-            sr: entry.sr ? { ...entry.sr } : createDefaultSR(),
-            timestamp: entry.timestamp || now,
+            ...sanitizedEntry,
+            id: sanitizedEntry.id || generateId(),
+            sr: sanitizedEntry.sr ? { ...sanitizedEntry.sr } : createDefaultSR(),
+            timestamp: sanitizedEntry.timestamp || now,
             updatedAt: now,
-            downloaded: !!entry.downloaded,
+            downloaded: !!sanitizedEntry.downloaded,
         };
 
         words.push(newEntry);
         await setStoredWords(words);
+
+        // Asynchronously offload screenshot to Cloudflare R2 if present
+        if (
+            newEntry.screenshot &&
+            newEntry.screenshot.startsWith("data:") &&
+            typeof GeminiProxy !== "undefined" &&
+            typeof GeminiProxy.uploadCardImage === "function"
+        ) {
+            GeminiProxy.uploadCardImage(newEntry.id, newEntry.screenshot)
+                .then(async (uploaded) => {
+                    if (uploaded && uploaded.url) {
+                        await updateWord(newEntry.id, { screenshot: uploaded.url });
+                    }
+                })
+                .catch((err) => {
+                    console.warn("[WordRepository] Background R2 upload failed:", err);
+                });
+        }
+
         return { saved: true, entry: newEntry };
     }
 
@@ -122,9 +164,37 @@
         if (index === -1) return null;
 
         const existing = words[index];
+        const changes = typeof updater === "function" ? updater(existing) : updater;
+        const clean =
+            typeof SharedUtils !== "undefined" && typeof SharedUtils.cleanCardText === "function"
+                ? SharedUtils.cleanCardText
+                : (t) => String(t || "").trim();
+
+        const sanitizedChanges = { ...changes };
+        if (typeof sanitizedChanges.original === "string") {
+            sanitizedChanges.original =
+                clean(sanitizedChanges.original) || sanitizedChanges.original.trim();
+        }
+        if (typeof sanitizedChanges.translated === "string") {
+            sanitizedChanges.translated =
+                clean(sanitizedChanges.translated) || sanitizedChanges.translated.trim();
+        }
+        if (typeof sanitizedChanges.sentence === "string") {
+            sanitizedChanges.sentence = clean(sanitizedChanges.sentence);
+        }
+        if (typeof sanitizedChanges.sentenceTranslated === "string") {
+            sanitizedChanges.sentenceTranslated = clean(sanitizedChanges.sentenceTranslated);
+        }
+        if (typeof sanitizedChanges.aiSentence === "string") {
+            sanitizedChanges.aiSentence = clean(sanitizedChanges.aiSentence);
+        }
+        if (typeof sanitizedChanges.aiSentenceTranslated === "string") {
+            sanitizedChanges.aiSentenceTranslated = clean(sanitizedChanges.aiSentenceTranslated);
+        }
+
         const updated = {
             ...existing,
-            ...(typeof updater === "function" ? updater(existing) : updater),
+            ...sanitizedChanges,
             updatedAt: Date.now(),
         };
         words[index] = updated;
@@ -155,20 +225,85 @@
     }
 
     /**
-     * Delete a single word from storage.
+     * Delete a single word from storage and clean up associated image from R2.
      */
     async function deleteWord(idOrOriginal, timestamp = null) {
         const words = await getStoredWords();
+        const removedWords = [];
         const filtered = words.filter((w) => {
-            if (w.id && w.id === idOrOriginal) return false;
-            if (timestamp !== null && w.original === idOrOriginal && w.timestamp === timestamp) {
+            const matchesId = w.id && w.id === idOrOriginal;
+            const matchesTimestamp =
+                timestamp !== null && w.original === idOrOriginal && w.timestamp === timestamp;
+            const matchesOriginal = w.original === idOrOriginal && !timestamp;
+
+            if (matchesId || matchesTimestamp || matchesOriginal) {
+                removedWords.push(w);
                 return false;
             }
-            if (w.original === idOrOriginal && !timestamp) return false;
             return true;
         });
+
         await setStoredWords(filtered);
+
+        // Asynchronously clean up images from Cloudflare R2
+        if (typeof GeminiProxy !== "undefined" && typeof GeminiProxy.deleteCardImage === "function") {
+            const wordIds = removedWords.map((w) => w.id).filter(Boolean);
+            if (wordIds.length > 0) {
+                GeminiProxy.deleteCardImage(wordIds).catch((err) => {
+                    console.warn("[WordRepository] R2 deleteCardImage error:", err);
+                });
+            }
+        }
+
         return { deleted: words.length - filtered.length };
+    }
+
+    /**
+     * Delete a list of words from storage and clean up their images from R2.
+     */
+    async function deleteWords(wordsToDelete = []) {
+        if (!Array.isArray(wordsToDelete) || wordsToDelete.length === 0) {
+            return { deleted: 0 };
+        }
+        const words = await getStoredWords();
+        const deleteIds = new Set(wordsToDelete.map((w) => w.id).filter(Boolean));
+        const deleteKeys = new Set(wordsToDelete.map((w) => wordKey(w)));
+
+        const removedWords = [];
+        const remaining = words.filter((w) => {
+            if ((w.id && deleteIds.has(w.id)) || deleteKeys.has(wordKey(w))) {
+                removedWords.push(w);
+                return false;
+            }
+            return true;
+        });
+
+        await setStoredWords(remaining);
+
+        // Asynchronously clean up images from Cloudflare R2
+        if (typeof GeminiProxy !== "undefined" && typeof GeminiProxy.deleteCardImage === "function") {
+            const wordIds = removedWords.map((w) => w.id).filter(Boolean);
+            if (wordIds.length > 0) {
+                GeminiProxy.deleteCardImage(wordIds).catch((err) => {
+                    console.warn("[WordRepository] R2 batch deleteCardImage error:", err);
+                });
+            }
+        }
+
+        return { deleted: removedWords.length };
+    }
+
+    /**
+     * Clear all words and wipe all associated user images from Cloudflare R2.
+     */
+    async function clearAllWords() {
+        await setStoredWords([]);
+        if (typeof GeminiProxy !== "undefined" && typeof GeminiProxy.deleteAllUserImages === "function") {
+            GeminiProxy.deleteAllUserImages().catch((err) => {
+                console.warn("[WordRepository] R2 deleteAllUserImages error:", err);
+            });
+        }
+        return { ok: true };
     }
 
     /**
@@ -225,6 +360,8 @@
         saveWord,
         updateWord,
         deleteWord,
+        deleteWords,
+        clearAllWords,
         recordReviewRating,
         filterWords,
         generateId,

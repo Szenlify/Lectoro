@@ -153,13 +153,54 @@ async function flushPendingChanges() {
         const entries = Object.values(snapshot);
 
         if (entries.length > 0) {
+            // Upload any pending base64 screenshots to Cloudflare R2 before syncing to Firestore
+            for (const entry of entries) {
+                if (
+                    entry.type === "upsert" &&
+                    entry.word?.screenshot &&
+                    entry.word.screenshot.startsWith("data:") &&
+                    typeof GeminiProxy !== "undefined" &&
+                    typeof GeminiProxy.uploadCardImage === "function"
+                ) {
+                    try {
+                        const uploaded = await GeminiProxy.uploadCardImage(
+                            entry.word.id,
+                            entry.word.screenshot,
+                        );
+                        if (uploaded?.url) {
+                            entry.word.screenshot = uploaded.url;
+                            if (typeof SharedWordRepository !== "undefined") {
+                                await SharedWordRepository.updateWord(entry.word.id, {
+                                    screenshot: uploaded.url,
+                                });
+                            }
+                        }
+                    } catch (uploadError) {
+                        console.warn("[Lectoro] R2 upload during sync error:", uploadError);
+                    }
+                }
+            }
+
+            const deleteEntries = entries.filter((entry) => entry.type === "delete");
+            const deleteWordIds = deleteEntries
+                .map((entry) => entry.word?.id)
+                .filter(Boolean);
+
+            if (
+                deleteWordIds.length > 0 &&
+                typeof GeminiProxy !== "undefined" &&
+                typeof GeminiProxy.deleteCardImage === "function"
+            ) {
+                GeminiProxy.deleteCardImage(deleteWordIds).catch((err) => {
+                    console.warn("[Lectoro] R2 delete during sync error:", err);
+                });
+            }
+
             await FirebaseSync.writeBatch(context.user.uid, context.token, {
                 upserts: entries
                     .filter((entry) => entry.type === "upsert")
                     .map((entry) => entry.word),
-                deletes: entries
-                    .filter((entry) => entry.type === "delete")
-                    .map((entry) => entry.word),
+                deletes: deleteEntries.map((entry) => entry.word),
             });
         }
 
