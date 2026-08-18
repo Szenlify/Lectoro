@@ -16,8 +16,6 @@
 
 9. w settings w div kredytow jest napis Limit odnawia się co miesiąc. podaj date obok kiedy dokladnie sie odnowi jesli subskrybuje to dokladna data kiedy mi pobiera pienidze oraz kiedy wtedy ma sie pakiet odnawiac, a na koncie free pakiet ma sie nie odnawiać.
 
-10. przy wybiorze glosy probka glosu do oczytu (zapisana w projekcie tak zeby nie generowaly kosztow)
-
 11. popraw prompty AI tak aby byly krotkie, po angielsku, zeby mniej tokenow ai zuzywalo i idealnie dopracowane
 
 12. po Nacisnieciu Enter ,S  niech kazdy klawisz WSAD itp kasuje tooltipa i wznawia video
@@ -25,7 +23,6 @@ dla przykladu tlumacze za pomoca "Enter" AI, video sie pauzuje i drukie klikniec
 
 13. Klawisz "Z" jesli jest plan Basic lub Pro to tlumaczenia ma robic AI tak jak za pomoca Enter poprostu tlumaczenie bez wyjasnienia
 
-14. Uporzadkuj kod aby netflix nie wiedzial skad biore napisy tylko niech je przyjmuje, wyodrebnij logike lookmovie do osobnego pliku, i podziel kod aby kazdy plik bral logike z jednego pliku jesli potrzeba
 
 15. Tłumaczenia w locie na stronach: Wyłącznie Web Speech API (wbudowana synteza mowy w przeglądarkę – darmowa, natychmiastowa, zero obciążenia serwera). oraz w powtorkach rewiew zrob z Web Speech API opcje pod klikniecie i pod przycik "spacja" nagrywanie slowa/zdania ktore musze powtorzyc tak samo jak w powtorce oraz niech pokazuje litery na zielono ktore dobrze wypowiedziane a na czerwono te co zle to bedzie opcja shadowing ze sprawdzaniem wymowy
 
