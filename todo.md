@@ -29,6 +29,8 @@ dla przykladu tlumacze za pomoca "Enter" AI, video sie pauzuje i drukie klikniec
 
 14. Uporzadkuj kod aby netflix nie wiedzial skad biore napisy tylko niech je przyjmuje, wyodrebnij logike lookmovie do osobnego pliku, i podziel kod aby kazdy plik bral logike z jednego pliku jesli potrzeba
 
+15. Tłumaczenia w locie na stronach: Wyłącznie Web Speech API (wbudowana synteza mowy w przeglądarkę – darmowa, natychmiastowa, zero obciążenia serwera). oraz w powtorkach rewiew zrob z Web Speech API opcje pod klikniecie i pod przycik "spacja" nagrywanie slowa/zdania ktore musze powtorzyc tak samo jak w powtorce oraz niech pokazuje litery na zielono ktore dobrze wypowiedziane a na czerwono te co zle to bedzie opcja shadowing ze sprawdzaniem wymowy
+
 firebase login
 firebase deploy --only functions --project extension-eng"
 lub
