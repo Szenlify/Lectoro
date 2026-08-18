@@ -165,29 +165,24 @@ function autoSpeakReviewCard(w, answerVisible = false) {
         cacheFirst: true,
         cacheNotBefore: Number(w.ttsCacheInvalidatedAt || 0),
     };
-    if (!answerVisible) {
-        const questionWord = isReverse ? w.translated : w.original;
-        const questionSentence = isReverse
-            ? w.sentenceTranslated || ""
-            : w.sentence || "";
-        const questionLang = isReverse ? tgtL : srcL;
-        popupSpeak(
-            buildReviewSpeakText(questionWord, questionSentence),
-            questionLang,
-            cacheOptions,
-        ).catch(() => {});
-    } else {
-        const answerWord = isReverse ? w.original : w.translated;
-        const answerSentence = isReverse
-            ? w.sentence || ""
-            : w.sentenceTranslated || "";
-        const answerLang = isReverse ? srcL : tgtL;
-        popupSpeak(
-            buildReviewSpeakText(answerWord, answerSentence),
-            answerLang,
-            cacheOptions,
-        ).catch(() => {});
-    }
+
+    // Zawsze oryginalny tekst (srcLang) używa wybranego głosu lektora (np. ElevenLabs);
+    // Tłumaczenie (tgtLang) ZAWSZE czyta darmowy głos systemowy.
+    const isSpeakingOriginal = !answerVisible ? !isReverse : isReverse;
+    const speakWord = isSpeakingOriginal ? w.original : w.translated;
+    const speakSentence = isSpeakingOriginal
+        ? w.sentence || ""
+        : w.sentenceTranslated || "";
+    const speakLang = isSpeakingOriginal ? srcL : tgtL;
+
+    popupSpeak(
+        buildReviewSpeakText(speakWord, speakSentence),
+        speakLang,
+        {
+            ...cacheOptions,
+            forceBrowser: !isSpeakingOriginal,
+        },
+    ).catch(() => {});
 }
 
 // ── Keyboard shortcuts for review — flashcard-style controls ──────

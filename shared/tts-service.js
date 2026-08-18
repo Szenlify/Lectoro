@@ -105,27 +105,6 @@
         }
     }
 
-    async function pickRandomElevenLabsVoiceId() {
-        let voices = cachedRandomElevenLabsVoices;
-        if (!voices.length && typeof SubscriptionService !== "undefined") {
-            voices = await SubscriptionService.getElevenLabsVoices("review");
-            cachedRandomElevenLabsVoices = voices || [];
-        }
-        const voiceIds = voices
-            .map((v) => v?.voice_id)
-            .filter((id) => id && id !== "random");
-        if (!voiceIds.length) {
-            throw new Error("Brak dostępnych głosów ElevenLabs.");
-        }
-        const candidates =
-            voiceIds.length > 1
-                ? voiceIds.filter((id) => id !== lastRandomElevenLabsVoiceId)
-                : voiceIds;
-        const voiceId = candidates[Math.floor(Math.random() * candidates.length)];
-        lastRandomElevenLabsVoiceId = voiceId;
-        return voiceId;
-    }
-
     /**
      * Internal direct browser synthesis without resetting tokens.
      */
@@ -198,15 +177,13 @@
             !forceBrowser &&
             settings.ttsMode === "elevenlabs" &&
             !!settings.elVoiceId &&
+            settings.elVoiceId !== "random" &&
             typeof SubscriptionService !== "undefined" &&
             typeof AudioCache !== "undefined";
 
         if (useElevenLabs) {
             try {
-                const targetVoiceId =
-                    settings.elVoiceId === "random"
-                        ? await pickRandomElevenLabsVoiceId()
-                        : settings.elVoiceId;
+                const targetVoiceId = settings.elVoiceId;
 
                 if (isCancelled?.() || currentToken !== globalSpeechToken) {
                     return { type: "none", obj: null };

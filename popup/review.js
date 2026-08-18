@@ -133,9 +133,7 @@ function syncReviewVoiceButton() {
             .enabled;
     const voice = selectedReviewVoice();
     const usingElevenLabs =
-        enabled && ttsMode === "elevenlabs" && !!reviewElVoiceId;
-    const usingRandomElevenLabs =
-        usingElevenLabs && reviewElVoiceId === "random";
+        enabled && ttsMode === "elevenlabs" && !!reviewElVoiceId && reviewElVoiceId !== "random";
 
     btn.classList.toggle("is-elevenlabs", usingElevenLabs);
     const usingRandomSystem =
@@ -148,16 +146,12 @@ function syncReviewVoiceButton() {
     badge.classList.toggle("is-locked", !enabled);
     badge.textContent = usingElevenLabs ? "EL" : "AI";
     label.textContent = usingElevenLabs
-        ? usingRandomElevenLabs
-            ? "Losowy EL"
-            : voice?.name || "ElevenLabs"
+        ? voice?.name || "ElevenLabs"
         : usingRandomSystem
           ? "Losowy"
           : "Głos";
     btn.title = usingElevenLabs
-        ? usingRandomElevenLabs
-            ? "ElevenLabs: losowy głos dla nowych nagrań"
-            : `ElevenLabs: ${voice?.name || "wybrany głos"}`
+        ? `ElevenLabs: ${voice?.name || "wybrany głos"}`
         : "Wybierz głos powtórek";
 }
 
@@ -200,11 +194,6 @@ function renderElevenLabsVoiceSelect() {
     placeholderOption.disabled = true;
     select.appendChild(placeholderOption);
 
-    const randomOption = document.createElement("option");
-    randomOption.value = "random";
-    randomOption.textContent = "✦ Losowy głos ElevenLabs";
-    select.appendChild(randomOption);
-
     reviewElVoices.forEach((voice) => {
         const option = document.createElement("option");
         option.value = voice.voice_id;
@@ -215,8 +204,8 @@ function renderElevenLabsVoiceSelect() {
     if (
         ttsMode === "elevenlabs" &&
         reviewElVoiceId &&
-        (reviewElVoiceId === "random" ||
-            reviewElVoices.some((voice) => voice.voice_id === reviewElVoiceId))
+        reviewElVoiceId !== "random" &&
+        reviewElVoices.some((voice) => voice.voice_id === reviewElVoiceId)
     ) {
         select.value = reviewElVoiceId;
     } else {
@@ -226,11 +215,6 @@ function renderElevenLabsVoiceSelect() {
     const meta = document.createElement("div");
     meta.className = "review-voice-meta";
     const updateMeta = () => {
-        if (select.value === "random") {
-            meta.textContent =
-                "Nowe nagrania otrzymają losowy głos; zapisany cache nadal ma pierwszeństwo.";
-            return;
-        }
         const voice = reviewElVoices.find(
             (item) => item.voice_id === select.value,
         );
@@ -254,12 +238,7 @@ function renderElevenLabsVoiceSelect() {
         });
         updateMeta();
         syncReviewVoiceButton();
-        setReviewVoiceStatus(
-            reviewElVoiceId === "random"
-                ? "✓ Losowy głos ElevenLabs jest włączony."
-                : "✓ Głos ElevenLabs włączony.",
-            "ok",
-        );
+        setReviewVoiceStatus("✓ Głos ElevenLabs włączony.", "ok");
     });
 
     wrap.append(select, meta);
@@ -585,6 +564,7 @@ function renderQuestion(w) {
         ? w.sentenceTranslated || ""
         : w.sentence || "";
     const wordClass = isReverse ? "__qt_translated" : "__qt_original";
+    const forceBrowserAttr = isReverse ? 'data-force-browser-tts="true"' : "";
     const cacheAttrs = `data-cache-first="true" data-cache-not-before="${Number(w.ttsCacheInvalidatedAt || 0)}"`;
     const sr = w.sr || { step: 0, interval: 0 };
     const sentenceHtml = showSentence
@@ -604,7 +584,7 @@ function renderQuestion(w) {
                         <span class="review-word ${wordClass}">${escapeHtml(showWord)}</span>
                         <button class="review-speak-btn" data-text="${escapeAttr(
                             buildReviewSpeakText(showWord, showSentence),
-                        )}" data-lang="${escapeAttr(showLang)}" ${cacheAttrs} title="Odczytaj">${SPEAK_SVG}</button>
+                        )}" data-lang="${escapeAttr(showLang)}" ${forceBrowserAttr} ${cacheAttrs} title="Odczytaj">${SPEAK_SVG}</button>
                     </div>
                     ${sentenceHtml}
                     ${w.screenshot ? `<div class="review-screenshot"><img src="${w.screenshot}" alt="Screenshot" class="review-screenshot-img"></div>` : ""}
@@ -882,6 +862,7 @@ function renderAnswer(w) {
     const aLang = isReverse ? srcL : tgtL;
     const aSentence = isReverse ? w.sentence || "" : w.sentenceTranslated || "";
     const aWordClass = isReverse ? "__qt_original" : "__qt_translated";
+    const forceBrowserAttr = !isReverse ? 'data-force-browser-tts="true"' : "";
     const cacheAttrs = `data-cache-first="true" data-cache-not-before="${Number(w.ttsCacheInvalidatedAt || 0)}"`;
 
     // Same layout as the question side (review-word-row / review-context-row
@@ -895,7 +876,7 @@ function renderAnswer(w) {
                     <span class="review-word ${aWordClass}">${escapeHtml(aWord)}</span>
                     <button class="review-speak-btn" data-text="${escapeAttr(
                         buildReviewSpeakText(aWord, aSentence),
-                    )}" data-lang="${escapeAttr(aLang)}" ${cacheAttrs} title="Odczytaj">${SPEAK_SVG}</button>
+                    )}" data-lang="${escapeAttr(aLang)}" ${forceBrowserAttr} ${cacheAttrs} title="Odczytaj">${SPEAK_SVG}</button>
                 </div>
                 ${
                     aSentence
