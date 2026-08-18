@@ -15,8 +15,6 @@
 
     let activeAudio = null;
     let globalSpeechToken = 0;
-    let cachedRandomElevenLabsVoices = [];
-    let lastRandomElevenLabsVoiceId = "";
     let providerError = null;
 
     function cleanText(text) {
@@ -27,6 +25,7 @@
             .replace(/<[^>]*>/g, " ")
             .replace(/[<>]/g, "")
             .replace(/#/g, "")
+            .replace(/♪/g, "")
             .replace(/\s{2,}/g, " ")
             .trim();
     }
@@ -196,7 +195,6 @@
         {
             forceBrowser = false,
             useConfiguredRate = true,
-            cacheFirst = false,
             cacheNotBefore = 0,
             isCancelled = null,
         } = {},

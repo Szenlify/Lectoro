@@ -141,6 +141,12 @@
                 const handleSubtitleAction = (data) => {
                     if (modeRevision !== overlay.subtitleModeRevision) return;
                     overlay.resetSubtitleModeStarting();
+
+                    // If neither mode is enabled, do not translate anything
+                    if (!data.wordCloudMode && !data.subtitleTTS) {
+                        return;
+                    }
+
                     const snapshot = overlay.captureSubtitleSnapshot();
                     const { text, elements, layout } = snapshot;
                     if (!text) return;
@@ -150,7 +156,7 @@
                         modeRevision,
                     );
 
-                    if (registry.isNetflixPage()) {
+                    if (registry.isNetflixPage() && !data.wordCloudMode) {
                         globalThis.LectoroNetflixAdapter?.setOriginalSubtitlesHidden?.(true);
                     }
 
@@ -190,13 +196,6 @@
                     } else if (data.subtitleTTS) {
                         overlay.doSentenceTranslation(video, text, {
                             speakTranslated: true,
-                            revision: modeRevision,
-                            layout,
-                            translationTask,
-                        });
-                    } else {
-                        overlay.doSentenceTranslation(video, text, {
-                            speakTranslated: false,
                             revision: modeRevision,
                             layout,
                             translationTask,

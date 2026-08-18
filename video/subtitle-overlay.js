@@ -770,7 +770,7 @@
         if (rect.width === 0 && rect.height === 0) return;
         const cloudRect = cloud.getBoundingClientRect();
         let left = rect.left + (rect.width - cloudRect.width) / 2;
-        let top = rect.top - cloudRect.height + 8;
+        let top = rect.top - cloudRect.height - 6;
         left = Math.max(4, Math.min(left, window.innerWidth - cloudRect.width - 4));
         if (top < 4) top = rect.bottom + 4;
         cloud.style.left = left + "px";
@@ -792,8 +792,7 @@
 
         if (isSubHovering && subTooltipAnchor) {
             if (subTooltipAnchor.isConnected) {
-                const placement = isNetflixPage() ? "bottom" : "top";
-                QT.positionTooltip(subTooltipAnchor.getBoundingClientRect(), placement);
+                QT.positionTooltip(subTooltipAnchor.getBoundingClientRect(), "top");
             } else {
                 closeSubTooltip();
             }
@@ -832,17 +831,22 @@
                 .join(" ");
         if (!fullText) return;
 
-        wordCloudWasPlaying = !video.paused;
+        wordCloudWasPlaying = video ? !video.paused : false;
         wordCloudActive = true;
+        if (video && !video.paused) {
+            try {
+                video.pause();
+            } catch (_) {}
+        }
 
         const wordSpans = [];
         const parent = QT.getOverlayParent();
         const detachedSourceLayers = isNetflixPage();
         for (const sourceEl of subEls) {
             if (!sourceEl.textContent.trim()) continue;
-            let wordContainer = sourceEl;
+            let spansInSource = [];
             if (detachedSourceLayers) {
-                wordContainer = globalThis.LectoroNetflixAdapter?.createWordCloudSourceLayer?.({
+                const wordContainer = globalThis.LectoroNetflixAdapter?.createWordCloudSourceLayer?.({
                     source: sourceEl,
                     parent,
                     prefix: PREFIX,
@@ -850,24 +854,31 @@
                 });
                 if (!wordContainer) continue;
                 wordCloudSourceLayers.push({ layer: wordContainer });
+                spansInSource = Array.from(
+                    wordContainer.querySelectorAll("." + PREFIX + "wc-word"),
+                );
             } else {
-                eOriginalContents.push({
-                    el: sourceEl,
-                    html: sourceEl.innerHTML,
-                });
-                QT.splitIntoWordSpans(sourceEl, PREFIX + "wc-word");
+                let existingSpans = Array.from(
+                    sourceEl.querySelectorAll("." + PREFIX + "sub-word, ." + PREFIX + "wc-word"),
+                );
+                if (existingSpans.length === 0) {
+                    QT.splitIntoWordSpans(sourceEl, PREFIX + "sub-word");
+                    sourceEl.dataset[PREFIX + "bound"] = "1";
+                    sourceEl.dataset[PREFIX + "source"] = sourceEl.textContent.trim();
+                    existingSpans = Array.from(
+                        sourceEl.querySelectorAll("." + PREFIX + "sub-word"),
+                    );
+                }
+                spansInSource = existingSpans;
             }
-            wordContainer
-                .querySelectorAll("." + PREFIX + "wc-word")
-                .forEach((span) => {
-                    wordSpans.push(span);
-                    if (shouldTranslateWord(span.textContent))
-                        span.classList.add(PREFIX + "word-cloud-highlight");
-                    else span.classList.remove(PREFIX + "word-cloud-highlight");
-                });
-        }
 
-        video.pause();
+            spansInSource.forEach((span) => {
+                wordSpans.push(span);
+                if (shouldTranslateWord(span.textContent))
+                    span.classList.add(PREFIX + "word-cloud-highlight");
+                else span.classList.remove(PREFIX + "word-cloud-highlight");
+            });
+        }
 
         if (wordSpans.length === 0) {
             removeWordClouds();
@@ -1158,6 +1169,15 @@
         if (modeRevision !== subtitleModeRevision) return;
         const text = sourceText || getPlayerRegistry()?.getCurrentText();
         if (!text) return;
+
+        eWasPlaying = video ? !video.paused : false;
+        eTranslateActive = true;
+        if (video && !video.paused) {
+            try {
+                video.pause();
+            } catch (_) {}
+        }
+
         const layout = options.layout || captureSubtitleLayout();
         showSubLoading(layout);
         const translation = await (options.translationTask ||
