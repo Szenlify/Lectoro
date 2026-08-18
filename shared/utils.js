@@ -198,11 +198,46 @@
         },
 
         /**
+         * Asynchronously ensure Web Speech API voices are loaded.
+         * Resolves immediately if voices are already loaded, or listens for 'voiceschanged' with safety timeout.
+         */
+        ensureVoices(timeoutMs = 250) {
+            if (typeof window === "undefined" || !window.speechSynthesis) {
+                return Promise.resolve([]);
+            }
+            const currentVoices = window.speechSynthesis.getVoices?.() || [];
+            if (currentVoices.length > 0) {
+                return Promise.resolve(currentVoices);
+            }
+            return new Promise((resolve) => {
+                let timer = null;
+                const onVoices = () => {
+                    if (timer) clearTimeout(timer);
+                    try {
+                        window.speechSynthesis?.removeEventListener?.("voiceschanged", onVoices);
+                    } catch (_) {}
+                    resolve(window.speechSynthesis?.getVoices?.() || []);
+                };
+                try {
+                    window.speechSynthesis?.addEventListener?.("voiceschanged", onVoices);
+                } catch (_) {}
+                timer = setTimeout(() => {
+                    try {
+                        window.speechSynthesis?.removeEventListener?.("voiceschanged", onVoices);
+                    } catch (_) {}
+                    resolve(window.speechSynthesis?.getVoices?.() || []);
+                }, timeoutMs);
+            });
+        },
+
+        /**
          * Pick the best available voice.
          * Priority: user-saved > natural/neural > Google > remote > any
          */
-        pickBestVoice(savedVoiceName, lang) {
-            const voices = window.speechSynthesis?.getVoices?.() || [];
+        pickBestVoice(savedVoiceName, lang, voicesList = null) {
+            const voices = (Array.isArray(voicesList) && voicesList.length > 0)
+                ? voicesList
+                : (window.speechSynthesis?.getVoices?.() || []);
             if (!voices.length) return null;
 
             const baseLang = (lang || "en").split("-")[0].toLowerCase();
@@ -227,5 +262,13 @@
         },
     };
 
+    // Pre-warm voices in background immediately upon module load
+    try {
+        if (typeof window !== "undefined" && window.speechSynthesis) {
+            window.speechSynthesis.getVoices?.();
+        }
+    } catch (_) {}
+
     return SharedUtils;
 });
+

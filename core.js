@@ -18,7 +18,7 @@
               isOwnUI: () => false,
           };
 
-    const { escapeHtml, escapeAttr, cleanTextForTTS, pickBestVoice } =
+    const { escapeHtml, escapeAttr, cleanTextForTTS, pickBestVoice, ensureVoices } =
         typeof SharedUtils !== "undefined"
             ? SharedUtils
             : {
@@ -26,6 +26,7 @@
                   escapeAttr: (s) => String(s || ""),
                   cleanTextForTTS: (s) => String(s || ""),
                   pickBestVoice: () => null,
+                  ensureVoices: () => Promise.resolve([]),
               };
 
     const PREFIX = C.PREFIX || "__qt_";
@@ -917,6 +918,12 @@
                 ? SharedTtsService.speakBrowser(text, lang, opts)
                 : window.speechSynthesis?.speak(new SpeechSynthesisUtterance(text)),
         pickBestVoice,
+        ensureVoices: () =>
+            typeof SharedTtsService !== "undefined" && SharedTtsService.ensureVoices
+                ? SharedTtsService.ensureVoices()
+                : (typeof SharedUtils !== "undefined" && SharedUtils.ensureVoices
+                      ? SharedUtils.ensureVoices()
+                      : Promise.resolve([])),
 
         // Storage – delegates to SharedWordRepository and SharedTranslatorService
         getTargetLang: () =>

@@ -64,11 +64,46 @@
         };
     }
 
-    function pickVoice(savedVoiceName, lang) {
-        if (typeof SharedUtils !== "undefined" && SharedUtils.pickBestVoice) {
-            return SharedUtils.pickBestVoice(savedVoiceName, lang);
+    /**
+     * Asynchronously ensure Web Speech API voices are loaded.
+     * Resolves immediately if voices are already loaded, or listens for 'voiceschanged' with safety timeout.
+     */
+    async function ensureVoices(timeoutMs = 250) {
+        if (typeof SharedUtils !== "undefined" && SharedUtils.ensureVoices) {
+            return SharedUtils.ensureVoices(timeoutMs);
         }
-        const voices = window.speechSynthesis?.getVoices?.() || [];
+        if (typeof window === "undefined" || !window.speechSynthesis) return [];
+        const current = window.speechSynthesis.getVoices?.() || [];
+        if (current.length > 0) return current;
+
+        return new Promise((resolve) => {
+            let timer = null;
+            const handler = () => {
+                if (timer) clearTimeout(timer);
+                try {
+                    window.speechSynthesis?.removeEventListener?.("voiceschanged", handler);
+                } catch (_) {}
+                resolve(window.speechSynthesis?.getVoices?.() || []);
+            };
+            try {
+                window.speechSynthesis?.addEventListener?.("voiceschanged", handler);
+            } catch (_) {}
+            timer = setTimeout(() => {
+                try {
+                    window.speechSynthesis?.removeEventListener?.("voiceschanged", handler);
+                } catch (_) {}
+                resolve(window.speechSynthesis?.getVoices?.() || []);
+            }, timeoutMs);
+        });
+    }
+
+    function pickVoice(savedVoiceName, lang, voicesList = null) {
+        if (typeof SharedUtils !== "undefined" && SharedUtils.pickBestVoice) {
+            return SharedUtils.pickBestVoice(savedVoiceName, lang, voicesList);
+        }
+        const voices = (Array.isArray(voicesList) && voicesList.length > 0)
+            ? voicesList
+            : (window.speechSynthesis?.getVoices?.() || []);
         if (!voices.length) return null;
 
         const base = (lang || "en").split("-")[0].toLowerCase();
@@ -108,7 +143,7 @@
     /**
      * Internal direct browser synthesis without resetting tokens.
      */
-    function speakBrowserDirect(cleanedText, lang, settings, { rate = null, volume = null, isCancelled = null } = {}) {
+    function speakBrowserDirect(cleanedText, lang, settings, { rate = null, volume = null, isCancelled = null, voices = null } = {}) {
         if (!cleanedText) return null;
         if (isCancelled?.()) return null;
 
@@ -116,7 +151,7 @@
         utter.lang = lang || "en";
         utter.rate = rate !== null ? rate : settings.speechRate;
         utter.volume = volume !== null ? volume : settings.ttsVolume;
-        const voice = pickVoice(settings.speechVoice, lang);
+        const voice = pickVoice(settings.speechVoice, lang, voices);
         if (voice) utter.voice = voice;
 
         try {
@@ -137,13 +172,17 @@
 
         cancel();
         const currentToken = globalSpeechToken;
-        const settings = await getTtsSettings();
+        const [settings, voices] = await Promise.all([
+            getTtsSettings(),
+            ensureVoices(),
+        ]);
 
         if (isCancelled?.() || currentToken !== globalSpeechToken) return null;
 
         return speakBrowserDirect(cleaned, lang, settings, {
             rate,
             volume,
+            voices,
             isCancelled: () => isCancelled?.() || currentToken !== globalSpeechToken,
         });
     }
@@ -167,7 +206,10 @@
 
         cancel();
         const currentToken = globalSpeechToken;
-        const settings = await getTtsSettings();
+        const [settings, voices] = await Promise.all([
+            getTtsSettings(),
+            ensureVoices(),
+        ]);
 
         if (isCancelled?.() || currentToken !== globalSpeechToken) {
             return { type: "none", obj: null };
@@ -234,16 +276,25 @@
         const utter = speakBrowserDirect(cleaned, lang, settings, {
             rate: useConfiguredRate ? settings.speechRate : 1.0,
             volume: settings.ttsVolume,
+            voices,
             isCancelled: () => isCancelled?.() || currentToken !== globalSpeechToken,
         });
 
         return { type: "utter", obj: utter };
     }
 
+    // Pre-warm browser voices in background immediately on script evaluation
+    try {
+        if (typeof window !== "undefined" && window.speechSynthesis) {
+            window.speechSynthesis.getVoices?.();
+        }
+    } catch (_) {}
+
     return Object.freeze({
         speak,
         speakBrowser,
         speakBrowserDirect,
+        ensureVoices,
         cancel,
         pickVoice,
         getTtsSettings,

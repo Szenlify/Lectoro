@@ -29,6 +29,7 @@
         runDismiss,
         cleanTextForTTS,
         pickBestVoice,
+        ensureVoices,
     } = QT;
 
     // ═══════════════════════════════════════════════════════════════
@@ -638,7 +639,19 @@
         }
     }
 
-    function startSelectedTextReading(fragments, lang, session) {
+    async function startSelectedTextReading(fragments, lang, session) {
+        if (!isReading || session !== readingSession) return;
+
+        try {
+            if (typeof ensureVoices === "function") {
+                await ensureVoices();
+            } else if (typeof SharedUtils !== "undefined" && SharedUtils.ensureVoices) {
+                await SharedUtils.ensureVoices();
+            }
+        } catch (_) {}
+
+        if (!isReading || session !== readingSession) return;
+
         const start = (settings) => {
             if (!isReading || session !== readingSession) return;
             let index = 0;
