@@ -190,9 +190,6 @@ exports.geminiProxy = onRequest(
         }
 
         const uid = decodedToken.uid;
-        // Custom Claims are the authoritative entitlement source. Unknown or
-        // missing values deliberately fall back to FREE.
-        const claimedPlan = normalizePlan(decodedToken.plan);
         const db = admin.firestore();
         const userRef = db.collection("users").doc(uid);
         const month = currentMonth();
@@ -206,7 +203,14 @@ exports.geminiProxy = onRequest(
             return res.status(503).json({ error: "Nie udało się sprawdzić planu użytkownika." });
         }
 
-        const profile = subscriptionProfile(uid, claimedPlan, userData, month);
+        // The Firestore user record is updated immediately in real time by the
+        // Stripe webhook, whereas decodedToken.plan from client JWT claims can
+        // lag until the client refreshes its token. Use authoritative plan from Firestore/claims.
+        const authoritativePlan = normalizePlan(
+            userData.plan !== undefined ? userData.plan : decodedToken.plan,
+        );
+
+        const profile = subscriptionProfile(uid, authoritativePlan, userData, month);
         const plan = profile.plan || SUBSCRIPTION_PLANS.FREE;
         const aiLimit = getPlanLimits(plan).ai.usesPerMonth;
         const aiUsed = profile.usage.ai.used;

@@ -490,6 +490,7 @@ document
                     ? "Masz już subskrypcję — otwarto panel zmiany planu."
                     : "Stripe został otwarty w nowej karcie.";
             }
+            startBillingPolling();
         } catch (error) {
             if (status) {
                 status.className = "stripe-billing-status is-error";
@@ -511,6 +512,36 @@ document
         }
     });
 
+let _billingPollInterval = null;
+function startBillingPolling() {
+    if (_billingPollInterval) clearInterval(_billingPollInterval);
+    let attempts = 0;
+    const maxAttempts = 12; // Poll every 3s for up to 36 seconds
+    _billingPollInterval = setInterval(async () => {
+        attempts++;
+        if (attempts > maxAttempts) {
+            clearInterval(_billingPollInterval);
+            _billingPollInterval = null;
+            return;
+        }
+        try {
+            const previous = await SubscriptionService.getCachedProfile();
+            const updated = await SubscriptionService.refreshProfile(true);
+            if (previous && updated && previous.plan !== updated.plan) {
+                clearInterval(_billingPollInterval);
+                _billingPollInterval = null;
+                await SubscriptionService.applyPlanToUI();
+                await refreshAiUsageUI();
+                const status = document.getElementById("stripeBillingStatus");
+                if (status) {
+                    status.className = "stripe-billing-status is-success";
+                    status.textContent = `Zaktualizowano plan: ${SubscriptionConfig.getPlanLimits(updated.plan).displayName}!`;
+                }
+            }
+        } catch (_) {}
+    }, 3000);
+}
+
 if (location.hash === "#plans") {
     setTimeout(showAiPlans, 80);
 }
@@ -520,12 +551,35 @@ refreshAiUsageUI().catch((error) =>
     console.warn("[Lectoro] Błąd inicjalizacji UI planu:", error),
 );
 
-// Gentle background refresh
-SubscriptionService.effectiveProfile(false)
-    .then(() => SubscriptionService.applyPlanToUI())
+// Live background refresh with token & plan check
+SubscriptionService.refreshProfile(true)
+    .then(async () => {
+        await SubscriptionService.applyPlanToUI();
+        await refreshAiUsageUI();
+    })
     .catch((error) =>
         console.warn("[Lectoro] Nie udało się odświeżyć planu w tle:", error),
     );
+
+window.addEventListener("focus", () => {
+    SubscriptionService.refreshProfile(true)
+        .then(async () => {
+            await SubscriptionService.applyPlanToUI();
+            await refreshAiUsageUI();
+        })
+        .catch(() => {});
+});
+
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+        SubscriptionService.refreshProfile(true)
+            .then(async () => {
+                await SubscriptionService.applyPlanToUI();
+                await refreshAiUsageUI();
+            })
+            .catch(() => {});
+    }
+});
 
 chrome.storage.onChanged.addListener((changes, area) => {
     if (

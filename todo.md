@@ -1,7 +1,7 @@
 [TODO]
 
-Wprowadź 7-dniowy Darmowy Okres Próbny (Free Trial) w Stripe:
-Wymaga podania karty, ale nie pobiera opłaty przez pierwsze 7 dni. Zwiększa to konwersję na zakup o 200–300%.
+Wprowadź 3-dniowy Darmowy Okres Próbny (Free Trial) w Stripe:
+Wymaga podania karty, ale nie pobiera opłaty przez pierwsze 3 dni.
 Oferuj Plan Roczny z góry:
 Użytkownik płaci od razu $59.99 (ok. 240 PLN). Jeden taki zakup daje Ci natychmiastowy zastrzyk gotówki równy 7-8 miesiącom pojedynczego abonamentu!
 Wykorzystaj e-mail marketing:

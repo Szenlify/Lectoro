@@ -88,7 +88,7 @@ const GeminiProxy = (() => {
             return cached;
         }
 
-        const token = await getToken();
+        const token = await getToken(force);
         if (!token) return null;
         const response = await fetch(PROXY_URL, {
             method: "POST",
@@ -233,7 +233,7 @@ const GeminiProxy = (() => {
      * Pobiera ważny Firebase ID token z FirebaseSync.
      * Zwraca null jeśli użytkownik nie jest zalogowany.
      */
-    async function getToken() {
+    async function getToken(forceRefresh = false) {
         if (
             typeof FirebaseSync === "undefined" ||
             typeof FirebaseSync.getValidToken !== "function"
@@ -241,7 +241,7 @@ const GeminiProxy = (() => {
             return null;
         }
         try {
-            return await FirebaseSync.getValidToken();
+            return await FirebaseSync.getValidToken(forceRefresh);
         } catch {
             return null;
         }

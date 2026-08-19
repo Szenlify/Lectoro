@@ -592,6 +592,18 @@ async function fetchNetflixTimedText(rawUrl) {
     return result;
 }
 
+// Automatically sync plan and limits when Stripe checkout or portal completes
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    const url = changeInfo.url || tab?.url || "";
+    if (
+        url.includes("stripeCheckoutResult") ||
+        url.includes("checkout.stripe.com") ||
+        url.includes("billing.stripe.com")
+    ) {
+        initializeAiUsage(true).catch(() => {});
+    }
+});
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "QT_CAPTURE_VISIBLE_TAB") {
         if (!sender.tab?.active || !Number.isInteger(sender.tab.windowId)) {

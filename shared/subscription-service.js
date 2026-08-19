@@ -66,12 +66,23 @@ const SubscriptionService = (() => {
                 ? geminiProxy.normalizeUsage(aiUsage, normalized.uid)
                 : null;
         const aiUsageUpdate = {};
-        if (normalizedAiUsage) aiUsageUpdate.aiUsageCache = normalizedAiUsage;
-        else if (planChanged) aiUsageUpdate.aiUsageCache = null;
-        // AI usage contains a plan-specific limit. Keeping it after an upgrade
-        // or downgrade makes the popup show (and enforce) the old limit until
-        // the first AI request. Store usage returned with a profile refresh in
-        // the same operation; otherwise clear stale usage after a plan change.
+        if (normalizedAiUsage) {
+            aiUsageUpdate.aiUsageCache = normalizedAiUsage;
+        } else if (planChanged) {
+            const limits = Config.getPlanLimits(normalized.plan);
+            const currentAiUsed = normalized.usage?.ai?.used || 0;
+            aiUsageUpdate.aiUsageCache = {
+                uid: normalized.uid,
+                month: currentMonth(),
+                plan: normalized.plan,
+                used: currentAiUsed,
+                limit: limits.ai.usesPerMonth,
+                remaining: Math.max(0, limits.ai.usesPerMonth - currentAiUsed),
+                updatedAt: Date.now(),
+            };
+        }
+        // AI usage contains a plan-specific limit. Store usage returned with
+        // a profile refresh or immediately reset to new plan limits on change.
         await chrome.storage.local.set({
             [PROFILE_KEY]: normalized,
             ...aiUsageUpdate,
@@ -112,12 +123,19 @@ const SubscriptionService = (() => {
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error || `Błąd profilu (${response.status})`);
+
+        const authoritativePlan = Config.normalizePlan(data.profile?.plan || claimedPlan);
+
+        // If the server's Firestore-backed profile differs from the local token claim,
+        // force a background refresh of the token so custom claims in Firebase Auth catch up.
+        if (authoritativePlan !== claimedPlan) {
+            FirebaseSync.getIdTokenResult(true).catch(() => {});
+        }
+
         return setCachedProfile(
             {
                 ...(data.profile || freeProfile(user.uid)),
-                // UI plan comes from the signed Firebase token, never from editable
-                // extension storage or a client-writable Firestore document.
-                plan: claimedPlan,
+                plan: authoritativePlan,
             },
             data.usage,
         );

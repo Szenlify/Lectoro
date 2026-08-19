@@ -254,3 +254,87 @@ test("GeminiProxy.deleteCardImage and deleteAllUserImages send correct actions",
     assert.equal(allDeleted, 5);
     assert.equal(sentBodies[2].action, "deleteAllUserImages");
 });
+
+test("SubscriptionService immediately resets limits and AI cache when plan changes from PRO to FREE", async (t) => {
+    const month = new Date().toISOString().slice(0, 7);
+    const freeLimit = SubscriptionConfig.SUBSCRIPTION_LIMITS.free.ai.usesPerMonth;
+    const storage = {
+        subscriptionProfileCache: {
+            uid: "user-1",
+            plan: "pro",
+            subscriptionStatus: "active",
+            usage: { ai: { month, used: 20 }, elevenLabsCharacters: { month, used: 100 } },
+            updatedAt: 1,
+        },
+        aiUsageCache: {
+            uid: "user-1",
+            month,
+            plan: "pro",
+            used: 20,
+            limit: 200,
+            remaining: 180,
+            updatedAt: 1,
+        },
+    };
+
+    global.SubscriptionConfig = SubscriptionConfig;
+    global.FirebaseSync = {
+        getUser: async () => ({ uid: "user-1" }),
+        getIdTokenResult: async () => ({
+            token: "token-1",
+            claims: { plan: "free" },
+        }),
+        getValidToken: async () => "token-1",
+    };
+    global.chrome = {
+        storage: {
+            local: {
+                get: async (defaults) => ({ ...defaults, ...storage }),
+                set: async (changes) => {
+                    Object.assign(storage, changes);
+                },
+            },
+        },
+    };
+    global.fetch = async () => ({
+        ok: true,
+        json: async () => ({
+            profile: {
+                uid: "user-1",
+                plan: "free",
+                subscriptionStatus: "inactive",
+                usage: { ai: { month, used: 20 }, elevenLabsCharacters: { month, used: 0 } },
+            },
+            usage: {
+                plan: "free",
+                used: 20,
+                limit: freeLimit,
+                remaining: 0,
+            },
+        }),
+    });
+
+    t.after(() => {
+        delete global.SubscriptionConfig;
+        delete global.FirebaseSync;
+        delete global.chrome;
+        delete global.fetch;
+        delete global.GeminiProxy;
+        delete global.SubscriptionService;
+        delete require.cache[require.resolve("../shared/gemini-proxy")];
+        delete require.cache[require.resolve("../shared/subscription-service")];
+    });
+
+    const GeminiProxy = require("../shared/gemini-proxy");
+    global.GeminiProxy = GeminiProxy;
+    const SubscriptionService = require("../shared/subscription-service");
+    global.SubscriptionService = SubscriptionService;
+
+    const updated = await SubscriptionService.refreshProfile(true);
+    assert.equal(updated.plan, "free");
+    assert.equal(storage.subscriptionProfileCache.plan, "free");
+    assert.equal(storage.aiUsageCache.plan, "free");
+    assert.equal(storage.aiUsageCache.limit, freeLimit);
+    assert.equal(storage.aiUsageCache.remaining, 0);
+});
+
