@@ -160,6 +160,7 @@
 
     function dispatchSubtitleChange(session) {
         if (!session || session !== videoSessions.get(activeVideo)) return;
+        if (session.binding?.adapter?.hasTimedText?.()) return;
         const adapterElements = getAdapterElements(session.binding);
         let lines = globalThis.LectoroBaseAdapter?.extractCueLines?.(adapterElements) || [];
         if (lines.length === 0 && session.video?.textTracks) {
@@ -399,6 +400,14 @@
     }
 
     function getAllCues(video) {
+        const session = videoSessions.get(video);
+        const adapter = session?.binding?.adapter;
+        if (typeof adapter?.getAllCues === "function") {
+            const adapterCues = adapter.getAllCues(video);
+            if (Array.isArray(adapterCues) && adapterCues.length > 0) {
+                return adapterCues;
+            }
+        }
         if (!video?.textTracks) return [];
         const cues = [];
         for (let i = 0; i < video.textTracks.length; i++) {
@@ -680,6 +689,13 @@
             }
             const video = this.getVideo();
             if (!video) return null;
+
+            const session = videoSessions.get(video);
+            const adapter = session?.binding?.adapter;
+            if (typeof adapter?.getCurrentSubtitleText === "function") {
+                const adapterText = adapter.getCurrentSubtitleText(video);
+                if (adapterText) return adapterText;
+            }
 
             const nativeText = getNativeCueText(video);
             if (nativeText) return nativeText;

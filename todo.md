@@ -1,12 +1,12 @@
 [TODO]
 
-1. napisy youtube
+1. napisy youtube (Naprawiono – bezpośrednie pobieranie z YouTube API / timedtext, rekonstrukcja pełnych zdań dla napisów dynamicznych ASR, jednolity styl overlay i nawigacja A/D)
 
 2. zrob w kazdym jezyku aby był text UI nagłowki wszystkie w zaleznosci jaki zalezny jest język a jako defaul jest angielski [na pozniej jako ostatnie]
 
 5. dodaj na netflixie ze po kazdym wypowiedzianym zdaniu i opcje 1. moze byc zatrzymany film 2. wstrzymuje sie na 1s/2s/3s z paskiem ladowania na samej gorze od prawej do lewej
 
-6. pobieranie napisow youtube api
+6. pobieranie napisow youtube api (Zrealizowano – youtube-player-bridge.js + parseYouTubeJson3 + YouTubeAdapter)
 
 8. piracka biblioteka
 

@@ -38,6 +38,15 @@
             "world": "MAIN"
         },
         {
+            "matches": [
+                "https://www.youtube.com/*",
+                "https://youtube.com/*"
+            ],
+            "js": ["youtube-player-bridge.js"],
+            "run_at": "document_start",
+            "world": "MAIN"
+        },
+        {
             "matches": ["<all_urls>"],
             "css": ["styles.css"],
             "js": [
