@@ -231,12 +231,40 @@
             .sort((a, b) => b.score - a.score)[0]?.download;
     }
 
+    function isWatchPage() {
+        return (
+            isPage() &&
+            typeof window !== "undefined" &&
+            (/\/watch\/\d+/.test(window.location.pathname) ||
+             !!document.querySelector(".watch-video, [data-uia='video-canvas'], .nf-player-container"))
+        );
+    }
+
+    function isPreviewVideo(video) {
+        if (!video) return false;
+        if (!isWatchPage()) return true;
+        if (
+            video.closest?.(
+                ".previewModal--player_container, .billboard-row, .bob-card, .jawBoneContainer, .titleCard, .slider-item, .hero-image-wrapper",
+            )
+        ) {
+            return true;
+        }
+        return false;
+    }
+
+    function isCcActive(video = null) {
+        if (!isWatchPage()) return false;
+        if (isPreviewVideo(video)) return false;
+        return true;
+    }
+
     async function buildSubtitleIndex() {
         const manifest = await waitForTimedTextManifest();
         if (!manifest) return [];
 
         const activeTrack = await requestActiveTextTrack();
-        const track = selectManifestTrack(manifest, activeTrack);
+        const track = selectManifestTrack(manifest, activeTrack) || manifest.tracks?.[0];
         if (!track) return [];
 
         const download = selectDownload(track);
@@ -419,67 +447,51 @@
     window.addEventListener(MANIFEST_EVENT, acceptTimedTextManifest);
     window.dispatchEvent(new CustomEvent(MANIFEST_REQUEST_EVENT));
 
-    const { createDomAdapter } = globalThis.LectoroBaseAdapter || {};
-
-    const NetflixAdapter = typeof createDomAdapter === "function"
-        ? createDomAdapter({
-              id: "netflix",
-              name: "Netflix",
-              playerSelector: ".watch-video, [data-uia='video-canvas'], .nf-player-container",
-              containerSelector: ".player-timedtext",
-              cueSelector: ".player-timedtext-text-container span",
-              leafOnly: true,
-              documentFallback: true,
-              isPage,
-              extraProps: {
-                  requestSeek,
-                  pauseVideo,
-                  playVideo,
-                  ensureControlsHidden,
-                  setOriginalSubtitlesHidden,
-                  captureReviewImage,
-                  ensureSubtitleIndex,
-                  getAdjacentSubtitleTime,
-              },
-          })
-        : {
-              id: "netflix",
-              name: "Netflix",
-              playerSelector: ".watch-video, [data-uia='video-canvas'], .nf-player-container",
-              containerSelector: ".player-timedtext",
-              cueSelector: ".player-timedtext-text-container span",
-              leafOnly: true,
-              documentFallback: true,
-              isPage,
-              matchVideo: () => isPage(),
-              getContainer: (video) => {
-                  const player =
-                      video?.closest?.(".watch-video, [data-uia='video-canvas'], .nf-player-container") ||
-                      document;
-                  return player.querySelector(".player-timedtext");
-              },
-              getCueElements: (container) => {
-                  if (!container || !container.isConnected) return [];
-                  const candidates = Array.from(
-                      container.querySelectorAll(".player-timedtext-text-container span"),
-                  );
-                  return (
-                      globalThis.LectoroBaseAdapter?.filterCueCandidates ||
-                      ((x) => x)
-                  )(candidates, {
-                      leafOnly: true,
-                      cueSelector: ".player-timedtext-text-container span",
-                  });
-              },
-              requestSeek,
-              pauseVideo,
-              playVideo,
-              ensureControlsHidden,
-              setOriginalSubtitlesHidden,
-              captureReviewImage,
-              ensureSubtitleIndex,
-              getAdjacentSubtitleTime,
-          };
+    const NetflixAdapter = {
+        id: "netflix",
+        name: "Netflix",
+        playerSelector: ".watch-video, [data-uia='video-canvas'], .nf-player-container",
+        containerSelector: ".player-timedtext",
+        cueSelector: ".player-timedtext-text-container span",
+        leafOnly: true,
+        documentFallback: true,
+        isPage,
+        isWatchPage,
+        isPreview: (video) => isPreviewVideo(video),
+        isCcActive: (video) => isCcActive(video),
+        matchVideo: (video) =>
+            isWatchPage() &&
+            !isPreviewVideo(video) &&
+            !!video?.closest?.(".watch-video, [data-uia='video-canvas'], .nf-player-container"),
+        getContainer: (video) => {
+            if (!isWatchPage() || isPreviewVideo(video)) return null;
+            const player =
+                video?.closest?.(".watch-video, [data-uia='video-canvas'], .nf-player-container") ||
+                document;
+            return player.querySelector(".player-timedtext");
+        },
+        getCueElements: (container) => {
+            if (!isWatchPage() || !container || !container.isConnected) return [];
+            const candidates = Array.from(
+                container.querySelectorAll(".player-timedtext-text-container span"),
+            );
+            return (
+                globalThis.LectoroBaseAdapter?.filterCueCandidates ||
+                ((x) => x)
+            )(candidates, {
+                leafOnly: true,
+                cueSelector: ".player-timedtext-text-container span",
+            });
+        },
+        requestSeek,
+        pauseVideo,
+        playVideo,
+        ensureControlsHidden,
+        setOriginalSubtitlesHidden,
+        captureReviewImage,
+        ensureSubtitleIndex,
+        getAdjacentSubtitleTime,
+    };
 
     globalThis.LectoroNetflixAdapter = NetflixAdapter;
     globalThis.LectoroNetflix = NetflixAdapter;

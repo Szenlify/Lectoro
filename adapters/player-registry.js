@@ -86,6 +86,109 @@
         return false;
     }
 
+    function isPreviewOrThumbnailVideo(video) {
+        if (!video || !video.isConnected) return true;
+
+        const hostname = (typeof window !== "undefined" && window.location.hostname) || "";
+
+        // 1. YouTube checks
+        if (/(^|\.)youtube\.com$/i.test(hostname)) {
+            // Shorts are explicitly allowed!
+            if (
+                window.location.pathname.includes("/shorts/") ||
+                video.closest("ytd-shorts, ytd-reel-video-renderer, #shorts-player")
+            ) {
+                return false;
+            }
+
+            // Preview containers on YouTube homepage / feed / search / channel
+            if (
+                video.closest(
+                    "ytd-thumbnail, ytd-video-preview, ytd-inline-preview-renderer, #inline-preview-player, ytd-rich-grid-row #preview, ytd-rich-item-renderer #preview, ytd-compact-video-renderer #preview",
+                )
+            ) {
+                return true;
+            }
+
+            // If on YouTube and not /watch, not /shorts, not /embed, and not main #movie_player
+            if (
+                !window.location.pathname.startsWith("/watch") &&
+                !window.location.pathname.startsWith("/shorts") &&
+                !window.location.pathname.startsWith("/embed") &&
+                !video.closest("#movie_player")
+            ) {
+                return true;
+            }
+        }
+
+        // 2. Netflix checks
+        if (/(^|\.)netflix\.com$/i.test(hostname)) {
+            if (!window.location.pathname.includes("/watch/")) {
+                return true;
+            }
+            if (
+                video.closest(
+                    ".previewModal--player_container, .billboard-row, .bob-card, .jawBoneContainer, .titleCard, .slider-item, .hero-image-wrapper",
+                )
+            ) {
+                return true;
+            }
+        }
+
+        // 3. Small dimension check (unless in fullscreen or Shorts)
+        if (!document.fullscreenElement && !window.location.pathname.includes("/shorts/")) {
+            const rect = video.getBoundingClientRect();
+            if (rect.width > 0 && rect.height > 0 && (rect.width < 220 || rect.height < 120)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    function isCcActive(video) {
+        if (!video || !video.isConnected) return false;
+        if (isPreviewOrThumbnailVideo(video)) return false;
+
+        const session = videoSessions.get(video);
+        const adapter = session?.binding?.adapter;
+
+        // 1. Adapter-specific CC check
+        if (typeof adapter?.isCcActive === "function") {
+            return adapter.isCcActive(video);
+        }
+
+        // 2. YouTube adapter check
+        if (globalThis.LectoroYouTubeAdapter?.isPage?.()) {
+            if (typeof globalThis.LectoroYouTubeAdapter?.isCcActive === "function") {
+                return globalThis.LectoroYouTubeAdapter.isCcActive(video);
+            }
+        }
+
+        // 3. Netflix adapter check
+        if (globalThis.LectoroNetflixAdapter?.isPage?.()) {
+            if (typeof globalThis.LectoroNetflixAdapter?.isCcActive === "function") {
+                return globalThis.LectoroNetflixAdapter.isCcActive(video);
+            }
+        }
+
+        // 4. Native text tracks check
+        if (hasEnabledNativeCaptionTrack(video)) {
+            return true;
+        }
+
+        // 5. LookMovie / VideoJS / generic DOM container check
+        if (session?.binding?.container) {
+            const container = session.binding.container;
+            if (container.isConnected && container.offsetParent !== null) {
+                const elements = getAdapterElements(session.binding);
+                if (elements.length > 0) return true;
+            }
+        }
+
+        return false;
+    }
+
     function visibleVideoArea(video) {
         const rect = video.getBoundingClientRect();
         const width = Math.max(
@@ -101,13 +204,15 @@
 
     function selectBestVideo() {
         let best = null;
-        let bestScore = -1;
+        let bestScore = -Infinity;
         for (const session of liveVideoSessions) {
             const video = session.video;
             if (!video.isConnected) continue;
+            const isPreview = isPreviewOrThumbnailVideo(video);
             const score =
                 visibleVideoArea(video) +
-                (!video.paused && !video.ended ? 1_000_000_000 : 0);
+                (!video.paused && !video.ended ? 1_000_000_000 : 0) -
+                (isPreview ? 2_000_000_000 : 0);
             if (score > bestScore) {
                 best = video;
                 bestScore = score;
@@ -117,7 +222,7 @@
     }
 
     function findCaptionBinding(video) {
-        if (!video?.isConnected) return null;
+        if (!video?.isConnected || isPreviewOrThumbnailVideo(video)) return null;
         const adapters = getRegisteredAdapters();
 
         for (const adapter of adapters) {
@@ -161,6 +266,20 @@
     function dispatchSubtitleChange(session) {
         if (!session || session !== videoSessions.get(activeVideo)) return;
         if (session.binding?.adapter?.hasTimedText?.()) return;
+
+        if (isPreviewOrThumbnailVideo(session.video) || !isCcActive(session.video)) {
+            if (typeof subtitleChangeCallback === "function") {
+                subtitleChangeCallback({
+                    lines: [],
+                    fullText: "",
+                    elements: [],
+                    session,
+                    video: session.video,
+                });
+            }
+            return;
+        }
+
         const adapterElements = getAdapterElements(session.binding);
         let lines = globalThis.LectoroBaseAdapter?.extractCueLines?.(adapterElements) || [];
         if (lines.length === 0 && session.video?.textTracks) {
@@ -628,13 +747,13 @@
             return session?.binding?.adapter?.id || "native";
         },
         getVideo() {
-            if (activeVideo?.isConnected) return activeVideo;
+            if (activeVideo?.isConnected && !isPreviewOrThumbnailVideo(activeVideo)) return activeVideo;
             const best = selectBestVideo();
             if (best) {
                 activateVideo(best);
                 return best;
             }
-            const first = document.querySelector("video");
+            const first = document.querySelector(".watch-video video, [data-uia='video-canvas'] video, .nf-player-container video, #movie_player video, video");
             if (first) activateVideo(first);
             return first;
         },
@@ -650,12 +769,14 @@
             return session?.binding?.container || null;
         },
         getSubtitleElements() {
+            const video = this.getVideo();
+            if (!video || isPreviewOrThumbnailVideo(video)) {
+                return [];
+            }
             if (globalThis.LectoroSubtitleOverlay?.getCustomSubtitleElements) {
                 const customEls = globalThis.LectoroSubtitleOverlay.getCustomSubtitleElements();
                 if (customEls.length > 0) return customEls;
             }
-            const video = this.getVideo();
-            if (!video) return [];
             const session = videoSessions.get(video);
             if (session && !session.binding?.container?.isConnected) {
                 refreshCaptionBinding(session);
@@ -663,12 +784,14 @@
             return getAdapterElements(session?.binding);
         },
         getCurrentLines() {
+            const video = this.getVideo();
+            if (!video || isPreviewOrThumbnailVideo(video)) {
+                return [];
+            }
             if (globalThis.LectoroSubtitleOverlay?.getActiveLines) {
                 const customLines = globalThis.LectoroSubtitleOverlay.getActiveLines();
                 if (customLines.length > 0) return customLines;
             }
-            const video = this.getVideo();
-            if (!video) return [];
             const session = videoSessions.get(video);
             if (session && !session.binding?.container?.isConnected) {
                 refreshCaptionBinding(session);
@@ -683,12 +806,14 @@
             return [];
         },
         getCurrentText() {
+            const video = this.getVideo();
+            if (!video || isPreviewOrThumbnailVideo(video)) {
+                return null;
+            }
             if (globalThis.LectoroSubtitleOverlay?.getActiveText) {
                 const customText = globalThis.LectoroSubtitleOverlay.getActiveText();
                 if (customText) return customText;
             }
-            const video = this.getVideo();
-            if (!video) return null;
 
             const session = videoSessions.get(video);
             const adapter = session?.binding?.adapter;
@@ -727,6 +852,8 @@
         navigateSubtitle,
         captureVideoReviewScreenshot,
         isNetflixPage,
+        isPreviewOrThumbnailVideo,
+        isCcActive,
         findCaptionBinding,
         getAdapterElements,
     };

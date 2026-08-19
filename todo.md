@@ -1,23 +1,17 @@
 [TODO]
 
-1. napisy youtube (Naprawiono – bezpośrednie pobieranie z YouTube API / timedtext, rekonstrukcja pełnych zdań dla napisów dynamicznych ASR, jednolity styl overlay i nawigacja A/D)
-
 2. zrob w kazdym jezyku aby był text UI nagłowki wszystkie w zaleznosci jaki zalezny jest język a jako defaul jest angielski [na pozniej jako ostatnie]
 
 5. dodaj na netflixie ze po kazdym wypowiedzianym zdaniu i opcje 1. moze byc zatrzymany film 2. wstrzymuje sie na 1s/2s/3s z paskiem ladowania na samej gorze od prawej do lewej
 
-6. pobieranie napisow youtube api (Zrealizowano – youtube-player-bridge.js + parseYouTubeJson3 + YouTubeAdapter)
-
 8. piracka biblioteka
 
-9. w settings w div kredytow jest napis Limit odnawia się co miesiąc. podaj date obok kiedy dokladnie sie odnowi jesli subskrybuje to dokladna data kiedy mi pobiera pienidze oraz kiedy wtedy ma sie pakiet odnawiac, a na koncie free pakiet ma sie nie odnawiać.
+9. w settings w div kredytow jest napis Limit odnawia się co miesiąc. podaj date obok kiedy dokladnie sie odnowi jesli subskrybuje to dokladna data kiedy mi pobiera pienidze oraz kiedy wtedy ma sie pakiet odnawiac
 
 11. popraw prompty AI tak aby byly krotkie, po angielsku, zeby mniej tokenow ai zuzywalo i idealnie dopracowane
 
 12. po Nacisnieciu Enter ,S  niech kazdy klawisz WSAD itp kasuje tooltipa i wznawia video
 dla przykladu tlumacze za pomoca "Enter" AI, video sie pauzuje i drukie klikniecie Enter zamyka tooltip tlumaczenia i wznawia wideo a chcialbym dodatkowo aby klawisze WSAD tez zamykaly tooltip i wznawialy wideo
-
-13. Klawisz "Z" jesli jest plan Basic lub Pro to tlumaczenia ma robic AI tak jak za pomoca Enter poprostu tlumaczenie bez wyjasnienia
 
 15. w powtorkach rewiew zrob z Web Speech API opcje pod klikniecie przycik "spacja" nagrywanie slowa/zdania ktore musze powtorzyc tak samo jak w powtorce oraz niech pokazuje litery na zielono ktore dobrze wypowiedziane a na czerwono te co zle to bedzie opcja shadowing ze sprawdzaniem wymowy. niech w czasie sluchaia bedzie ikona ktora emituje sluchanie
 

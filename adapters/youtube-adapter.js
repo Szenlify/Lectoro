@@ -28,6 +28,7 @@
     let playbackRafId = null;
     let boundVideo = null;
     let trackRequestSeq = 0;
+    let isCcActive = false;
 
     function getSubtitleService() {
         return (
@@ -38,6 +39,55 @@
 
     function isPage() {
         return HOST_RE.test(window.location.hostname);
+    }
+
+    function isShortsPage(video = null) {
+        if (typeof window !== "undefined" && window.location.pathname.includes("/shorts/")) {
+            return true;
+        }
+        if (video && video.closest?.("ytd-shorts, ytd-reel-video-renderer, #shorts-player")) {
+            return true;
+        }
+        return !!document.querySelector("ytd-shorts, ytd-reel-video-renderer");
+    }
+
+    function isPreviewVideo(video) {
+        if (!video) return false;
+        if (isShortsPage(video)) return false;
+        if (
+            video.closest?.(
+                "ytd-thumbnail, ytd-video-preview, ytd-inline-preview-renderer, #inline-preview-player, ytd-rich-grid-row #preview, ytd-rich-item-renderer #preview, ytd-compact-video-renderer #preview",
+            )
+        ) {
+            return true;
+        }
+        if (
+            typeof window !== "undefined" &&
+            !window.location.pathname.startsWith("/watch") &&
+            !window.location.pathname.startsWith("/shorts") &&
+            !window.location.pathname.startsWith("/embed") &&
+            !video.closest?.("#movie_player")
+        ) {
+            return true;
+        }
+        return false;
+    }
+
+    function checkIsCcActive(video = null) {
+        if (isShortsPage(video)) return true;
+        if (isPreviewVideo(video)) return false;
+        const player =
+            video?.closest?.("#movie_player, .html5-video-player") ||
+            document.getElementById("movie_player") ||
+            document;
+        const ccBtn = player.querySelector?.(".ytp-subtitles-button");
+        if (ccBtn) {
+            return (
+                ccBtn.getAttribute("aria-pressed") === "true" ||
+                ccBtn.classList.contains("ytp-button-active")
+            );
+        }
+        return isCcActive;
     }
 
     function getVideoIdFromUrl() {
@@ -134,7 +184,19 @@
     }
 
     function syncActiveCue(video) {
-        if (!video) return;
+        if (!video || !video.isConnected) return;
+
+        // Subtitles only display if CC is actively enabled (or on YouTube Shorts)
+        if (!checkIsCcActive(video)) {
+            if (currentDisplayedText !== "") {
+                currentDisplayedText = "";
+                if (globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
+                    globalThis.LectoroSubtitleOverlay.renderCustomSubtitles([]);
+                }
+            }
+            return;
+        }
+
         const time = video.currentTime;
         let targetText = "";
 
@@ -162,7 +224,7 @@
     }
 
     function startPlaybackLoop(video) {
-        if (!video) return;
+        if (!video || isPreviewVideo(video)) return;
         stopPlaybackLoop();
 
         function step() {
@@ -185,11 +247,13 @@
     }
 
     function bindVideoEvents(video) {
-        if (!video || boundVideo === video) return;
+        if (!video || boundVideo === video || isPreviewVideo(video)) return;
         boundVideo = video;
 
         video.addEventListener("play", () => {
-            if (cueIndex.length === 0) requestTracklistFromBridge();
+            if (cueIndex.length === 0 && checkIsCcActive(video)) {
+                requestTracklistFromBridge();
+            }
             startPlaybackLoop(video);
         });
         video.addEventListener("pause", () => {
@@ -362,6 +426,23 @@
         if (!detail) return;
         const videoId = detail.videoId || getVideoIdFromUrl();
         const tracks = detail.tracks;
+        const isShorts = detail.isShorts || isShortsPage();
+        const ccState = isShorts
+            ? true
+            : (typeof detail.isCcActive === "boolean"
+                ? detail.isCcActive
+                : (!!detail.activeTrack || checkIsCcActive()));
+        isCcActive = ccState;
+
+        if (!ccState) {
+            currentDisplayedText = "";
+            activeTrack = null;
+            if (globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
+                globalThis.LectoroSubtitleOverlay.renderCustomSubtitles([]);
+            }
+            stopPlaybackLoop();
+            return;
+        }
 
         if (Array.isArray(tracks) && tracks.length > 0) {
             availableTracks = tracks;
@@ -369,6 +450,8 @@
             if (chosen && (!activeTrack || chosen.vssId !== activeTrack.vssId || videoId !== currentVideoId)) {
                 loadCaptionTrack(chosen, videoId);
             }
+            const video = boundVideo || document.querySelector("video");
+            if (video && !video.paused) startPlaybackLoop(video);
         }
     }
 
@@ -491,12 +574,17 @@
     const YouTubeAdapter = {
         id: "youtube",
         name: "YouTube",
-        playerSelector: "#movie_player, .html5-video-player",
+        playerSelector: "#movie_player, .html5-video-player, ytd-shorts",
         containerSelector: ".ytp-caption-window-container",
         cueSelector: ".caption-visual-line, .ytp-caption-segment",
         leafOnly: false,
         isPage,
-        matchVideo: (video) => !!video?.closest?.("#movie_player, .html5-video-player"),
+        isShortsPage,
+        isPreview: (video) => isPreviewVideo(video),
+        isCcActive: (video) => checkIsCcActive(video),
+        matchVideo: (video) =>
+            !isPreviewVideo(video) &&
+            !!(video?.closest?.("#movie_player, .html5-video-player") || isShortsPage(video)),
         getContainer: (video) => {
             if (video) bindVideoEvents(video);
             return (
@@ -523,10 +611,11 @@
                 ((x) => x)
             )(segments);
         },
-        hasTimedText: () => cueIndex.length > 0,
-        getCueIndex: () => cueIndex,
-        getAllCues: () => cueIndex,
+        hasTimedText: () => cueIndex.length > 0 && isCcActive,
+        getCueIndex: () => (isCcActive ? cueIndex : []),
+        getAllCues: () => (isCcActive ? cueIndex : []),
         getCurrentSubtitleText: (video) => {
+            if (!checkIsCcActive(video)) return "";
             const time = video?.currentTime ?? (boundVideo?.currentTime || 0);
             const cue = findActiveCue(time);
             if (cue && cue.text) return cue.text;

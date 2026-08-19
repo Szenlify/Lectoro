@@ -155,9 +155,10 @@
         layoutRafId = requestAnimationFrame(() => {
             layoutRafId = null;
             const { layer, box } = ensureCustomSubtitlesLayer();
-            const video = getPlayerRegistry()?.getVideo();
+            const registry = getPlayerRegistry();
+            const video = registry?.getVideo();
 
-            if (!video || !video.isConnected) {
+            if (!video || !video.isConnected || registry?.isPreviewOrThumbnailVideo?.(video)) {
                 layer.style.display = "none";
                 return;
             }
@@ -230,6 +231,12 @@
 
     function renderCustomSubtitles(lines = []) {
         const { layer, box } = ensureCustomSubtitlesLayer();
+        const registry = getPlayerRegistry();
+        const video = registry?.getVideo();
+        if (video && registry?.isPreviewOrThumbnailVideo?.(video)) {
+            lines = [];
+        }
+
         const rawCleanLines = (Array.isArray(lines) ? lines : [lines])
             .map((l) => (typeof l === "string" ? l.trim() : ""))
             .filter(Boolean);

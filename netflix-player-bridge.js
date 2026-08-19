@@ -21,6 +21,14 @@
     let currentMovieId = "";
     let hasManifestForCurrentMovie = false;
 
+    function isWatchPage() {
+        return (
+            typeof window !== "undefined" &&
+            (/\/watch\/\d+/.test(window.location.pathname) ||
+             !!document.querySelector(".watch-video, [data-uia='video-canvas'], .nf-player-container"))
+        );
+    }
+
     function checkMovieChange() {
         const match = window.location.pathname.match(/\/watch\/(\d+)/);
         const movieId = match ? match[1] : "";
@@ -388,25 +396,48 @@
         );
     });
 
+    function isTrackOff(track) {
+        if (!track) return true;
+        if (track.isNoneTrack) return true;
+        const trackType = String(track.trackType || track.rawTrackType || "").toUpperCase();
+        if (trackType === "OFF" || trackType === "NONE") return true;
+        const id = String(track.new_track_id ?? track.trackId ?? track.track_id ?? track.id ?? "").toLowerCase();
+        if (!id || id === "none" || id === "off") return true;
+        const bcp47 = String(track.bcp47 || track.bcp47LanguageTag || track.language || track.languageCode || "").toLowerCase();
+        if (bcp47 === "none" || bcp47 === "off") return true;
+        const displayName = String(track.displayName || track.languageDescription || "").toLowerCase();
+        if (displayName === "off" || displayName === "wył." || displayName === "wyl.") return true;
+        return false;
+    }
+
     window.addEventListener(TRACK_REQUEST_EVENT, (event) => {
         let track = null;
-        try {
-            const player = getNetflixPlayer();
-            track =
-                primitiveTrackData(player?.getTimedTextTrack?.()) ||
-                primitiveTrackData(player?.getTextTrack?.());
-        } catch (_) {}
+        let isCcActive = false;
+        if (isWatchPage()) {
+            try {
+                const player = getNetflixPlayer();
+                const rawTrack =
+                    player?.getTimedTextTrack?.() ||
+                    player?.getTextTrack?.();
+                if (rawTrack && !isTrackOff(rawTrack)) {
+                    track = primitiveTrackData(rawTrack);
+                    isCcActive = true;
+                }
+            } catch (_) {}
+        }
         window.dispatchEvent(
             new CustomEvent(TRACK_RESPONSE_EVENT, {
                 detail: {
                     requestId: event.detail?.requestId || "",
                     track,
+                    isCcActive,
                 },
             }),
         );
     });
 
     window.addEventListener(MANIFEST_REQUEST_EVENT, () => {
+        if (!isWatchPage()) return;
         checkMovieChange();
         if (latestTimedTextManifest) {
             window.dispatchEvent(

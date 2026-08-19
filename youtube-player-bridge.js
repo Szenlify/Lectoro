@@ -154,14 +154,43 @@
         return null;
     }
 
+    function isYouTubeShorts() {
+        return (
+            window.location.pathname.includes("/shorts/") ||
+            !!document.querySelector("ytd-shorts, ytd-reel-video-renderer")
+        );
+    }
+
+    function isCaptionsButtonActive() {
+        const player = getYouTubePlayer();
+        const btn =
+            player?.querySelector?.(".ytp-subtitles-button") ||
+            document.querySelector(".ytp-subtitles-button");
+        if (!btn) return false;
+        return (
+            btn.getAttribute("aria-pressed") === "true" ||
+            btn.classList.contains("ytp-button-active")
+        );
+    }
+
+    function isCcEnabled() {
+        if (isYouTubeShorts()) return true;
+        const track = getActiveTrack();
+        if (track && track.languageCode) return true;
+        if (isCaptionsButtonActive()) return true;
+        return false;
+    }
+
     function notifyTracksAvailable() {
         const videoId = getCurrentVideoId();
         const tracks = extractCaptionTracks();
         const activeTrack = getActiveTrack();
+        const isCcActive = isCcEnabled();
+        const isShorts = isYouTubeShorts();
 
         window.dispatchEvent(
             new CustomEvent(TRACKS_EVENT, {
-                detail: { videoId, tracks, activeTrack },
+                detail: { videoId, tracks, activeTrack, isCcActive, isShorts },
             }),
         );
     }
@@ -179,6 +208,42 @@
             setTimeout(notifyTracksAvailable, 600);
         }
     }
+
+    // Observe CC button toggles and shortcut key 'c'
+    let ccBtnObserver = null;
+    function observeCcButton() {
+        const player = getYouTubePlayer();
+        const btn =
+            player?.querySelector?.(".ytp-subtitles-button") ||
+            document.querySelector(".ytp-subtitles-button");
+        if (btn && (!ccBtnObserver || !ccBtnObserver._target || ccBtnObserver._target !== btn)) {
+            ccBtnObserver?.disconnect?.();
+            ccBtnObserver = new MutationObserver(() => {
+                notifyTracksAvailable();
+            });
+            ccBtnObserver._target = btn;
+            ccBtnObserver.observe(btn, {
+                attributes: true,
+                attributeFilter: ["aria-pressed", "class"],
+            });
+        }
+    }
+
+    document.addEventListener("click", (e) => {
+        if (e.target?.closest?.(".ytp-subtitles-button")) {
+            setTimeout(notifyTracksAvailable, 50);
+            setTimeout(notifyTracksAvailable, 250);
+        }
+    }, true);
+
+    document.addEventListener("keydown", (e) => {
+        const tag = e.target?.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || e.target?.isContentEditable) return;
+        if (e.key === "c" || e.key === "C") {
+            setTimeout(notifyTracksAvailable, 50);
+            setTimeout(notifyTracksAvailable, 250);
+        }
+    }, true);
 
     // ── Intercept timedtext Network Requests ──────────────────────
 
@@ -246,10 +311,12 @@
         const videoId = getCurrentVideoId();
         const tracks = extractCaptionTracks();
         const activeTrack = getActiveTrack();
+        const isCcActive = isCcEnabled();
+        const isShorts = isYouTubeShorts();
 
         window.dispatchEvent(
             new CustomEvent(TRACK_RESPONSE_EVENT, {
-                detail: { requestId, videoId, tracks, activeTrack },
+                detail: { requestId, videoId, tracks, activeTrack, isCcActive, isShorts },
             }),
         );
     });
@@ -300,18 +367,29 @@
 
     // ── YouTube SPA Navigation Observers ──────────────────────────
 
-    window.addEventListener("yt-navigate-finish", checkVideoChange, { passive: true });
-    window.addEventListener("yt-page-data-updated", checkVideoChange, { passive: true });
-    window.addEventListener("spfdone", checkVideoChange, { passive: true });
-    window.addEventListener("popstate", checkVideoChange, { passive: true });
+    function onYouTubeNavigation() {
+        checkVideoChange();
+        setTimeout(observeCcButton, 400);
+    }
+
+    window.addEventListener("yt-navigate-finish", onYouTubeNavigation, { passive: true });
+    window.addEventListener("yt-page-data-updated", onYouTubeNavigation, { passive: true });
+    window.addEventListener("spfdone", onYouTubeNavigation, { passive: true });
+    window.addEventListener("popstate", onYouTubeNavigation, { passive: true });
 
     // Initial check
     currentVideoId = getCurrentVideoId();
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", () => {
-            setTimeout(notifyTracksAvailable, 300);
+            setTimeout(() => {
+                observeCcButton();
+                notifyTracksAvailable();
+            }, 300);
         });
     } else {
-        setTimeout(notifyTracksAvailable, 100);
+        setTimeout(() => {
+            observeCcButton();
+            notifyTracksAvailable();
+        }, 100);
     }
 })();
