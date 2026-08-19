@@ -19,6 +19,8 @@
     ]);
 
     const FALLBACK_SKIP_SECONDS = 3;
+    let lastNetflixNavRepeatTime = 0;
+    const NETFLIX_KEY_REPEAT_THROTTLE_MS = 220;
 
     function getRegistry() {
         return globalThis.LectoroPlayerRegistry;
@@ -56,6 +58,22 @@
                 "a", "A", "ArrowLeft",
                 "d", "D", "ArrowRight",
             ].includes(key);
+
+            if (isHorizontalSubtitleNavigation) {
+                const isNetflix =
+                    (typeof registry?.isNetflixPage === "function" && registry.isNetflixPage()) ||
+                    /(^|\.)netflix\.com$/i.test(window.location.hostname);
+                if (isNetflix && e.repeat) {
+                    const now = Date.now();
+                    if (now - lastNetflixNavRepeatTime < NETFLIX_KEY_REPEAT_THROTTLE_MS) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                        return;
+                    }
+                    lastNetflixNavRepeatTime = now;
+                }
+            }
 
             const subtitleUiOpen = overlay?.isSubtitleUiOpen?.() || false;
             const aiTooltipOpen = overlay?.isAiTooltipActive?.() || false;

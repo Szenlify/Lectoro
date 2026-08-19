@@ -11,7 +11,6 @@
     let activeVideo = null;
     let videoSweepTimer = null;
     let subtitleChangeCallback = null;
-    let netflixSubtitleNavigationPending = false;
 
     function getRegisteredAdapters() {
         const adapters = [];
@@ -594,23 +593,46 @@
         return targetIndex >= 0 ? cues[targetIndex].startTime : null;
     }
 
+    let netflixVirtualTargetTime = null;
+    let netflixSeekDebounceTimer = null;
+    let netflixVirtualResetTimer = null;
+    let netflixVideoBound = null;
+    const NETFLIX_SEEK_DEBOUNCE_MS = 160;
+
+    function ensureNetflixVideoSeekedListener(video) {
+        if (!video || netflixVideoBound === video) return;
+        netflixVideoBound = video;
+        video.addEventListener(
+            "seeked",
+            () => {
+                netflixVirtualTargetTime = null;
+            },
+            { passive: true },
+        );
+    }
+
     async function navigateNetflixSubtitle(video, direction) {
-        if (netflixSubtitleNavigationPending) return;
-        netflixSubtitleNavigationPending = true;
+        if (!video) return;
+        ensureNetflixVideoSeekedListener(video);
         const wasPlaying = !video.paused;
         try {
+            const baseTime =
+                Number.isFinite(netflixVirtualTargetTime)
+                    ? netflixVirtualTargetTime
+                    : video.currentTime;
+
             const nativeCues = getAllCues(video);
             let targetTime = null;
             if (nativeCues.length > 0) {
                 targetTime = getAdjacentCueTime(
                     nativeCues,
-                    video.currentTime,
+                    baseTime,
                     direction,
                 );
             }
             if (targetTime === null) {
                 targetTime = await globalThis.LectoroNetflixAdapter?.getAdjacentSubtitleTime?.(
-                    video,
+                    baseTime,
                     direction,
                 );
             }
@@ -626,7 +648,24 @@
                 if (wasPlaying && video.paused) video.play().catch(() => {});
                 return;
             }
-            globalThis.LectoroNetflixAdapter?.requestSeek?.(targetTime, video);
+
+            // Immediately register virtual target so consecutive rapid keypresses calculate subsequent cues
+            netflixVirtualTargetTime = targetTime;
+
+            if (netflixVirtualResetTimer) clearTimeout(netflixVirtualResetTimer);
+            netflixVirtualResetTimer = setTimeout(() => {
+                netflixVirtualTargetTime = null;
+            }, 1500);
+
+            // Debounce physical seek to Netflix player API to prevent M7375 player crash
+            if (netflixSeekDebounceTimer) clearTimeout(netflixSeekDebounceTimer);
+            netflixSeekDebounceTimer = setTimeout(() => {
+                netflixSeekDebounceTimer = null;
+                const finalTarget = netflixVirtualTargetTime;
+                if (Number.isFinite(finalTarget)) {
+                    globalThis.LectoroNetflixAdapter?.requestSeek?.(finalTarget, video);
+                }
+            }, NETFLIX_SEEK_DEBOUNCE_MS);
         } catch (error) {
             console.warn("[Lectoro] Netflix subtitle navigation failed:", error);
             if (typeof QT !== "undefined" && QT.createHint) {
@@ -636,8 +675,6 @@
                 );
             }
             if (wasPlaying && video.paused) video.play().catch(() => {});
-        } finally {
-            netflixSubtitleNavigationPending = false;
         }
     }
 

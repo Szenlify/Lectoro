@@ -328,6 +328,30 @@
     }
 
     // ── 4. Event Listeners for Seek, Playback & Track Navigation ─────────
+    let lastBridgeSeekDispatchedTime = 0;
+    let bridgePendingSeekTimer = null;
+    let bridgePendingSeekMs = null;
+    const MIN_BRIDGE_SEEK_GAP_MS = 200;
+
+    function executeBridgeSeek(targetMs) {
+        try {
+            const player = getNetflixPlayer();
+            if (player?.seek) {
+                const durationMs = Number(player.getDuration?.());
+                const finalMs = Number.isFinite(durationMs)
+                    ? Math.min(targetMs, durationMs)
+                    : targetMs;
+
+                lastBridgeSeekDispatchedTime = Date.now();
+                player.seek(finalMs);
+                return true;
+            }
+        } catch (err) {
+            console.warn("[Lectoro Bridge] Netflix seek execution failed:", err);
+        }
+        return false;
+    }
+
     window.addEventListener(PAUSE_EVENT, () => {
         try {
             const player = getNetflixPlayer();
@@ -358,40 +382,209 @@
         const requestedMs = Number(event.detail?.targetMs);
         if (!Number.isFinite(requestedMs) || requestedMs < 0) return;
 
-        try {
-            const player = getNetflixPlayer();
-            if (player?.seek) {
-                const durationMs = Number(player.getDuration?.());
-                const targetMs = Number.isFinite(durationMs)
-                    ? Math.min(requestedMs, durationMs)
-                    : requestedMs;
-                player.seek(targetMs);
-                player.play?.();
-                return;
-            }
-        } catch (_) {}
+        bridgePendingSeekMs = requestedMs;
+        const now = Date.now();
+        const elapsed = now - lastBridgeSeekDispatchedTime;
 
-        // Fallback: direct HTML video seek if player API not ready
-        try {
-            const video = document.querySelector("video");
-            if (video) {
-                video.currentTime = requestedMs / 1000;
-                video.play?.().catch?.(() => {});
+        if (elapsed < MIN_BRIDGE_SEEK_GAP_MS) {
+            // Buffer rapid seek requests to protect Netflix Cadmium DRM pipeline from M7375 crash
+            if (bridgePendingSeekTimer) clearTimeout(bridgePendingSeekTimer);
+            bridgePendingSeekTimer = setTimeout(() => {
+                bridgePendingSeekTimer = null;
+                if (Number.isFinite(bridgePendingSeekMs)) {
+                    const target = bridgePendingSeekMs;
+                    bridgePendingSeekMs = null;
+                    executeBridgeSeek(target);
+                }
+            }, MIN_BRIDGE_SEEK_GAP_MS - elapsed);
+        } else {
+            if (bridgePendingSeekTimer) {
+                clearTimeout(bridgePendingSeekTimer);
+                bridgePendingSeekTimer = null;
             }
-        } catch (_) {}
+            bridgePendingSeekMs = null;
+            executeBridgeSeek(requestedMs);
+        }
     });
 
+    function findNetflixTitle() {
+        try {
+            const player = getNetflixPlayer();
+            const title = player?.getVideoTitle?.() || player?.getMovieTitle?.();
+            if (title && typeof title === "string" && title.trim()) {
+                return title.trim();
+            }
+        } catch (_) {}
+
+        try {
+            const titleEl = document.querySelector(
+                ".video-title, [data-uia='video-title'], .playable-title, .title-info, .title",
+            );
+            if (titleEl?.textContent?.trim()) {
+                return titleEl.textContent.trim();
+            }
+        } catch (_) {}
+
+        try {
+            if (document.title && !document.title.toLowerCase().startsWith("netflix")) {
+                return document.title.replace(/-?\s*netflix\s*$/i, "").trim();
+            }
+        } catch (_) {}
+
+        return "";
+    }
+
+    function findNetflixArtworkUrl() {
+        // 1. Try navigator.mediaSession.metadata.artwork
+        try {
+            const artworks = Array.from(
+                navigator.mediaSession?.metadata?.artwork || [],
+            );
+            if (artworks.length > 0) {
+                const sorted = artworks.sort((a, b) => {
+                    const aSize = parseInt(a.sizes, 10) || 0;
+                    const bSize = parseInt(b.sizes, 10) || 0;
+                    return bSize - aSize;
+                });
+                const found = sorted.find(
+                    (item) =>
+                        typeof item?.src === "string" &&
+                        /^https?:\/\//i.test(item.src),
+                );
+                if (found?.src) return found.src;
+            }
+        } catch (_) {}
+
+        // 2. Try Netflix Falcor Cache (Redux / Models)
+        try {
+            const player = getNetflixPlayer();
+            const movieId = String(
+                player?.getMovieId?.() || currentMovieId || "",
+            );
+            const falcorCache =
+                window.netflix?.falcorCache ||
+                window.netflix?.appContext?.state?.model?.cache ||
+                window.netflix?.appContext?.state?.playerApp?.getState?.()
+                    ?.falcorCache;
+
+            if (falcorCache && typeof falcorCache === "object") {
+                const videos = falcorCache.videos || {};
+                const videoData = movieId ? videos[movieId] : null;
+
+                const candidates = [];
+                const extractCandidates = (obj, depth = 0) => {
+                    if (!obj || depth > 4) return;
+                    if (typeof obj === "string") {
+                        if (
+                            /^https?:\/\/[^\s'"]+\.(jpe?g|png|webp|avif)/i.test(
+                                obj,
+                            ) ||
+                            (obj.includes("nflx") && /^https?:\/\//i.test(obj))
+                        ) {
+                            candidates.push(obj);
+                        }
+                        return;
+                    }
+                    if (
+                        typeof obj.url === "string" &&
+                        /^https?:\/\//i.test(obj.url)
+                    ) {
+                        candidates.push(obj.url);
+                    }
+                    if (
+                        typeof obj.value === "string" &&
+                        /^https?:\/\//i.test(obj.value)
+                    ) {
+                        candidates.push(obj.value);
+                    } else if (typeof obj.value === "object") {
+                        extractCandidates(obj.value, depth + 1);
+                    }
+                    if (typeof obj === "object") {
+                        for (const child of Object.values(obj)) {
+                            extractCandidates(child, depth + 1);
+                        }
+                    }
+                };
+
+                if (videoData) {
+                    extractCandidates(videoData.storyart);
+                    extractCandidates(videoData.boxarts);
+                    extractCandidates(videoData.heroImage);
+                    extractCandidates(videoData.titleCard);
+                    extractCandidates(videoData.art);
+                    extractCandidates(videoData.interestingMoment);
+                }
+
+                if (candidates.length === 0) {
+                    for (const v of Object.values(videos)) {
+                        extractCandidates(v);
+                        if (candidates.length >= 5) break;
+                    }
+                }
+
+                if (candidates.length > 0) {
+                    const preferred =
+                        candidates.find(
+                            (u) =>
+                                u.includes("1280") ||
+                                u.includes("720") ||
+                                u.includes("storyart") ||
+                                u.includes("hero"),
+                        ) || candidates[0];
+                    if (preferred) return preferred;
+                }
+            }
+        } catch (_) {}
+
+        // 3. Try DOM images on Netflix Watch page
+        try {
+            const domImgs = Array.from(
+                document.querySelectorAll(
+                    "img[src*='nflxso.net'], img[src*='nflximg.net'], img[src*='assets.nflxext.com'], img[src*='occ-'], .previewModal--boxart, .watch-video img, .nf-player-container img, [data-uia*='image'] img, .postplay-background img, .player-loading-background, .scrubber-preview-box img",
+                ),
+            );
+            for (const img of domImgs) {
+                const src = img.currentSrc || img.src;
+                if (
+                    src &&
+                    /^https?:\/\//i.test(src) &&
+                    !src.includes("data:image") &&
+                    !src.includes("beacon")
+                ) {
+                    return src;
+                }
+                const bg =
+                    img.style?.backgroundImage ||
+                    window.getComputedStyle(img)?.backgroundImage;
+                const bgMatch =
+                    bg && bg.match(/url\(['"]?(https?:\/\/[^'"]+)['"]?\)/i);
+                if (bgMatch && bgMatch[1]) {
+                    return bgMatch[1];
+                }
+            }
+        } catch (_) {}
+
+        // 4. Try OpenGraph / Twitter meta tags
+        try {
+            const og =
+                document.querySelector('meta[property="og:image"]')?.content ||
+                document.querySelector('meta[name="twitter:image"]')?.content ||
+                document.querySelector('link[rel="image_src"]')?.href;
+            if (og && /^https?:\/\//i.test(og)) return og;
+        } catch (_) {}
+
+        return "";
+    }
+
     window.addEventListener(ARTWORK_REQUEST_EVENT, () => {
-        const artwork = Array.from(
-            navigator.mediaSession?.metadata?.artwork || [],
-        ).sort((a, b) => {
-            const aSize = parseInt(a.sizes, 10) || 0;
-            const bSize = parseInt(b.sizes, 10) || 0;
-            return bSize - aSize;
-        })[0];
+        const url = findNetflixArtworkUrl();
+        const title = findNetflixTitle();
+        const movieId = String(
+            currentMovieId || getNetflixPlayer()?.getMovieId?.() || "",
+        );
         window.dispatchEvent(
             new CustomEvent(ARTWORK_RESPONSE_EVENT, {
-                detail: { url: artwork?.src || "" },
+                detail: { url, title, movieId },
             }),
         );
     });

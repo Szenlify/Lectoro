@@ -59,18 +59,8 @@
                 detail: { targetMs },
             }),
         );
-
-        // Fallback directly on video element if available
-        const video =
-            videoFallback instanceof HTMLVideoElement
-                ? videoFallback
-                : document.querySelector("video");
-        if (video && Math.abs(video.currentTime - targetSeconds) > 0.5) {
-            try {
-                video.currentTime = Math.max(0, targetSeconds);
-                if (video.paused) video.play?.().catch?.(() => {});
-            } catch (_) {}
-        }
+        // Note: On Netflix, NEVER touch video.currentTime directly!
+        // Direct currentTime manipulation desyncs Widevine DRM MSE buffers and triggers Error M7375.
     }
 
     function pauseVideo(videoFallback = null) {
@@ -357,12 +347,135 @@
         return targetIndex >= 0 ? cues[targetIndex].startTime : 0;
     }
 
-    function requestArtworkUrl() {
+    let cachedNetflixArtworkDataUrl = "";
+    let cachedNetflixMovieId = "";
+
+    function resetArtworkCache() {
+        cachedNetflixArtworkDataUrl = "";
+        cachedNetflixMovieId = "";
+    }
+
+    window.addEventListener("popstate", resetArtworkCache, { passive: true });
+
+    function resizeImageDataUrl(dataUrl, maxWidth = 480) {
+        if (!dataUrl || typeof dataUrl !== "string") return Promise.resolve("");
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                try {
+                    const srcWidth = img.naturalWidth || img.width;
+                    const srcHeight = img.naturalHeight || img.height;
+                    if (!srcWidth || !srcHeight) {
+                        resolve(dataUrl);
+                        return;
+                    }
+                    const scale = Math.min(maxWidth / srcWidth, 1);
+                    const width = Math.max(1, Math.round(srcWidth * scale));
+                    const height = Math.max(1, Math.round(srcHeight * scale));
+
+                    const canvas = document.createElement("canvas");
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext("2d");
+                    if (!ctx) {
+                        resolve(dataUrl);
+                        return;
+                    }
+                    ctx.drawImage(img, 0, 0, width, height);
+                    const webp = canvas.toDataURL("image/webp", 0.80);
+                    if (webp && webp.startsWith("data:image/webp")) {
+                        resolve(webp);
+                        return;
+                    }
+                    resolve(canvas.toDataURL("image/jpeg", 0.80));
+                } catch (_) {
+                    resolve(dataUrl);
+                }
+            };
+            img.onerror = () => resolve(dataUrl);
+            img.src = dataUrl;
+        });
+    }
+
+    function renderFallbackNetflixCard(title = "") {
+        try {
+            const width = 480;
+            const height = 270;
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) return "";
+
+            // Background gradient: dark sleek aesthetic
+            const grad = ctx.createLinearGradient(0, 0, width, height);
+            grad.addColorStop(0, "#1f1f1f");
+            grad.addColorStop(0.5, "#141414");
+            grad.addColorStop(1, "#0a0a0a");
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, width, height);
+
+            // Subtle red glow on left edge (Netflix red #E50914)
+            const glow = ctx.createRadialGradient(40, 40, 10, 40, 40, 180);
+            glow.addColorStop(0, "rgba(229, 9, 20, 0.25)");
+            glow.addColorStop(1, "rgba(229, 9, 20, 0)");
+            ctx.fillStyle = glow;
+            ctx.fillRect(0, 0, width, height);
+
+            // Netflix Badge
+            ctx.fillStyle = "#E50914";
+            ctx.font = "bold 16px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+            ctx.fillText("NETFLIX", 28, 42);
+
+            // Title / Show name
+            const displayTitle =
+                title ||
+                document.title.replace(/-?\s*netflix\s*$/i, "").trim() ||
+                "Netflix Video";
+            ctx.fillStyle = "#FFFFFF";
+            ctx.font = "bold 20px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+
+            // Word wrap title
+            const words = displayTitle.split(/\s+/);
+            let line = "";
+            let y = 110;
+            for (let n = 0; n < words.length; n++) {
+                const testLine = line + words[n] + " ";
+                const metrics = ctx.measureText(testLine);
+                if (metrics.width > width - 56 && n > 0) {
+                    ctx.fillText(line, 28, y);
+                    line = words[n] + " ";
+                    y += 28;
+                    if (y > 170) break;
+                } else {
+                    line = testLine;
+                }
+            }
+            ctx.fillText(line, 28, y);
+
+            // Subtitle icon / Lectoro tag at bottom
+            ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+            ctx.font = "12px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+            ctx.fillText("Lectoro Study Card", 28, height - 24);
+
+            return (
+                canvas.toDataURL("image/webp", 0.85) ||
+                canvas.toDataURL("image/jpeg", 0.85) ||
+                ""
+            );
+        } catch (_) {
+            return "";
+        }
+    }
+
+    function requestArtworkInfo(timeoutMs = 1500) {
         const pageArtwork =
             document.querySelector("video")?.poster ||
             document.querySelector('meta[property="og:image"]')?.content ||
             document.querySelector('meta[name="twitter:image"]')?.content;
-        if (pageArtwork) return Promise.resolve(pageArtwork);
+        if (pageArtwork) {
+            return Promise.resolve({ url: pageArtwork, title: "" });
+        }
 
         return new Promise((resolve) => {
             const timer = setTimeout(() => {
@@ -370,15 +483,19 @@
                     ARTWORK_RESPONSE_EVENT,
                     handleResponse,
                 );
-                resolve(null);
-            }, 300);
+                resolve({ url: "", title: "", movieId: "" });
+            }, timeoutMs);
             const handleResponse = (event) => {
                 clearTimeout(timer);
                 window.removeEventListener(
                     ARTWORK_RESPONSE_EVENT,
                     handleResponse,
                 );
-                resolve(event.detail?.url || null);
+                resolve({
+                    url: event.detail?.url || "",
+                    title: event.detail?.title || "",
+                    movieId: event.detail?.movieId || "",
+                });
             };
             window.addEventListener(ARTWORK_RESPONSE_EVENT, handleResponse);
             window.dispatchEvent(new CustomEvent(ARTWORK_REQUEST_EVENT));
@@ -386,22 +503,56 @@
     }
 
     async function captureArtwork() {
-        const url = await requestArtworkUrl();
-        if (!url) return null;
-        if (/^data:image\//i.test(url)) return url;
-        const response = await sendMessage({
-            type: "QT_FETCH_CONTEXT_IMAGE",
-            url,
-        });
-        return response?.dataUrl || null;
+        if (cachedNetflixArtworkDataUrl) {
+            return cachedNetflixArtworkDataUrl;
+        }
+
+        const info = await requestArtworkInfo(1500);
+        const url = info?.url;
+        const title = info?.title;
+
+        if (url) {
+            try {
+                let dataUrl = "";
+                if (/^data:image\//i.test(url)) {
+                    dataUrl = url;
+                } else {
+                    const response = await sendMessage({
+                        type: "QT_FETCH_CONTEXT_IMAGE",
+                        url,
+                    });
+                    dataUrl = response?.dataUrl || "";
+                }
+
+                if (dataUrl) {
+                    const resized = await resizeImageDataUrl(dataUrl);
+                    if (resized) {
+                        cachedNetflixArtworkDataUrl = resized;
+                        return resized;
+                    }
+                    cachedNetflixArtworkDataUrl = dataUrl;
+                    return dataUrl;
+                }
+            } catch (err) {
+                console.warn("[Lectoro] Netflix artwork fetch failed:", err);
+            }
+        }
+
+        // Fallback: high-res branded Netflix canvas card (guarantees image is never blank)
+        const fallbackCard = renderFallbackNetflixCard(title);
+        if (fallbackCard) {
+            cachedNetflixArtworkDataUrl = fallbackCard;
+            return fallbackCard;
+        }
+        return "";
     }
 
     /**
      * Fast review image capture for Netflix.
-     * DRM prevents video canvas capture (returns black frame), so we directly fetch high-res artwork.
+     * DRM prevents video canvas capture (returns black frame), so we directly fetch high-res artwork or render a branded title card.
      */
     async function captureReviewImage() {
-        if (!isPage()) return null;
+        if (!isPage()) return "";
         return (await captureArtwork()) || "";
     }
 
