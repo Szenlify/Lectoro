@@ -214,14 +214,14 @@
             layer.style.overflow = "hidden";
 
             // Proportional font sizing: small video = smaller font, large video = larger font
-            const fontSizePx = Math.max(13, Math.min(46, Math.round(actualWidth * 0.024 + 1)));
+            const fontSizePx = Math.max(15, Math.min(52, Math.round(actualWidth * 0.027 + 2)));
             layer.style.setProperty("--lectoro-sub-font-size", `${fontSizePx}px`);
 
             // Bottom offset inside video player
             const isNetflix = isNetflixPage();
             const baseBottomPx = isNetflix
-                ? Math.max(64, Math.round(actualHeight * 0.11))
-                : Math.max(34, Math.round(actualHeight * 0.075));
+                ? Math.max(76, Math.round(actualHeight * 0.13))
+                : Math.max(48, Math.round(actualHeight * 0.098));
 
             layer.style.setProperty("--lectoro-sub-bottom", `${baseBottomPx}px`);
             box.style.marginBottom = `${baseBottomPx}px`;
@@ -1089,7 +1089,7 @@
 
         translationOverlay.style.setProperty(
             "font-size",
-            "var(--lectoro-sub-font-size, 20px)",
+            "var(--lectoro-sub-font-size, 24px)",
             "important",
         );
         translationOverlay.style.position = "fixed";

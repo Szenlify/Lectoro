@@ -660,7 +660,7 @@ video::cue {
     justify-content: center !important;
     text-align: center !important;
     max-width: min(86%, 920px) !important;
-    margin-bottom: var(--lectoro-sub-bottom, 54px) !important;
+    margin-bottom: var(--lectoro-sub-bottom, 68px) !important;
     pointer-events: auto !important;
     user-select: text !important;
     transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), opacity 0s ease !important;
@@ -671,7 +671,7 @@ video::cue {
     margin: 2.5px 0 !important;
     color: #ffffff !important;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Inter, sans-serif !important;
-    font-size: var(--lectoro-sub-font-size, 22px) !important;
+    font-size: var(--lectoro-sub-font-size, 25px) !important;
     font-weight: 600 !important;
     line-height: 1.35 !important;
     letter-spacing: 0.015em !important;
@@ -695,17 +695,17 @@ video::cue {
 
 [data-platform="youtube"] .__qt_custom-sub-line,
 body[data-lectoro-platform="youtube"] .__qt_custom-sub-line {
-    font-size: var(--lectoro-sub-font-size, 22px) !important;
+    font-size: var(--lectoro-sub-font-size, 25px) !important;
 }
 
 [data-platform="netflix"] .__qt_custom-sub-line,
 body[data-lectoro-platform="netflix"] .__qt_custom-sub-line {
-    font-size: var(--lectoro-sub-font-size, 28px) !important;
+    font-size: var(--lectoro-sub-font-size, 31px) !important;
 }
 
 [data-platform="lookmovie"] .__qt_custom-sub-line,
 body[data-lectoro-platform="lookmovie"] .__qt_custom-sub-line {
-    font-size: var(--lectoro-sub-font-size, 26px) !important;
+    font-size: var(--lectoro-sub-font-size, 29px) !important;
 }
 
 .__qt_sub-word {
@@ -729,7 +729,7 @@ body[data-lectoro-platform="lookmovie"] .__qt_custom-sub-line {
 .__qt_yt-sub-hint {
     position: fixed;
     z-index: 2147483647;
-    bottom: 90px;
+    bottom: 105px;
     left: 50%;
     transform: translateX(-50%);
     background: rgba(74, 108, 247, 0.9);
@@ -940,7 +940,7 @@ body[data-lectoro-platform="lookmovie"] .__qt_custom-sub-line {
 .__qt_lm-sub-hint {
     position: fixed;
     z-index: 2147483647;
-    bottom: 90px;
+    bottom: 105px;
     left: 50%;
     transform: translateX(-50%);
     background: rgba(74, 108, 247, 0.9);
