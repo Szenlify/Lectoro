@@ -1398,7 +1398,8 @@ body::before {
     color: var(--text-primary);
 }
 
-.review-voice-system {
+.review-voice-system,
+.review-voice-item {
     width: 100%;
     display: flex;
     align-items: center;
@@ -1411,10 +1412,13 @@ body::before {
     font: inherit;
     text-align: left;
     cursor: pointer;
+    transition: all .15s ease;
 }
 
 .review-voice-system:hover,
-.review-voice-system.active {
+.review-voice-system.active,
+.review-voice-item:hover,
+.review-voice-item.active {
     border-color: rgba(129, 140, 248, .2);
     background: rgba(129, 140, 248, .08);
 }
@@ -1428,6 +1432,10 @@ body::before {
     border-radius: 9px;
     background: rgba(255, 255, 255, .05);
     font-size: 13px;
+}
+
+.review-voice-avatar.el {
+    background: rgba(139, 92, 246, .12);
 }
 
 .review-voice-option-copy {
@@ -1455,9 +1463,11 @@ body::before {
     color: var(--mint);
     font-size: 11px;
     opacity: 0;
+    transition: opacity .15s ease;
 }
 
-.review-voice-system.active .review-voice-check {
+.review-voice-system.active .review-voice-check,
+.review-voice-item.active .review-voice-check {
     opacity: 1;
 }
 
@@ -1532,26 +1542,23 @@ body::before {
     background: rgba(129, 140, 248, .21);
 }
 
-.review-voice-select-wrap {
-    padding: 9px;
-    border: 1px solid rgba(129, 140, 248, .17);
-    border-radius: 12px;
-    background: rgba(129, 140, 248, .06);
+.review-voice-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    max-height: 190px;
+    overflow-y: auto;
+    padding-right: 2px;
+    margin-bottom: 8px;
 }
 
-.review-voice-select-wrap select {
-    width: 100%;
-    margin: 0;
-    padding: 8px 30px 8px 9px;
-    font-size: 10px;
+.review-voice-list::-webkit-scrollbar {
+    width: 4px;
 }
 
-.review-voice-meta {
-    min-height: 13px;
-    margin-top: 7px;
-    color: var(--text-muted);
-    font-size: 8.5px;
-    line-height: 1.35;
+.review-voice-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, .15);
+    border-radius: 4px;
 }
 
 .review-voice-status {

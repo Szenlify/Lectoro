@@ -9,8 +9,13 @@ chrome.storage.local.get(
             volumeRange.value = data.ttsVolume;
             volumeValue.textContent = Math.round(data.ttsVolume * 100) + "%";
         }
+        let voice = data.speechVoice;
+        if (voice === "random") {
+            voice = "";
+            chrome.storage.local.set({ speechVoice: "" });
+        }
         // Load voices and set selection
-        loadVoices(data.speechVoice);
+        loadVoices(voice);
     },
 );
 
@@ -55,8 +60,7 @@ wordCloudModeToggle.addEventListener("change", () => {
 function loadVoices(selectedVoice) {
     const voices = window.speechSynthesis.getVoices();
     voiceSelect.innerHTML = `
-        <option value="">🔊 Domyślny</option>
-        <option value="random">✦ Losowy głos systemowy</option>`;
+        <option value="">🔊 Domyślny</option>`;
     voices
         .filter((v) => /google/i.test(v.name))
         .forEach((v) => {
@@ -78,7 +82,7 @@ function loadVoices(selectedVoice) {
 // Voices may load async
 window.speechSynthesis.onvoiceschanged = () => {
     chrome.storage.local.get({ speechVoice: "" }, (data) => {
-        loadVoices(data.speechVoice);
+        loadVoices(data.speechVoice === "random" ? "" : data.speechVoice);
     });
 };
 

@@ -41,7 +41,10 @@ chrome.storage.local.get(
     },
     (data) => {
         reviewDirection = data.reviewDirection;
-        reviewSystemVoice = data.speechVoice;
+        reviewSystemVoice = data.speechVoice === "random" ? "" : data.speechVoice;
+        if (data.speechVoice === "random") {
+            chrome.storage.local.set({ speechVoice: "" });
+        }
         ttsMode = data.ttsMode;
         reviewElVoiceId = data.elVoiceId;
         updateDirBtnLabel();
@@ -69,7 +72,7 @@ document.getElementById("reviewDirBtn")?.addEventListener("click", () => {
     renderReview();
 });
 
-// ── Random Voice toggle button ────────────────────────────────────
+// ── Review Voice Picker ──────────────────────────────────────────
 // Compact voice picker for the review workflow.
 function setReviewVoiceStatus(message = "", type = "") {
     const status = document.getElementById("reviewVoiceStatus");
@@ -123,9 +126,6 @@ function syncReviewVoiceButton() {
     const label = document.getElementById("reviewVoiceBtnLabel");
     const badge = document.getElementById("reviewVoiceAiBadge");
     const systemOption = document.getElementById("reviewBrowserVoiceOption");
-    const randomSystemOption = document.getElementById(
-        "reviewRandomSystemVoiceOption",
-    );
     if (!btn || !label || !badge) return;
 
     const enabled =
@@ -137,20 +137,15 @@ function syncReviewVoiceButton() {
         enabled && ttsMode === "elevenlabs" && !!reviewElVoiceId && reviewElVoiceId !== "random";
 
     btn.classList.toggle("is-elevenlabs", usingElevenLabs);
-    const usingRandomSystem =
-        !usingElevenLabs && reviewSystemVoice === "random";
     systemOption?.classList.toggle(
         "active",
-        !usingElevenLabs && !usingRandomSystem,
+        !usingElevenLabs,
     );
-    randomSystemOption?.classList.toggle("active", usingRandomSystem);
     badge.classList.toggle("is-locked", !enabled);
     badge.textContent = usingElevenLabs ? "EL" : "AI";
     label.textContent = usingElevenLabs
         ? voice?.name || "ElevenLabs"
-        : usingRandomSystem
-          ? "Losowy"
-          : "Głos";
+        : "Głos";
     btn.title = usingElevenLabs
         ? `ElevenLabs: ${voice?.name || "wybrany głos"}`
         : "Wybierz głos powtórek";
@@ -159,6 +154,7 @@ function syncReviewVoiceButton() {
 function renderFreeVoiceTeaser() {
     const content = document.getElementById("reviewElevenLabsContent");
     if (!content) return;
+    if (content.querySelector(".review-voice-teaser")) return;
     content.innerHTML = `
         <div class="review-voice-teaser">
             <div class="review-voice-teaser-title"><span>Naturalne głosy AI</span><span>🔒</span></div>
@@ -178,72 +174,94 @@ function renderFreeVoiceTeaser() {
         });
 }
 
+function syncElevenLabsVoiceActiveState() {
+    const list = document.querySelector(
+        "#reviewElevenLabsContent .review-voice-list",
+    );
+    if (!list) return false;
+    list.querySelectorAll(".review-voice-item").forEach((btn) => {
+        const isActive =
+            ttsMode === "elevenlabs" &&
+            reviewElVoiceId === btn.dataset.voiceId;
+        btn.classList.toggle("active", isActive);
+    });
+    return true;
+}
+
 function renderElevenLabsVoiceSelect() {
     const content = document.getElementById("reviewElevenLabsContent");
     if (!content) return;
-    content.replaceChildren();
 
-    const wrap = document.createElement("div");
-    wrap.className = "review-voice-select-wrap";
-    const select = document.createElement("select");
-    select.id = "reviewElVoiceSelect";
-    select.setAttribute("aria-label", "Głos ElevenLabs");
-
-    const placeholderOption = document.createElement("option");
-    placeholderOption.value = "";
-    placeholderOption.textContent = "Wybierz głos…";
-    placeholderOption.disabled = true;
-    select.appendChild(placeholderOption);
-
-    reviewElVoices.forEach((voice) => {
-        const option = document.createElement("option");
-        option.value = voice.voice_id;
-        option.textContent = voice.name;
-        select.appendChild(option);
-    });
-
-    if (
-        ttsMode === "elevenlabs" &&
-        reviewElVoiceId &&
-        reviewElVoiceId !== "random" &&
-        reviewElVoices.some((voice) => voice.voice_id === reviewElVoiceId)
-    ) {
-        select.value = reviewElVoiceId;
-    } else {
-        select.value = "";
+    if (!reviewElVoices.length) {
+        content.replaceChildren();
+        return;
     }
 
-    const meta = document.createElement("div");
-    meta.className = "review-voice-meta";
-    const updateMeta = () => {
-        const voice = reviewElVoices.find(
-            (item) => item.voice_id === select.value,
-        );
-        meta.textContent = voice
-            ? formatVoiceLabels(voice) || "Naturalny głos ElevenLabs"
-            : "Wybierz lektora, aby włączyć ElevenLabs.";
-    };
-    updateMeta();
+    const existingList = content.querySelector(".review-voice-list");
+    if (
+        existingList &&
+        existingList.children.length === reviewElVoices.length
+    ) {
+        syncElevenLabsVoiceActiveState();
+        return;
+    }
 
-    select.addEventListener("change", async () => {
-        reviewElVoiceId = select.value;
-        ttsMode = "elevenlabs";
-        // A deliberate re-selection is also an explicit retry after the
-        // provider account has been topped up or re-enabled.
-        if (typeof clearPopupElevenLabsProviderBlock === "function") {
-            clearPopupElevenLabsProviderBlock();
-        }
-        await chrome.storage.local.set({
-            ttsMode,
-            elVoiceId: reviewElVoiceId,
+    content.replaceChildren();
+
+    const list = document.createElement("div");
+    list.className = "review-voice-list";
+
+    reviewElVoices.forEach((voice) => {
+        const item = document.createElement("button");
+        item.type = "button";
+        const isActive =
+            ttsMode === "elevenlabs" && reviewElVoiceId === voice.voice_id;
+        item.className = `review-voice-item${isActive ? " active" : ""}`;
+        item.dataset.voiceId = voice.voice_id;
+
+        const avatar = document.createElement("span");
+        avatar.className = "review-voice-avatar el";
+        avatar.textContent = "🎙️";
+
+        const copy = document.createElement("span");
+        copy.className = "review-voice-option-copy";
+
+        const name = document.createElement("strong");
+        name.textContent = voice.name;
+
+        const labels = document.createElement("small");
+        labels.textContent =
+            formatVoiceLabels(voice) || "Naturalny głos ElevenLabs";
+
+        copy.append(name, labels);
+
+        const check = document.createElement("span");
+        check.className = "review-voice-check";
+        check.setAttribute("aria-hidden", "true");
+        check.textContent = "✓";
+
+        item.append(avatar, copy, check);
+
+        item.addEventListener("click", async (event) => {
+            event.stopPropagation();
+            reviewElVoiceId = voice.voice_id;
+            ttsMode = "elevenlabs";
+            if (typeof clearPopupElevenLabsProviderBlock === "function") {
+                clearPopupElevenLabsProviderBlock();
+            }
+            await chrome.storage.local.set({
+                ttsMode,
+                elVoiceId: reviewElVoiceId,
+            });
+            syncElevenLabsVoiceActiveState();
+            syncReviewVoiceButton();
+            setReviewVoiceStatus(`✓ Wybrano głos: ${voice.name}`, "ok");
         });
-        updateMeta();
-        syncReviewVoiceButton();
-        setReviewVoiceStatus("✓ Głos ElevenLabs włączony.", "ok");
+
+        list.appendChild(item);
     });
 
-    wrap.append(select, meta);
-    content.appendChild(wrap);
+    content.appendChild(list);
 }
 
 async function loadReviewElevenLabsVoices() {
@@ -256,7 +274,7 @@ async function loadReviewElevenLabsVoices() {
         renderElevenLabsVoiceSelect();
         setReviewVoiceStatus(
             reviewElVoices.length
-                ? `${reviewElVoices.length} głosów do wyboru`
+                ? `${reviewElVoices.length} dostępnych głosów`
                 : "Brak dostępnych głosów.",
             reviewElVoices.length ? "" : "error",
         );
@@ -300,7 +318,8 @@ async function updateReviewVoiceUI() {
 
 document
     .getElementById("reviewVoiceBtn")
-    ?.addEventListener("click", async () => {
+    ?.addEventListener("click", async (event) => {
+        event.stopPropagation();
         const menu = document.getElementById("reviewVoiceMenu");
         const btn = document.getElementById("reviewVoiceBtn");
         if (!menu || !btn) return;
@@ -309,49 +328,55 @@ document
         btn.setAttribute("aria-expanded", String(willOpen));
         if (!willOpen) return;
 
+        if (reviewElVoices.length && syncElevenLabsVoiceActiveState()) {
+            syncReviewVoiceButton();
+            return;
+        }
+
         await updateReviewVoiceUI();
         const enabled =
             !!reviewVoiceProfile &&
             SubscriptionConfig.getPlanLimits(reviewVoiceProfile.plan).elevenLabs
                 .enabled;
-        if (enabled) await loadReviewElevenLabsVoices();
+        if (enabled && !reviewElVoices.length) await loadReviewElevenLabsVoices();
+    });
+
+document
+    .getElementById("reviewVoiceMenu")
+    ?.addEventListener("click", (event) => {
+        event.stopPropagation();
     });
 
 document
     .getElementById("reviewVoiceClose")
-    ?.addEventListener("click", closeReviewVoiceMenu);
+    ?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        closeReviewVoiceMenu();
+    });
 
 document
     .getElementById("reviewBrowserVoiceOption")
-    ?.addEventListener("click", async () => {
+    ?.addEventListener("click", async (event) => {
+        event.stopPropagation();
         ttsMode = "browser";
         if (reviewSystemVoice === "random") reviewSystemVoice = "";
         await chrome.storage.local.set({
             ttsMode,
+            elVoiceId: "",
             speechVoice: reviewSystemVoice,
         });
-        if (reviewElVoices.length) renderElevenLabsVoiceSelect();
+        syncElevenLabsVoiceActiveState();
         syncReviewVoiceButton();
         setReviewVoiceStatus("✓ Używasz głosu systemowego.", "ok");
     });
 
-document
-    .getElementById("reviewRandomSystemVoiceOption")
-    ?.addEventListener("click", async () => {
-        ttsMode = "browser";
-        reviewSystemVoice = "random";
-        await chrome.storage.local.set({
-            ttsMode,
-            speechVoice: reviewSystemVoice,
-        });
-        if (reviewElVoices.length) renderElevenLabsVoiceSelect();
-        syncReviewVoiceButton();
-        setReviewVoiceStatus("✓ Losowy głos systemowy jest włączony.", "ok");
-    });
-
 document.addEventListener("click", (event) => {
     const picker = document.getElementById("reviewVoicePicker");
-    if (picker && !picker.contains(event.target)) closeReviewVoiceMenu();
+    if (!picker) return;
+    const path = event.composedPath ? event.composedPath() : [];
+    if (!path.includes(picker) && !picker.contains(event.target)) {
+        closeReviewVoiceMenu();
+    }
 });
 
 document.addEventListener("keydown", (event) => {

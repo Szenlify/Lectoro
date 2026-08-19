@@ -115,10 +115,6 @@
 
         if (!langVoices.length) return null;
 
-        if (savedVoiceName === "random") {
-            return langVoices[Math.floor(Math.random() * langVoices.length)];
-        }
-
         const googleVoice = langVoices.find((v) => /google/i.test(v.name));
         return googleVoice || langVoices[0];
     }

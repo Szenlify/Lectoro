@@ -293,10 +293,6 @@
 
             if (!langVoices.length) return null;
 
-            if (savedVoiceName === "random") {
-                return langVoices[Math.floor(Math.random() * langVoices.length)];
-            }
-
             // Prefer Google voices if available, otherwise take first voice matching language
             const googleVoice = langVoices.find((v) => /google/i.test(v.name));
             return googleVoice || langVoices[0];
