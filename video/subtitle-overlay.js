@@ -104,16 +104,27 @@
         return "generic";
     }
 
-    function ensureCustomSubtitlesLayer() {
-        if (customSubLayerEl && customSubLayerEl.isConnected) {
-            return { layer: customSubLayerEl, box: customSubBoxEl };
-        }
+    function findPlayerContainer(video) {
+        if (!video) return null;
+        return (
+            video.closest?.("#movie_player, .html5-video-player, .watch-video, [data-uia='video-canvas'], .nf-player-container, .video-js, .player-container, .jwplayer, .plyr") ||
+            video.parentElement
+        );
+    }
 
-        const parent = (typeof QT !== "undefined" && QT.getOverlayParent)
-            ? QT.getOverlayParent()
-            : (document.fullscreenElement || document.body);
+    function ensureCustomSubtitlesLayer() {
+        const video = getPlayerRegistry()?.getVideo();
+        const playerEl = findPlayerContainer(video);
+        const parent = document.fullscreenElement || playerEl || (typeof QT !== "undefined" && QT.getOverlayParent ? QT.getOverlayParent() : document.body);
 
         const platform = getPlatformName();
+
+        if (customSubLayerEl && customSubLayerEl.isConnected) {
+            if (parent && customSubLayerEl.parentElement !== parent) {
+                parent.appendChild(customSubLayerEl);
+            }
+            return { layer: customSubLayerEl, box: customSubBoxEl };
+        }
 
         customSubLayerEl = document.createElement("div");
         customSubLayerEl.id = `${PREFIX}custom_subtitles_layer`;
@@ -151,6 +162,9 @@
                 return;
             }
 
+            const playerEl = findPlayerContainer(video);
+            const targetContainer = playerEl || video.parentElement;
+
             if (trackedVideo !== video) {
                 if (videoResizeObserver && trackedVideo) {
                     try { videoResizeObserver.unobserve(trackedVideo); } catch (_) {}
@@ -161,60 +175,56 @@
                         videoResizeObserver = new ResizeObserver(() => syncCustomSubtitlePosition());
                     }
                     videoResizeObserver.observe(video);
+                    if (targetContainer && targetContainer !== video) {
+                        videoResizeObserver.observe(targetContainer);
+                    }
                 }
             }
 
-            const videoRect = video.getBoundingClientRect();
-            if (videoRect.width === 0 || videoRect.height === 0) {
-                layer.style.display = "none";
-                return;
-            }
-
-            // Find video player container (Netflix .watch-video, YouTube #movie_player, etc.)
-            const playerEl = video.closest(".watch-video, [data-uia='video-canvas'], .nf-player-container, #movie_player, .html5-video-player, .video-js") || video.parentElement;
-            const playerRect = playerEl ? playerEl.getBoundingClientRect() : videoRect;
-
-            // Clamped visible viewport bounds (never overflowing screen or going off bottom)
-            const top = Math.max(0, Math.max(videoRect.top, playerRect.top));
-            const bottom = Math.min(window.innerHeight, Math.min(videoRect.bottom, playerRect.bottom));
-            const left = Math.max(0, Math.max(videoRect.left, playerRect.left));
-            const right = Math.min(window.innerWidth, Math.min(videoRect.right, playerRect.right));
-            const visibleWidth = Math.max(100, right - left);
-            const visibleHeight = Math.max(100, bottom - top);
-
-            if (visibleWidth <= 0 || visibleHeight <= 0 || bottom <= 0 || top >= window.innerHeight) {
-                layer.style.display = "none";
-                return;
-            }
-
-            // Ensure attached to current fullscreen / overlay root
-            const expectedParent = (typeof QT !== "undefined" && QT.getOverlayParent)
-                ? QT.getOverlayParent()
-                : (document.fullscreenElement || document.body);
+            // Ensure layer is attached inside targetContainer or fullscreen element
+            const expectedParent = document.fullscreenElement || targetContainer || document.body;
             if (layer.parentElement !== expectedParent) {
                 expectedParent.appendChild(layer);
             }
 
-            layer.style.display = "flex";
-            layer.style.position = "fixed";
-            layer.style.left = `${Math.round(left)}px`;
-            layer.style.top = `${Math.round(top)}px`;
-            layer.style.width = `${Math.round(visibleWidth)}px`;
-            layer.style.height = `${Math.round(visibleHeight)}px`;
+            // Ensure parent container is positioned so absolute layer stays locked inside
+            if (expectedParent !== document.body && expectedParent !== document.documentElement) {
+                const computedPos = window.getComputedStyle(expectedParent).position;
+                if (computedPos === "static") {
+                    expectedParent.style.position = "relative";
+                }
+            }
 
-            // Responsive font sizing based on visible video width
-            const fontSizePx = Math.max(16, Math.min(36, Math.round(visibleWidth * 0.024)));
+            const videoRect = video.getBoundingClientRect();
+            const playerRect = targetContainer ? targetContainer.getBoundingClientRect() : videoRect;
+            const actualWidth = playerRect.width || videoRect.width || video.offsetWidth || window.innerWidth;
+            const actualHeight = playerRect.height || videoRect.height || video.offsetHeight || window.innerHeight;
+
+            if (actualWidth <= 0 || actualHeight <= 0) {
+                layer.style.display = "none";
+                return;
+            }
+
+            layer.style.display = "flex";
+            layer.style.position = "absolute";
+            layer.style.inset = "0px";
+            layer.style.width = "100%";
+            layer.style.height = "100%";
+            layer.style.pointerEvents = "none";
+            layer.style.overflow = "hidden";
+
+            // Proportional font sizing: small video = smaller font, large video = larger font
+            const fontSizePx = Math.max(13, Math.min(46, Math.round(actualWidth * 0.024 + 1)));
             layer.style.setProperty("--lectoro-sub-font-size", `${fontSizePx}px`);
 
-            // Responsive bottom offset:
-            // Netflix needs ~11%-14% (min 78px) so subtitles are clearly above bottom controls and letterboxing.
-            // YouTube needs ~8%-10% (min 48px).
+            // Bottom offset inside video player
             const isNetflix = isNetflixPage();
             const baseBottomPx = isNetflix
-                ? Math.max(78, Math.round(visibleHeight * 0.12))
-                : Math.max(48, Math.round(visibleHeight * 0.08));
+                ? Math.max(64, Math.round(actualHeight * 0.11))
+                : Math.max(34, Math.round(actualHeight * 0.075));
 
             layer.style.setProperty("--lectoro-sub-bottom", `${baseBottomPx}px`);
+            box.style.marginBottom = `${baseBottomPx}px`;
         });
     }
 
