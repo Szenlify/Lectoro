@@ -3893,11 +3893,103 @@ html[data-lectoro-ai-limit-reached] .quiz-export-bottom {
     border-radius: 4px;
 }
 
-.library-intro {
-    font-size: 12px;
-    line-height: 1.55;
-    color: var(--text-secondary);
-    margin-bottom: 12px;
+.library-intro-box {
+margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--glass-border);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.library-intro-title {
+    font-size: 11.5px;
+    font-weight: 500;
+    line-height: 1.5;
+    color: var(--text-secondary, #94a3b8);
+    margin: 0;
+}
+
+.library-platforms-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    align-items: center;
+}
+
+.platform-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 11px;
+    border-radius: var(--radius-md, 8px);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    color: var(--text-primary, #f1f5f9);
+    font-size: 11px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+}
+
+.platform-badge:hover {
+    transform: translateY(-1.5px);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    color: #ffffff;
+}
+
+.platform-logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.platform-youtube:hover {
+    background: rgba(255, 0, 0, 0.15);
+    border-color: rgba(255, 0, 0, 0.4);
+    box-shadow: 0 4px 16px rgba(255, 0, 0, 0.25);
+}
+.platform-youtube .youtube-logo {
+    color: #ff0000;
+}
+
+.platform-netflix:hover {
+    background: rgba(229, 9, 20, 0.15);
+    border-color: rgba(229, 9, 20, 0.4);
+    box-shadow: 0 4px 16px rgba(229, 9, 20, 0.25);
+}
+.platform-netflix .netflix-logo {
+    color: #e50914;
+}
+
+.platform-plex:hover {
+    background: rgba(229, 160, 13, 0.15);
+    border-color: rgba(229, 160, 13, 0.4);
+    box-shadow: 0 4px 16px rgba(229, 160, 13, 0.25);
+}
+.platform-plex .plex-logo {
+    color: #e5a00d;
+}
+
+.platform-x:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.35);
+    box-shadow: 0 4px 16px rgba(255, 255, 255, 0.15);
+}
+.platform-x .x-logo {
+    color: #f1f5f9;
+}
+
+.platform-ted:hover {
+    background: rgba(230, 43, 30, 0.15);
+    border-color: rgba(230, 43, 30, 0.4);
+    box-shadow: 0 4px 16px rgba(230, 43, 30, 0.25);
+}
+.platform-ted .ted-logo {
+    color: #e62b1e;
 }
 
 .library-filters {
