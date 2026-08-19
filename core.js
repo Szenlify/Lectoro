@@ -413,10 +413,13 @@
     }
 
     async function captureMediaScreenshot(media) {
+        if (globalThis.LectoroNetflixAdapter?.isPage?.()) {
+            const netflixImg =
+                await globalThis.LectoroNetflixAdapter.captureReviewImage(media);
+            if (netflixImg) return netflixImg;
+        }
+
         if (media instanceof HTMLVideoElement) {
-            if (globalThis.LectoroNetflixAdapter?.isPage?.()) {
-                return (await globalThis.LectoroNetflixAdapter.captureReviewImage(media)) || null;
-            }
             if (media.readyState >= 2) {
                 const frame = drawMediaToDataUrl(media);
                 if (frame) return frame;
@@ -452,7 +455,9 @@
     async function captureContextScreenshot() {
         if (globalThis.LectoroNetflixAdapter?.isPage?.()) {
             const video = document.querySelector("video");
-            return video ? await globalThis.LectoroNetflixAdapter.captureReviewImage(video) : null;
+            const netflixImage =
+                await globalThis.LectoroNetflixAdapter.captureReviewImage(video);
+            if (netflixImage) return netflixImage;
         }
         const candidates = getVisibleMediaCandidates().slice(0, 3);
         for (const media of candidates) {

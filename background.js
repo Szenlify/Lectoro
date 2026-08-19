@@ -455,6 +455,8 @@ const NETFLIX_MEDIA_HOSTS = [
     "nflxvideo.net",
     "nflxso.net",
     "nflximg.net",
+    "nflxext.com",
+    "netflix.net",
 ];
 
 function bytesToBase64(bytes) {
@@ -513,12 +515,19 @@ async function fetchContextImageDataUrl(rawUrl) {
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-    const contentType = (response.headers.get("content-type") || "")
+    let contentType = (response.headers.get("content-type") || "")
         .split(";")[0]
         .trim()
         .toLowerCase();
     if (!contentType.startsWith("image/") || contentType === "image/svg+xml") {
-        throw new Error("Zasób nie jest obsługiwanym obrazem.");
+        if (
+            /\.(jpe?g|png|webp|avif)($|\?)/i.test(url.pathname) ||
+            isAllowedNetflixMediaHost(url.hostname)
+        ) {
+            contentType = "image/jpeg";
+        } else {
+            throw new Error("Zasób nie jest obsługiwanym obrazem.");
+        }
     }
 
     const declaredSize = Number(response.headers.get("content-length")) || 0;
