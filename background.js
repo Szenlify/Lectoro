@@ -615,14 +615,13 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "QT_CAPTURE_VISIBLE_TAB") {
-        if (!sender.tab?.active || !Number.isInteger(sender.tab.windowId)) {
-            sendResponse({ error: "Karta Netflixa nie jest aktywna." });
-            return false;
-        }
+        const windowId = Number.isInteger(sender.tab?.windowId)
+            ? sender.tab.windowId
+            : null;
         chrome.tabs
-            .captureVisibleTab(sender.tab.windowId, {
+            .captureVisibleTab(windowId, {
                 format: "jpeg",
-                quality: 88,
+                quality: 85,
             })
             .then((dataUrl) => sendResponse({ dataUrl }))
             .catch((error) => sendResponse({ error: error.message }));

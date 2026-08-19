@@ -547,12 +547,119 @@
         return "";
     }
 
+    async function captureVideoScene(videoFallback = null) {
+        try {
+            const response = await sendMessage({
+                type: "QT_CAPTURE_VISIBLE_TAB",
+            });
+            const tabDataUrl = response?.dataUrl;
+            if (!tabDataUrl || typeof tabDataUrl !== "string") {
+                return null;
+            }
+
+            const video =
+                videoFallback instanceof HTMLElement
+                    ? videoFallback
+                    : document.querySelector("video") ||
+                      document.querySelector(
+                          ".watch-video, [data-uia='video-canvas'], .nf-player-container, [data-uia='player']",
+                      );
+
+            const rect = video?.getBoundingClientRect
+                ? video.getBoundingClientRect()
+                : null;
+
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    try {
+                        const fullWidth = img.naturalWidth || img.width;
+                        const fullHeight = img.naturalHeight || img.height;
+                        if (!fullWidth || !fullHeight) {
+                            resolve(tabDataUrl);
+                            return;
+                        }
+
+                        const winWidth = window.innerWidth || fullWidth;
+                        const winHeight = window.innerHeight || fullHeight;
+                        const scaleX = fullWidth / winWidth;
+                        const scaleY = fullHeight / winHeight;
+
+                        let cropX = 0;
+                        let cropY = 0;
+                        let cropW = fullWidth;
+                        let cropH = fullHeight;
+
+                        if (rect && rect.width > 50 && rect.height > 50) {
+                            cropX = Math.max(0, Math.round(rect.left * scaleX));
+                            cropY = Math.max(0, Math.round(rect.top * scaleY));
+                            cropW = Math.min(
+                                fullWidth - cropX,
+                                Math.round(rect.width * scaleX),
+                            );
+                            cropH = Math.min(
+                                fullHeight - cropY,
+                                Math.round(rect.height * scaleY),
+                            );
+                        }
+
+                        const MAX_WIDTH = 480;
+                        const outScale = Math.min(MAX_WIDTH / cropW, 1);
+                        const targetW = Math.max(1, Math.round(cropW * outScale));
+                        const targetH = Math.max(1, Math.round(cropH * outScale));
+
+                        const canvas = document.createElement("canvas");
+                        canvas.width = targetW;
+                        canvas.height = targetH;
+                        const ctx = canvas.getContext("2d");
+                        if (!ctx) {
+                            resolve(tabDataUrl);
+                            return;
+                        }
+
+                        ctx.drawImage(
+                            img,
+                            cropX,
+                            cropY,
+                            cropW,
+                            cropH,
+                            0,
+                            0,
+                            targetW,
+                            targetH,
+                        );
+                        const sceneDataUrl =
+                            canvas.toDataURL("image/webp", 0.82) ||
+                            canvas.toDataURL("image/jpeg", 0.82);
+
+                        resolve(sceneDataUrl || tabDataUrl);
+                    } catch (err) {
+                        console.warn("[Lectoro] Video scene crop error:", err);
+                        resolve(tabDataUrl);
+                    }
+                };
+                img.onerror = () => resolve(null);
+                img.src = tabDataUrl;
+            });
+        } catch (err) {
+            console.warn("[Lectoro] captureVideoScene failed:", err);
+            return null;
+        }
+    }
+
     /**
-     * Fast review image capture for Netflix.
-     * DRM prevents video canvas capture (returns black frame), so we directly fetch high-res artwork or render a branded title card.
+     * Captures current review scene from the video on Netflix.
+     * 1. First priority: Live visible video scene screenshot.
+     * 2. Secondary fallback: High-res video artwork / Falcor / canvas card.
      */
-    async function captureReviewImage() {
+    async function captureReviewImage(videoFallback = null) {
         if (!isPage()) return "";
+
+        // 1. Primary: Capture current live video scene
+        const sceneShot = await captureVideoScene(videoFallback);
+        if (sceneShot) return sceneShot;
+
+        // 2. Secondary fallback: High-res artwork / title card
         return (await captureArtwork()) || "";
     }
 
