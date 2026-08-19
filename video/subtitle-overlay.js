@@ -68,7 +68,7 @@
     let wasPlayingBeforeSave = false;
 
     const SIMPLE_WORDS = new Set([
-        "an", "and", "are", "as", "at", "be", "but", "by", "can", "can't", "could",
+        "an","oh","uh","ah","a", "and", "are", "as", "at", "be", "but", "by", "can", "can't", "could",
         "did", "do", "does", "for", "from", "had", "has", "have", "he", "her",
         "here", "his", "if", "in", "into", "is", "it", "its", "me", "my", "not",
         "of", "on", "or", "our", "she", "should", "so", "some", "that", "the",
