@@ -1104,11 +1104,6 @@
         const rect = getSubtitleRect() || layout?.rect;
         if (!rect) return;
 
-        translationOverlay.style.setProperty(
-            "font-size",
-            "var(--lectoro-sub-font-size, 24px)",
-            "important",
-        );
         translationOverlay.style.position = "fixed";
         translationOverlay.style.left = rect.left + "px";
         translationOverlay.style.width = rect.width + "px";
