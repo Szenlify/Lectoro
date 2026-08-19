@@ -10,6 +10,12 @@
         if (!rawText) return "";
         let text = String(rawText);
 
+        // Decode basic HTML entities for angle brackets if present
+        text = text
+            .replace(/&gt;/gi, ">")
+            .replace(/&lt;/gi, "<")
+            .replace(/&amp;/gi, "&");
+
         if (typeof DOMParser !== "undefined") {
             try {
                 // Quick check if contains HTML/XML tags
@@ -38,6 +44,9 @@
 
         return text
             .replace(/\{[^}]+\}/g, "") // Remove ASS/SSA style tags
+            .replace(/(?:^|\s)(?:>>+|<<+|»+|«+|››+)(?:\s|$)/g, " ") // Strip speaker change markers >>, >>>, <<, », «
+            .replace(/^[>»›<«\s—–-]+/, "") // Strip leading markers/arrows
+            .replace(/(?:^|\s)[>»›](?=\s)/g, " ") // Strip isolated single > markers
             .replace(/\s+/g, " ")
             .trim();
     }

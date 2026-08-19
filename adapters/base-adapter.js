@@ -106,6 +106,11 @@
             } else {
                 text = (el.textContent || "").replace(/\s+/g, " ").trim();
             }
+            if (typeof SharedSubtitleService !== "undefined" && SharedSubtitleService.cleanCueText) {
+                text = SharedSubtitleService.cleanCueText(text);
+            } else {
+                text = text.replace(/(?:^|\s)(?:>>+|<<+|»+|«+)(?:\s|$)/g, " ").replace(/^[>»›<«\s—–-]+/, "").trim();
+            }
             if (text && !lines.includes(text)) {
                 lines.push(text);
             }

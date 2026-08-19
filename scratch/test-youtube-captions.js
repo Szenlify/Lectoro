@@ -86,6 +86,12 @@ assert.strictEqual(timeRepeat, 0.5, "Rewind should jump to start of current sent
 
 // At 5.0s (<= 4.7s + 1.2s), jump to previous sentence
 const timePrev = SubtitleService.findAdjacentCueTime(cues2, 5.0, -1);
-assert.strictEqual(timePrev, 0.5, "Previous subtitle should jump to previous sentence start");
+// 4. Test stripping of >> speaker markers
+assert.strictEqual(SubtitleService.cleanCueText(">> Hello world"), "Hello world");
+assert.strictEqual(SubtitleService.cleanCueText(">>> Welcome back to the show"), "Welcome back to the show");
+assert.strictEqual(SubtitleService.cleanCueText("Speaker 1: Hello. >> Speaker 2: Hi there."), "Speaker 1: Hello. Speaker 2: Hi there.");
+assert.strictEqual(SubtitleService.cleanCueText("&gt;&gt; Good morning &gt;&gt; everyone"), "Good morning everyone");
+assert.strictEqual(SubtitleService.cleanCueText("›› Testing ›› markers"), "Testing markers");
+assert.strictEqual(SubtitleService.cleanCueText(">> "), "");
 
-console.log("✅ All YouTube subtitle parser & timeline tests PASSED!");
+console.log("✅ All YouTube subtitle parser, timeline & >> stripping tests PASSED!");

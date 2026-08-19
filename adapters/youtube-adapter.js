@@ -104,20 +104,31 @@
     function getDomSubtitleText() {
         const container = document.querySelector(".ytp-caption-window-container");
         if (!container) return "";
+        const cleanFn = (t) => {
+            const service = getSubtitleService();
+            if (service && service.cleanCueText) return service.cleanCueText(t);
+            return String(t || "")
+                .replace(/(?:^|\s)(?:>>+|<<+|»+|«+|››+)(?:\s|$)/g, " ")
+                .replace(/^[>»›<«\s—–-]+/, "")
+                .replace(/\s+/g, " ")
+                .trim();
+        };
+
         const lines = Array.from(container.querySelectorAll(".caption-visual-line"));
         if (lines.length > 0) {
             const texts = lines
-                .map((l) => (l.textContent || "").replace(/\s+/g, " ").trim())
+                .map((l) => cleanFn((l.textContent || "").replace(/\s+/g, " ").trim()))
                 .filter(Boolean);
             return Array.from(new Set(texts)).join(" ").trim();
         }
         const segments = Array.from(container.querySelectorAll(".ytp-caption-segment"));
         if (segments.length > 0) {
-            return segments
+            const raw = segments
                 .map((s) => s.textContent || "")
                 .join(" ")
                 .replace(/\s+/g, " ")
                 .trim();
+            return cleanFn(raw);
         }
         return "";
     }
