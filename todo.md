@@ -6,7 +6,7 @@
 
 8. piracka biblioteka
 
-9. w settings w div kredytow jest napis Limit odnawia się co miesiąc. podaj date obok kiedy dokladnie sie odnowi jesli subskrybuje to dokladna data kiedy mi pobiera pienidze oraz kiedy wtedy ma sie pakiet odnawiac
+9. w settings w div kredytow jest napis Limit odnawia się co miesiąc. podaj date obok kiedy dokladnie sie odnowi jesli subskrybuje to dokladna data kiedy mi pobiera pienidze oraz kiedy wtedy ma sie pakiet odnawiac.
 
 11. popraw prompty AI tak aby byly krotkie, po angielsku, zeby mniej tokenow ai zuzywalo i idealnie dopracowane
 
