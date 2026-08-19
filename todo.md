@@ -1,5 +1,30 @@
 [TODO]
 
+Wprowadź 7-dniowy Darmowy Okres Próbny (Free Trial) w Stripe:
+Wymaga podania karty, ale nie pobiera opłaty przez pierwsze 7 dni. Zwiększa to konwersję na zakup o 200–300%.
+Oferuj Plan Roczny z góry:
+Użytkownik płaci od razu $59.99 (ok. 240 PLN). Jeden taki zakup daje Ci natychmiastowy zastrzyk gotówki równy 7-8 miesiącom pojedynczego abonamentu!
+Wykorzystaj e-mail marketing:
+Każdy, kto loguje się w Firebase Auth, zostawia swój e-mail. Wyślij po 3 dniach automatyczny mail: "Oto 3 triki, jak uczyć się 2x szybciej z Lectoro + zniżka 20% na plan Basic ważna przez 48h".
+
+Produkt & Launch
+    Publikacja w Chrome Store & Testy     :done, 2026-01-01, 14d
+    Uruchomienie Stripe Live & Plany Roczne:2026-01-15, 14d
+    section Marketing Organiczny
+    TikTok / Reels / Shorts (1 wideo/dzień):2026-01-15, 150d
+    Reddit / Grupy FB / Product 
+    r/EnglishLearningHunt       :2026-02-01, 60d
+    section Skalowanie & Influencerzy
+    Ekspansja Globalna (Język EN/ES)       :2026-03-01, 90d
+    Współpraca z mikro-twórcami (Affiliate):2026-04-01, 60d
+
+. 💎 Dlaczego Lectoro ma ogromny potencjał na ten wynik?
+
+Ból klienta jest silny i powtarzalny: Ludzie mają wyrzuty sumienia, że marnują czas na Netflixie/YouTube zamiast się uczyć. Lectoro daje im rozgrzeszenie: "Oglądasz serial, ale w rzeczywistości uczysz się angielskiego/hiszpańskiego".
+
+Efekt "WOW" w 15 sekund: Użytkownik instaluje wtyczkę, odpala film, najeżdża na słowo, natychmiast słyszy krystaliczny głos ElevenLabs i widzi zrzut kadru. To natychmiast buduje wysoką postrzeganą wartość.
+
+
 1. jakie klucze co i jak krok por kroku co musze mieniac kiedy bede stawial juz produkcyjna chrome extension
 
 2. zrob w kazdym jezyku aby był text UI nagłowki wszystkie w zaleznosci jaki zalezny jest język a jako defaul jest angielski [na pozniej jako ostatnie]
