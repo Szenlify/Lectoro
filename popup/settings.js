@@ -117,15 +117,24 @@ if (volumeRange) {
 // ── Gemini AI – zużycie (info) ────────────────────────────────────
 // Klucz Gemini API jest zarządzany przez serwer – użytkownicy nie muszą
 // go wpisywać. Tutaj pokazujemy tylko informację o zużyciu z odpowiedzi proxy.
-function renderSubscriptionPlans(subscription) {
+function renderSubscriptionPlans(subscription, signedIn = true) {
     const grid = document.getElementById("subscriptionPlansGrid");
     if (!grid) return;
-    const activePlan = SubscriptionConfig.normalizePlan(subscription?.plan);
+    const activePlan = signedIn
+        ? SubscriptionConfig.normalizePlan(subscription?.plan)
+        : SubscriptionConfig.SUBSCRIPTION_PLANS.FREE;
     const hasPaidPlan =
-        activePlan !== SubscriptionConfig.SUBSCRIPTION_PLANS.FREE;
+        signedIn && activePlan !== SubscriptionConfig.SUBSCRIPTION_PLANS.FREE;
+
+    const renderKey = `${activePlan}:${signedIn}:${hasPaidPlan}`;
+    if (grid.dataset.renderedKey === renderKey && grid.children.length > 0) {
+        return;
+    }
+    grid.dataset.renderedKey = renderKey;
+
     grid.innerHTML = Object.entries(SubscriptionConfig.SUBSCRIPTION_LIMITS)
         .map(([planId, limits]) => {
-            const isCurrent = planId === activePlan;
+            const isCurrent = signedIn && planId === activePlan;
             const isRecommended =
                 planId === SubscriptionConfig.SUBSCRIPTION_PLANS.BASIC;
             const price =
@@ -250,6 +259,9 @@ function formatNextUsageRenewalDate(month) {
         : "";
 }
 
+let isBillingBusy = false;
+let _refreshAiUsageTimeout = null;
+
 async function refreshAiUsageUI() {
     const info = document.getElementById("aiUsageInfo");
     const renewalDate = document.getElementById("aiUsageRenewalDate");
@@ -262,16 +274,27 @@ async function refreshAiUsageUI() {
             ? await FirebaseSync.getUser().catch(() => null)
             : null;
     const signedIn = !!user;
+
     if (usageSection) usageSection.hidden = !signedIn;
-    if (plansSection) plansSection.hidden = !signedIn;
-    if (!signedIn) return;
+    if (plansSection) plansSection.hidden = false;
 
     const subscription = await SubscriptionService.effectiveProfile(false);
+
+    // Don't re-render subscription plans DOM if a checkout/portal click is currently processing
+    if (!isBillingBusy) {
+        renderSubscriptionPlans(subscription, signedIn);
+    }
+
+    if (!signedIn) {
+        renderElevenLabsUsage(subscription);
+        await GeminiProxy.applyLocalLimitToUI();
+        return;
+    }
+
     let usage = await GeminiProxy.refreshUsage(false).catch(() =>
         GeminiProxy.getCachedUsage(),
     );
-    // Defensive reconciliation for an older extension cache created before
-    // plan-change invalidation was introduced.
+
     if (
         usage &&
         SubscriptionConfig.normalizePlan(usage.plan) !==
@@ -279,7 +302,7 @@ async function refreshAiUsageUI() {
     ) {
         usage = await GeminiProxy.refreshUsage(true).catch(() => usage);
     }
-    renderSubscriptionPlans(subscription);
+
     renderElevenLabsUsage(subscription);
     const card = document.getElementById("aiUsageMeter");
     const plan = document.getElementById("aiUsagePlan");
@@ -385,7 +408,11 @@ async function refreshAiUsageUI() {
 }
 
 function showAiPlans() {
-    document.querySelector('.tab[data-tab="settings"]')?.click();
+    if (typeof switchTab === "function") {
+        switchTab("settings");
+    } else {
+        document.querySelector('.tab[data-tab="settings"]')?.click();
+    }
     const plans = document.getElementById("aiPlansSection");
     plans?.scrollIntoView({ behavior: "smooth", block: "center" });
     plans?.classList.add("is-highlighted");
@@ -400,12 +427,18 @@ document
     .getElementById("subscriptionPlansGrid")
     ?.addEventListener("click", async (event) => {
         const button = event.target.closest("[data-billing-action]");
-        if (!button) return;
+        if (!button || isBillingBusy) return;
+
         const status = document.getElementById("stripeBillingStatus");
         const grid = document.getElementById("subscriptionPlansGrid");
-        const buttons = document.querySelectorAll("[data-billing-action]");
+        const action = button.dataset.billingAction;
+        const targetPlan = button.dataset.plan;
+
+        isBillingBusy = true;
         const originalButtonContent = button.innerHTML;
-        buttons.forEach((item) => {
+
+        const allButtons = grid ? grid.querySelectorAll("[data-billing-action]") : [];
+        allButtons.forEach((item) => {
             item.disabled = true;
         });
         button.classList.add("is-loading");
@@ -413,21 +446,43 @@ document
         button.innerHTML =
             '<span class="stripe-spinner" aria-hidden="true"></span><span>Łączenie ze Stripe...</span>';
         grid?.setAttribute("aria-busy", "true");
+
         if (status) {
             status.className = "stripe-billing-status is-loading";
             status.innerHTML =
                 '<span class="stripe-spinner" aria-hidden="true"></span><span>Otwieram bezpieczną stronę płatności...</span>';
         }
+
         try {
+            let user =
+                typeof FirebaseSync !== "undefined"
+                    ? await FirebaseSync.getUser().catch(() => null)
+                    : null;
+
+            if (!user && (action === "checkout" || action === "sign-in-and-checkout")) {
+                if (status) {
+                    status.className = "stripe-billing-status is-loading";
+                    status.innerHTML =
+                        '<span class="stripe-spinner" aria-hidden="true"></span><span>Logowanie przez Google...</span>';
+                }
+                if (typeof sendBackgroundMessage === "function") {
+                    await sendBackgroundMessage({ type: "QT_FIREBASE_SIGN_IN" });
+                    user = await FirebaseSync.getUser().catch(() => null);
+                }
+                if (!user) {
+                    throw new Error("Zaloguj się przez Google, aby zarządzać planem.");
+                }
+                if (typeof renderSyncUI === "function") renderSyncUI();
+            }
+
             const result =
-                button.dataset.billingAction === "checkout"
-                    ? await SubscriptionService.startCheckout(
-                          button.dataset.plan,
-                      )
-                    : await SubscriptionService.openBillingPortal();
+                action === "portal"
+                    ? await SubscriptionService.openBillingPortal()
+                    : await SubscriptionService.startCheckout(targetPlan);
+
             if (status) {
                 status.className = "stripe-billing-status is-success";
-                status.textContent = result.redirectedToPortal
+                status.textContent = result?.redirectedToPortal
                     ? "Masz już subskrypcję — otwarto panel zmiany planu."
                     : "Stripe został otwarty w nowej karcie.";
             }
@@ -438,13 +493,17 @@ document
                     error.message || "Nie udało się otworzyć Stripe.";
             }
         } finally {
+            isBillingBusy = false;
             button.innerHTML = originalButtonContent;
             button.classList.remove("is-loading");
             button.removeAttribute("aria-busy");
-            grid?.removeAttribute("aria-busy");
-            buttons.forEach((item) => {
-                item.disabled = false;
-            });
+            if (grid) {
+                grid.removeAttribute("aria-busy");
+                grid.querySelectorAll("[data-billing-action]").forEach((item) => {
+                    item.disabled = false;
+                });
+            }
+            await refreshAiUsageUI();
         }
     });
 
@@ -452,35 +511,40 @@ if (location.hash === "#plans") {
     setTimeout(showAiPlans, 80);
 }
 
-SubscriptionService.refreshProfile(true)
+// Initial render from local cache (Zero Lag)
+refreshAiUsageUI().catch((error) =>
+    console.warn("[Lectoro] Błąd inicjalizacji UI planu:", error),
+);
+
+// Gentle background refresh
+SubscriptionService.effectiveProfile(false)
+    .then(() => SubscriptionService.applyPlanToUI())
     .catch((error) =>
-        console.warn("[Lectoro] Nie udało się odświeżyć planu:", error),
-    )
-    .finally(async () => {
-        await SubscriptionService.applyPlanToUI();
-        await refreshAiUsageUI();
-    })
-    .catch((error) =>
-        console.warn("[Lectoro] Nie udało się odświeżyć UI planu:", error),
+        console.warn("[Lectoro] Nie udało się odświeżyć planu w tle:", error),
     );
+
 chrome.storage.onChanged.addListener((changes, area) => {
     if (
         area === "local" &&
+        !isBillingBusy &&
         (changes.aiUsageCache ||
             changes.firebaseAuth ||
             changes.subscriptionProfileCache)
     ) {
-        SubscriptionService.applyPlanToUI().catch((error) =>
-            console.warn(
-                "[Lectoro] Aktualizacja blokad planu nie powiodła się:",
-                error,
-            ),
-        );
-        refreshAiUsageUI().catch((error) =>
-            console.warn(
-                "[Lectoro] Aktualizacja wykorzystania nie powiodła się:",
-                error,
-            ),
-        );
+        clearTimeout(_refreshAiUsageTimeout);
+        _refreshAiUsageTimeout = setTimeout(() => {
+            SubscriptionService.applyPlanToUI().catch((error) =>
+                console.warn(
+                    "[Lectoro] Aktualizacja blokad planu nie powiodła się:",
+                    error,
+                ),
+            );
+            refreshAiUsageUI().catch((error) =>
+                console.warn(
+                    "[Lectoro] Aktualizacja wykorzystania nie powiodła się:",
+                    error,
+                ),
+            );
+        }, 50);
     }
 });

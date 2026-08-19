@@ -6,23 +6,28 @@ const savedMsg = document.getElementById("saved");
 const wordListEl = document.getElementById("wordList");
 const statsEl = document.getElementById("stats");
 
-// ── Tab switching ─────────────────────────────────────────────────
+// ── Tab switching (Centralized) ──────────────────────────────────
+function switchTab(tabName) {
+    if (typeof stopPopupSpeak === "function") stopPopupSpeak();
+    document.querySelectorAll(".tab").forEach((tab) => {
+        tab.classList.toggle("active", tab.dataset.tab === tabName);
+    });
+    document.querySelectorAll(".tab-content").forEach((content) => {
+        content.classList.toggle("active", content.id === "tab-" + tabName);
+    });
+
+    if (tabName === "words" && typeof loadWords === "function") {
+        loadWords();
+    } else if (tabName === "review" && typeof loadReviewQueue === "function") {
+        loadReviewQueue();
+    } else if (tabName === "library" && typeof renderLibraryGrid === "function") {
+        renderLibraryGrid();
+    }
+}
+
 document.querySelectorAll(".tab").forEach((tab) => {
     tab.addEventListener("click", () => {
-        if (typeof stopPopupSpeak === "function") stopPopupSpeak();
-        document
-            .querySelectorAll(".tab")
-            .forEach((t) => t.classList.remove("active"));
-        document
-            .querySelectorAll(".tab-content")
-            .forEach((c) => c.classList.remove("active"));
-        tab.classList.add("active");
-        document
-            .getElementById("tab-" + tab.dataset.tab)
-            .classList.add("active");
-        if (tab.dataset.tab === "words") loadWords();
-        if (tab.dataset.tab === "review") loadReviewQueue();
-        if (tab.dataset.tab === "library") renderLibraryGrid();
+        if (tab.dataset.tab) switchTab(tab.dataset.tab);
     });
 });
 
@@ -38,23 +43,10 @@ document.addEventListener("DOMContentLoaded", () => {
     chrome.storage.local.get({ savedWords: [] }, (data) => {
         const words = data.savedWords || [];
         const now = Date.now();
-        // Sprawdzamy czy funkcja z srs.js jest dostępna
         if (typeof countDueWords !== "function") return;
         const dueCount = countDueWords(words, now);
         if (dueCount > 0) {
-            document
-                .querySelectorAll(".tab")
-                .forEach((t) => t.classList.remove("active"));
-            document
-                .querySelectorAll(".tab-content")
-                .forEach((c) => c.classList.remove("active"));
-            const reviewTab = document.querySelector('.tab[data-tab="review"]');
-            if (reviewTab) reviewTab.classList.add("active");
-            document.getElementById("tab-review")?.classList.add("active");
-            // loadReviewQueue jest definiowane w review.js, dlatego czekamy na DOMContentLoaded
-            if (typeof loadReviewQueue === "function") {
-                loadReviewQueue();
-            }
+            switchTab("review");
         }
     });
 });

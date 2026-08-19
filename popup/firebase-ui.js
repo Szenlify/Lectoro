@@ -133,12 +133,14 @@ chrome.storage.onChanged.addListener((changes, area) => {
         renderSyncUI();
     }
     if (changes.lastFirebaseSync) {
-        loadWords();
-        maybeRefreshReviewQueue();
-        initReviewBadge();
+        if (typeof loadWords === "function") loadWords();
+        if (typeof maybeRefreshReviewQueue === "function") maybeRefreshReviewQueue();
+        if (typeof initReviewBadge === "function") initReviewBadge();
     }
     if (changes.savedWords) {
-        if (!_reviewSaving) maybeRefreshReviewQueue();
-        initReviewBadge();
+        if (typeof _reviewSaving !== "undefined" && !_reviewSaving && typeof maybeRefreshReviewQueue === "function") {
+            maybeRefreshReviewQueue();
+        }
+        if (typeof initReviewBadge === "function") initReviewBadge();
     }
 });

@@ -15,6 +15,7 @@ let reviewAnswerShown = false;
 let reviewTotalDue = 0;
 let _reviewSaving = false; // guard: skip storage listener while rating
 let _reviewQueueStale = false; // set when a background sync happens mid-session
+let _reviewLoading = false; // guard: prevent duplicate concurrent queue loads
 // Keep AI results on the in-memory card object. This prevents repeated Enter
 // presses (including while a request is still running) from consuming more AI
 // credits and lets the result survive flipping the same card back and forth.
@@ -365,8 +366,22 @@ document.getElementById("reviewDeleteAll")?.addEventListener("click", () => {
 });
 
 // ── Load due reviews ──────────────────────────────────────────────
-function loadReviewQueue() {
+function loadReviewQueue(options = {}) {
+    const force = options?.force === true;
+    const sessionInProgress =
+        reviewQueue.length > 0 &&
+        reviewIndex < reviewQueue.length &&
+        !_reviewQueueStale;
+
+    if (!force && sessionInProgress) {
+        renderReview();
+        return;
+    }
+    if (_reviewLoading) return;
+    _reviewLoading = true;
+
     chrome.storage.local.get({ savedWords: [] }, (data) => {
+        _reviewLoading = false;
         const words = data.savedWords || [];
         const now = Date.now();
 
@@ -406,7 +421,12 @@ function maybeRefreshReviewQueue() {
         _reviewQueueStale = true;
         return;
     }
-    loadReviewQueue();
+
+    if (reviewTabActive) {
+        loadReviewQueue({ force: true });
+    } else {
+        _reviewQueueStale = true;
+    }
 }
 
 // ── Badge on review tab ───────────────────────────────────────────
