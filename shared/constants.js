@@ -76,19 +76,50 @@
         EDIT: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>`,
     });
 
-    const LANG_TAGS = Object.freeze({
-        pl: "PL",
-        en: "EN",
-        de: "DE",
-        es: "ES",
-        fr: "FR",
-        it: "IT",
-        pt: "PT",
-        uk: "UK",
+    /**
+     * Central language registry – Single Source of Truth (SSOT)
+     * Maps ISO 639-1 language codes to full English names, short uppercase tags, native labels, and flag emojis.
+     */
+    const SUPPORTED_LANGUAGES = Object.freeze({
+        pl: Object.freeze({ code: "pl", name: "Polish", tag: "PL", native: "Polski", flag: "🇵🇱" }),
+        en: Object.freeze({ code: "en", name: "English", tag: "EN", native: "English", flag: "🇬🇧" }),
+        de: Object.freeze({ code: "de", name: "German", tag: "DE", native: "Deutsch", flag: "🇩🇪" }),
+        fr: Object.freeze({ code: "fr", name: "French", tag: "FR", native: "Français", flag: "🇫🇷" }),
+        es: Object.freeze({ code: "es", name: "Spanish", tag: "ES", native: "Español", flag: "🇪🇸" }),
+        it: Object.freeze({ code: "it", name: "Italian", tag: "IT", native: "Italiano", flag: "🇮🇹" }),
+        pt: Object.freeze({ code: "pt", name: "Portuguese", tag: "PT", native: "Português", flag: "🇵🇹" }),
+        nl: Object.freeze({ code: "nl", name: "Dutch", tag: "NL", native: "Nederlands", flag: "🇳🇱" }),
+        sv: Object.freeze({ code: "sv", name: "Swedish", tag: "SV", native: "Svenska", flag: "🇸🇪" }),
+        cs: Object.freeze({ code: "cs", name: "Czech", tag: "CS", native: "Čeština", flag: "🇨🇿" }),
+        sk: Object.freeze({ code: "sk", name: "Slovak", tag: "SK", native: "Slovenčina", flag: "🇸🇰" }),
+        uk: Object.freeze({ code: "uk", name: "Ukrainian", tag: "UK", native: "Українська", flag: "🇺🇦" }),
+        ru: Object.freeze({ code: "ru", name: "Russian", tag: "RU", native: "Русский", flag: "🇷🇺" }),
+        zh: Object.freeze({ code: "zh", name: "Chinese", tag: "ZH", native: "中文", flag: "🇨🇳" }),
+        ja: Object.freeze({ code: "ja", name: "Japanese", tag: "JA", native: "日本語", flag: "🇯🇵" }),
+        ko: Object.freeze({ code: "ko", name: "Korean", tag: "KO", native: "한국어", flag: "🇰🇷" }),
+        ar: Object.freeze({ code: "ar", name: "Arabic", tag: "AR", native: "العربية", flag: "🇸🇦" }),
+        hi: Object.freeze({ code: "hi", name: "Hindi", tag: "HI", native: "हिन्दी", flag: "🇮🇳" }),
+        tr: Object.freeze({ code: "tr", name: "Turkish", tag: "TR", native: "Türkçe", flag: "🇹🇷" }),
     });
 
+    const LANG_NAMES = Object.freeze(
+        Object.fromEntries(Object.entries(SUPPORTED_LANGUAGES).map(([code, l]) => [code, l.name]))
+    );
+
+    const LANG_TAGS = Object.freeze(
+        Object.fromEntries(Object.entries(SUPPORTED_LANGUAGES).map(([code, l]) => [code, l.tag]))
+    );
+
+    function getLanguageName(code) {
+        if (!code) return "";
+        const c = String(code).toLowerCase();
+        return LANG_NAMES[c] || c.toUpperCase();
+    }
+
     function langTag(code) {
-        return LANG_TAGS[code] || String(code || "?").toUpperCase();
+        if (!code) return "?";
+        const c = String(code).toLowerCase();
+        return LANG_TAGS[c] || String(code).toUpperCase();
     }
 
     /** Check if a target element is part of Lectoro's own overlay / tooltip / cloud UI */
@@ -105,7 +136,10 @@
         EVENT_NAMES,
         MESSAGE_TYPES,
         SVG_ICONS,
+        SUPPORTED_LANGUAGES,
+        LANG_NAMES,
         LANG_TAGS,
+        getLanguageName,
         langTag,
         isOwnUI,
     });

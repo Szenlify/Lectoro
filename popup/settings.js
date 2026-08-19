@@ -185,12 +185,12 @@ function renderSubscriptionPlans(subscription, signedIn = true) {
                     <span><i aria-hidden="true">✓</i><b>${limits.srs.maxSavedCards.toLocaleString("pl-PL")}</b> fiszek SRS</span>
                     ${
                         limits.elevenLabs.enabled
-                            ? '<span><i aria-hidden="true">✓</i>Naturalne głosy</span>'
+                            ? '<span><i aria-hidden="true">✓</i><b>Naturalne głosy</b></span>'
                             : ""
                     }
                     ${
                         limits.elevenLabs.enabled
-                            ? '<span><i aria-hidden="true">✓</i>Cwiczenia <b>AI</b></span>'
+                            ? '<span><i aria-hidden="true">✓</i><b>∞</b> Cwiczenia <b>AI</b></span>'
                             : ""
                     }
                     <span class="${limits.elevenLabs.enabled ? "" : "is-muted"}"><i aria-hidden="true">${limits.elevenLabs.enabled ? "✓" : "—"}</i>${tts}</span>

@@ -31,16 +31,20 @@ let reviewElVoices = [];
 let reviewVoiceProfile = null;
 let reviewVoicesLoading = false;
 
-// Load the saved review direction and voice setting.
+let reviewTargetLang = "pl";
+
+// Load the saved review direction, voice setting, and targetLang.
 chrome.storage.local.get(
     {
         reviewDirection: "normal",
         ttsMode: "browser",
         speechVoice: "",
         elVoiceId: "",
+        targetLang: "pl",
     },
     (data) => {
-        reviewDirection = data.reviewDirection;
+        reviewDirection = data.reviewDirection || "normal";
+        reviewTargetLang = data.targetLang || "pl";
         reviewSystemVoice = data.speechVoice === "random" ? "" : data.speechVoice;
         if (data.speechVoice === "random") {
             chrome.storage.local.set({ speechVoice: "" });
@@ -52,14 +56,39 @@ chrome.storage.local.get(
     },
 );
 
+if (typeof chrome !== "undefined" && chrome.storage?.onChanged) {
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === "local" && changes.targetLang) {
+            reviewTargetLang = changes.targetLang.newValue || "pl";
+            updateDirBtnLabel();
+        }
+    });
+}
+
 // ── Direction toggle button ───────────────────────────────────────
+function getActiveReviewLangs() {
+    const card = reviewQueue?.[reviewIndex];
+    const src = card?.srcLang || "en";
+    const tgt = card?.tgtLang || reviewTargetLang || "pl";
+    const langTagFn = (typeof LectoroConstants !== "undefined" && typeof LectoroConstants.langTag === "function")
+        ? LectoroConstants.langTag
+        : (c) => String(c || "?").toUpperCase();
+    return {
+        srcTag: langTagFn(src),
+        tgtTag: langTagFn(tgt),
+    };
+}
+
 function updateDirBtnLabel() {
     const btn = document.getElementById("reviewDirBtn");
     if (!btn) return;
+    const { srcTag, tgtTag } = getActiveReviewLangs();
     if (reviewDirection === "normal") {
-        btn.innerHTML = 'EN <span class="dir-arrow">→</span> PL';
+        btn.innerHTML = `${srcTag} <span class="dir-arrow">→</span> ${tgtTag}`;
+        btn.title = `Zmień kierunek powtórek (${srcTag} → ${tgtTag})`;
     } else {
-        btn.innerHTML = 'PL <span class="dir-arrow">→</span> EN';
+        btn.innerHTML = `${tgtTag} <span class="dir-arrow">→</span> ${srcTag}`;
+        btn.title = `Zmień kierunek powtórek (${tgtTag} → ${srcTag})`;
     }
 }
 
@@ -520,6 +549,7 @@ function renderReview() {
     }
 
     const w = reviewQueue[reviewIndex];
+    updateDirBtnLabel();
     countEl.textContent = `${reviewIndex + 1}/${reviewTotalDue}`;
     progressBar.style.width = `${Math.round((reviewIndex / reviewTotalDue) * 100)}%`;
 

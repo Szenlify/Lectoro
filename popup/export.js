@@ -289,11 +289,209 @@ document.getElementById("exportCsv").addEventListener("click", () => {
     });
 });
 
-// ── Export: AI-generated Quiz (PDF or interactive) ─────────────────
-// Moved to shared/quiz-export.js (loaded via <script> in popup.html) so the
-// large quiz-generation/rendering logic can be developed on its own file.
-// See: setQuizMode, generateQuizWithGemini, normalizeQuizData,
-// buildQuizHtml, buildInteractiveQuizHtml.
+// ── Export: AI-generated Quiz (Lazy Loaded) ───────────────────────
+let quizOutputMode = "interactive";
+const quizModePdfBtn = document.getElementById("quizModePdf");
+const quizModeInteractiveBtn = document.getElementById("quizModeInteractive");
+
+function setQuizMode(mode) {
+    quizOutputMode = mode;
+    quizModePdfBtn?.classList.toggle("active", mode === "pdf");
+    quizModeInteractiveBtn?.classList.toggle("active", mode === "interactive");
+}
+quizModePdfBtn?.addEventListener("click", () => setQuizMode("pdf"));
+quizModeInteractiveBtn?.addEventListener("click", () => setQuizMode("interactive"));
+
+let quizScriptLoadingPromise = null;
+async function ensureQuizExportLoaded() {
+    if (typeof window.QuizExport !== "undefined") {
+        return window.QuizExport;
+    }
+    if (quizScriptLoadingPromise) {
+        return quizScriptLoadingPromise;
+    }
+    quizScriptLoadingPromise = new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = "shared/quiz-export.js";
+        script.onload = () => {
+            quizScriptLoadingPromise = null;
+            resolve(window.QuizExport);
+        };
+        script.onerror = (err) => {
+            quizScriptLoadingPromise = null;
+            reject(new Error("Nie udało się załadować modułu generatora quizów."));
+        };
+        document.body.appendChild(script);
+    });
+    return quizScriptLoadingPromise;
+}
+
+const FREE_QUIZ_MAX = 3;
+const PAID_QUIZ_HOURLY_MAX = 10;
+const ONE_HOUR_MS = 60 * 60 * 1000;
+
+async function getQuizUserPlan() {
+    try {
+        if (typeof SubscriptionService !== "undefined" && typeof SubscriptionService.effectiveProfile === "function") {
+            const profile = await SubscriptionService.effectiveProfile(false).catch(() => null);
+            if (profile?.plan) return profile.plan.toLowerCase();
+        }
+        const data = await chrome.storage.local.get({ subscriptionProfileCache: null });
+        if (data.subscriptionProfileCache?.plan) {
+            return data.subscriptionProfileCache.plan.toLowerCase();
+        }
+    } catch (e) {}
+    return "free";
+}
+
+async function getQuizQuotaState() {
+    const plan = await getQuizUserPlan();
+    const isFree = plan === "free";
+    const data = await chrome.storage.local.get({
+        quizGenerationsFreeCount: 0,
+        quizGenerationsPaidHistory: [],
+    });
+
+    const freeUsed = Math.max(0, Number(data.quizGenerationsFreeCount) || 0);
+
+    const now = Date.now();
+    const rawHistory = Array.isArray(data.quizGenerationsPaidHistory) ? data.quizGenerationsPaidHistory : [];
+    const validHistory = rawHistory.filter((ts) => typeof ts === "number" && now - ts < ONE_HOUR_MS);
+
+    return {
+        plan,
+        isFree,
+        freeUsed,
+        freeLimit: FREE_QUIZ_MAX,
+        paidUsed: validHistory.length,
+        paidLimit: PAID_QUIZ_HOURLY_MAX,
+        paidHistory: validHistory,
+    };
+}
+
+async function updateQuizQuotaUI() {
+    const badge = document.getElementById("quizFreeBadge");
+    if (!badge) return;
+
+    try {
+        const state = await getQuizQuotaState();
+        if (state.isFree) {
+            badge.style.display = "inline-block";
+            badge.textContent = `${state.freeUsed}/${state.freeLimit}`;
+            badge.title = `Darmowe quizy: wykorzystano ${state.freeUsed} z ${state.freeLimit}`;
+            badge.classList.toggle("is-limit", state.freeUsed >= state.freeLimit);
+        } else {
+            // For paid plans, the limit badge is not shown normally
+            badge.style.display = "none";
+        }
+    } catch (e) {
+        console.error("Error updating quiz quota UI:", e);
+    }
+}
+
+// Initial UI check and sync listener
+updateQuizQuotaUI();
+if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.onChanged) {
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === "local" && (changes.quizGenerationsFreeCount || changes.subscriptionProfileCache)) {
+            updateQuizQuotaUI();
+        }
+    });
+}
+
+const exportQuizBtn = document.getElementById("exportQuiz");
+if (exportQuizBtn) {
+    exportQuizBtn.addEventListener("click", async () => {
+        const origText = exportQuizBtn.innerHTML;
+
+        const quotaState = await getQuizQuotaState();
+        if (quotaState.isFree) {
+            if (quotaState.freeUsed >= quotaState.freeLimit) {
+                if (typeof GeminiProxy !== "undefined" && typeof GeminiProxy.showUpgradePrompt === "function") {
+                    GeminiProxy.showUpgradePrompt({
+                        reason: "free_quiz_limit",
+                        message: "Wykorzystałeś limit 3 darmowych quizów. Przejdź na plan Basic lub Pro, aby generować do 10 quizów na godzinę!",
+                    });
+                } else if (typeof SubscriptionService !== "undefined" && typeof SubscriptionService.openPlans === "function") {
+                    SubscriptionService.openPlans();
+                } else {
+                    alert("Wykorzystałeś limit 3 darmowych quizów. Przejdź na wyższy plan, aby generować quizy bez ograniczeń!");
+                }
+                return;
+            }
+        } else {
+            if (quotaState.paidUsed >= quotaState.paidLimit) {
+                const oldestTs = Math.min(...quotaState.paidHistory);
+                const waitMins = Math.max(1, Math.ceil((ONE_HOUR_MS - (Date.now() - oldestTs)) / 60000));
+                alert(`Osiągnięto limit ${quotaState.paidLimit} quizów na godzinę. Spróbuj ponownie za ${waitMins} min.`);
+                return;
+            }
+        }
+
+        const cachedUsage = await GeminiProxy?.getCachedUsage?.();
+        if (cachedUsage?.limit > 0 && cachedUsage.used >= cachedUsage.limit) {
+            GeminiProxy.showUpgradePrompt(cachedUsage);
+            return;
+        }
+
+        const data = await new Promise((r) =>
+            chrome.storage.local.get({ savedWords: [], targetLang: "pl" }, r),
+        );
+        const allWords = data.savedWords || [];
+        const words = filterWords(allWords);
+        if (words.length === 0) {
+            alert("Brak słów do wygenerowania quizu.");
+            return;
+        }
+
+        const scope = document.getElementById("quizScope")?.value || "10";
+        const source = document.getElementById("quizSource")?.value || "recent";
+        const targetLang = data.targetLang || "pl";
+
+        exportQuizBtn.disabled = true;
+        exportQuizBtn.classList.add("loading");
+        exportQuizBtn.innerHTML = '<span class="quiz-btn-spinner"></span><span>Generuję quiz…</span>';
+
+        try {
+            const QuizEngine = await ensureQuizExportLoaded();
+            if (!QuizEngine) {
+                throw new Error("Moduł QuizExport nie został zainicjalizowany.");
+            }
+            const result = await QuizEngine.runExport({
+                words,
+                scope,
+                source,
+                mode: quizOutputMode,
+                targetLang,
+            });
+            if (result && result.quizWords) {
+                markAsDownloaded(result.quizWords, allWords);
+            }
+
+            // Successfully generated: update local quota
+            if (quotaState.isFree) {
+                await chrome.storage.local.set({
+                    quizGenerationsFreeCount: quotaState.freeUsed + 1,
+                });
+            } else {
+                await chrome.storage.local.set({
+                    quizGenerationsPaidHistory: [...quotaState.paidHistory, Date.now()],
+                });
+            }
+            await updateQuizQuotaUI();
+        } catch (err) {
+            console.error("Quiz export error:", err);
+            if (!GeminiProxy?.isLimitError?.(err)) {
+                alert("Błąd generowania quizu: " + (err.message || err));
+            }
+        } finally {
+            exportQuizBtn.disabled = false;
+            exportQuizBtn.classList.remove("loading");
+            exportQuizBtn.innerHTML = origText;
+            if (typeof refreshAiUsageUI === "function") refreshAiUsageUI();
+        }
+    });
+}
 
 // ── Clear visible words ───────────────────────────────────────────
 document.getElementById("clearAll").addEventListener("click", async () => {

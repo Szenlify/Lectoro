@@ -1081,6 +1081,25 @@ body::before {
     letter-spacing: .6px;
 }
 
+.quiz-free-badge {
+    font-size: 9.5px;
+    font-weight: 800;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: rgba(110, 231, 183, 0.14);
+    color: #6ee7b7;
+    border: 1px solid rgba(110, 231, 183, 0.28);
+    white-space: nowrap;
+    letter-spacing: .3px;
+    transition: all .2s ease;
+}
+
+.quiz-free-badge.is-limit {
+    background: rgba(248, 113, 113, 0.15);
+    color: #fca5a5;
+    border-color: rgba(248, 113, 113, 0.35);
+}
+
 .quiz-mode-toggle {
     display: flex;
     gap: 4px;
@@ -1163,6 +1182,12 @@ body::before {
     color: #f3e8ff;
     letter-spacing: .2px;
     box-shadow: 0 2px 10px rgba(216, 180, 254, 0.08);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    transition: all .2s ease;
 }
 
 .export-quiz:hover {
@@ -1173,8 +1198,49 @@ body::before {
 }
 
 .export-quiz:disabled {
-    opacity: .6;
+    opacity: .75;
     cursor: wait;
+}
+
+.export-quiz.loading {
+    background: linear-gradient(135deg, rgba(13, 148, 136, 0.35), rgba(6, 182, 212, 0.25)) !important;
+    border-color: rgba(45, 212, 191, 0.55) !important;
+    color: #ccfbf1 !important;
+    box-shadow: 0 0 16px rgba(13, 148, 136, 0.25) !important;
+}
+
+.export-quiz.loading::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 200%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+    animation: quizShimmer 1.4s infinite;
+    pointer-events: none;
+}
+
+@keyframes quizShimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+.quiz-btn-spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid rgba(204, 251, 241, 0.3);
+    border-top-color: #2dd4bf;
+    animation: qtSpin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+    flex-shrink: 0;
 }
 
 .export-clear {
