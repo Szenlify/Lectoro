@@ -1,8 +1,6 @@
 // ── Library tab: curated titles well-suited for learning English ──
-// Static, hand-picked list (title / difficulty / short note), stored
-// in shared/library-items.json and loaded once when the popup opens.
-// No content is scraped or downloaded from any streaming site – the "Szukaj"
-// button simply opens a web search so the user can find the title themselves.
+// Static, hand-picked list (title / difficulty / short note / link / image),
+// stored in shared/library-items.json and loaded once when the popup opens.
 let LIBRARY_ITEMS = [];
 let libraryItemsLoaded = false;
 
@@ -25,24 +23,16 @@ function loadLibraryItems() {
 let libraryLevelFilter = "all";
 let librarySearchQuery = "";
 
-function libraryOpenSearch(title) {
-    // Opens lookmovie2.to's own search results page for the title — no
-    // scraping/downloading of any third-party site's catalog or images
-    // happens here, this just navigates the user's browser like a normal link.
-    const q = encodeURIComponent(title);
-    window.open(`https://www.lookmovie2.to/movies/search/?q=${q}`, "_blank");
-}
-
-/** Opens the item's own direct "link" (from library-items.json) if one has
- * been filled in for that title; otherwise falls back to the generic
- * lookmovie2.to search-by-title behaviour used before this field existed. */
+/** Opens the item's own direct "link" (from library-items.json);
+ * falls back to YouTube search if link is empty. */
 function libraryOpenItem(title, link) {
     const trimmed = (link || "").trim();
     if (trimmed) {
         window.open(trimmed, "_blank");
         return;
     }
-    libraryOpenSearch(title);
+    const q = encodeURIComponent(title);
+    window.open(`https://www.youtube.com/results?search_query=${q}`, "_blank");
 }
 
 function renderLibraryGrid() {
@@ -61,8 +51,8 @@ function renderLibraryGrid() {
             return false;
         if (!q) return true;
         return (
-            item.title.toLowerCase().includes(q) ||
-            item.note.toLowerCase().includes(q)
+            (item.title && item.title.toLowerCase().includes(q)) ||
+            (item.note && item.note.toLowerCase().includes(q))
         );
     });
 
@@ -74,20 +64,10 @@ function renderLibraryGrid() {
             <div class="library-empty-title">Brak wyników w bibliotece</div>
             <div class="library-empty-sub">${
                 queryLabel
-                    ? `Nie znaleziono „${escapeHtml(queryLabel)}” wśród polecanych tytułów.`
-                    : "Żaden z polecanych tytułów nie pasuje do wybranych filtrów."
+                    ? `Nie znaleziono „${escapeHtml(queryLabel)}” wśród polecanych pozycji.`
+                    : "Żadna z pozycji nie pasuje do wybranych filtrów."
             }</div>
-            ${
-                queryLabel
-                    ? `<button class="library-open-btn library-empty-search-btn" id="libraryEmptySearchBtn" data-title="${escapeAttr(queryLabel)}">🔎 Szukaj „${escapeHtml(queryLabel)}” na lookmovie2.to</button>`
-                    : ""
-            }
         </div>`;
-        document
-            .getElementById("libraryEmptySearchBtn")
-            ?.addEventListener("click", (e) => {
-                libraryOpenSearch(e.currentTarget.dataset.title);
-            });
         return;
     }
     const levelLabel = {
@@ -107,12 +87,12 @@ function renderLibraryGrid() {
         <div class="library-card" data-title="${escapeAttr(item.title)}" data-link="${escapeAttr(item.link || "")}">
             <div class="library-poster${hasImage ? "" : " no-image"}">
                 ${posterImg}
-                <span class="library-poster-fallback">${levelIcon[item.level]}</span>
+                <span class="library-poster-fallback">${levelIcon[item.level] || "🎬"}</span>
             </div>
-            <span class="library-level-badge lvl-${item.level}">${levelIcon[item.level]} ${levelLabel[item.level]}</span>
+            <span class="library-level-badge lvl-${item.level || "beginner"}">${levelIcon[item.level] || "🟢"} ${levelLabel[item.level] || "A1/A2"}</span>
             <div class="library-card-info">
                 <div class="library-card-title">${escapeHtml(item.title)}</div>
-                <div class="library-card-note">${escapeHtml(item.note)}</div>
+                <div class="library-card-note">${escapeHtml(item.note || "")}</div>
             </div>
             <div class="library-poster-overlay"><span>▶ Oglądaj</span></div>
         </div>`;
@@ -130,12 +110,6 @@ const librarySearchInput = document.getElementById("librarySearch");
 librarySearchInput?.addEventListener("input", (e) => {
     librarySearchQuery = e.target.value;
     renderLibraryGrid();
-});
-librarySearchInput?.addEventListener("keydown", (e) => {
-    if (e.key !== "Enter") return;
-    e.preventDefault();
-    const q = librarySearchInput.value.trim();
-    if (q) libraryOpenSearch(q);
 });
 
 document.querySelectorAll(".library-filter-btn").forEach((btn) => {
