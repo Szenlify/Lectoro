@@ -112,7 +112,7 @@ function crc32(data) {
 document.getElementById("exportAnki").addEventListener("click", async () => {
     const btn = document.getElementById("exportAnki");
     const origText = btn.textContent;
-    btn.textContent = "⏳ Pobieram audio…";
+    btn.textContent = "⏳ Przygotowuję…";
     btn.disabled = true;
 
     try {
@@ -131,6 +131,7 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
 
         for (let i = 0; i < words.length; i++) {
             const w = words[i];
+            btn.textContent = `⏳ Pobieram (${i + 1}/${words.length})…`;
 
             // Build Cloze text: sentence with the word as {{c1::word::translation}}
             // Priority: AI sentence > original sentence > word only
@@ -146,7 +147,7 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
                     regex,
                     `{{c1::$1::${w.translated}}}`,
                 );
-                // If word not found in AI sentence, wrap the whole thing
+                // If word not found in sentence, wrap the word and append sentence
                 if (clozeText === sentenceSource) {
                     clozeText = `{{c1::${w.original}::${w.translated}}}<br><br>${sentenceSource}`;
                 }
@@ -166,9 +167,10 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
                 backText += `<br><br><i>${w.sentenceTranslated}</i>`;
             }
 
-            // Screenshot image
+            const ts = (w.id ? w.id.replace(/[^a-zA-Z0-9_-]/g, "") : (w.timestamp || Date.now()).toString(36)) + "_" + (i + 1);
+
+            // Screenshot image (local base64 or remote URL downloaded from Cloudflare R2)
             if (w.screenshot) {
-                const ts = (w.timestamp || Date.now()).toString(36);
                 if (w.screenshot.startsWith("data:")) {
                     const mime =
                         w.screenshot.match(/^data:(image\/[a-zA-Z0-9.-]+);base64,/)?.[1] ||
@@ -178,7 +180,7 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
                         : mime.includes("png")
                           ? "png"
                           : "jpg";
-                    const imgFile = `qt_screenshot_${ts}.${ext}`;
+                    const imgFile = `lectoro_img_${ts}.${ext}`;
                     const base64 = w.screenshot.split(",")[1] || "";
                     if (base64) {
                         const binaryStr = atob(base64);
@@ -190,55 +192,78 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
                         backText += `<br><br><img src="${imgFile}">`;
                     }
                 } else if (/^https?:\/\//i.test(w.screenshot)) {
-                    backText += `<br><br><img src="${escapeAttr(w.screenshot)}">`;
+                    try {
+                        const imgRes = await fetch(w.screenshot);
+                        if (imgRes.ok) {
+                            const contentType = imgRes.headers.get("content-type") || "";
+                            let ext = "jpg";
+                            if (contentType.includes("webp") || w.screenshot.endsWith(".webp")) ext = "webp";
+                            else if (contentType.includes("png") || w.screenshot.endsWith(".png")) ext = "png";
+                            else if (contentType.includes("jpeg") || contentType.includes("jpg") || w.screenshot.endsWith(".jpg") || w.screenshot.endsWith(".jpeg")) ext = "jpg";
+
+                            const imgFile = `lectoro_img_${ts}.${ext}`;
+                            const imgData = new Uint8Array(await imgRes.arrayBuffer());
+                            files.push({ name: imgFile, data: imgData });
+                            backText += `<br><br><img src="${imgFile}">`;
+                        } else {
+                            backText += `<br><br><img src="${escapeAttr(w.screenshot)}">`;
+                        }
+                    } catch (imgErr) {
+                        console.warn("[Lectoro] Could not download remote screenshot for Anki:", imgErr);
+                        backText += `<br><br><img src="${escapeAttr(w.screenshot)}">`;
+                    }
                 }
             }
 
-            // One sound on back only: sentence audio if sentence exists, otherwise word audio
-            const audioText = w.sentence || w.original;
-            const slug = audioText
+            // Audio: prefer full sentence (AI or context), fallback to word
+            const audioText = w.aiSentence || w.sentence || w.original;
+            const slug = (audioText || "audio")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
                 .toLowerCase()
                 .replace(/[^a-z0-9]+/g, "_")
                 .replace(/^_|_$/g, "")
-                .substring(0, 40);
-            const ts = (w.timestamp || Date.now()).toString(36);
-            const audioFile = `qt_${slug}_${ts}.mp3`;
-            backText += ` [sound:${audioFile}]`;
-            lines.push(`${clozeText}\t${backText}`);
+                .substring(0, 30) || "audio";
+            const audioFile = `lectoro_${slug}_${ts}.mp3`;
 
-            // Fetch TTS audio – only what we need
+            // Fetch TTS audio
             const ttsLang = w.srcLang || "en";
-            if (w.sentence) {
-                const sentenceBlob = await fetchAudioBlob(w.sentence, ttsLang);
-                if (sentenceBlob) {
-                    const audioData = new Uint8Array(
-                        await sentenceBlob.arrayBuffer(),
-                    );
-                    files.push({ name: audioFile, data: audioData });
-                }
-            } else {
-                const wordBlob = await fetchAudioBlob(w.original, ttsLang);
-                if (wordBlob) {
-                    const audioData = new Uint8Array(
-                        await wordBlob.arrayBuffer(),
-                    );
-                    files.push({ name: audioFile, data: audioData });
-                }
+            const audioBlob = await fetchAudioBlob(audioText, ttsLang);
+            if (audioBlob) {
+                const audioData = new Uint8Array(await audioBlob.arrayBuffer());
+                files.push({ name: audioFile, data: audioData });
+                backText += ` [sound:${audioFile}]`;
             }
+
+            // Clean newlines and tabs to guarantee valid TSV lines
+            const cleanField = (str) =>
+                String(str || "")
+                    .replace(/[\r\n]+/g, "<br>")
+                    .replace(/\t/g, " ");
+
+            lines.push(`${cleanField(clozeText)}\t${cleanField(backText)}`);
         }
 
-        // Add the text file
-        const txtContent = lines.join("\n");
+        // Add the Anki text file with standard directives
+        const dt = typeof dateTag === "function" ? dateTag() : (typeof SharedUtils !== "undefined" && SharedUtils.dateTag ? SharedUtils.dateTag() : new Date().toISOString().slice(0, 10));
+        const headerLines = [
+            "#separator:tab",
+            "#html:true",
+            "#tags:lectoro",
+            "#columns:Text\tExtra",
+        ];
+        const txtContent = headerLines.join("\n") + "\n" + lines.join("\n");
         const txtData = new TextEncoder().encode(txtContent);
-        files.push({ name: `anki-cloze-${dateTag()}.txt`, data: txtData });
+        files.push({ name: `anki-cloze-${dt}.txt`, data: txtData });
 
         // Build and download ZIP
+        btn.textContent = "⏳ Pakuję ZIP…";
         const zipData = buildZip(files);
         const blob = new Blob([zipData], { type: "application/zip" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `anki-cloze-${dateTag()}.zip`;
+        a.download = `anki-cloze-${dt}.zip`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -264,23 +289,31 @@ document.getElementById("exportCsv").addEventListener("click", () => {
         // BOM for Excel UTF-8
         const BOM = "\uFEFF";
         const header =
-            "Oryginał;Tłumaczenie;Zdanie;Tłumaczenie zdania;Język źr.;Język doc.;Data";
+            "Oryginał;Tłumaczenie;Zdanie;Tłumaczenie zdania;Zdanie AI;Tłumaczenie AI;Język źr.;Język doc.;Data;Link do grafiki";
         const rows = words.map((w) => {
-            const date = new Date(w.timestamp).toLocaleDateString("pl-PL");
+            const date = w.timestamp
+                ? new Date(w.timestamp).toLocaleDateString("pl-PL")
+                : "";
+            const screenshotUrl =
+                w.screenshot && /^https?:\/\//i.test(w.screenshot) ? w.screenshot : "";
             return [
                 csvCell(w.original),
                 csvCell(w.translated),
                 csvCell(w.sentence || ""),
                 csvCell(w.sentenceTranslated || ""),
+                csvCell(w.aiSentence || ""),
+                csvCell(w.aiSentenceTranslated || ""),
                 w.srcLang || "",
                 w.tgtLang || "",
                 date,
+                csvCell(screenshotUrl),
             ].join(";");
         });
         const content = BOM + header + "\n" + rows.join("\n");
+        const dt = typeof dateTag === "function" ? dateTag() : (typeof SharedUtils !== "undefined" && SharedUtils.dateTag ? SharedUtils.dateTag() : new Date().toISOString().slice(0, 10));
         downloadFile(
             content,
-            `translator-export-${dateTag()}.csv`,
+            `lectoro-export-${dt}.csv`,
             "text/csv;charset=utf-8",
         );
 
@@ -519,10 +552,11 @@ document.getElementById("clearAll").addEventListener("click", async () => {
 // ── Mark exported words as downloaded ─────────────────────────────
 function markAsDownloaded(exportedWords, allWords) {
     const exportedSet = new Set(
-        exportedWords.map((w) => w.original + "|" + w.timestamp),
+        exportedWords.map((w) => (w.id ? w.id : `${w.original}|${w.timestamp}`)),
     );
     const updated = allWords.map((w) => {
-        if (exportedSet.has(w.original + "|" + w.timestamp)) {
+        const key = w.id ? w.id : `${w.original}|${w.timestamp}`;
+        if (exportedSet.has(key)) {
             return { ...w, downloaded: true };
         }
         return w;

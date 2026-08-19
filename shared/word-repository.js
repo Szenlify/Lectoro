@@ -79,10 +79,10 @@
         const clean =
             typeof SharedUtils !== "undefined" && typeof SharedUtils.cleanCardText === "function"
                 ? SharedUtils.cleanCardText
-                : (t) => String(t || "").trim();
+                : (t) => String(t || "").replace(/^[,\s:;>«»<\\/|~*#—–-]+/, "").replace(/[.,\s]+$/, "").trim();
 
-        const cleanedOriginal = clean(entry?.original) || String(entry?.original || "").trim();
-        const cleanedTranslated = clean(entry?.translated) || String(entry?.translated || "").trim();
+        const cleanedOriginal = clean(entry?.original);
+        const cleanedTranslated = clean(entry?.translated);
         const cleanedSentence = clean(entry?.sentence);
         const cleanedSentenceTranslated = clean(entry?.sentenceTranslated);
         const cleanedAiSentence = clean(entry?.aiSentence);
@@ -168,16 +168,14 @@
         const clean =
             typeof SharedUtils !== "undefined" && typeof SharedUtils.cleanCardText === "function"
                 ? SharedUtils.cleanCardText
-                : (t) => String(t || "").trim();
+                : (t) => String(t || "").replace(/^[,\s:;>«»<\\/|~*#—–-]+/, "").replace(/[.,\s]+$/, "").trim();
 
         const sanitizedChanges = { ...changes };
         if (typeof sanitizedChanges.original === "string") {
-            sanitizedChanges.original =
-                clean(sanitizedChanges.original) || sanitizedChanges.original.trim();
+            sanitizedChanges.original = clean(sanitizedChanges.original);
         }
         if (typeof sanitizedChanges.translated === "string") {
-            sanitizedChanges.translated =
-                clean(sanitizedChanges.translated) || sanitizedChanges.translated.trim();
+            sanitizedChanges.translated = clean(sanitizedChanges.translated);
         }
         if (typeof sanitizedChanges.sentence === "string") {
             sanitizedChanges.sentence = clean(sanitizedChanges.sentence);

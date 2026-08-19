@@ -71,7 +71,7 @@
         /** Escape cell for CSV exports */
         csvCell(str) {
             const val = String(str ?? "");
-            if (val.includes(";") || val.includes('"') || val.includes("\n")) {
+            if (val.includes(";") || val.includes('"') || val.includes("\n") || val.includes("\r")) {
                 return '"' + val.replace(/"/g, '""') + '"';
             }
             return val;
@@ -159,7 +159,8 @@
                 .replace(/[\r\n\t]+/g, " ")
                 .replace(/\s{2,}/g, " ")
                 .trim();
-            return s.replace(/^[,\s:;>«»<\\/|~*#—–-]+/, "").trim();
+            s = s.replace(/^[,\s:;>«»<\\/|~*#—–-]+/, "").trim();
+            return s.replace(/[.,\s]+$/, "").trim();
         },
 
         cleanTextForTTS(text) {

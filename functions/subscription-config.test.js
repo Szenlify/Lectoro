@@ -123,18 +123,24 @@ test("currentMonth returns YYYY-MM format", () => {
     assert.match(currentMonth(), /^\d{4}-\d{2}$/);
 });
 
-test("cleanCardText strips subtitle artifacts, music tags, speaker markers and chevrons", () => {
+test("cleanCardText strips subtitle artifacts, music tags, speaker markers, chevrons, and trailing dots or commas", () => {
     const SharedUtils = require("../shared/utils");
     const cases = [
-        ["[music] >> If you going then I will go.", "If you going then I will go."],
+        ["[music] >> If you going then I will go.", "If you going then I will go"],
         ["♪ Never gonna give you up ♪", "Never gonna give you up"],
         [">> (music playing) >> Hey guys, welcome back!", "Hey guys, welcome back!"],
         ["[Applause] - Wait, is that true?", "Wait, is that true?"],
-        ["NARRATOR: In a world where anything is possible.", "In a world where anything is possible."],
+        ["NARRATOR: In a world where anything is possible.", "In a world where anything is possible"],
         ["<b>Hello</b> <font color=\"#fff\">world</font>", "Hello world"],
         ["[screaming] [laughter] Just do it!", "Just do it!"],
         ["  >>  Let's do this!  ", "Let's do this!"],
-        ["SPEAKER 1: Exactly what I thought.", "Exactly what I thought."],
+        ["SPEAKER 1: Exactly what I thought.", "Exactly what I thought"],
+        ["Hello, world,", "Hello, world"],
+        ["Word...", "Word"],
+        ["Sentence with dots... and ending with comma,", "Sentence with dots... and ending with comma"],
+        ["Napis z kropką na końcu.", "Napis z kropką na końcu"],
+        ["Napis z przecinkiem na końcu,", "Napis z przecinkiem na końcu"],
+        ["Wielokropek na końcu...", "Wielokropek na końcu"],
     ];
 
     for (const [input, expected] of cases) {

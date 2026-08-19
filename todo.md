@@ -1,5 +1,10 @@
 [TODO]
 
+zamiast napisow youtube, plux, X itp
+dodaj napisz 
+Polecane materiały i filmy do nauki języka (i inne serwisy z napisami CC).
+i je wymien z logiem zaprezentuj a logo do klikniecia i przenosi do serwisu
+
 Wprowadź 3-dniowy Darmowy Okres Próbny (Free Trial) w Stripe:
 Wymaga podania karty, ale nie pobiera opłaty przez pierwsze 3 dni.
 Oferuj Plan Roczny z góry:

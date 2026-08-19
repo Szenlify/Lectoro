@@ -1016,18 +1016,15 @@ function showReviewEditForm(w, returnToAnswer = reviewAnswerShown) {
     });
 
     document.getElementById("editSave").addEventListener("click", () => {
-        const newOriginal = document
-            .getElementById("editOriginal")
-            .value.trim();
-        const newTranslated = document
-            .getElementById("editTranslated")
-            .value.trim();
-        const newSentence = document
-            .getElementById("editSentence")
-            .value.trim();
-        const newSentenceTr = document
-            .getElementById("editSentenceTr")
-            .value.trim();
+        const clean =
+            typeof SharedUtils !== "undefined" && typeof SharedUtils.cleanCardText === "function"
+                ? SharedUtils.cleanCardText
+                : (s) => String(s || "").replace(/^[,\s:;>«»<\\/|~*#—–-]+/, "").replace(/[.,\s]+$/, "").trim();
+
+        const newOriginal = clean(document.getElementById("editOriginal").value);
+        const newTranslated = clean(document.getElementById("editTranslated").value);
+        const newSentence = clean(document.getElementById("editSentence").value);
+        const newSentenceTr = clean(document.getElementById("editSentenceTr").value);
         if (!newOriginal || !newTranslated) return;
 
         // Keep old keys for finding in storage

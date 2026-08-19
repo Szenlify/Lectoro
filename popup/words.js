@@ -153,12 +153,15 @@
         item.querySelector(".wi-edit-cancel")?.addEventListener("click", loadWords);
         form?.addEventListener("submit", async (event) => {
             event.preventDefault();
-            const formData = new FormData(form);
+            const clean =
+                typeof SharedUtils !== "undefined" && typeof SharedUtils.cleanCardText === "function"
+                    ? SharedUtils.cleanCardText
+                    : (s) => String(s || "").replace(/^[,\s:;>«»<\\/|~*#—–-]+/, "").replace(/[.,\s]+$/, "").trim();
             const edits = {
-                original: String(formData.get("original") || "").trim(),
-                translated: String(formData.get("translated") || "").trim(),
-                sentence: String(formData.get("sentence") || "").trim(),
-                sentenceTranslated: String(formData.get("sentenceTranslated") || "").trim(),
+                original: clean(formData.get("original")),
+                translated: clean(formData.get("translated")),
+                sentence: clean(formData.get("sentence")),
+                sentenceTranslated: clean(formData.get("sentenceTranslated")),
             };
             if (!edits.original || !edits.translated) {
                 form.querySelector("input:invalid")?.reportValidity();

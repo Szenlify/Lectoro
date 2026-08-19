@@ -31,8 +31,8 @@
             : {
                   escapeHtml: (s) => String(s || ""),
                   escapeAttr: (s) => String(s || ""),
-                  cleanTextForTTS: (s) => String(s || ""),
-                  cleanCardText: (s) => String(s || ""),
+                  cleanTextForTTS: (s) => String(s || "").replace(/^[,\s:;>«»<\\/|~*#—–-]+/, "").replace(/[.,\s]+$/, "").trim(),
+                  cleanCardText: (s) => String(s || "").replace(/^[,\s:;>«»<\\/|~*#—–-]+/, "").replace(/[.,\s]+$/, "").trim(),
                   pickBestVoice: () => null,
                   ensureVoices: () => Promise.resolve([]),
               };
@@ -636,13 +636,18 @@
         });
 
         async function buildSaveEntry(btn, screenshotPromise = null) {
-            const clean = typeof cleanCardText === "function" ? cleanCardText : (s) => String(s || "").trim();
+            const clean =
+                typeof cleanCardText === "function"
+                    ? cleanCardText
+                    : (typeof SharedUtils !== "undefined" && typeof SharedUtils.cleanCardText === "function"
+                        ? SharedUtils.cleanCardText
+                        : (s) => String(s || "").replace(/^[,\s:;>«»<\\/|~*#—–-]+/, "").replace(/[.,\s]+$/, "").trim());
             const screenshot = screenshotPromise
                 ? await screenshotPromise
                 : await captureContextScreenshot();
             return {
-                original: clean(btn.dataset.src) || String(btn.dataset.src || "").trim(),
-                translated: clean(btn.dataset.translated) || String(btn.dataset.translated || "").trim(),
+                original: clean(btn.dataset.src),
+                translated: clean(btn.dataset.translated),
                 srcLang: btn.dataset.srcLang,
                 tgtLang: btn.dataset.tgtLang,
                 sentence: "",
