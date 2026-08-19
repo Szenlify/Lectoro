@@ -24,7 +24,7 @@
             displayName: "FREE",
             priceMonthly: Object.freeze({ amount: 0, currency: "PLN" }),
             ai: Object.freeze({ usesPerMonth: 10 }),
-            srs: Object.freeze({ maxSavedCards: 100 }),
+            srs: Object.freeze({ maxSavedCards: 50 }),
             elevenLabs: Object.freeze({
                 enabled: false,
                 maxCharactersPerRequest: 0,
@@ -34,23 +34,23 @@
         [SUBSCRIPTION_PLANS.BASIC]: Object.freeze({
             displayName: "BASIC",
             priceMonthly: Object.freeze({ amount: 7.99, currency: "USD" }),
-            ai: Object.freeze({ usesPerMonth: 100 }),
-            srs: Object.freeze({ maxSavedCards: 2000 }),
+            ai: Object.freeze({ usesPerMonth: 200 }),
+            srs: Object.freeze({ maxSavedCards: 3000 }),
             elevenLabs: Object.freeze({
                 enabled: true,
                 maxCharactersPerRequest: 500,
-                charactersPerMonth: 30000,
+                charactersPerMonth: 20000,
             }),
         }),
         [SUBSCRIPTION_PLANS.PRO]: Object.freeze({
             displayName: "PRO",
             priceMonthly: Object.freeze({ amount: 19.99, currency: "USD" }),
-            ai: Object.freeze({ usesPerMonth: 1000 }),
-            srs: Object.freeze({ maxSavedCards: 8000 }),
+            ai: Object.freeze({ usesPerMonth: 1200 }),
+            srs: Object.freeze({ maxSavedCards: 10000 }),
             elevenLabs: Object.freeze({
                 enabled: true,
                 maxCharactersPerRequest: 1000,
-                charactersPerMonth: 150000,
+                charactersPerMonth: 120000,
             }),
         }),
     });
