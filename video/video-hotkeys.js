@@ -11,7 +11,7 @@
         "w", "W", "ArrowUp",
         "s", "S", "ArrowDown",
         "e", "E",
-        "Enter",
+        "Enter", "NumpadEnter",
         "q", "Q",
         "z", "Z",
         "[", "{", "]", "}",
@@ -58,6 +58,7 @@
             ].includes(key);
 
             const subtitleUiOpen = overlay?.isSubtitleUiOpen?.() || false;
+            const aiTooltipOpen = overlay?.isAiTooltipActive?.() || false;
 
             e.preventDefault();
             e.stopPropagation();
@@ -78,13 +79,26 @@
             }
 
             // AI Explanation Toggle: Enter / Q
-            if (key === "Enter" || key === "q" || key === "Q") {
-                if (overlay?.isAiTooltipActive?.()) {
-                    overlay.closeAiTooltip();
+            if (
+                key === "Enter" ||
+                key === "NumpadEnter" ||
+                key === "q" ||
+                key === "Q"
+            ) {
+                if (aiTooltipOpen) {
+                    overlay?.closeAiTooltip?.({ resumeVideo: true });
                 } else {
                     overlay?.handleAIExplain(video);
                 }
                 return;
+            }
+
+            // Close existing AI tooltip / TTS if open when pressing any navigation hotkey (WSAD, etc.)
+            if (aiTooltipOpen) {
+                overlay?.closeAiTooltip?.({
+                    resumeVideo: !isHorizontalSubtitleNavigation,
+                });
+                if (!isHorizontalSubtitleNavigation) return;
             }
 
             // Save Current Subtitle Sentence: Z / Home / PageUp

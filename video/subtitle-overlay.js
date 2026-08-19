@@ -600,7 +600,7 @@
     }
     if (typeof QT !== "undefined" && QT.addCleanup) QT.addCleanup(removeAiShimmer);
 
-    function closeAiTooltip() {
+    function closeAiTooltip(options = {}) {
         if (aiExplainKeydownHandler) {
             window.removeEventListener("keydown", aiExplainKeydownHandler);
             aiExplainKeydownHandler = null;
@@ -609,10 +609,20 @@
         aiTooltipActive = false;
         QT.hideTooltip();
         removeAiShimmer();
-        if (aiWasPlaying) {
-            aiWasPlaying = false;
+        if (typeof cleanupReading === "function") cleanupReading();
+        if (typeof SharedTtsService !== "undefined") {
+            SharedTtsService.cancel();
+        } else if (typeof window !== "undefined" && window.speechSynthesis) {
+            window.speechSynthesis.cancel();
+        }
+
+        const shouldResume = options.resumeVideo !== undefined ? options.resumeVideo : true;
+        aiWasPlaying = false;
+        if (shouldResume) {
             const video = getPlayerRegistry()?.getVideo();
-            if (video && video.paused) getPlayerRegistry()?.playVideo(video);
+            if (video) {
+                resumeVideoAfterSubtitleClose(video);
+            }
         }
     }
     if (typeof QT !== "undefined" && QT.addDismissHandler) QT.addDismissHandler(closeAiTooltip);
