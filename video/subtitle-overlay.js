@@ -215,14 +215,14 @@
             layer.style.overflow = "hidden";
 
             // Proportional font sizing: small video = smaller font, large video = larger font
-            const fontSizePx = Math.max(15, Math.min(52, Math.round(actualWidth * 0.027 + 2)));
+            const fontSizePx = Math.max(16, Math.min(54, Math.round(actualWidth * 0.027 + 2)));
             layer.style.setProperty("--lectoro-sub-font-size", `${fontSizePx}px`);
 
             // Bottom offset inside video player
             const isNetflix = isNetflixPage();
             const baseBottomPx = isNetflix
                 ? Math.max(76, Math.round(actualHeight * 0.13))
-                : Math.max(48, Math.round(actualHeight * 0.098));
+                : Math.max(18, Math.round(actualHeight * 0.138));
 
             layer.style.setProperty("--lectoro-sub-bottom", `${baseBottomPx}px`);
             box.style.marginBottom = `${baseBottomPx}px`;
