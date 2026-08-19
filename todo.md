@@ -1,17 +1,12 @@
 [TODO]
 
+1. jakie klucze co i jak krok por kroku co musze mieniac kiedy bede stawial juz produkcyjna chrome extension
+
 2. zrob w kazdym jezyku aby był text UI nagłowki wszystkie w zaleznosci jaki zalezny jest język a jako defaul jest angielski [na pozniej jako ostatnie]
 
 5. dodaj na netflixie ze po kazdym wypowiedzianym zdaniu i opcje 1. moze byc zatrzymany film 2. wstrzymuje sie na 1s/2s/3s z paskiem ladowania na samej gorze od prawej do lewej
 
-8. piracka biblioteka
-
-9. w settings w div kredytow jest napis Limit odnawia się co miesiąc. podaj date obok kiedy dokladnie sie odnowi jesli subskrybuje to dokladna data kiedy mi pobiera pienidze oraz kiedy wtedy ma sie pakiet odnawiac.
-
 11. popraw prompty AI tak aby byly krotkie, po angielsku, zeby mniej tokenow ai zuzywalo i idealnie dopracowane
-
-12. po Nacisnieciu Enter ,S  niech kazdy klawisz WSAD itp kasuje tooltipa i wznawia video
-dla przykladu tlumacze za pomoca "Enter" AI, video sie pauzuje i drukie klikniecie Enter zamyka tooltip tlumaczenia i wznawia wideo a chcialbym dodatkowo aby klawisze WSAD tez zamykaly tooltip i wznawialy wideo
 
 15. w powtorkach rewiew zrob z Web Speech API opcje pod klikniecie przycik "spacja" nagrywanie slowa/zdania ktore musze powtorzyc tak samo jak w powtorce oraz niech pokazuje litery na zielono ktore dobrze wypowiedziane a na czerwono te co zle to bedzie opcja shadowing ze sprawdzaniem wymowy. niech w czasie sluchaia bedzie ikona ktora emituje sluchanie
 
@@ -35,26 +30,12 @@ firebase.cmd deploy --only "firestore:rules"
 
 firebase deploy --only "functions,firestore:rules"
 
-# Klucz Gemini API – wstaw swój klucz poniżej
-
-# NIGDY nie commituj tego pliku do Git!
-
-# Plik jest w .gitignore
-
-GEMINI_API_KEY=x
-
-1. zmien geminiproxy na apiproxy bo sie myli nazwa
-
 zalety:
 
 fiszki z youtube reels
 fiszki z social media / facebook / X / instagram / komentarze
 
 Platformy najbardziej otwarte na przechwytywanie napisów
-
-1. YouTube (Najłatwiejszy)Jak działa: Pobiera napisy przez proste zapytania sieciowe (timedtext) w formacie JSON/XML lub renderuje je w znanej strukturze DOM (.ytp-caption-segment). Wnioski: Idealny zestaw danych (posiada znaczniki czasu, tekst i opcjonalnie automatyczne tłumaczenia).
-
-2. Netflix Jak działa: Renderuje napisy bezpośrednio w warstwie HTML (.player-timedtext) lub przesyła je w pakietach JSON/TTML. Wnioski: Bardzo stabilne źródło dla wtyczek językowych. Wymaga jedynie reagowania na ew. rzadkie zmiany klas CSS w odtwarzaczu.
 
 3. Disney+ & Max (HBO)Jak działa: Obie platformy korzystają z odtwarzaczy bazujących na standardzie HTML5 (np. Shaka Player) i plikach WebVTT/TTML. Wnioski: Napisy trafiają do kontenerów tekstowych w DOM (np. .shaka-text-container), skąd wtyczka może łatwo czytać tekst w czasie rzeczywistym.
 
@@ -69,10 +50,6 @@ Przeanalizuj kod pod kątem trzech głównych obszarów:
 
 2. Wykrywanie Duplikacji (Zasada DRY - Don't Repeat Yourself)
    Znajdź fragmenty kodu, które są skopiowane lub realizują dokładnie tę samą logikę w minimalnie różny sposób w wielu miejscach. Zwróć uwagę nie tylko na identyczne linie, ale też na powtarzające się wzorce (np. identyczne wywołania API, powtarzająca się logika walidacji czy transformacji danych).
-
-1. nie czytaj znaku ♪ zawsze go wycinaj z TTS (Naprawiono – usunięto nutki, opisy w nawiasach kwadratowych i zbędne znaki specjalne w SSOT cleanTextForTTS)
-2. Web Speech API (Naprawiono – asynchroniczne pobieranie głosów i pre-warming)
-3. Hover na slowach na napisach w filmach (Naprawiono – usunięto sub-word z isOwnUI, poprawiono dzielenie słów i pointer-events)
 
 3. Centralizacja Logiki (Single Source of Truth)
    Zaproponuj plan refaktoryzacji, który przeniesie rozproszoną logikę do jednego, spójnego miejsca. Inne pliki powinny jedynie importować gotowe metody/funkcje, stając się "głupimi" konsumentami logiki biznesowej. Zastanów się, czy logikę lepiej wydzielić do klasycznych funkcji pomocniczych (utils), dedykowanych serwisów (services)
