@@ -251,7 +251,21 @@ const SubscriptionService = (() => {
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error || `Błąd głosów (${response.status})`);
-        return data.voices || [];
+        const allowedOrder = ["roger", "sarah", "charlie"];
+        const rawVoices = data.voices || [];
+        const filtered = rawVoices
+            .filter((voice) => {
+                const name = (voice?.name || "").trim().toLowerCase();
+                return allowedOrder.some((t) => name.startsWith(t) || name.includes(t));
+            })
+            .sort((a, b) => {
+                const nameA = (a?.name || "").trim().toLowerCase();
+                const nameB = (b?.name || "").trim().toLowerCase();
+                const idxA = allowedOrder.findIndex((t) => nameA.startsWith(t) || nameA.includes(t));
+                const idxB = allowedOrder.findIndex((t) => nameB.startsWith(t) || nameB.includes(t));
+                return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+            });
+        return filtered;
     }
 
     async function updateAiUsage(usage) {

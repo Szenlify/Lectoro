@@ -204,9 +204,9 @@ function renderFreeVoiceTeaser() {
             <div class="review-voice-teaser-title"><span>Naturalne głosy AI</span><span>🔒</span></div>
             <p>Usłysz różne akcenty i wybierz lektora do swoich powtórek.</p>
             <div class="review-voice-chips" aria-hidden="true">
-                <span class="review-voice-chip">Darian</span>
-                <span class="review-voice-chip">Talia</span>
-                <span class="review-voice-chip">Florence</span>
+                <span class="review-voice-chip">Roger</span>
+                <span class="review-voice-chip">Sarah</span>
+                <span class="review-voice-chip">Charlie</span>
             </div>
             <button type="button" class="review-voice-upgrade" id="reviewVoiceUpgrade">Odblokuj głosy ElevenLabs</button>
         </div>`;
@@ -273,11 +273,7 @@ function renderElevenLabsVoiceSelect() {
         const name = document.createElement("strong");
         name.textContent = voice.name;
 
-        const labels = document.createElement("small");
-        labels.textContent =
-            formatVoiceLabels(voice) || "Naturalny głos ElevenLabs";
-
-        copy.append(name, labels);
+        copy.append(name);
 
         const check = document.createElement("span");
         check.className = "review-voice-check";
@@ -308,13 +304,31 @@ function renderElevenLabsVoiceSelect() {
     content.appendChild(list);
 }
 
+const ALLOWED_REVIEW_VOICES = ["roger", "sarah", "charlie"];
+
+function filterReviewAllowedVoices(voices) {
+    if (!Array.isArray(voices)) return [];
+    return voices
+        .filter((v) => {
+            const name = (v?.name || "").trim().toLowerCase();
+            return ALLOWED_REVIEW_VOICES.some((t) => name.startsWith(t) || name.includes(t));
+        })
+        .sort((a, b) => {
+            const nameA = (a?.name || "").trim().toLowerCase();
+            const nameB = (b?.name || "").trim().toLowerCase();
+            const idxA = ALLOWED_REVIEW_VOICES.findIndex((t) => nameA.startsWith(t) || nameA.includes(t));
+            const idxB = ALLOWED_REVIEW_VOICES.findIndex((t) => nameB.startsWith(t) || nameB.includes(t));
+            return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+        });
+}
+
 async function loadReviewElevenLabsVoices() {
     if (reviewVoicesLoading || reviewElVoices.length) return;
     reviewVoicesLoading = true;
     setReviewVoiceStatus("Ładowanie głosów…");
     try {
-        reviewElVoices =
-            await SubscriptionService.getElevenLabsVoices("review");
+        const rawVoices = await SubscriptionService.getElevenLabsVoices("review");
+        reviewElVoices = filterReviewAllowedVoices(rawVoices);
         renderElevenLabsVoiceSelect();
         setReviewVoiceStatus(
             reviewElVoices.length

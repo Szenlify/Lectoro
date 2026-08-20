@@ -381,12 +381,29 @@ exports.geminiProxy = onRequest(
                     console.error("[subscriptionProxy] ElevenLabs voices error:", details);
                     return res.status(502).json({ error: "Nie udało się pobrać głosów ElevenLabs." });
                 }
-                return res.status(200).json({
-                    voices: (details.voices || []).map((voice) => ({
+
+                const allowedOrder = ["roger", "sarah", "charlie"];
+                const rawVoices = details.voices || [];
+                const filteredVoices = rawVoices
+                    .filter((voice) => {
+                        const name = (voice?.name || "").trim().toLowerCase();
+                        return allowedOrder.some((t) => name.startsWith(t) || name.includes(t));
+                    })
+                    .sort((a, b) => {
+                        const nameA = (a?.name || "").trim().toLowerCase();
+                        const nameB = (b?.name || "").trim().toLowerCase();
+                        const idxA = allowedOrder.findIndex((t) => nameA.startsWith(t) || nameA.includes(t));
+                        const idxB = allowedOrder.findIndex((t) => nameB.startsWith(t) || nameB.includes(t));
+                        return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+                    })
+                    .map((voice) => ({
                         voice_id: voice.voice_id,
                         name: voice.name,
                         labels: voice.labels || {},
-                    })),
+                    }));
+
+                return res.status(200).json({
+                    voices: filteredVoices,
                 });
             } catch (error) {
                 console.error("[subscriptionProxy] ElevenLabs voices fetch error:", error);
