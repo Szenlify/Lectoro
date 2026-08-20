@@ -1,5 +1,39 @@
 const { escapeHtml, escapeAttr, isDueForReview, countDueWords, dateTag, csvCell } = SharedUtils;
 
+// ── Centralized Initial Popup State (Batch Read) ──────────────────
+const POPUP_INIT_KEYS = Object.freeze({
+    targetLang: "pl",
+    speechVoice: "",
+    speechRate: 1.1,
+    ttsVolume: 1,
+    subtitleTTS: false,
+    wordCloudMode: true,
+    reviewDirection: "normal",
+    ttsMode: "browser",
+    elVoiceId: "",
+    savedWords: [],
+    lastFirebaseSync: null,
+    pendingFirebaseChanges: {},
+    aiUsageCache: null,
+    subscriptionProfileCache: null,
+});
+
+let popupState = { ...POPUP_INIT_KEYS };
+let _popupReadyResolver = null;
+const popupReadyPromise = new Promise((resolve) => {
+    _popupReadyResolver = resolve;
+});
+
+function whenPopupReady(fn) {
+    if (fn) return popupReadyPromise.then(fn);
+    return popupReadyPromise;
+}
+
+chrome.storage.local.get(POPUP_INIT_KEYS, (data) => {
+    popupState = { ...POPUP_INIT_KEYS, ...data };
+    _popupReadyResolver(popupState);
+});
+
 // ── Elements ──────────────────────────────────────────────────────
 const select = document.getElementById("targetLang");
 const savedMsg = document.getElementById("saved");
@@ -38,19 +72,17 @@ const rateValue = document.getElementById("rateValue");
 const volumeRange = document.getElementById("volumeRange");
 const volumeValue = document.getElementById("volumeValue");
 
-// ── Auto-switch to Review tab if there are due reviews ────────────
-document.addEventListener("DOMContentLoaded", () => {
-    chrome.storage.local.get({ savedWords: [] }, (data) => {
-        const words = data.savedWords || [];
-        const now = Date.now();
-        if (typeof countDueWords !== "function") return;
+// ── Auto-switch to Review tab if there are due reviews (Instant) ──
+whenPopupReady((state) => {
+    const words = state.savedWords || [];
+    const now = Date.now();
+    if (typeof countDueWords === "function") {
         const dueCount = countDueWords(words, now);
         if (dueCount > 0) {
             switchTab("review");
         }
-    });
+    }
 });
-
 
 // ── Flash saved message ───────────────────────────────────────────
 function flashSaved() {
@@ -59,62 +91,54 @@ function flashSaved() {
 }
 
 // ── Delete single review word (from review tab) ──────────────────
-function deleteReviewWord(w) {
+async function deleteReviewWord(w) {
     if (!confirm(`Usunąć "${w.original}" z bazy danych?`)) return;
     stopPopupSpeak();
-    chrome.storage.local.get({ savedWords: [] }, (data) => {
-        const words = data.savedWords.filter(
-            (x) =>
-                !(x.original === w.original && x.translated === w.translated),
-        );
-        chrome.storage.local.set({ savedWords: words }, () => {
-            if (chrome.runtime.lastError) {
-                console.error(
-                    "[Lectoro] Nie udało się usunąć słowa:",
-                    chrome.runtime.lastError.message,
-                );
-            }
-            // Remove from current queue and continue
-            reviewQueue.splice(reviewIndex, 1);
-            reviewTotalDue = reviewQueue.length;
-            if (reviewIndex >= reviewQueue.length)
-                reviewIndex = reviewQueue.length - 1;
-            if (reviewIndex < 0) reviewIndex = 0;
-            reviewAnswerShown = false;
-            renderReview();
-        });
-    });
+    try {
+        if (typeof SharedWordRepository !== "undefined") {
+            await SharedWordRepository.deleteWord(w.id || w.original, w.timestamp);
+        } else {
+            const data = await chrome.storage.local.get({ savedWords: [] });
+            const words = (data.savedWords || []).filter(
+                (x) => !(x.original === w.original && x.translated === w.translated),
+            );
+            await chrome.storage.local.set({ savedWords: words });
+        }
+    } catch (err) {
+        console.error("[Lectoro] Nie udało się usunąć słowa:", err);
+    }
+    // Remove from current queue and continue
+    reviewQueue.splice(reviewIndex, 1);
+    reviewTotalDue = reviewQueue.length;
+    if (reviewIndex >= reviewQueue.length)
+        reviewIndex = reviewQueue.length - 1;
+    if (reviewIndex < 0) reviewIndex = 0;
+    reviewAnswerShown = false;
+    renderReview();
 }
 
 // ── Delete all due reviews ───────────────────────────────────────
-function deleteAllReviews() {
+async function deleteAllReviews() {
     if (!confirm("Usunąć WSZYSTKIE słowa w kolejce powtórek?")) return;
-    chrome.storage.local.get({ savedWords: [] }, (data) => {
-        const allWords = data.savedWords || [];
-        const now = Date.now();
-        const dueWords = allWords.filter((w) => isDueForReview(w, now));
-        if (dueWords.length === 0) return;
-
-        const dueSet = new Set(
-            dueWords.map((w) => w.original + "|" + w.translated),
-        );
-        const remaining = allWords.filter(
-            (w) => !dueSet.has(w.original + "|" + w.translated),
-        );
-        chrome.storage.local.set({ savedWords: remaining }, () => {
-            if (chrome.runtime.lastError) {
-                console.error(
-                    "[Lectoro] Nie udało się usunąć słów:",
-                    chrome.runtime.lastError.message,
-                );
-            }
-            reviewQueue = [];
-            reviewIndex = 0;
-            reviewTotalDue = 0;
-            reviewAnswerShown = false;
-            renderReview();
-        });
-    });
+    stopPopupSpeak();
+    try {
+        if (typeof SharedWordRepository !== "undefined") {
+            await SharedWordRepository.deleteDueReviews();
+        } else {
+            const data = await chrome.storage.local.get({ savedWords: [] });
+            const allWords = data.savedWords || [];
+            const now = Date.now();
+            const remaining = allWords.filter((w) => !isDueForReview(w, now));
+            await chrome.storage.local.set({ savedWords: remaining });
+        }
+    } catch (err) {
+        console.error("[Lectoro] Nie udało się usunąć słów powtórek:", err);
+    }
+    reviewQueue = [];
+    reviewIndex = 0;
+    reviewTotalDue = 0;
+    reviewAnswerShown = false;
+    renderReview();
 }
 
 // ── Download helper ───────────────────────────────────────────────

@@ -18,6 +18,12 @@ const GeminiProxy = (() => {
     const PROXY_URL =
         "https://geminiproxy-gyagzflbra-ew.a.run.app";
     const USAGE_KEY = "aiUsageCache";
+    const MAX_AI_CACHE_SIZE = 200;
+    const aiResponseCache = new Map();
+
+    function getAiCacheKey(prompt, temperature, maxOutputTokens) {
+        return `${prompt}__${temperature}__${maxOutputTokens}`;
+    }
 
     function currentMonth() {
         return typeof SharedUtils !== "undefined" && SharedUtils.currentMonth
@@ -256,10 +262,22 @@ const GeminiProxy = (() => {
      * @param {object} [opts]
      * @param {number} [opts.temperature=0.8] - Temperatura (0–2)
      * @param {number} [opts.maxOutputTokens=500] - Max tokenów wyjściowych
-     * @returns {Promise<{text: string, usage: object}>}
+     * @param {boolean} [opts.cache=true] - Czy korzystać z pamięci podręcznej odpowiedzi AI
+     * @returns {Promise<{text: string, usage: object, cached?: boolean}>}
      * @throws {Error} jeśli użytkownik niezalogowany, limit przekroczony lub błąd serwera
      */
-    async function request(prompt, { temperature = 0.8, maxOutputTokens = 500 } = {}) {
+    async function request(prompt, { temperature = 0.8, maxOutputTokens = 500, cache = true } = {}) {
+        const cacheKey = getAiCacheKey(prompt, temperature, maxOutputTokens);
+        if (cache && aiResponseCache.has(cacheKey)) {
+            const cachedEntry = aiResponseCache.get(cacheKey);
+            const cachedUsage = (await getCachedUsage()) || {};
+            return {
+                text: cachedEntry.text,
+                usage: cachedUsage,
+                cached: true,
+            };
+        }
+
         const token = await getToken();
 
         if (!token) {
@@ -324,14 +342,22 @@ const GeminiProxy = (() => {
             throw new Error(msg);
         }
 
-        await setCachedUsage(data.usage || {
+        const finalUsage = await setCachedUsage(data.usage || {
             ...previousUsage,
             used: (previousUsage?.used || 0) + 1,
         });
 
+        if (cache) {
+            aiResponseCache.set(cacheKey, { text: data.text || "" });
+            if (aiResponseCache.size > MAX_AI_CACHE_SIZE) {
+                aiResponseCache.delete(aiResponseCache.keys().next().value);
+            }
+        }
+
         return {
             text: data.text || "",
-            usage: data.usage || {},
+            usage: finalUsage || data.usage || {},
+            cached: false,
         };
     }
 
@@ -487,6 +513,7 @@ const GeminiProxy = (() => {
         isLimitError,
         showUpgradePrompt,
         openPlans,
+        clearAiCache: () => aiResponseCache.clear(),
         isLimitReached: async () => {
             const usage = await getCachedUsage();
             return !!(usage?.limit > 0 && usage.used >= usage.limit);

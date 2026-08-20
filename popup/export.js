@@ -550,24 +550,25 @@ document.getElementById("clearAll").addEventListener("click", async () => {
 });
 
 // ── Mark exported words as downloaded ─────────────────────────────
-function markAsDownloaded(exportedWords, allWords) {
-    const exportedSet = new Set(
-        exportedWords.map((w) => (w.id ? w.id : `${w.original}|${w.timestamp}`)),
-    );
-    const updated = allWords.map((w) => {
-        const key = w.id ? w.id : `${w.original}|${w.timestamp}`;
-        if (exportedSet.has(key)) {
-            return { ...w, downloaded: true };
-        }
-        return w;
-    });
-    chrome.storage.local.set({ savedWords: updated }, () => {
-        if (chrome.runtime.lastError) {
-            console.error(
-                "[Lectoro] Nie udało się zaktualizować słów:",
-                chrome.runtime.lastError.message,
+async function markAsDownloaded(exportedWords, allWords) {
+    try {
+        if (typeof SharedWordRepository !== "undefined") {
+            await SharedWordRepository.markWordsDownloaded(exportedWords);
+        } else {
+            const exportedSet = new Set(
+                exportedWords.map((w) => (w.id ? w.id : `${w.original}|${w.timestamp}`)),
             );
+            const updated = (allWords || []).map((w) => {
+                const key = w.id ? w.id : `${w.original}|${w.timestamp}`;
+                if (exportedSet.has(key)) {
+                    return { ...w, downloaded: true };
+                }
+                return w;
+            });
+            await chrome.storage.local.set({ savedWords: updated });
         }
-        loadWords();
-    });
+    } catch (err) {
+        console.error("[Lectoro] Nie udało się oznaczyć pobranych słów:", err);
+    }
+    loadWords();
 }

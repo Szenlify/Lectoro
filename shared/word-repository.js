@@ -352,6 +352,43 @@
         return result;
     }
 
+    /**
+     * Mark a list of exported words as downloaded.
+     */
+    async function markWordsDownloaded(exportedWords = []) {
+        if (!Array.isArray(exportedWords) || exportedWords.length === 0) return { count: 0 };
+        const words = await getStoredWords();
+        const exportedSet = new Set(
+            exportedWords.map((w) => (w.id ? w.id : `${w.original}|${w.timestamp}`)),
+        );
+        let updatedCount = 0;
+        const updated = words.map((w) => {
+            const key = w.id ? w.id : `${w.original}|${w.timestamp}`;
+            if (exportedSet.has(key) && !w.downloaded) {
+                updatedCount++;
+                return { ...w, downloaded: true, updatedAt: Date.now() };
+            }
+            return w;
+        });
+        if (updatedCount > 0) {
+            await setStoredWords(updated);
+        }
+        return { count: updatedCount };
+    }
+
+    /**
+     * Delete all words that are currently due for review.
+     */
+    async function deleteDueReviews(now = Date.now()) {
+        const words = await getStoredWords();
+        const isDueFn = typeof SharedUtils !== "undefined" && typeof SharedUtils.isDueForReview === "function"
+            ? SharedUtils.isDueForReview
+            : (w, n) => (w?.sr?.nextReview || 0) <= n;
+        const dueWords = words.filter((w) => isDueFn(w, now));
+        if (dueWords.length === 0) return { deleted: 0 };
+        return deleteWords(dueWords);
+    }
+
     return Object.freeze({
         getStoredWords,
         setStoredWords,
@@ -359,7 +396,9 @@
         updateWord,
         deleteWord,
         deleteWords,
+        deleteDueReviews,
         clearAllWords,
+        markWordsDownloaded,
         recordReviewRating,
         filterWords,
         generateId,

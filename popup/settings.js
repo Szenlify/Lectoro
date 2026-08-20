@@ -1,23 +1,22 @@
 // ── Settings: load & save language ────────────────────────────────
-chrome.storage.local.get(
-    { targetLang: "pl", speechVoice: "", speechRate: 1.1, ttsVolume: 1 },
-    (data) => {
-        select.value = data.targetLang;
-        rateRange.value = data.speechRate;
-        rateValue.textContent = parseFloat(data.speechRate).toFixed(2);
-        if (data.ttsVolume !== undefined && volumeRange) {
-            volumeRange.value = data.ttsVolume;
-            volumeValue.textContent = Math.round(data.ttsVolume * 100) + "%";
-        }
-        let voice = data.speechVoice;
-        if (voice === "random") {
-            voice = "";
-            chrome.storage.local.set({ speechVoice: "" });
-        }
-        // Load voices and set selection
-        loadVoices(voice);
-    },
-);
+whenPopupReady((data) => {
+    select.value = data.targetLang || "pl";
+    rateRange.value = data.speechRate || 1.1;
+    rateValue.textContent = parseFloat(data.speechRate || 1.1).toFixed(2);
+    if (data.ttsVolume !== undefined && volumeRange) {
+        volumeRange.value = data.ttsVolume;
+        volumeValue.textContent = Math.round(data.ttsVolume * 100) + "%";
+    }
+    let voice = data.speechVoice || "";
+    if (voice === "random") {
+        voice = "";
+        chrome.storage.local.set({ speechVoice: "" });
+    }
+    loadVoices(voice);
+
+    if (subtitleTTSToggle) subtitleTTSToggle.checked = !!data.subtitleTTS;
+    if (wordCloudModeToggle) wordCloudModeToggle.checked = !!data.wordCloudMode;
+});
 
 select.addEventListener("change", () => {
     chrome.storage.local.set({ targetLang: select.value }, flashSaved);
@@ -28,13 +27,10 @@ const subtitleTTSToggle = document.getElementById("subtitleTTS");
 const wordCloudModeToggle = document.getElementById("wordCloudMode");
 
 function syncSubtitleModeUI() {
-    chrome.storage.local.get(
-        { subtitleTTS: false, wordCloudMode: true },
-        (data) => {
-            subtitleTTSToggle.checked = !!data.subtitleTTS;
-            wordCloudModeToggle.checked = !!data.wordCloudMode;
-        },
-    );
+    whenPopupReady((data) => {
+        if (subtitleTTSToggle) subtitleTTSToggle.checked = !!data.subtitleTTS;
+        if (wordCloudModeToggle) wordCloudModeToggle.checked = !!data.wordCloudMode;
+    });
 }
 
 syncSubtitleModeUI();
@@ -546,20 +542,19 @@ if (location.hash === "#plans") {
     setTimeout(showAiPlans, 80);
 }
 
-// Initial render from local cache (Zero Lag)
-refreshAiUsageUI().catch((error) =>
-    console.warn("[Lectoro] Błąd inicjalizacji UI planu:", error),
-);
-
-// Cached background refresh with token & plan check (respects 1h TTL)
-SubscriptionService.effectiveProfile(false)
-    .then(async () => {
-        await SubscriptionService.applyPlanToUI();
+// Initial render from local cache (Zero Lag) + background check
+(async () => {
+    try {
         await refreshAiUsageUI();
-    })
-    .catch((error) =>
-        console.warn("[Lectoro] Nie udało się odświeżyć planu w tle:", error),
-    );
+        const profile = await SubscriptionService.effectiveProfile(false);
+        if (profile) {
+            await SubscriptionService.applyPlanToUI();
+            await refreshAiUsageUI();
+        }
+    } catch (error) {
+        console.warn("[Lectoro] Inicjalizacja UI planu:", error);
+    }
+})();
 
 window.addEventListener("focus", () => {
     SubscriptionService.effectiveProfile(false)

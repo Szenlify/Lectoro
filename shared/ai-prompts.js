@@ -32,17 +32,8 @@ const AIPrompts = {
      * sentence (+ translation) that shows a learned word in context.
      */
     sentenceExample(word, translated, srcLang, tgtLang) {
-        return `You are a language learning assistant. The user is learning the word "${word}" (${srcLang}) which translates to "${translated}" (${tgtLang}).
-
-Generate ONE short, practical, everyday sentence using the word "${word}" in ${srcLang}. The sentence should:
-- Be useful in daily conversation
-- Be natural and commonly used
-- Be 5-15 words long
-- Show the word in a clear, memorable context
-
-Then translate that sentence to ${tgtLang}.
-
-Respond ONLY in this exact JSON format, nothing else:
+        return `Create 1 natural everyday sentence (5-15 words) in ${srcLang} using "${word}" (meaning: "${translated}"). Translate the sentence to ${tgtLang}.
+Respond ONLY with JSON:
 {"sentence": "...", "translation": "..."}`;
     },
 
@@ -51,15 +42,14 @@ Respond ONLY in this exact JSON format, nothing else:
      * extension to explain/translate a subtitle sentence they didn't understand.
      */
     explainSentence(sentence, targetLang) {
-        return `You are a language learning assistant. The user is watching a video and didn't understand the following sentence:
+        return `Explain this video subtitle sentence in ${targetLang}:
 "${sentence}"
 
-Please explain what this sentence means briefly and concisely. Provide a translation to ${targetLang}. 
-IMPORTANT: If the sentence is an idiom, slang, or contains figurative language, the "translation" field MUST contain its MOST COMMON, universally understood natural equivalent in ${targetLang}. Do NOT use literal word-for-word translations, and strictly AVOID obscure, regional, or overly creative slang expressions.
-In the "explanation" field, provide a short breakdown of the grammar, idioms, or difficult words used, including the literal translation if it helps with understanding.
+Instructions:
+1. "translation": Most common, natural everyday equivalent in ${targetLang} (natural idiom/colloquial translation, avoid obscure slang).
+2. "explanation": Brief breakdown of grammar, idioms or vocabulary (1-2 lines) in ${targetLang}.
 
-The explanation must be written in ${targetLang}.
-Respond ONLY in this exact JSON format, nothing else:
+Respond ONLY with JSON:
 {"translation": "...", "explanation": "..."}`;
     },
 
@@ -68,49 +58,33 @@ Respond ONLY in this exact JSON format, nothing else:
      * translation + short explanation shown in the tooltip.
      */
     movieTranslate(text, targetLang) {
-        return `You are a movie-style translator. Translate the following text to ${targetLang} as naturally and colloquially as if it were in a film or subtitle. Then provide a short explanation of the sentence in the same target language. Respond ONLY in this exact JSON format, nothing else:\n{"translation":"...", "explanation":"..."}\nText:\n${text}`;
+        return `Translate this movie subtitle to natural ${targetLang} with a brief 1-line explanation in ${targetLang}.
+Text: "${text}"
+Respond ONLY with JSON:
+{"translation": "...", "explanation": "..."}`;
     },
 
     /**
      * Used by popup.js (aiTranslateReviewCard) for the flashcard "Enter"
-     * shortcut in the Review tab — a plain, accurate, dictionary-style AI
-     * translation of the currently shown word/sentence (as opposed to the
-     * colloquial "movie style" translation used elsewhere), so the user can
-     * double-check the meaning on demand without flipping/rating the card.
+     * shortcut in the Review tab.
      */
     standardTranslate(word, sentence, srcLang = "en", tgtLang = "pl") {
         const srcName = AIPrompts.getLangName(srcLang);
         const tgtName = AIPrompts.getLangName(tgtLang);
+        const context = sentence ? `\nContext: "${sentence}"` : "";
 
-        const contextPart = sentence ? `\nContext Sentence: "${sentence}"` : "";
-        const sentenceRule = sentence
-            ? `Translate the context sentence into ${tgtName}.`
-            : `Set "sentence_translation" to "".`;
-
-        return `You are a precise dictionary translator. Translate the word from ${srcName} into ${tgtName} accurately and neutrally.
-Word: "${word}"${contextPart}
-
+        return `Translate "${word}" (${srcName}) to ${tgtName}.${context}
 Instructions:
-1. Provide the most accurate standard ${tgtName} translation for the word (considering context if provided).
-2. ${sentenceRule}
-3. Provide a concise explanation (1-2 sentences max) of meaning or usage in ${tgtName}.
+1. "word_translation": Accurate standard ${tgtName} translation.
+2. "sentence_translation": Translate the context sentence to ${tgtName} if provided, else "".
+3. "explanation": Concise 1-sentence note on usage/meaning in ${tgtName}.
 
-Respond ONLY with valid JSON (no markdown):
+Respond ONLY with JSON:
 {"word_translation": "...", "sentence_translation": "...", "explanation": "..."}`;
     },
 
     /**
-     * Used by popup (QuizExport) to build a multi-section vocabulary exam
-     * from the user's saved word list.
-     * @param {Object} opts
-     * @param {string} [opts.srcLang]     - ISO code of studied language (e.g. "en")
-     * @param {string} [opts.tgtLang]     - ISO code of target/instruction language (e.g. "pl")
-     * @param {string} [opts.srcLangName] - Full English name of studied language (e.g. "English")
-     * @param {string} [opts.tgtLangName] - Full English name of instruction language (e.g. "Polish")
-     * @param {string} [opts.srcLangAdj]  - Backward-compatibility fallback
-     * @param {string} opts.wordList      - Formatted word list
-     * @param {string} opts.nonce         - Random token for generation diversity
-     * @param {string[]} opts.chosenTypes - Ordered section types to include
+     * Used by popup (QuizExport) to build a multi-section vocabulary exam.
      */
     quiz(opts) {
         const srcName = opts.srcLangName || AIPrompts.getLangName(opts.srcLang || "en");
@@ -119,86 +93,64 @@ Respond ONLY with valid JSON (no markdown):
             ? opts.chosenTypes.join(", ")
             : "multiple_choice, fill_blank, matching, translation, correct_form, odd_one_out";
 
-        return `You are an expert language examiner and curriculum author creating a rigorous, high-value vocabulary exam.
-Target language being tested/learned: ${srcName}
-Student's native/instruction language: ${tgtName}
+        return `Create a high-quality vocabulary test.
+Language tested: ${srcName}
+Instruction language: ${tgtName}
+Sections to include: ${chosen}
+Nonce: ${opts.nonce || "default"}
 
-CORE PEDAGOGICAL & QUALITY RULES:
-1. ALL instructions, question prompts/descriptions, fill-in-the-blank hints, and true/false statements MUST be written in ${tgtName} so the student clearly understands the exercise.
-2. ALL tested vocabulary, answer keys, fill-in sentences, multiple-choice options, and word pairs MUST be in ${srcName}.
-3. ZERO SILLY, TRIVIAL, OR ILLOGICAL QUESTIONS:
-   - multiple_choice: Test contextual comprehension, nuance, or collocations. Provide 4 plausible options in ${srcName} of the EXACT same grammatical category (part of speech). Strictly NO absurd/silly distractors. Exactly one correct answer.
-   - fill_blank: Natural, fluent sentence in ${srcName} with rich context and exactly one blank "___". "hint" in ${tgtName} must be a concise clue/translation of ONLY the missing word (never the whole sentence or the answer itself). "answer" in ${srcName} must fit the blank perfectly.
-   - matching: 5-8 pairs where "a" is the term in ${srcName} and "b" is its accurate, natural translation in ${tgtName}.
-   - translation: MUST be a concise, practical, everyday phrase or short sentence (2-6 words) testing the target vocabulary. NEVER copy long, rambling, slang-heavy subtitle quotes verbatim (e.g. avoid quotes like "If the first option fails, number two, what you gon' do?"). Instead, formulate a clear, concise phrase in ${tgtName} and standard, clean translation in ${srcName} (e.g. "Co zrobisz?" -> "What will you do?"). "answer" MUST be standard, clean spelling and grammar without conversational filler or slang contractions.
-   - true_false: "statement" in ${tgtName} with an objective, factual claim about the meaning or usage of a word in ${srcName}. "answer" must be a raw JSON boolean (true or false).
-   - correct_form: "sentence" in ${srcName} with "___ (lemma)" (e.g., "Yesterday she ___ (choose) a great book."). "options" MUST be 3-4 inflected grammatical forms of THAT EXACT SAME lemma (e.g. ["chose", "chooses", "choosing", "chosen"]). Strictly NO unrelated words. "answer" is the grammatically correct form.
-   - odd_one_out: 4 options in ${srcName} of the same part of speech; 3 belong to a specific semantic category and 1 is a clear outlier. "answer" is the outlier word.
-4. CLEAN & CONDENSE FLASHCARDS:
-   - The provided vocabulary list may contain long movie quotes or conversational subtitle lines.
-   - When constructing questions across all sections, distill and condense them into clean, high-value, standard language exercises.
+Rules:
+1. Instructions, hints, and explanations in ${tgtName}.
+2. Target words, options, and test sentences in ${srcName}.
+3. multiple_choice: 4 plausible options, same part of speech, 1 correct.
+4. fill_blank: Natural sentence with "___", concise hint in ${tgtName}, answer in ${srcName}.
+5. matching: 5-8 pairs (a=${srcName}, b=${tgtName}).
+6. translation: Short practical phrase (2-6 words) in ${tgtName} with answer in ${srcName}.
+7. true_false: Factual statement in ${tgtName}, answer boolean.
+8. correct_form: Sentence with "___ (lemma)", 3-4 inflected forms in options, answer is correct form.
+9. odd_one_out: 4 options in ${srcName}, 1 outlier answer.
 
-STRUCTURE & DIVERSITY:
-- Generation uniqueness nonce: ${opts.nonce || "default"}.
-- Include EXACTLY these section types in this order: ${chosen}.
-- Each section MUST contain at least 4-6 complete, meaningful questions (or pairs for matching).
-- Distribute and test words from the vocabulary list across all sections.
-
-VOCABULARY LIST:
+Vocabulary List:
 ${opts.wordList}
 
-Respond ONLY with a valid JSON object matching this structure (no markdown formatting outside JSON, no comments):
+Respond ONLY with JSON (no markdown outside JSON):
 {
-  "title": "<LetFluent ${tgtName}>",
+  "title": "LetFluent ${tgtName}",
   "sections": [
     {
       "type": "multiple_choice",
-      "instructions": "<Task instructions in ${tgtName}>",
-      "questions": [
-        { "question": "<Question/context prompt in ${tgtName}>", "options": ["optA", "optB", "optC", "optD"], "answer": "optA" }
-      ]
+      "instructions": "...",
+      "questions": [{ "question": "...", "options": ["A", "B", "C", "D"], "answer": "A" }]
     },
     {
       "type": "fill_blank",
-      "instructions": "<Task instructions in ${tgtName}>",
-      "questions": [
-        { "sentence": "Context sentence with ___ for the word.", "hint": "<hint in ${tgtName}>", "answer": "word" }
-      ]
+      "instructions": "...",
+      "questions": [{ "sentence": "... ___ ...", "hint": "...", "answer": "..." }]
     },
     {
       "type": "matching",
-      "instructions": "<Task instructions in ${tgtName}>",
-      "pairs": [
-        { "a": "<src_word>", "b": "<tgt_translation>" }
-      ]
+      "instructions": "...",
+      "pairs": [{ "a": "...", "b": "..." }]
     },
     {
       "type": "translation",
-      "instructions": "<Task instructions in ${tgtName}>",
-      "questions": [
-        { "prompt": "<Phrase in ${tgtName} to translate>", "answer": "<translation in ${srcName}>" }
-      ]
+      "instructions": "...",
+      "questions": [{ "prompt": "...", "answer": "..." }]
     },
     {
       "type": "true_false",
-      "instructions": "<Task instructions in ${tgtName}>",
-      "questions": [
-        { "statement": "<Factual statement in ${tgtName}>", "answer": true }
-      ]
+      "instructions": "...",
+      "questions": [{ "statement": "...", "answer": true }]
     },
     {
       "type": "correct_form",
-      "instructions": "<Task instructions in ${tgtName}>",
-      "questions": [
-        { "sentence": "Sentence with ___ (lemma).", "options": ["form1", "form2", "form3", "form4"], "answer": "form1" }
-      ]
+      "instructions": "...",
+      "questions": [{ "sentence": "... ___ (lemma) ...", "options": ["f1", "f2", "f3", "f4"], "answer": "f1" }]
     },
     {
       "type": "odd_one_out",
-      "instructions": "<Task instructions in ${tgtName}>",
-      "questions": [
-        { "options": ["wordA", "wordB", "wordC", "outlierWord"], "answer": "outlierWord" }
-      ]
+      "instructions": "...",
+      "questions": [{ "options": ["w1", "w2", "w3", "outlier"], "answer": "outlier" }]
     }
   ]
 }`;

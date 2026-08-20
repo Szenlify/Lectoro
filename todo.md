@@ -83,4 +83,4 @@ Przeanalizuj kod pod kątem trzech głównych obszarów:
 
 Wciel się w rolę doświadczonego Software Architekta i Senior Developera.
 
-przeanalizuj aplikacje zrob aby byla bardzo oszczedna bo bedzie ja pobierac tysiace uzytkownikow wiec kazde zaoszczedzone pytanie token do serverow jes bardzo potrzebna przy tym zachowanie bezpieczenstwa aplikacji oraz zachowanie dalania wszystkich funkcji jak gemini ai, eleven laps na koniec zrob firebase deploy i sprawdz czy wszystko dziala
+przeanalizuj aplikacje zrob aby byla oszczedna bo bedzie ja pobierac tysiace uzytkownikow wiec kazde zaoszczedzone pytanie token do serverow jest bardzo potrzebna przy tym zachowanie bezpieczenstwa aplikacji oraz szybka bo popup teraz czasami dlugo sie otwiera oraz zachowanie dalania wszystkich funkcji jak gemini ai, eleven laps oraz pamietaj o Centralizacja Logiki (Single Source of Truth) i Wykrywanie Duplikacji (Zasada DRY - Don't Repeat Yourself)oraz na koniec zrob firebase deploy i sprawdz czy wszystko dziala 

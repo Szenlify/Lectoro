@@ -33,28 +33,43 @@ let reviewVoicesLoading = false;
 
 let reviewTargetLang = "pl";
 
-// Load the saved review direction, voice setting, and targetLang.
-chrome.storage.local.get(
-    {
-        reviewDirection: "normal",
-        ttsMode: "browser",
-        speechVoice: "",
-        elVoiceId: "",
-        targetLang: "pl",
-    },
-    (data) => {
+// Load the saved review direction, voice setting, and targetLang instantly via whenPopupReady.
+if (typeof whenPopupReady === "function") {
+    whenPopupReady((data) => {
         reviewDirection = data.reviewDirection || "normal";
         reviewTargetLang = data.targetLang || "pl";
-        reviewSystemVoice = data.speechVoice === "random" ? "" : data.speechVoice;
+        reviewSystemVoice = data.speechVoice === "random" ? "" : (data.speechVoice || "");
         if (data.speechVoice === "random") {
             chrome.storage.local.set({ speechVoice: "" });
         }
-        ttsMode = data.ttsMode;
-        reviewElVoiceId = data.elVoiceId;
+        ttsMode = data.ttsMode || "browser";
+        reviewElVoiceId = data.elVoiceId || "";
         updateDirBtnLabel();
         void updateReviewVoiceUI();
-    },
-);
+    });
+} else {
+    chrome.storage.local.get(
+        {
+            reviewDirection: "normal",
+            ttsMode: "browser",
+            speechVoice: "",
+            elVoiceId: "",
+            targetLang: "pl",
+        },
+        (data) => {
+            reviewDirection = data.reviewDirection || "normal";
+            reviewTargetLang = data.targetLang || "pl";
+            reviewSystemVoice = data.speechVoice === "random" ? "" : data.speechVoice;
+            if (data.speechVoice === "random") {
+                chrome.storage.local.set({ speechVoice: "" });
+            }
+            ttsMode = data.ttsMode;
+            reviewElVoiceId = data.elVoiceId;
+            updateDirBtnLabel();
+            void updateReviewVoiceUI();
+        },
+    );
+}
 
 if (typeof chrome !== "undefined" && chrome.storage?.onChanged) {
     chrome.storage.onChanged.addListener((changes, area) => {
@@ -494,14 +509,23 @@ function updateReviewTabBadge(count) {
     tab.innerHTML = `<span class="tab-icon">🧠</span><span class="tab-label">Powtórki</span>${badge}`;
 }
 
-// ── On popup open → load badge count ──────────────────────────────
+// ── On popup open → load badge count (Instant) ───────────────────
 function initReviewBadge() {
-    chrome.storage.local.get({ savedWords: [] }, (data) => {
-        const words = data.savedWords || [];
-        const now = Date.now();
-        const dueCount = countDueWords(words, now);
-        updateReviewTabBadge(dueCount);
-    });
+    if (typeof whenPopupReady === "function") {
+        whenPopupReady((data) => {
+            const words = data.savedWords || [];
+            const now = Date.now();
+            const dueCount = countDueWords(words, now);
+            updateReviewTabBadge(dueCount);
+        });
+    } else {
+        chrome.storage.local.get({ savedWords: [] }, (data) => {
+            const words = data.savedWords || [];
+            const now = Date.now();
+            const dueCount = countDueWords(words, now);
+            updateReviewTabBadge(dueCount);
+        });
+    }
 }
 initReviewBadge();
 
@@ -1100,7 +1124,7 @@ function showReviewEditForm(w, returnToAnswer = reviewAnswerShown) {
 }
 
 // ── Rate word & update storage ────────────────────────────────────
-function rateWord(grade) {
+async function rateWord(grade) {
     // Zatrzymaj odtwarzanie głosu
     stopPopupSpeak();
 
@@ -1115,45 +1139,27 @@ function rateWord(grade) {
     // grade === 2 -> Znam
     w.sr = srUpdate(w.sr, grade);
 
-    // Zapisujemy zmiany
     _reviewSaving = true;
 
-    chrome.storage.local.get({ savedWords: [] }, (data) => {
-        const words = data.savedWords || [];
-
-        const idx = words.findIndex((x) => x.id === w.id);
-
-        if (idx !== -1) {
-            // Zapisz nowe dane SRS
-            words[idx].sr = w.sr;
-            words[idx].updatedAt = Date.now();
-
-            chrome.storage.local.set({ savedWords: words }, () => {
-                _reviewSaving = false;
-
-                if (chrome.runtime.lastError) {
-                    console.error(
-                        "[Lectoro] Nie udało się zapisać powtórki:",
-                        chrome.runtime.lastError.message,
-                    );
-                }
-
-                // Karta jest zakończona.
-                // NIE wkładamy jej ponownie do reviewQueue.
-                reviewIndex++;
-
-                reviewAnswerShown = false;
-
-                renderReview();
-            });
+    try {
+        if (typeof SharedWordRepository !== "undefined") {
+            await SharedWordRepository.recordReviewRating(w, grade);
         } else {
-            // Karta została usunięta w międzyczasie.
-            _reviewSaving = false;
-
-            reviewIndex++;
-            reviewAnswerShown = false;
-
-            renderReview();
+            const data = await chrome.storage.local.get({ savedWords: [] });
+            const words = data.savedWords || [];
+            const idx = words.findIndex((x) => (w.id && x.id === w.id) || (x.original === w.original && x.translated === w.translated));
+            if (idx !== -1) {
+                words[idx].sr = w.sr;
+                words[idx].updatedAt = Date.now();
+                await chrome.storage.local.set({ savedWords: words });
+            }
         }
-    });
+    } catch (err) {
+        console.error("[Lectoro] Nie udało się zapisać powtórki:", err);
+    } finally {
+        _reviewSaving = false;
+        reviewIndex++;
+        reviewAnswerShown = false;
+        renderReview();
+    }
 }

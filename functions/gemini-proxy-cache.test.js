@@ -338,3 +338,76 @@ test("SubscriptionService immediately resets limits and AI cache when plan chang
     assert.equal(storage.aiUsageCache.remaining, 0);
 });
 
+test("GeminiProxy reuses cached response for identical prompts without network fetch", async (t) => {
+    let networkFetches = 0;
+    const storage = {
+        aiUsageCache: {
+            uid: "user-cache-1",
+            month: new Date().toISOString().slice(0, 7),
+            plan: "basic",
+            used: 1,
+            limit: 200,
+            remaining: 199,
+            updatedAt: Date.now(),
+        },
+    };
+
+    global.FirebaseSync = {
+        getUser: async () => ({ uid: "user-cache-1" }),
+        getValidToken: async () => "token-cache-1",
+    };
+    global.chrome = {
+        storage: {
+            local: {
+                get: async (defaults) => ({ ...defaults, ...storage }),
+                set: async (changes) => Object.assign(storage, changes),
+            },
+        },
+    };
+    global.fetch = async () => {
+        networkFetches += 1;
+        return {
+            ok: true,
+            json: async () => ({
+                text: '{"translation":"Cześć","explanation":"Powitanie"}',
+                usage: { plan: "basic", used: 2, limit: 200, remaining: 198 },
+            }),
+        };
+    };
+
+    t.after(() => {
+        delete global.FirebaseSync;
+        delete global.chrome;
+        delete global.fetch;
+        delete require.cache[require.resolve("../shared/gemini-proxy")];
+    });
+
+    const GeminiProxy = require("../shared/gemini-proxy");
+    GeminiProxy.clearAiCache();
+
+    // 1st call -> network fetch
+    const first = await GeminiProxy.request("Explain Hello", { temperature: 0.7, maxOutputTokens: 250 });
+    assert.equal(networkFetches, 1);
+    assert.equal(first.cached, false);
+
+    // 2nd call -> served from cache
+    const second = await GeminiProxy.request("Explain Hello", { temperature: 0.7, maxOutputTokens: 250 });
+    assert.equal(networkFetches, 1); // No new network call!
+    assert.equal(second.cached, true);
+    assert.equal(second.text, first.text);
+});
+
+test("AIPrompts generate concise token-saving prompts with JSON instructions", () => {
+    const AIPrompts = require("../shared/ai-prompts");
+    const sentence = AIPrompts.sentenceExample("apple", "jabłko", "en", "pl");
+    assert.ok(sentence.includes("Create 1 natural everyday sentence"));
+    assert.ok(sentence.includes("JSON"));
+
+    const explain = AIPrompts.explainSentence("Break a leg!", "pl");
+    assert.ok(explain.includes("Explain this video subtitle sentence in pl:"));
+    assert.ok(explain.includes("Break a leg!"));
+
+    const standard = AIPrompts.standardTranslate("run", "She runs fast", "en", "pl");
+    assert.ok(standard.includes("Translate \"run\" (English) to Polish."));
+});
+

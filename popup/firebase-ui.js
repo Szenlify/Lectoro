@@ -55,69 +55,73 @@ function renderSyncUI() {
             return;
         }
 
-        chrome.storage.local.get(
-            { lastFirebaseSync: null, pendingFirebaseChanges: {} },
-            (data) => {
-                const lastSyncText = typeof SharedUtils !== "undefined" && SharedUtils.formatTime
-                    ? SharedUtils.formatTime(data.lastFirebaseSync)
-                    : (data.lastFirebaseSync ? new Date(data.lastFirebaseSync).toLocaleTimeString("pl-PL") : "nigdy");
-                const pendingCount = Object.keys(data.pendingFirebaseChanges || {}).length;
+        const renderSyncState = (data) => {
+            const lastSyncText = typeof SharedUtils !== "undefined" && SharedUtils.formatTime
+                ? SharedUtils.formatTime(data.lastFirebaseSync)
+                : (data.lastFirebaseSync ? new Date(data.lastFirebaseSync).toLocaleTimeString("pl-PL") : "nigdy");
+            const pendingCount = Object.keys(data.pendingFirebaseChanges || {}).length;
 
-                container.innerHTML = `
-                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-                        <span style="color:var(--mint); font-size:13px;">✓</span>
-                        <span style="font-size:12px; color:var(--text-secondary); font-weight:500;">${escapeHtml(user.email)}</span>
-                    </div>
-                    <div style="font-size:10px; color:var(--text-ghost); margin-bottom:10px;">
-                        Ostatnia synchronizacja: ${lastSyncText}
-                    </div>
-                    <div style="display:flex; gap:8px; align-items:center;">
-                        <span class="sync-button-wrap">
-                            <button id="firebaseSyncNow" class="sync-btn sync-primary">🔄 Synchronizuj</button>
-                            <span class="sync-pending-dot${pendingCount ? " visible" : ""}"
-                                  title="${pendingCount} niezsynchronizowanych zmian"
-                                  aria-label="Niezsynchronizowane zmiany"></span>
-                        </span>
-                        <button id="firebaseSignOut" class="sync-btn sync-danger">Wyloguj</button>
-                    </div>`;
+            container.innerHTML = `
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                    <span style="color:var(--mint); font-size:13px;">✓</span>
+                    <span style="font-size:12px; color:var(--text-secondary); font-weight:500;">${escapeHtml(user.email)}</span>
+                </div>
+                <div style="font-size:10px; color:var(--text-ghost); margin-bottom:10px;">
+                    Ostatnia synchronizacja: ${lastSyncText}
+                </div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <span class="sync-button-wrap">
+                        <button id="firebaseSyncNow" class="sync-btn sync-primary">🔄 Synchronizuj</button>
+                        <span class="sync-pending-dot${pendingCount ? " visible" : ""}"
+                              title="${pendingCount} niezsynchronizowanych zmian"
+                              aria-label="Niezsynchronizowane zmiany"></span>
+                    </span>
+                    <button id="firebaseSignOut" class="sync-btn sync-danger">Wyloguj</button>
+                </div>`;
 
-                document.getElementById("firebaseSyncNow")?.addEventListener("click", async () => {
-                    const button = document.getElementById("firebaseSyncNow");
-                    button.textContent = "⏳ Synchronizuję...";
-                    button.disabled = true;
-                    try {
-                        await sendBackgroundMessage({ type: "QT_FIREBASE_SYNC" });
-                        button.textContent = "✓ Gotowe!";
-                        setTimeout(() => {
-                            renderSyncUI();
-                            loadWords();
-                            maybeRefreshReviewQueue();
-                            initReviewBadge();
-                        }, 700);
-                    } catch (error) {
-                        button.textContent = "✕ Błąd";
-                        button.title = error.message;
-                        button.disabled = false;
-                    }
-                });
-
-                document.getElementById("firebaseSignOut")?.addEventListener("click", async () => {
-                    const button = document.getElementById("firebaseSignOut");
-                    button.textContent = "⏳ Synchronizuję...";
-                    button.disabled = true;
-                    try {
-                        // The background signs out and clears local data only
-                        // after Firebase confirms the complete pending batch.
-                        await sendBackgroundMessage({ type: "QT_FIREBASE_SIGN_OUT" });
+            document.getElementById("firebaseSyncNow")?.addEventListener("click", async () => {
+                const button = document.getElementById("firebaseSyncNow");
+                button.textContent = "⏳ Synchronizuję...";
+                button.disabled = true;
+                try {
+                    await sendBackgroundMessage({ type: "QT_FIREBASE_SYNC" });
+                    button.textContent = "✓ Gotowe!";
+                    setTimeout(() => {
                         renderSyncUI();
-                    } catch (error) {
-                        button.textContent = "✕ Nie wylogowano";
-                        button.title = error.message;
-                        button.disabled = false;
-                    }
-                });
-            },
-        );
+                        loadWords();
+                        maybeRefreshReviewQueue();
+                        initReviewBadge();
+                    }, 700);
+                } catch (error) {
+                    button.textContent = "✕ Błąd";
+                    button.title = error.message;
+                    button.disabled = false;
+                }
+            });
+
+            document.getElementById("firebaseSignOut")?.addEventListener("click", async () => {
+                const button = document.getElementById("firebaseSignOut");
+                button.textContent = "⏳ Synchronizuję...";
+                button.disabled = true;
+                try {
+                    await sendBackgroundMessage({ type: "QT_FIREBASE_SIGN_OUT" });
+                    renderSyncUI();
+                } catch (error) {
+                    button.textContent = "✕ Nie wylogowano";
+                    button.title = error.message;
+                    button.disabled = false;
+                }
+            });
+        };
+
+        if (typeof whenPopupReady === "function") {
+            whenPopupReady(renderSyncState);
+        } else {
+            chrome.storage.local.get(
+                { lastFirebaseSync: null, pendingFirebaseChanges: {} },
+                renderSyncState,
+            );
+        }
     });
 }
 
@@ -133,7 +137,8 @@ chrome.storage.onChanged.addListener((changes, area) => {
         renderSyncUI();
     }
     if (changes.lastFirebaseSync) {
-        if (typeof loadWords === "function") loadWords();
+        const wordsTabActive = document.getElementById("tab-words")?.classList.contains("active");
+        if (wordsTabActive && typeof loadWords === "function") loadWords();
         if (typeof maybeRefreshReviewQueue === "function") maybeRefreshReviewQueue();
         if (typeof initReviewBadge === "function") initReviewBadge();
     }

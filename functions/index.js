@@ -281,7 +281,7 @@ exports.geminiProxy = onRequest(
                     code: "ELEVENLABS_REVIEW_ONLY",
                 });
             }
-            if (!getPlanLimits(claimedPlan).elevenLabs.enabled) {
+            if (!getPlanLimits(plan).elevenLabs.enabled) {
                 return res.status(403).json({
                     error: "ElevenLabs nie jest dostępny w planie FREE.",
                     code: "ELEVENLABS_NOT_INCLUDED",
@@ -329,7 +329,7 @@ exports.geminiProxy = onRequest(
                 if (cached && cached.buffer && cached.buffer.length > 0) {
                     res.set("Content-Type", cached.contentType || "audio/mpeg");
                     res.set("Cache-Control", "public, max-age=31536000, immutable");
-                    res.set("X-Lectoro-Plan", claimedPlan);
+                    res.set("X-Lectoro-Plan", plan);
                     res.set("X-Lectoro-Cache", "HIT");
                     res.set(
                         "X-Lectoro-TTS-Used",
@@ -353,7 +353,7 @@ exports.geminiProxy = onRequest(
                         month,
                     );
                     const validation = checkElevenLabsLimit({
-                        plan: claimedPlan,
+                        plan,
                         text,
                         usedCharacters: used,
                     });
@@ -379,7 +379,7 @@ exports.geminiProxy = onRequest(
                     return res.status(limitHttpStatus(reservation.validation)).json({
                         error: reservation.validation.message,
                         limit: reservation.validation,
-                        profile: subscriptionProfile(uid, claimedPlan, reservation.data, month),
+                        profile: subscriptionProfile(uid, plan, reservation.data, month),
                     });
                 }
 
@@ -429,7 +429,7 @@ exports.geminiProxy = onRequest(
 
                 res.set("Content-Type", ttsResponse.headers.get("content-type") || "audio/mpeg");
                 res.set("Cache-Control", "private, no-store");
-                res.set("X-Lectoro-Plan", claimedPlan);
+                res.set("X-Lectoro-Plan", plan);
                 res.set("X-Lectoro-Cache", "MISS");
                 res.set(
                     "X-Lectoro-TTS-Used",
@@ -469,14 +469,14 @@ exports.geminiProxy = onRequest(
                 const snapshot = await transaction.get(userRef);
                 const data = snapshot.exists ? snapshot.data() || {} : {};
                 const used = usageForMonth(data.aiCallsThisMonth, data.aiCallsResetDate, month);
-                const validation = checkAiLimit({ plan: claimedPlan, used });
+                const validation = checkAiLimit({ plan, used });
                 if (!validation.allowed) return validation;
                 transaction.set(
                     userRef,
                     { aiCallsThisMonth: used + 1, aiCallsResetDate: month },
                     { merge: true },
                 );
-                return { ...validation, plan: claimedPlan, usedAfter: used + 1 };
+                return { ...validation, plan, usedAfter: used + 1 };
             });
         } catch (error) {
             console.error("[geminiProxy] AI reservation error:", error);
