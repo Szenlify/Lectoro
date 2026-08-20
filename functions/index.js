@@ -1,7 +1,5 @@
 const { onRequest } = require("firebase-functions/v2/https");
-const { setGlobalOptions } = require("firebase-functions/v2");
-const { defineSecret, defineString } = require("firebase-functions/params");
-const admin = require("firebase-admin");
+const { defineSecret } = require("firebase-functions/params");
 const {
     SUBSCRIPTION_PLANS,
     SUBSCRIPTION_LIMITS,
@@ -21,30 +19,34 @@ const {
     deleteAllUserImages,
 } = require("./r2-storage");
 
-admin.initializeApp();
-setGlobalOptions({ region: "europe-west1" });
-// A distinct name allows migration from the legacy plain GEMINI_API_KEY
-// environment variable without Cloud Run's env/secret name collision.
+let adminInstance = null;
+function getAdmin() {
+    if (!adminInstance) {
+        adminInstance = require("firebase-admin");
+        if (!adminInstance.apps.length) {
+            adminInstance.initializeApp();
+        }
+    }
+    return adminInstance;
+}
+
+// Secret Manager is used strictly for sensitive private keys
 const geminiApiKey = defineSecret("LECTORO_GEMINI_API_KEY");
 const elevenLabsApiKey = defineSecret("ELEVENLABS_API_KEY");
-const r2AccessKeyId = defineSecret("R2_ACCESS_KEY_ID");
 const r2SecretAccessKey = defineSecret("R2_SECRET_ACCESS_KEY");
-const r2AccountId = defineSecret("R2_ACCOUNT_ID");
-const r2BucketName = defineSecret("R2_BUCKET_NAME");
-const r2PublicUrl = defineSecret("R2_PUBLIC_URL");
 
 function getR2Config() {
     return {
-        accountId: r2AccountId.value() || process.env.R2_ACCOUNT_ID || "",
-        accessKeyId: r2AccessKeyId.value() || process.env.R2_ACCESS_KEY_ID || "",
+        accountId: process.env.R2_ACCOUNT_ID || "",
+        accessKeyId: process.env.R2_ACCESS_KEY_ID || "",
         secretAccessKey: r2SecretAccessKey.value() || process.env.R2_SECRET_ACCESS_KEY || "",
-        bucketName: r2BucketName.value() || process.env.R2_BUCKET_NAME || "lectoro-media",
-        publicUrl: r2PublicUrl.value() || process.env.R2_PUBLIC_URL || "",
+        bucketName: process.env.R2_BUCKET_NAME || "lectoro-media",
+        publicUrl: process.env.R2_PUBLIC_URL || "",
     };
 }
 
 // Stripe endpoints live in a separate module so the AI/TTS proxy remains easy
-// to audit. Firebase Admin has already been initialized above.
+// to audit.
 Object.assign(exports, require("./stripe-billing"));
 
 function setCorsHeaders(res) {
@@ -159,17 +161,14 @@ function elevenLabsClientError(details) {
 
 exports.geminiProxy = onRequest(
     {
+        region: "europe-west1",
         cors: false,
         timeoutSeconds: 60,
         memory: "256MiB",
         secrets: [
             geminiApiKey,
             elevenLabsApiKey,
-            r2AccessKeyId,
             r2SecretAccessKey,
-            r2AccountId,
-            r2BucketName,
-            r2PublicUrl,
         ],
     },
     async (req, res) => {
@@ -183,14 +182,14 @@ exports.geminiProxy = onRequest(
 
         let decodedToken;
         try {
-            decodedToken = await admin.auth().verifyIdToken(idToken);
+            decodedToken = await getAdmin().auth().verifyIdToken(idToken);
         } catch (error) {
             console.error("[geminiProxy] Invalid token:", error.message);
             return res.status(401).json({ error: "Nieprawidłowy token. Zaloguj się ponownie." });
         }
 
         const uid = decodedToken.uid;
-        const db = admin.firestore();
+        const db = getAdmin().firestore();
         const userRef = db.collection("users").doc(uid);
         const month = currentMonth();
         let userData = {};

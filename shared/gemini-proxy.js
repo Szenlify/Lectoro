@@ -74,16 +74,18 @@ const GeminiProxy = (() => {
         return normalized;
     }
 
-    /** Fetch once at initialization/month change; later checks are local. */
+    /** Fetch once at initialization/month change or after 1h; later checks are local. */
     async function refreshUsage(force = false) {
         const user = await FirebaseSync.getUser();
         if (!user) return null;
         const cached = await getCachedUsage();
+        const CACHE_TTL_MS = 60 * 60 * 1000;
         if (
             !force &&
             cached?.uid === user.uid &&
             cached?.month === currentMonth() &&
-            matchesConfiguredAiLimit(cached)
+            matchesConfiguredAiLimit(cached) &&
+            Date.now() - Number(cached?.updatedAt || 0) < CACHE_TTL_MS
         ) {
             return cached;
         }

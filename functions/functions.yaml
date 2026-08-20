@@ -1,0 +1,143 @@
+{
+  "endpoints": {
+    "createStripeCheckoutSession": {
+      "availableMemoryMb": 256,
+      "timeoutSeconds": 30,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "europe-west1"
+      ],
+      "secretEnvironmentVariables": [
+        {
+          "key": "STRIPE_SECRET_KEY"
+        }
+      ],
+      "labels": {},
+      "httpsTrigger": {},
+      "entryPoint": "createStripeCheckoutSession"
+    },
+    "createStripePortalSession": {
+      "availableMemoryMb": 256,
+      "timeoutSeconds": 30,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "europe-west1"
+      ],
+      "secretEnvironmentVariables": [
+        {
+          "key": "STRIPE_SECRET_KEY"
+        }
+      ],
+      "labels": {},
+      "httpsTrigger": {},
+      "entryPoint": "createStripePortalSession"
+    },
+    "stripeWebhook": {
+      "availableMemoryMb": 256,
+      "timeoutSeconds": 60,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "europe-west1"
+      ],
+      "secretEnvironmentVariables": [
+        {
+          "key": "STRIPE_SECRET_KEY"
+        },
+        {
+          "key": "STRIPE_WEBHOOK_SECRET"
+        }
+      ],
+      "labels": {},
+      "httpsTrigger": {},
+      "entryPoint": "stripeWebhook"
+    },
+    "stripeCheckoutResult": {
+      "availableMemoryMb": null,
+      "timeoutSeconds": null,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "europe-west1"
+      ],
+      "labels": {},
+      "httpsTrigger": {},
+      "entryPoint": "stripeCheckoutResult"
+    },
+    "geminiProxy": {
+      "availableMemoryMb": 256,
+      "timeoutSeconds": 60,
+      "minInstances": null,
+      "maxInstances": null,
+      "ingressSettings": null,
+      "concurrency": null,
+      "serviceAccountEmail": null,
+      "vpc": null,
+      "platform": "gcfv2",
+      "region": [
+        "europe-west1"
+      ],
+      "secretEnvironmentVariables": [
+        {
+          "key": "LECTORO_GEMINI_API_KEY"
+        },
+        {
+          "key": "ELEVENLABS_API_KEY"
+        },
+        {
+          "key": "R2_SECRET_ACCESS_KEY"
+        }
+      ],
+      "labels": {},
+      "httpsTrigger": {},
+      "entryPoint": "geminiProxy"
+    }
+  },
+  "specVersion": "v1alpha1",
+  "requiredAPIs": [],
+  "extensions": {},
+  "params": [
+    {
+      "type": "secret",
+      "name": "LECTORO_GEMINI_API_KEY"
+    },
+    {
+      "type": "secret",
+      "name": "ELEVENLABS_API_KEY"
+    },
+    {
+      "type": "secret",
+      "name": "R2_SECRET_ACCESS_KEY"
+    },
+    {
+      "type": "secret",
+      "name": "STRIPE_SECRET_KEY"
+    },
+    {
+      "type": "secret",
+      "name": "STRIPE_WEBHOOK_SECRET"
+    }
+  ]
+}

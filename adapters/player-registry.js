@@ -17,6 +17,7 @@
         if (globalThis.LectoroYouTubeAdapter) adapters.push(globalThis.LectoroYouTubeAdapter);
         if (globalThis.LectoroLookmovieAdapter) adapters.push(globalThis.LectoroLookmovieAdapter);
         if (globalThis.LectoroNetflixAdapter) adapters.push(globalThis.LectoroNetflixAdapter);
+        if (globalThis.LectoroTedAdapter) adapters.push(globalThis.LectoroTedAdapter);
         if (Array.isArray(globalThis.LectoroGenericAdapters)) {
             adapters.push(...globalThis.LectoroGenericAdapters);
         }
@@ -171,7 +172,14 @@
             }
         }
 
-        // 4. Native text tracks check
+        // 4. TED Talks adapter check
+        if (globalThis.LectoroTedAdapter?.isPage?.()) {
+            if (typeof globalThis.LectoroTedAdapter?.isCcActive === "function") {
+                return globalThis.LectoroTedAdapter.isCcActive(video);
+            }
+        }
+
+        // 5. Native text tracks check
         if (hasEnabledNativeCaptionTrack(video)) {
             return true;
         }
@@ -281,9 +289,29 @@
 
         const adapterElements = getAdapterElements(session.binding);
         let lines = globalThis.LectoroBaseAdapter?.extractCueLines?.(adapterElements) || [];
+
+        // Direct container text fallback for #subtitles-container on TED
+        if (lines.length === 0 && globalThis.LectoroTedAdapter?.isPage?.()) {
+            const tedContainer = document.getElementById("subtitles-container");
+            if (tedContainer && !tedContainer.classList.contains("opacity-0")) {
+                const tedText = (tedContainer.textContent || "").replace(/\s+/g, " ").trim();
+                if (tedText) lines = [tedText];
+            }
+        }
         if (lines.length === 0 && session.video?.textTracks) {
             const native = getNativeCueText(session.video);
             if (native) lines = [native];
+        }
+        if (lines.length === 0) {
+            const getAllCuesFn = session.binding?.adapter?.getAllCues || (globalThis.LectoroTedAdapter?.isPage?.() ? globalThis.LectoroTedAdapter.getAllCues : null);
+            if (typeof getAllCuesFn === "function") {
+                const all = getAllCuesFn(session.video);
+                if (Array.isArray(all) && all.length > 0) {
+                    const now = session.video.currentTime;
+                    const match = all.find((c) => now >= c.startTime && now <= c.endTime);
+                    if (match?.text) lines = [match.text];
+                }
+            }
         }
         const fullText = lines.join(" ").trim();
         if (typeof subtitleChangeCallback === "function") {
@@ -355,9 +383,17 @@
         const tracks = session.video.textTracks;
         if (!tracks) return;
 
+        if (!session.hasAddTrackListener) {
+            session.hasAddTrackListener = true;
+            try {
+                tracks.addEventListener("addtrack", () => refreshNativeTracks(session), {
+                    signal: session.controller.signal,
+                });
+            } catch (_) {}
+        }
+
         for (let i = 0; i < tracks.length; i += 1) {
             const track = tracks[i];
-            if (!["subtitles", "captions"].includes(track.kind)) continue;
             if (session.tracks.has(track)) continue;
             session.tracks.add(track);
             track.addEventListener(
@@ -466,6 +502,7 @@
                 session.lastFallbackAt = now;
                 session.nativeText = getNativeCueText(video);
                 refreshCaptionBinding(session, !session.binding);
+                queueSubtitleDomScan(session);
             },
             { signal },
         );

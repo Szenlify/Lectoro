@@ -125,6 +125,10 @@ const FirebaseSync = (() => {
 
             if (!res.ok) {
                 console.warn("[Lectoro] Token refresh failed:", res.status);
+                if (res.status === 400 || res.status === 401) {
+                    // Stale or revoked refreshToken - clear auth data to stop repeated failing API calls
+                    await signOut().catch(() => {});
+                }
                 return null;
             }
 

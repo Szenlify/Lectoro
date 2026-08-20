@@ -1039,34 +1039,60 @@ function showReviewEditForm(w, returnToAnswer = reviewAnswerShown) {
         const editedAt = Date.now();
         w.ttsCacheInvalidatedAt = editedAt;
 
-        // Persist to storage (updates word list too)
-        chrome.storage.local.get({ savedWords: [] }, (data) => {
-            const words = data.savedWords || [];
-            const idx = words.findIndex((x) => x.id === w.id);
-            if (idx !== -1) {
-                // Assign a stable id on first edit so this doc's identity in
-                // Firestore never changes again, even though its content just did
-                if (!words[idx].id) words[idx].id = SharedUtils.generateId();
-                words[idx].original = newOriginal;
-                words[idx].translated = newTranslated;
-                words[idx].sentence = newSentence;
-                words[idx].sentenceTranslated = newSentenceTr;
-                words[idx].updatedAt = editedAt;
-                words[idx].ttsCacheInvalidatedAt = editedAt;
-                w.id = words[idx].id;
-                chrome.storage.local.set({ savedWords: words }, () => {
-                    if (chrome.runtime.lastError) {
-                        console.error(
-                            "[Lectoro] Nie udało się zapisać edycji:",
-                            chrome.runtime.lastError.message,
-                        );
-                    }
-                    returnToAnswer ? renderAnswer(w) : renderQuestion(w);
+        // Persist to storage (updates word list too and enqueues sync)
+        const updatePayload = {
+            original: newOriginal,
+            translated: newTranslated,
+            sentence: newSentence,
+            sentenceTranslated: newSentenceTr,
+            updatedAt: editedAt,
+            ttsCacheInvalidatedAt: editedAt,
+        };
+
+        const onDone = () => {
+            returnToAnswer ? renderAnswer(w) : renderQuestion(w);
+        };
+
+        if (typeof SharedWordRepository !== "undefined") {
+            SharedWordRepository.updateWord(
+                (candidate) =>
+                    w.id
+                        ? candidate.id === w.id
+                        : (candidate.original === oldOriginal && candidate.translated === oldTranslated) ||
+                          (candidate.original === oldOriginal && candidate.timestamp === w.timestamp),
+                (existing) => ({
+                    ...existing,
+                    ...updatePayload,
+                    id: existing.id || w.id || SharedUtils?.generateId?.() || String(editedAt),
+                }),
+            )
+                .then((updated) => {
+                    if (updated?.id) w.id = updated.id;
+                    onDone();
+                })
+                .catch((err) => {
+                    console.error("[Lectoro] Nie udało się zapisać edycji powtórki:", err);
+                    onDone();
                 });
-            } else {
-                returnToAnswer ? renderAnswer(w) : renderQuestion(w);
-            }
-        });
+        } else {
+            chrome.storage.local.get({ savedWords: [] }, (data) => {
+                const words = data.savedWords || [];
+                const idx = words.findIndex(
+                    (x) =>
+                        (w.id && x.id === w.id) ||
+                        (x.original === oldOriginal && x.translated === oldTranslated) ||
+                        (x.original === oldOriginal && x.timestamp === w.timestamp),
+                );
+                if (idx !== -1) {
+                    if (!words[idx].id) words[idx].id = SharedUtils?.generateId?.() || String(editedAt);
+                    words[idx] = { ...words[idx], ...updatePayload };
+                    w.id = words[idx].id;
+                    chrome.storage.local.set({ savedWords: words }, onDone);
+                } else {
+                    onDone();
+                }
+            });
+        }
     });
 
     // Focus first field

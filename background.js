@@ -509,26 +509,12 @@ async function fetchContextImageDataUrl(rawUrl) {
     }
 
     const response = await fetch(url.href, {
-        credentials: "omit",
+        headers: {
+            Accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+        },
         redirect: "follow",
-        referrerPolicy: "no-referrer",
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-    let contentType = (response.headers.get("content-type") || "")
-        .split(";")[0]
-        .trim()
-        .toLowerCase();
-    if (!contentType.startsWith("image/") || contentType === "image/svg+xml") {
-        if (
-            /\.(jpe?g|png|webp|avif)($|\?)/i.test(url.pathname) ||
-            isAllowedNetflixMediaHost(url.hostname)
-        ) {
-            contentType = "image/jpeg";
-        } else {
-            throw new Error("Zasób nie jest obsługiwanym obrazem.");
-        }
-    }
 
     const declaredSize = Number(response.headers.get("content-length")) || 0;
     if (declaredSize > MAX_CONTEXT_IMAGE_BYTES) {
@@ -536,6 +522,43 @@ async function fetchContextImageDataUrl(rawUrl) {
     }
 
     const bytes = await readResponseBytes(response);
+    if (!bytes || bytes.length === 0) {
+        throw new Error("Pobrany obraz jest pusty.");
+    }
+
+    let contentType = (response.headers.get("content-type") || "")
+        .split(";")[0]
+        .trim()
+        .toLowerCase();
+
+    if (!contentType.startsWith("image/") || contentType === "image/svg+xml" || contentType.includes("octet-stream")) {
+        if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+            contentType = "image/jpeg";
+        } else if (bytes.length >= 4 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
+            contentType = "image/png";
+        } else if (bytes.length >= 3 && bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) {
+            contentType = "image/gif";
+        } else if (
+            bytes.length >= 12 &&
+            bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
+            bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50
+        ) {
+            contentType = "image/webp";
+        } else if (/\.(jpe?g)($|\?)/i.test(url.pathname)) {
+            contentType = "image/jpeg";
+        } else if (/\.(png)($|\?)/i.test(url.pathname)) {
+            contentType = "image/png";
+        } else if (/\.(webp)($|\?)/i.test(url.pathname)) {
+            contentType = "image/webp";
+        } else if (/\.(avif)($|\?)/i.test(url.pathname)) {
+            contentType = "image/avif";
+        } else if (isAllowedNetflixMediaHost(url.hostname)) {
+            contentType = "image/jpeg";
+        } else {
+            contentType = "image/jpeg";
+        }
+    }
+
     const base64 = bytesToBase64(bytes);
     return `data:${contentType};base64,${base64}`;
 }
@@ -615,16 +638,35 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "QT_CAPTURE_VISIBLE_TAB") {
+        const captureOptions = { format: "jpeg", quality: 85 };
         const windowId = Number.isInteger(sender.tab?.windowId)
             ? sender.tab.windowId
             : null;
-        chrome.tabs
-            .captureVisibleTab(windowId, {
-                format: "jpeg",
-                quality: 85,
-            })
+
+        const capture = (wId) =>
+            new Promise((resolve, reject) => {
+                const callback = (dataUrl) => {
+                    if (chrome.runtime.lastError || !dataUrl) {
+                        reject(chrome.runtime.lastError || new Error("Brak obrazu karty."));
+                    } else {
+                        resolve(dataUrl);
+                    }
+                };
+                try {
+                    if (Number.isInteger(wId)) {
+                        chrome.tabs.captureVisibleTab(wId, captureOptions, callback);
+                    } else {
+                        chrome.tabs.captureVisibleTab(captureOptions, callback);
+                    }
+                } catch (err) {
+                    reject(err);
+                }
+            });
+
+        capture(windowId)
+            .catch(() => capture(null))
             .then((dataUrl) => sendResponse({ dataUrl }))
-            .catch((error) => sendResponse({ error: error.message }));
+            .catch((error) => sendResponse({ error: error?.message || String(error) }));
         return true;
     }
 

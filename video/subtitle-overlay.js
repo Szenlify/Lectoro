@@ -99,6 +99,7 @@
         if (/(^|\.)youtube\.com$/i.test(hostname)) return "youtube";
         if (/(^|\.)netflix\.com$/i.test(hostname)) return "netflix";
         if (/lookmovie/i.test(hostname)) return "lookmovie";
+        if (/ted\.com$/i.test(hostname)) return "ted";
         const regType = getPlayerRegistry()?.type;
         if (regType) return regType;
         return "generic";
@@ -106,10 +107,41 @@
 
     function findPlayerContainer(video) {
         if (!video) return null;
-        return (
-            video.closest?.("#movie_player, .html5-video-player, .watch-video, [data-uia='video-canvas'], .nf-player-container, .video-js, .player-container, .jwplayer, .plyr") ||
-            video.parentElement
-        );
+
+        // 1. YouTube player
+        const yt = video.closest?.("#movie_player, .html5-video-player");
+        if (yt) return yt;
+
+        // 2. Netflix player
+        const nf = video.closest?.(".watch-video, [data-uia='video-canvas'], .nf-player-container");
+        if (nf) return nf;
+
+        // 3. LookMovie / VideoJS / Plyr / JWPlayer
+        const vjs = video.closest?.(".video-js, .jwplayer, .plyr, .player-container");
+        if (vjs) return vjs;
+
+        // 4. TED Talks (container holding #subtitles-container)
+        const subCont = document.getElementById("subtitles-container");
+        if (subCont && subCont.parentElement) {
+            if (subCont.parentElement.contains(video) || subCont.parentElement === video.parentElement) {
+                return subCont.parentElement;
+            }
+        }
+
+        // 5. Check direct parent hierarchy for the tightest player wrapper (never main or body)
+        let curr = video.parentElement;
+        while (curr && curr !== document.body && curr !== document.documentElement && curr.tagName !== "MAIN") {
+            const style = window.getComputedStyle(curr);
+            if (style.position === "relative" || style.position === "absolute" || curr.id === "subtitles-container" || curr.querySelector?.("#subtitles-container")) {
+                const rect = curr.getBoundingClientRect();
+                if (rect.height > 0 && rect.height <= window.innerHeight * 1.2) {
+                    return curr;
+                }
+            }
+            curr = curr.parentElement;
+        }
+
+        return video.parentElement || document.body;
     }
 
     function ensureCustomSubtitlesLayer() {

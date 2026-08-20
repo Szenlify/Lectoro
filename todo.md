@@ -1,5 +1,6 @@
 [TODO]
-✓ Polecane materiały i serwisy z napisami CC z klikalnymi logami (ZROBIONE)
+Cashing subskrypcji w Storage rozszerzenia:
+Wtyczka przechowuje profil subskrypcji w chrome.storage.local i odpytuje backend o status tylko raz na godzinę (lub po zakupie), co minimalizuje obciążenie Firestore.
 
 Wprowadź 3-dniowy Darmowy Okres Próbny (Free Trial) w Stripe:
 Wymaga podania karty, ale nie pobiera opłaty przez pierwsze 3 dni.
@@ -80,4 +81,6 @@ Przeanalizuj kod pod kątem trzech głównych obszarów:
 3. Centralizacja Logiki (Single Source of Truth)
    Zaproponuj plan refaktoryzacji, który przeniesie rozproszoną logikę do jednego, spójnego miejsca. Inne pliki powinny jedynie importować gotowe metody/funkcje, stając się "głupimi" konsumentami logiki biznesowej. Zastanów się, czy logikę lepiej wydzielić do klasycznych funkcji pomocniczych (utils), dedykowanych serwisów (services)
 
+Wciel się w rolę doświadczonego Software Architekta i Senior Developera.
 
+przeanalizuj aplikacje zrob aby byla bardzo oszczedna bo bedzie ja pobierac tysiace uzytkownikow wiec kazde zaoszczedzone pytanie token do serverow jes bardzo potrzebna przy tym zachowanie bezpieczenstwa aplikacji oraz zachowanie dalania wszystkich funkcji jak gemini ai, eleven laps na koniec zrob firebase deploy i sprawdz czy wszystko dziala

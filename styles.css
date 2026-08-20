@@ -627,6 +627,11 @@ video::cue {
     visibility: hidden !important;
 }
 
+#subtitles-container {
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
 .watch-video--evidence-overlay-container {
     opacity: 0 !important;
     pointer-events: none !important;
@@ -706,6 +711,11 @@ body[data-lectoro-platform="netflix"] .__qt_custom-sub-line {
 [data-platform="lookmovie"] .__qt_custom-sub-line,
 body[data-lectoro-platform="lookmovie"] .__qt_custom-sub-line {
     font-size: var(--lectoro-sub-font-size, 29px) !important;
+}
+
+[data-platform="ted"] .__qt_custom-sub-line,
+body[data-lectoro-platform="ted"] .__qt_custom-sub-line {
+    font-size: var(--lectoro-sub-font-size, 27px) !important;
 }
 
 .__qt_sub-word {

@@ -551,8 +551,8 @@ refreshAiUsageUI().catch((error) =>
     console.warn("[Lectoro] Błąd inicjalizacji UI planu:", error),
 );
 
-// Live background refresh with token & plan check
-SubscriptionService.refreshProfile(true)
+// Cached background refresh with token & plan check (respects 1h TTL)
+SubscriptionService.effectiveProfile(false)
     .then(async () => {
         await SubscriptionService.applyPlanToUI();
         await refreshAiUsageUI();
@@ -562,7 +562,7 @@ SubscriptionService.refreshProfile(true)
     );
 
 window.addEventListener("focus", () => {
-    SubscriptionService.refreshProfile(true)
+    SubscriptionService.effectiveProfile(false)
         .then(async () => {
             await SubscriptionService.applyPlanToUI();
             await refreshAiUsageUI();
@@ -572,7 +572,7 @@ window.addEventListener("focus", () => {
 
 document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
-        SubscriptionService.refreshProfile(true)
+        SubscriptionService.effectiveProfile(false)
             .then(async () => {
                 await SubscriptionService.applyPlanToUI();
                 await refreshAiUsageUI();

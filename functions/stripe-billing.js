@@ -1,6 +1,16 @@
 const { onRequest } = require("firebase-functions/v2/https");
-const { defineSecret, defineString } = require("firebase-functions/params");
-const admin = require("firebase-admin");
+const { defineSecret } = require("firebase-functions/params");
+let adminInstance = null;
+function getAdmin() {
+    if (!adminInstance) {
+        adminInstance = require("firebase-admin");
+        if (!adminInstance.apps.length) {
+            adminInstance.initializeApp();
+        }
+    }
+    return adminInstance;
+}
+
 let StripeSdk = null;
 function getStripeSdk() {
     if (!StripeSdk) {
@@ -12,8 +22,6 @@ const { SUBSCRIPTION_PLANS, normalizePlan } = require("./subscription-config");
 
 const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
-const stripeBasicPriceId = defineSecret("STRIPE_BASIC_PRICE_ID");
-const stripeProPriceId = defineSecret("STRIPE_PRO_PRICE_ID");
 
 const REGION = "europe-west1";
 const PUBLIC_FUNCTIONS_URL = "https://europe-west1-extension-eng.cloudfunctions.net";
@@ -21,7 +29,7 @@ const CHECKOUT_RESULT_URL = `${PUBLIC_FUNCTIONS_URL}/stripeCheckoutResult`;
 const ENTITLED_STATUSES = new Set(["active", "trialing"]);
 
 function stripeClient() {
-    const key = stripeSecretKey.value();
+    const key = stripeSecretKey.value() || process.env.STRIPE_SECRET_KEY;
     if (!key) throw new Error("STRIPE_SECRET_KEY is not configured");
     const Stripe = getStripeSdk();
     return new Stripe(key, { maxNetworkRetries: 2 });
@@ -29,8 +37,8 @@ function stripeClient() {
 
 function priceIds() {
     return {
-        [SUBSCRIPTION_PLANS.BASIC]: stripeBasicPriceId.value(),
-        [SUBSCRIPTION_PLANS.PRO]: stripeProPriceId.value(),
+        [SUBSCRIPTION_PLANS.BASIC]: process.env.STRIPE_BASIC_PRICE_ID || "",
+        [SUBSCRIPTION_PLANS.PRO]: process.env.STRIPE_PRO_PRICE_ID || "",
     };
 }
 
@@ -54,7 +62,7 @@ async function authenticatedUser(req, res) {
         return null;
     }
     try {
-        return await admin.auth().verifyIdToken(token);
+        return await getAdmin().auth().verifyIdToken(token);
     } catch (error) {
         console.warn("[Stripe] Invalid Firebase token:", error.message);
         res.status(401).json({ error: "Sesja wygasła. Zaloguj się ponownie." });
@@ -63,7 +71,7 @@ async function authenticatedUser(req, res) {
 }
 
 async function ensureStripeCustomer(stripe, decodedToken) {
-    const db = admin.firestore();
+    const db = getAdmin().firestore();
     const userRef = db.collection("users").doc(decodedToken.uid);
     const snapshot = await userRef.get();
     const savedCustomerId = snapshot.data()?.stripeCustomerId;
@@ -98,8 +106,8 @@ async function ensureStripeCustomer(stripe, decodedToken) {
 async function uidForCustomer(stripe, customerId, hintedUid = "") {
     if (hintedUid) {
         try {
-            await admin.auth().getUser(hintedUid);
-            const hintedProfile = await admin
+            await getAdmin().auth().getUser(hintedUid);
+            const hintedProfile = await getAdmin()
                 .firestore()
                 .collection("users")
                 .doc(hintedUid)
@@ -110,7 +118,7 @@ async function uidForCustomer(stripe, customerId, hintedUid = "") {
         }
     }
 
-    const matches = await admin
+    const matches = await getAdmin()
         .firestore()
         .collection("users")
         .where("stripeCustomerId", "==", customerId)
@@ -121,7 +129,7 @@ async function uidForCustomer(stripe, customerId, hintedUid = "") {
     const customer = await stripe.customers.retrieve(customerId);
     if (!customer.deleted && customer.metadata?.firebaseUid) {
         const uid = customer.metadata.firebaseUid;
-        await admin.auth().getUser(uid);
+        await getAdmin().auth().getUser(uid);
         return uid;
     }
     return "";
@@ -142,7 +150,7 @@ function planForSubscription(subscription, configuredPrices = priceIds()) {
 
 function unixTimestamp(value) {
     return Number.isFinite(Number(value)) && Number(value) > 0
-        ? admin.firestore.Timestamp.fromMillis(Number(value) * 1000)
+        ? getAdmin().firestore.Timestamp.fromMillis(Number(value) * 1000)
         : null;
 }
 
@@ -160,13 +168,13 @@ async function applySubscriptionState(uid, customerId, subscription) {
         planForSubscription(subscription) !== SUBSCRIPTION_PLANS.FREE;
     const plan = entitled ? planForSubscription(subscription) : SUBSCRIPTION_PLANS.FREE;
     const status = subscription?.status || "inactive";
-    const authUser = await admin.auth().getUser(uid);
+    const authUser = await getAdmin().auth().getUser(uid);
 
-    await admin.auth().setCustomUserClaims(uid, {
+    await getAdmin().auth().setCustomUserClaims(uid, {
         ...(authUser.customClaims || {}),
         plan,
     });
-    await admin
+    await getAdmin()
         .firestore()
         .collection("users")
         .doc(uid)
@@ -175,12 +183,12 @@ async function applySubscriptionState(uid, customerId, subscription) {
                 plan,
                 subscriptionStatus: status,
                 stripeCustomerId: customerId,
-                stripeSubscriptionId: subscription?.id || admin.firestore.FieldValue.delete(),
+                stripeSubscriptionId: subscription?.id || getAdmin().firestore.FieldValue.delete(),
                 stripeCancelAtPeriodEnd: !!subscription?.cancel_at_period_end,
                 stripeCurrentPeriodEnd:
                     unixTimestamp(subscriptionPeriodEnd(subscription)) ||
-                    admin.firestore.FieldValue.delete(),
-                planUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    getAdmin().firestore.FieldValue.delete(),
+                planUpdatedAt: getAdmin().firestore.FieldValue.serverTimestamp(),
             },
             { merge: true },
         );
@@ -218,7 +226,7 @@ exports.createStripeCheckoutSession = onRequest(
         region: REGION,
         timeoutSeconds: 30,
         memory: "256MiB",
-        secrets: [stripeSecretKey, stripeBasicPriceId, stripeProPriceId],
+        secrets: [stripeSecretKey],
     },
     async (req, res) => {
         if (billingCors(req, res)) return;
@@ -320,8 +328,6 @@ exports.stripeWebhook = onRequest(
         secrets: [
             stripeSecretKey,
             stripeWebhookSecret,
-            stripeBasicPriceId,
-            stripeProPriceId,
         ],
     },
     async (req, res) => {

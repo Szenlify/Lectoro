@@ -185,8 +185,8 @@
         }
     }
 
-    function showTooltip(html, rect, preferredPosition = "top") {
-        rememberScreenshotContext(rect);
+    function showTooltip(html, rect, preferredPosition = "top", anchorOverride = null) {
+        rememberScreenshotContext(rect, anchorOverride);
         const tip = getTooltip();
         clearTimeout(tooltipHideTimer);
         if (tooltipShowFrame !== null) cancelAnimationFrame(tooltipShowFrame);
@@ -220,11 +220,12 @@
         }, 180);
     }
 
-    function showLoading(rect, preferredPosition = "top") {
+    function showLoading(rect, preferredPosition = "top", anchorOverride = null) {
         showTooltip(
             `<div class="${PREFIX}loading"><div class="${PREFIX}spinner"></div></div>`,
             rect,
             preferredPosition,
+            anchorOverride,
         );
     }
 
@@ -251,7 +252,7 @@
     //  Context-aware Screenshot Capture
     // ═══════════════════════════════════════════════════════════════
 
-    function rememberScreenshotContext(rect) {
+    function rememberScreenshotContext(rect, anchorOverride = null) {
         if (!rect) return;
         const left = Number(rect.left);
         const top = Number(rect.top);
@@ -259,15 +260,28 @@
         const bottom = Number(rect.bottom);
         if (![left, top, right, bottom].every(Number.isFinite)) return;
 
-        const x = Math.max(0, Math.min(window.innerWidth - 1, (left + right) / 2));
-        const y = Math.max(0, Math.min(window.innerHeight - 1, (top + bottom) / 2));
-        const anchorElement = document
-            .elementsFromPoint(x, y)
-            .find((element) => !isOwnUI(element));
+        let anchorElement = null;
+        if (anchorOverride && anchorOverride.nodeType === Node.ELEMENT_NODE && !isOwnUI(anchorOverride)) {
+            anchorElement = anchorOverride;
+        } else if (
+            anchorOverride &&
+            anchorOverride.nodeType === Node.TEXT_NODE &&
+            anchorOverride.parentElement &&
+            !isOwnUI(anchorOverride.parentElement)
+        ) {
+            anchorElement = anchorOverride.parentElement;
+        } else {
+            const x = Math.max(0, Math.min(window.innerWidth - 1, (left + right) / 2));
+            const y = Math.max(0, Math.min(window.innerHeight - 1, (top + bottom) / 2));
+            anchorElement =
+                document
+                    .elementsFromPoint(x, y)
+                    .find((element) => !isOwnUI(element)) || null;
+        }
 
         screenshotContext = {
             rect: { left, top, right, bottom },
-            anchorElement: anchorElement || null,
+            anchorElement,
             scrollX: window.scrollX,
             scrollY: window.scrollY,
         };
@@ -275,48 +289,51 @@
 
     function getMediaContextRoot(element) {
         return element?.closest?.(
-            'article, [role="article"], shreddit-post, [data-testid="post-container"]',
+            'article, [role="article"], shreddit-post, [data-testid="tweet"], [data-testid="post-container"], [data-pagelet^="FeedUnit"], [data-testid="post"], [data-testid="cellInnerDiv"], section, figure, .card, .post, .entry-content, .article-body, .feed-item, main'
         );
     }
 
     function distanceBetweenRects(a, b) {
         const dx = Math.max(a.left - b.right, b.left - a.right, 0);
         const dy = Math.max(a.top - b.bottom, b.top - a.bottom, 0);
-        return Math.hypot(dx, dy);
+        return { dist: Math.hypot(dx, dy), dx, dy };
     }
 
     function getSharedContainerBonus(anchorElement, media) {
+        if (!anchorElement || !media) return 0;
         let ancestor = anchorElement;
-        for (let depth = 0; ancestor && depth < 14; depth += 1) {
+        for (let depth = 0; ancestor && depth < 20; depth += 1) {
             if (ancestor === document.body || ancestor === document.documentElement) break;
-            if (ancestor.contains?.(media)) return 2_000 - depth * 120;
+            if (ancestor.contains?.(media)) return Math.max(0, 5_000 - depth * 150);
             ancestor = ancestor.parentElement;
         }
         return 0;
     }
 
     function getVisibleMediaCandidates() {
-        const viewportWidth = document.documentElement.clientWidth;
-        const viewportHeight = document.documentElement.clientHeight;
-        const storedRect = screenshotContext?.rect;
-        const scrollDeltaX = window.scrollX - (screenshotContext?.scrollX || 0);
-        const scrollDeltaY = window.scrollY - (screenshotContext?.scrollY || 0);
-        const anchorRect = storedRect
-            ? {
-                  left: storedRect.left - scrollDeltaX,
-                  right: storedRect.right - scrollDeltaX,
-                  top: storedRect.top - scrollDeltaY,
-                  bottom: storedRect.bottom - scrollDeltaY,
-              }
-            : {
-                  left: viewportWidth / 2,
-                  right: viewportWidth / 2,
-                  top: viewportHeight / 2,
-                  bottom: viewportHeight / 2,
-              };
-        const anchorRoot = getMediaContextRoot(screenshotContext?.anchorElement);
+        if (!screenshotContext?.rect) return [];
 
-        return Array.from(document.querySelectorAll("img, video, canvas"))
+        const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+        const viewportHeight = document.documentElement.clientHeight || window.innerHeight;
+        const storedRect = screenshotContext.rect;
+        const scrollDeltaX = window.scrollX - (screenshotContext.scrollX || 0);
+        const scrollDeltaY = window.scrollY - (screenshotContext.scrollY || 0);
+        const anchorRect = {
+            left: storedRect.left - scrollDeltaX,
+            right: storedRect.right - scrollDeltaX,
+            top: storedRect.top - scrollDeltaY,
+            bottom: storedRect.bottom - scrollDeltaY,
+        };
+        const anchorRoot = getMediaContextRoot(screenshotContext.anchorElement);
+        const anchorElement = screenshotContext.anchorElement;
+
+        const mediaElements = Array.from(
+            document.querySelectorAll(
+                "img, picture img, figure img, video, canvas, [role='img'], [style*='background-image'], [data-testid='tweetPhoto'] img, shreddit-post img, faceplate-img"
+            )
+        );
+
+        return mediaElements
             .filter((media) => !isOwnUI(media))
             .map((media) => {
                 const rect = media.getBoundingClientRect();
@@ -327,32 +344,49 @@
                 return { media, rect, visibleArea, visibleRatio: visibleArea / area };
             })
             .filter(({ media, rect, visibleArea }) => {
-                const mediaLabel = `${media.className || ""} ${media.getAttribute?.("alt") || ""}`.toLowerCase();
-                const isSmallDecorativeImage =
-                    media instanceof HTMLImageElement &&
-                    rect.width <= 200 &&
-                    rect.height <= 200 &&
-                    /avatar|profile|emoji|icon|logo|badge|reaction/.test(mediaLabel);
                 if (
-                    rect.width < 64 ||
-                    rect.height < 64 ||
-                    rect.width * rect.height < 10_000 ||
-                    visibleArea < 4_000 ||
-                    isSmallDecorativeImage
+                    rect.width < 32 ||
+                    rect.height < 32 ||
+                    (rect.width * rect.height < 1600 && visibleArea < 1600)
                 ) {
                     return false;
                 }
+
+                const mediaLabel = `${media.className || ""} ${media.id || ""} ${media.getAttribute?.("alt") || ""}`.toLowerCase();
+                const isDecorativeOrAd =
+                    rect.width <= 64 &&
+                    rect.height <= 64 &&
+                    /\b(avatar|profile-pic|emoji|emoticon|icon|logo|badge|button|arrow|star|rating)\b/i.test(
+                        mediaLabel
+                    );
+                if (isDecorativeOrAd) return false;
+
                 const style = window.getComputedStyle(media);
-                return style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity || 1) > 0.05;
+                return (
+                    style.display !== "none" &&
+                    style.visibility !== "hidden" &&
+                    Number(style.opacity || 1) > 0.05
+                );
             })
-            .map(({ media, rect, visibleRatio }) => {
-                let score = distanceBetweenRects(anchorRect, rect) + (1 - Math.min(1, visibleRatio)) * 250;
+            .map(({ media, rect, visibleRatio, visibleArea }) => {
+                const { dist, dx, dy } = distanceBetweenRects(anchorRect, rect);
                 const mediaRoot = getMediaContextRoot(media);
-                if (anchorRoot && mediaRoot === anchorRoot) score -= 100_000;
-                const anchorElement = screenshotContext?.anchorElement;
-                score -= getSharedContainerBonus(anchorElement, media);
-                if (anchorElement && media.contains(anchorElement)) score -= 200_000;
-                return { media, score };
+                const sharedBonus = getSharedContainerBonus(anchorElement, media);
+                const isDirectShared = sharedBonus > 0 || (anchorRoot && mediaRoot && anchorRoot === mediaRoot);
+
+                let score = dist + (1 - Math.min(1, visibleRatio)) * 250 - sharedBonus;
+                if (anchorRoot && mediaRoot && anchorRoot === mediaRoot) score -= 50_000;
+                if (anchorElement && media.contains(anchorElement)) score -= 60_000;
+                if (anchorElement && anchorElement.parentElement?.contains(media)) score -= 80_000;
+
+                return { media, rect, dist, dx, dy, isDirectShared, visibleArea, score };
+            })
+            .filter(({ dist, dx, dy, isDirectShared, visibleArea }) => {
+                if (isDirectShared && dist <= 1600) return true;
+                if (!isDirectShared && dist > 750) return false;
+                if (!isDirectShared && dy > 600 && dx > 500) return false;
+                if (visibleArea === 0 && dist > 300) return false;
+                return true;
             })
             .sort((a, b) => a.score - b.score)
             .map(({ media }) => media);
@@ -387,6 +421,174 @@
         }
     }
 
+    function cropAndScaleCanvas(img, sx, sy, sw, sh) {
+        if (sw <= 0 || sh <= 0) return null;
+        const MAX = 480;
+        const scale = Math.min(MAX / sw, MAX / sh, 1);
+        const dw = Math.max(1, Math.round(sw * scale));
+        const dh = Math.max(1, Math.round(sh * scale));
+
+        const canvas = document.createElement("canvas");
+        canvas.width = dw;
+        canvas.height = dh;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return null;
+        ctx.fillStyle = "#12131c";
+        ctx.fillRect(0, 0, dw, dh);
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, dw, dh);
+
+        const webpUrl = canvas.toDataURL("image/webp", 0.75);
+        if (webpUrl && webpUrl.startsWith("data:image/webp")) {
+            return webpUrl;
+        }
+        return canvas.toDataURL("image/jpeg", 0.80);
+    }
+
+    function captureVisibleTabCrop(rect) {
+        if (!rect || !chrome?.runtime?.sendMessage) return Promise.resolve(null);
+        return new Promise((resolve) => {
+            chrome.runtime.sendMessage({ type: "QT_CAPTURE_VISIBLE_TAB" }, async (response) => {
+                if (chrome.runtime.lastError || !response?.dataUrl) {
+                    resolve(null);
+                    return;
+                }
+                try {
+                    const img = await loadImage(response.dataUrl);
+                    if (!img || !img.naturalWidth || !img.naturalHeight) {
+                        resolve(null);
+                        return;
+                    }
+                    const dpr = window.devicePixelRatio || 1;
+
+                    const clientX = Math.max(0, rect.left);
+                    const clientY = Math.max(0, rect.top);
+                    const clientRight = Math.min(window.innerWidth, rect.right);
+                    const clientBottom = Math.min(window.innerHeight, rect.bottom);
+                    const clientWidth = clientRight - clientX;
+                    const clientHeight = clientBottom - clientY;
+
+                    if (clientWidth < 20 || clientHeight < 20) {
+                        resolve(null);
+                        return;
+                    }
+
+                    const sx = Math.round(clientX * dpr);
+                    const sy = Math.round(clientY * dpr);
+                    const sw = Math.round(clientWidth * dpr);
+                    const sh = Math.round(clientHeight * dpr);
+
+                    if (sx + sw > img.naturalWidth || sy + sh > img.naturalHeight) {
+                        const scaleX = img.naturalWidth / (window.innerWidth || 1);
+                        const scaleY = img.naturalHeight / (window.innerHeight || 1);
+                        const adjSx = Math.round(clientX * scaleX);
+                        const adjSy = Math.round(clientY * scaleY);
+                        const adjSw = Math.round(clientWidth * scaleX);
+                        const adjSh = Math.round(clientHeight * scaleY);
+                        return resolve(cropAndScaleCanvas(img, adjSx, adjSy, adjSw, adjSh));
+                    }
+
+                    resolve(cropAndScaleCanvas(img, sx, sy, sw, sh));
+                } catch (_) {
+                    resolve(null);
+                }
+            });
+        });
+    }
+
+    function extractImageSourceUrl(media) {
+        if (!media || !(media instanceof Element)) return null;
+
+        const imgChild = media instanceof HTMLImageElement ? media : media.querySelector?.("img, image");
+        const target = imgChild || media;
+
+        const candidates = [];
+        if (target instanceof HTMLImageElement) {
+            candidates.push(
+                target.currentSrc,
+                target.dataset?.src,
+                target.dataset?.original,
+                target.dataset?.lazySrc,
+                target.dataset?.actualsrc,
+                target.dataset?.fullSrc,
+                target.getAttribute?.("data-src"),
+                target.getAttribute?.("data-original"),
+                target.getAttribute?.("data-lazy-src"),
+                target.getAttribute?.("data-actualsrc"),
+                target.getAttribute?.("data-full-src"),
+                target.src,
+                target.getAttribute?.("src"),
+            );
+
+            if (target.parentElement?.tagName === "PICTURE") {
+                const sources = Array.from(target.parentElement.querySelectorAll("source"));
+                for (const source of sources) {
+                    if (source.srcset) candidates.push(source.srcset);
+                }
+            }
+
+            if (target.srcset) {
+                candidates.push(target.srcset);
+            }
+        } else {
+            const style = window.getComputedStyle(target);
+            const bg = style.backgroundImage;
+            if (bg && bg !== "none" && bg.includes("url(")) {
+                const match = bg.match(/url\(\s*['"]?([^'")]+)['"]?\s*\)/);
+                if (match && match[1]) {
+                    candidates.push(match[1]);
+                }
+            }
+            if (target.getAttribute?.("src")) candidates.push(target.getAttribute("src"));
+            if (target.dataset?.src) candidates.push(target.dataset.src);
+        }
+
+        for (let candidate of candidates) {
+            if (!candidate || typeof candidate !== "string") continue;
+            candidate = candidate.trim();
+            if (!candidate) continue;
+
+            if (candidate.includes(",") || /\s+\d+[wx]/.test(candidate)) {
+                const parts = candidate.split(",").map((s) => s.trim()).filter(Boolean);
+                const lastPart = parts[parts.length - 1] || parts[0];
+                candidate = lastPart.split(/\s+/)[0];
+            }
+
+            if (/^data:image\/(svg|gif);base64,R0lGOD/i.test(candidate)) continue;
+            if (candidate.startsWith("//")) {
+                candidate = window.location.protocol + candidate;
+            } else if (
+                !candidate.startsWith("http://") &&
+                !candidate.startsWith("https://") &&
+                !candidate.startsWith("data:") &&
+                !candidate.startsWith("blob:")
+            ) {
+                try {
+                    candidate = new URL(candidate, document.baseURI).href;
+                } catch (_) {}
+            }
+            if (/^(https?:|data:image\/|blob:)/i.test(candidate)) {
+                return candidate;
+            }
+        }
+
+        return target instanceof HTMLImageElement ? (target.currentSrc || target.src || null) : null;
+    }
+
+    function fetchBlobAsDataUrl(blobUrl) {
+        return fetch(blobUrl)
+            .then((r) => r.blob())
+            .then(
+                (blob) =>
+                    new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result);
+                        reader.onerror = () => resolve(null);
+                        reader.readAsDataURL(blob);
+                    }),
+            )
+            .catch(() => null);
+    }
+
     function requestImageDataUrl(url) {
         if (!url || !chrome?.runtime?.sendMessage) return Promise.resolve(null);
         return new Promise((resolve) => {
@@ -413,6 +615,8 @@
     }
 
     async function captureMediaScreenshot(media) {
+        if (!media || !(media instanceof Element)) return null;
+
         if (globalThis.LectoroNetflixAdapter?.isPage?.()) {
             const netflixImg =
                 await globalThis.LectoroNetflixAdapter.captureReviewImage(media);
@@ -427,20 +631,52 @@
             if (media.poster) {
                 const posterData = await requestImageDataUrl(media.poster);
                 const posterImage = posterData ? await loadImage(posterData) : null;
-                return posterImage ? drawMediaToDataUrl(posterImage) : null;
+                if (posterImage) {
+                    const drawn = drawMediaToDataUrl(posterImage);
+                    if (drawn) return drawn;
+                }
             }
+            const videoCrop = await captureVisibleTabCrop(media.getBoundingClientRect());
+            if (videoCrop) return videoCrop;
             return null;
         }
 
         const directCapture = drawMediaToDataUrl(media);
         if (directCapture) return directCapture;
-        if (!(media instanceof HTMLImageElement)) return null;
 
-        const src = media.currentSrc || media.src;
-        if (!/^https?:/i.test(src)) return null;
-        const imageData = await requestImageDataUrl(src);
-        const fetchedImage = imageData ? await loadImage(imageData) : null;
-        return fetchedImage ? drawMediaToDataUrl(fetchedImage) : null;
+        const src = extractImageSourceUrl(media);
+        if (src) {
+            if (src.startsWith("data:image/")) {
+                const dataImage = await loadImage(src);
+                if (dataImage) {
+                    const drawn = drawMediaToDataUrl(dataImage);
+                    if (drawn) return drawn;
+                }
+            } else if (src.startsWith("blob:")) {
+                try {
+                    const blobDataUrl = await fetchBlobAsDataUrl(src);
+                    if (blobDataUrl) {
+                        const blobImg = await loadImage(blobDataUrl);
+                        if (blobImg) {
+                            const drawn = drawMediaToDataUrl(blobImg);
+                            if (drawn) return drawn;
+                        }
+                    }
+                } catch (_) {}
+            } else if (/^https?:/i.test(src)) {
+                const imageData = await requestImageDataUrl(src);
+                const fetchedImage = imageData ? await loadImage(imageData) : null;
+                if (fetchedImage) {
+                    const drawn = drawMediaToDataUrl(fetchedImage);
+                    if (drawn) return drawn;
+                }
+            }
+        }
+
+        const tabCrop = await captureVisibleTabCrop(media.getBoundingClientRect());
+        if (tabCrop) return tabCrop;
+
+        return null;
     }
 
     function captureVideoScreenshot(videoOverride = null) {
@@ -1035,6 +1271,8 @@
                 : Promise.reject(new Error("TranslatorService unavailable")),
         captureVideoScreenshot,
         captureContextScreenshot,
+        rememberScreenshotContext: (rect, anchorOverride = null) =>
+            rememberScreenshotContext(rect, anchorOverride),
 
         buildTooltipHtml,
         attachTooltipHandlers,

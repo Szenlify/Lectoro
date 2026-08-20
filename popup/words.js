@@ -153,6 +153,7 @@
         item.querySelector(".wi-edit-cancel")?.addEventListener("click", loadWords);
         form?.addEventListener("submit", async (event) => {
             event.preventDefault();
+            const formData = new FormData(form);
             const clean =
                 typeof SharedUtils !== "undefined" && typeof SharedUtils.cleanCardText === "function"
                     ? SharedUtils.cleanCardText

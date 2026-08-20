@@ -10,7 +10,8 @@
         "alarms",
         "notifications",
         "identity",
-        "scripting"
+        "scripting",
+        "activeTab"
     ],
     "host_permissions": [
         "https://identitytoolkit.googleapis.com/*",
@@ -70,6 +71,7 @@
                 "adapters/netflix-adapter.js",
                 "adapters/lookmovie-adapter.js",
                 "adapters/generic-adapters.js",
+                "adapters/ted-adapter.js",
                 "adapters/player-registry.js",
                 "video/subtitle-overlay.js",
                 "video/video-hotkeys.js",

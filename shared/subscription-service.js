@@ -3,6 +3,7 @@ const SubscriptionService = (() => {
     "use strict";
 
     const PROFILE_KEY = "subscriptionProfileCache";
+    const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour TTL to minimize Firestore reads
     const PROXY_URL = "https://geminiproxy-gyagzflbra-ew.a.run.app";
     const BILLING_FUNCTIONS_URL =
         "https://europe-west1-extension-eng.cloudfunctions.net";
@@ -100,12 +101,12 @@ const SubscriptionService = (() => {
         if (!user) return freeProfile();
         const cached = await getCachedProfile();
         const current = currentMonth();
-        if (
-            !force &&
+        const cacheIsFresh =
             cached?.uid === user.uid &&
             cached?.usage?.ai?.month === current &&
-            cached?.usage?.elevenLabsCharacters?.month === current
-        ) {
+            cached?.usage?.elevenLabsCharacters?.month === current &&
+            Date.now() - Number(cached?.updatedAt || 0) < CACHE_TTL_MS;
+        if (!force && cacheIsFresh) {
             return cached;
         }
 
@@ -149,9 +150,9 @@ const SubscriptionService = (() => {
             cached?.uid === user.uid &&
             cached?.usage?.ai?.month === currentMonth() &&
             cached?.usage?.elevenLabsCharacters?.month === currentMonth() &&
-            Date.now() - Number(cached?.updatedAt || 0) < 5 * 60 * 1000;
+            Date.now() - Number(cached?.updatedAt || 0) < CACHE_TTL_MS;
         if (!force && cacheIsFresh) return cached;
-        return refreshProfile(true);
+        return refreshProfile(force);
     }
 
     async function checkSrsSave(savedCards, additionalCards = 1) {

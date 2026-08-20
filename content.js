@@ -185,10 +185,16 @@
 
         const text = currentText;
         const rect = currentRect;
+        const anchorNode = currentRange?.commonAncestorContainer;
+        const anchorEl = anchorNode
+            ? anchorNode.nodeType === Node.ELEMENT_NODE
+                ? anchorNode
+                : anchorNode.parentElement
+            : null;
         const revision = selectionRevision;
         if (isReading) cleanupReading();
         hideIcon();
-        showLoading(rect);
+        showLoading(rect, "top", anchorEl);
 
         try {
             const targetLang = await getTargetLang();
@@ -206,7 +212,7 @@
                 original: text,
                 translated,
             });
-            showTooltip(html, rect);
+            showTooltip(html, rect, "top", anchorEl);
             attachTooltipHandlers();
         } catch (err) {
             if (revision !== selectionRevision) return;
@@ -214,6 +220,8 @@
             showTooltip(
                 `<div class="${PREFIX}error">⚠ ${escapeHtml(err.message)}</div>`,
                 rect,
+                "top",
+                anchorEl,
             );
         }
     }
@@ -225,10 +233,16 @@
 
         const text = currentText;
         const rect = currentRect;
+        const anchorNode = currentRange?.commonAncestorContainer;
+        const anchorEl = anchorNode
+            ? anchorNode.nodeType === Node.ELEMENT_NODE
+                ? anchorNode
+                : anchorNode.parentElement
+            : null;
         const revision = selectionRevision;
         if (isReading) cleanupReading();
         hideIcon();
-        showLoading(rect);
+        showLoading(rect, "top", anchorEl);
 
         try {
             const targetLang = await getTargetLang();
@@ -281,7 +295,7 @@
                         ${SVG.SAVE_AI} <span>AI</span>
                     </button>
                 </div>`;
-            showTooltip(html, rect);
+            showTooltip(html, rect, "top", anchorEl);
             attachTooltipHandlers();
             await QT.speak(explanation, targetLang, {
                 isCancelled: () => revision !== selectionRevision,
@@ -296,6 +310,8 @@
                 showTooltip(
                     `<div class="${PREFIX}error">⚠ ${escapeHtml(err.message)}</div>`,
                     rect,
+                    "top",
+                    anchorEl,
                 );
             }
         }
@@ -810,6 +826,16 @@
             currentText = text;
             currentRect = rect;
             currentRange = range.cloneRange();
+
+            const anchorNode = range.commonAncestorContainer;
+            const anchorEl = anchorNode
+                ? anchorNode.nodeType === Node.ELEMENT_NODE
+                    ? anchorNode
+                    : anchorNode.parentElement
+                : null;
+            if (typeof QT.rememberScreenshotContext === "function") {
+                QT.rememberScreenshotContext(rect, anchorEl);
+            }
 
             hideTooltip();
             showIcon(rect);
