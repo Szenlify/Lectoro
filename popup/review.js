@@ -652,6 +652,81 @@ function attachReviewCardControls(card, w) {
     });
 }
 
+// ── Screenshot Shimmer & Smooth Loading (UX / UI) ────────────────
+(function ensureReviewScreenshotStyles() {
+    if (typeof document === "undefined" || document.getElementById("review-screenshot-shimmer-styles")) return;
+    const style = document.createElement("style");
+    style.id = "review-screenshot-shimmer-styles";
+    style.textContent = `
+        @keyframes reviewScreenshotShimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        .review-screenshot {
+            margin-top: 14px;
+            text-align: center;
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+        .review-screenshot-box {
+            position: relative;
+            width: 85%;
+            min-height: 140px;
+            aspect-ratio: 16 / 9;
+            max-height: 250px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.03) 25%, rgba(255, 255, 255, 0.09) 50%, rgba(255, 255, 255, 0.03) 75%);
+            background-size: 200% 100%;
+            animation: reviewScreenshotShimmer 1.8s infinite ease-in-out;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+            transition: border-color 0.3s ease, background 0.3s ease;
+        }
+        .review-screenshot-box.is-loaded {
+            animation: none;
+            background: rgba(0, 0, 0, 0.2);
+            border-color: rgba(255, 255, 255, 0.15);
+            min-height: 0;
+            aspect-ratio: auto;
+        }
+        .review-screenshot-box .review-screenshot-img {
+            width: 100%;
+            height: auto;
+            max-height: 260px;
+            object-fit: contain;
+            border-radius: 11px;
+            border: none;
+            opacity: 0;
+            display: block;
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .review-screenshot-box.is-loaded .review-screenshot-img {
+            opacity: 1;
+        }
+    `;
+    document.head.appendChild(style);
+})();
+
+function reviewScreenshotHtml(url) {
+    if (!url) return "";
+    return `
+        <div class="review-screenshot">
+            <div class="review-screenshot-box">
+                <img src="${escapeAttr(url)}"
+                     alt="Screenshot"
+                     class="review-screenshot-img"
+                     loading="eager"
+                     onload="this.closest('.review-screenshot-box')?.classList.add('is-loaded')"
+                     onerror="this.closest('.review-screenshot')?.remove()">
+            </div>
+        </div>`;
+}
+
 function renderQuestion(w) {
     const card = document.getElementById("reviewCard");
     const srcL = w.srcLang || "en";
@@ -686,7 +761,7 @@ function renderQuestion(w) {
                         )}" data-lang="${escapeAttr(showLang)}" ${forceBrowserAttr} ${cacheAttrs} title="Odczytaj">${SPEAK_SVG}</button>
                     </div>
                     ${sentenceHtml}
-                    ${w.screenshot ? `<div class="review-screenshot"><img src="${w.screenshot}" alt="Screenshot" class="review-screenshot-img"></div>` : ""}
+                    ${reviewScreenshotHtml(w.screenshot)}
                 </div>
             </div>
             ${reviewControlsHtml(sr, false)}`;
@@ -706,8 +781,16 @@ function renderQuestion(w) {
     scrollToTop();
     requestAnimationFrame(scrollToTop);
     const qShotImg = card.querySelector(".review-screenshot-img");
-    if (qShotImg && !qShotImg.complete) {
-        qShotImg.addEventListener("load", scrollToTop, { once: true });
+    if (qShotImg) {
+        if (qShotImg.complete && qShotImg.naturalWidth > 0) {
+            qShotImg.closest(".review-screenshot-box")?.classList.add("is-loaded");
+            scrollToTop();
+        } else {
+            qShotImg.addEventListener("load", () => {
+                qShotImg.closest(".review-screenshot-box")?.classList.add("is-loaded");
+                scrollToTop();
+            }, { once: true });
+        }
     }
 }
 
@@ -990,7 +1073,7 @@ function renderAnswer(w) {
                 </div>`
                         : ""
                 }
-                ${w.screenshot ? `<div class="review-screenshot"><img src="${w.screenshot}" alt="Screenshot" class="review-screenshot-img"></div>` : ""}
+                ${reviewScreenshotHtml(w.screenshot)}
             </div>
         </div>
         ${reviewControlsHtml(sr, true)}`;
@@ -1011,8 +1094,16 @@ function renderAnswer(w) {
     scrollToTop();
     requestAnimationFrame(scrollToTop);
     const shotImg = card.querySelector(".review-screenshot-img");
-    if (shotImg && !shotImg.complete) {
-        shotImg.addEventListener("load", scrollToTop, { once: true });
+    if (shotImg) {
+        if (shotImg.complete && shotImg.naturalWidth > 0) {
+            shotImg.closest(".review-screenshot-box")?.classList.add("is-loaded");
+            scrollToTop();
+        } else {
+            shotImg.addEventListener("load", () => {
+                shotImg.closest(".review-screenshot-box")?.classList.add("is-loaded");
+                scrollToTop();
+            }, { once: true });
+        }
     }
 }
 
