@@ -20,9 +20,6 @@ function loadLibraryItems() {
         });
 }
 
-let libraryLevelFilter = "all";
-let librarySearchQuery = "";
-
 /** Opens the item's own direct "link" (from library-items.json);
  * falls back to YouTube search if link is empty. */
 function libraryOpenItem(title, link) {
@@ -45,28 +42,14 @@ function renderLibraryGrid() {
         return;
     }
 
-    const q = librarySearchQuery.trim().toLowerCase();
-    const items = LIBRARY_ITEMS.filter((item) => {
-        if (libraryLevelFilter !== "all" && item.level !== libraryLevelFilter)
-            return false;
-        if (!q) return true;
-        return (
-            (item.title && item.title.toLowerCase().includes(q)) ||
-            (item.note && item.note.toLowerCase().includes(q))
-        );
-    });
+    const items = LIBRARY_ITEMS;
 
     if (items.length === 0) {
-        const queryLabel = librarySearchQuery.trim();
         grid.innerHTML = `
         <div class="library-empty">
-            <div class="library-empty-icon">🔍</div>
-            <div class="library-empty-title">Brak wyników w bibliotece</div>
-            <div class="library-empty-sub">${
-                queryLabel
-                    ? `Nie znaleziono „${escapeHtml(queryLabel)}” wśród polecanych pozycji.`
-                    : "Żadna z pozycji nie pasuje do wybranych filtrów."
-            }</div>
+            <div class="library-empty-icon">🎬</div>
+            <div class="library-empty-title">Brak pozycji w bibliotece</div>
+            <div class="library-empty-sub">Biblioteka jest obecnie pusta.</div>
         </div>`;
         return;
     }
@@ -105,20 +88,3 @@ function renderLibraryGrid() {
         });
     });
 }
-
-const librarySearchInput = document.getElementById("librarySearch");
-librarySearchInput?.addEventListener("input", (e) => {
-    librarySearchQuery = e.target.value;
-    renderLibraryGrid();
-});
-
-document.querySelectorAll(".library-filter-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-        document
-            .querySelectorAll(".library-filter-btn")
-            .forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-        libraryLevelFilter = btn.dataset.level;
-        renderLibraryGrid();
-    });
-});
