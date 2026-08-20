@@ -14,10 +14,39 @@
     "use strict";
 
     /**
-     * In-memory LRU cache factory for translations.
+     * In-memory & chrome.storage.local backed LRU cache factory for translations.
      */
-    function createTranslateCache(maxSize = 300) {
+    const PERSISTENT_TRANSLATE_CACHE_KEY = "persistentTranslateCache";
+
+    function createTranslateCache(maxSize = 500) {
         const cache = new Map();
+
+        // Load cached translations asynchronously from chrome.storage.local
+        if (typeof chrome !== "undefined" && chrome?.storage?.local) {
+            chrome.storage.local.get({ [PERSISTENT_TRANSLATE_CACHE_KEY]: {} }, (data) => {
+                const stored = data[PERSISTENT_TRANSLATE_CACHE_KEY] || {};
+                for (const [k, v] of Object.entries(stored)) {
+                    if (!cache.has(k)) cache.set(k, v);
+                }
+            });
+        }
+
+        let saveTimeout = null;
+        function schedulePersistentSave() {
+            if (typeof chrome === "undefined" || !chrome?.storage?.local) return;
+            if (saveTimeout) clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => {
+                saveTimeout = null;
+                const obj = {};
+                let count = 0;
+                for (const [k, v] of cache.entries()) {
+                    if (count++ >= maxSize) break;
+                    obj[k] = v;
+                }
+                chrome.storage.local.set({ [PERSISTENT_TRANSLATE_CACHE_KEY]: obj }).catch(() => {});
+            }, 1000);
+        }
+
         return {
             async get(text, targetLang, fetcher = null) {
                 const key = `${text}|${targetLang}`;
@@ -28,6 +57,7 @@
                 if (cache.size > maxSize) {
                     cache.delete(cache.keys().next().value);
                 }
+                schedulePersistentSave();
                 return result;
             },
             set(text, targetLang, result) {
@@ -36,12 +66,16 @@
                 if (cache.size > maxSize) {
                     cache.delete(cache.keys().next().value);
                 }
+                schedulePersistentSave();
             },
             has(text, targetLang) {
                 return cache.has(`${text}|${targetLang}`);
             },
             clear() {
                 cache.clear();
+                if (typeof chrome !== "undefined" && chrome?.storage?.local) {
+                    chrome.storage.local.remove(PERSISTENT_TRANSLATE_CACHE_KEY).catch(() => {});
+                }
             },
             get size() {
                 return cache.size;

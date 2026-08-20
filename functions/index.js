@@ -35,14 +35,52 @@ const geminiApiKey = defineSecret("LECTORO_GEMINI_API_KEY");
 const elevenLabsApiKey = defineSecret("ELEVENLABS_API_KEY");
 const r2SecretAccessKey = defineSecret("R2_SECRET_ACCESS_KEY");
 
+function getGeminiApiKey() {
+    return geminiApiKey.value() || process.env.LECTORO_GEMINI_API_KEY || "";
+}
+
+function getElevenLabsApiKey() {
+    return elevenLabsApiKey.value() || process.env.ELEVENLABS_API_KEY || "";
+}
+
+function getR2SecretAccessKey() {
+    return r2SecretAccessKey.value() || process.env.R2_SECRET_ACCESS_KEY || "";
+}
+
 function getR2Config() {
     return {
         accountId: process.env.R2_ACCOUNT_ID || "",
         accessKeyId: process.env.R2_ACCESS_KEY_ID || "",
-        secretAccessKey: r2SecretAccessKey.value() || process.env.R2_SECRET_ACCESS_KEY || "",
+        secretAccessKey: getR2SecretAccessKey(),
         bucketName: process.env.R2_BUCKET_NAME || "lectoro-media",
         publicUrl: process.env.R2_PUBLIC_URL || "",
     };
+}
+
+// In-memory sliding window rate limiter per UID (anti-abuse / DDoS protection)
+const userRateLimits = new Map();
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const MAX_REQUESTS_PER_MINUTE = 20;
+
+function isUserRateLimited(uid) {
+    const now = Date.now();
+    const windowStart = now - RATE_LIMIT_WINDOW_MS;
+    const timestamps = (userRateLimits.get(uid) || []).filter((t) => t > windowStart);
+    if (timestamps.length >= MAX_REQUESTS_PER_MINUTE) {
+        userRateLimits.set(uid, timestamps);
+        return true;
+    }
+    timestamps.push(now);
+    userRateLimits.set(uid, timestamps);
+
+    if (userRateLimits.size > 5000) {
+        for (const [k, ts] of userRateLimits.entries()) {
+            const valid = ts.filter((t) => t > windowStart);
+            if (valid.length === 0) userRateLimits.delete(k);
+            else userRateLimits.set(k, valid);
+        }
+    }
+    return false;
 }
 
 // Stripe endpoints live in a separate module so the AI/TTS proxy remains easy
@@ -159,11 +197,52 @@ function elevenLabsClientError(details) {
     };
 }
 
+async function fetchGeminiWithRetry(geminiKey, payload, maxRetries = 2) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${encodeURIComponent(geminiKey)}`;
+    let lastError = null;
+    let lastStatus = 0;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        if (attempt > 0) {
+            const delayMs = 500 * Math.pow(2, attempt - 1) + Math.random() * 200;
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
+
+        try {
+            const response = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+
+            if (response.ok) {
+                return await response.json();
+            }
+
+            lastStatus = response.status;
+            const details = await response.json().catch(() => ({}));
+            const msg = details?.error?.message || `Gemini HTTP ${response.status}`;
+            lastError = new Error(msg);
+
+            // Only retry on transient rate limit or server errors
+            if (response.status !== 429 && response.status !== 503 && response.status !== 500) {
+                throw lastError;
+            }
+        } catch (err) {
+            lastError = err;
+            if (attempt === maxRetries) throw lastError;
+        }
+    }
+    throw lastError || new Error(`Gemini failed with status ${lastStatus}`);
+}
+
 exports.geminiProxy = onRequest(
     {
         region: "europe-west1",
         cors: false,
-        timeoutSeconds: 60,
+        timeoutSeconds: 30,
+        maxInstances: 10,
+        concurrency: 80,
         memory: "256MiB",
         secrets: [
             geminiApiKey,
@@ -189,6 +268,12 @@ exports.geminiProxy = onRequest(
         }
 
         const uid = decodedToken.uid;
+        if (isUserRateLimited(uid)) {
+            return res.status(429).json({
+                error: "Zbyt wiele zapytań w krótkim czasie. Odczekaj chwilę.",
+                code: "RATE_LIMIT_EXCEEDED",
+            });
+        }
         const db = getAdmin().firestore();
         const userRef = db.collection("users").doc(uid);
         const month = currentMonth();
@@ -289,7 +374,7 @@ exports.geminiProxy = onRequest(
             }
             try {
                 const voicesResponse = await fetch("https://api.elevenlabs.io/v1/voices", {
-                    headers: { "xi-api-key": elevenLabsApiKey.value() },
+                    headers: { "xi-api-key": getElevenLabsApiKey() },
                 });
                 const details = await voicesResponse.json().catch(() => ({}));
                 if (!voicesResponse.ok) {
@@ -388,7 +473,7 @@ exports.geminiProxy = onRequest(
                     {
                         method: "POST",
                         headers: {
-                            "xi-api-key": elevenLabsApiKey.value(),
+                            "xi-api-key": getElevenLabsApiKey(),
                             "Content-Type": "application/json",
                             Accept: "audio/mpeg",
                         },
@@ -457,8 +542,8 @@ exports.geminiProxy = onRequest(
         if (!prompt || typeof prompt !== "string") {
             return res.status(400).json({ error: "Brak pola 'prompt' w ciele żądania." });
         }
-        if (prompt.length > 50000) {
-            return res.status(400).json({ error: "Prompt zbyt długi (max 50 000 znaków)." });
+        if (prompt.length > 4000) {
+            return res.status(400).json({ error: "Prompt zbyt długi (max 4 000 znaków)." });
         }
 
         // Reserve atomically before calling Gemini so parallel requests cannot
@@ -493,7 +578,7 @@ exports.geminiProxy = onRequest(
             });
         }
 
-        const geminiKey = geminiApiKey.value();
+        const geminiKey = getGeminiApiKey();
         if (!geminiKey) {
             console.error("[geminiProxy] LECTORO_GEMINI_API_KEY is not configured");
             await rollbackAiReservation(db, userRef, month);
@@ -502,32 +587,18 @@ exports.geminiProxy = onRequest(
 
         let geminiResponse;
         try {
-            const geminiRes = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${encodeURIComponent(geminiKey)}`,
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }] }],
-                        generationConfig: {
-                            temperature: Math.min(Math.max(Number(temperature), 0), 2),
-                            maxOutputTokens: Math.min(Math.max(Number(maxOutputTokens), 1), 8192),
-                        },
-                    }),
+            const geminiPayload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: {
+                    temperature: Math.min(Math.max(Number(temperature), 0), 2),
+                    maxOutputTokens: Math.min(Math.max(Number(maxOutputTokens), 1), 8192),
                 },
-            );
-            if (!geminiRes.ok) {
-                const details = await geminiRes.json().catch(() => ({}));
-                const message = details?.error?.message || `Gemini HTTP ${geminiRes.status}`;
-                console.error("[geminiProxy] Gemini API error:", message);
-                await rollbackAiReservation(db, userRef, month);
-                return res.status(502).json({ error: message });
-            }
-            geminiResponse = await geminiRes.json();
+            };
+            geminiResponse = await fetchGeminiWithRetry(geminiKey, geminiPayload, 2);
         } catch (error) {
             console.error("[geminiProxy] Gemini fetch error:", error);
             await rollbackAiReservation(db, userRef, month);
-            return res.status(502).json({ error: "Błąd połączenia z Gemini API." });
+            return res.status(502).json({ error: error.message || "Błąd połączenia z Gemini API." });
         }
 
         const text = geminiResponse?.candidates?.[0]?.content?.parts?.[0]?.text || "";

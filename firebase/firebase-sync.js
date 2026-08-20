@@ -65,10 +65,30 @@ const FirebaseSync = (() => {
         });
     }
 
+    function isContentScriptEnvironment() {
+        return (
+            typeof window !== "undefined" &&
+            window.location?.protocol !== "chrome-extension:" &&
+            typeof chrome !== "undefined" &&
+            typeof chrome.runtime?.sendMessage === "function"
+        );
+    }
+
     // ── User Info ────────────────────────────────────────────────
 
     async function getUser() {
         if (!isConfigured()) return null;
+        if (isContentScriptEnvironment()) {
+            try {
+                const response = await new Promise((resolve) => {
+                    chrome.runtime.sendMessage({ type: "QT_GET_FIREBASE_USER" }, (res) => {
+                        if (chrome.runtime.lastError) resolve(null);
+                        else resolve(res?.user || null);
+                    });
+                });
+                if (response) return response;
+            } catch (_) {}
+        }
         const auth = await getAuthData();
         if (!auth?.uid) return null;
         return {
@@ -101,6 +121,22 @@ const FirebaseSync = (() => {
     /** Get a valid Firebase ID token, auto-refreshing if expired. */
     async function getValidToken(forceRefresh = false) {
         if (!isConfigured()) return null;
+
+        if (isContentScriptEnvironment()) {
+            try {
+                const response = await new Promise((resolve) => {
+                    chrome.runtime.sendMessage(
+                        { type: "QT_GET_FIREBASE_TOKEN", forceRefresh },
+                        (res) => {
+                            if (chrome.runtime.lastError) resolve(null);
+                            else resolve(res?.token || null);
+                        },
+                    );
+                });
+                if (response) return response;
+            } catch (_) {}
+        }
+
         const auth = await getAuthData();
         if (!auth?.idToken) return null;
 

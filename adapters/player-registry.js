@@ -529,6 +529,16 @@
         }
     }
 
+    function sweepDeadVideoSessions() {
+        for (const session of Array.from(liveVideoSessions)) {
+            if (!session.video.isConnected) teardownVideoSession(session);
+        }
+        if (!activeVideo || !activeVideo.isConnected) {
+            const next = selectBestVideo();
+            if (next) activateVideo(next);
+        }
+    }
+
     document.addEventListener("play", handleVideoLifecycleEvent, true);
     document.addEventListener("loadedmetadata", handleVideoLifecycleEvent, true);
     document.addEventListener("visibilitychange", () => {
@@ -544,6 +554,9 @@
         clearTimeout(videoSweepTimer);
         videoSweepTimer = null;
     });
+    window.addEventListener("popstate", sweepDeadVideoSessions, { passive: true });
+    document.addEventListener("yt-navigate-finish", sweepDeadVideoSessions, { passive: true });
+    document.addEventListener("yt-page-data-updated", sweepDeadVideoSessions, { passive: true });
 
     const initialVideos = Array.from(document.querySelectorAll("video"));
     initialVideos.forEach(registerVideo);

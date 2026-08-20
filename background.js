@@ -47,13 +47,25 @@ function ignoreNextSavedWordsValue(words) {
     }, 5_000);
 }
 
+let tokenRefreshPromise = null;
+
+async function getSingleFlightToken(forceRefresh = false) {
+    if (typeof FirebaseSync === "undefined" || !FirebaseSync.isConfigured()) return null;
+    if (!tokenRefreshPromise || forceRefresh) {
+        tokenRefreshPromise = FirebaseSync.getValidToken(forceRefresh).finally(() => {
+            tokenRefreshPromise = null;
+        });
+    }
+    return tokenRefreshPromise;
+}
+
 async function getFirebaseContext() {
     if (typeof FirebaseSync === "undefined" || !FirebaseSync.isConfigured()) {
         return null;
     }
     const user = await FirebaseSync.getUser();
     if (!user) return null;
-    const token = await FirebaseSync.getValidToken();
+    const token = await getSingleFlightToken();
     if (!token) return null;
     return { user, token };
 }
@@ -770,6 +782,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             .then(() => clearLocalUserDataAfterSignOut())
             .then(() => sendResponse({ ok: true }))
             .catch((error) => sendResponse({ error: error.message }));
+        return true;
+    }
+
+    if (message.type === "QT_GET_FIREBASE_TOKEN") {
+        getSingleFlightToken(!!message.forceRefresh)
+            .then((token) => sendResponse({ token }))
+            .catch((error) => sendResponse({ token: null, error: error.message }));
+        return true;
+    }
+
+    if (message.type === "QT_GET_FIREBASE_USER") {
+        (typeof FirebaseSync !== "undefined" ? FirebaseSync.getUser() : Promise.resolve(null))
+            .then((user) => sendResponse({ user }))
+            .catch((error) => sendResponse({ user: null, error: error.message }));
         return true;
     }
 

@@ -1,14 +1,34 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidWord() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['original', 'translated', 'srcLang', 'tgtLang'])
+          && data.original is string && data.original.size() > 0 && data.original.size() <= 500
+          && data.translated is string && data.translated.size() <= 1000
+          && data.srcLang is string && data.srcLang.size() <= 10
+          && data.tgtLang is string && data.tgtLang.size() <= 10
+          && (!('sentence' in data) || (data.sentence is string && data.sentence.size() <= 2000))
+          && (!('sentenceTranslated' in data) || (data.sentenceTranslated is string && data.sentenceTranslated.size() <= 2000))
+          && (!('screenshot' in data) || (data.screenshot is string && data.screenshot.size() <= 500));
+    }
+
     match /users/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
+      allow read: if isOwner(userId);
 
       // Subscription, Stripe and usage fields are server/admin-owned. The
       // authoritative plan is a Firebase Auth Custom Claim; this document only
       // contains its optional admin-written mirror for display/auditing.
-      allow create: if request.auth != null
-                    && request.auth.uid == userId
+      allow create: if isOwner(userId)
                     && !request.resource.data.keys().hasAny([
                       'plan',
                       'aiCallsThisMonth', 'aiCallsResetDate',
@@ -16,8 +36,7 @@ service cloud.firestore {
                       'subscriptionStatus', 'stripeCustomerId', 'stripeSubscriptionId',
                       'stripeCancelAtPeriodEnd', 'stripeCurrentPeriodEnd'
                     ]);
-      allow update: if request.auth != null
-                    && request.auth.uid == userId
+      allow update: if isOwner(userId)
                     && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
                       'plan', 'aiCallsThisMonth', 'aiCallsResetDate',
                       'elevenLabsCharactersThisMonth', 'elevenLabsResetDate',
@@ -27,10 +46,10 @@ service cloud.firestore {
       // Deleting the profile would reset server-owned monthly counters.
       allow delete: if false;
 
-      // User-owned learning data (currently users/{uid}/words/{wordId}).
-      match /{document=**} {
-        allow read, create, update, delete: if request.auth != null
-                                            && request.auth.uid == userId;
+      // Strictly defined user-owned learning data collection with schema validation
+      match /words/{wordId} {
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidWord();
       }
     }
   }

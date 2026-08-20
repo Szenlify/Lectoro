@@ -225,6 +225,8 @@ exports.createStripeCheckoutSession = onRequest(
     {
         region: REGION,
         timeoutSeconds: 30,
+        maxInstances: 10,
+        concurrency: 80,
         memory: "256MiB",
         secrets: [stripeSecretKey],
     },
@@ -293,6 +295,8 @@ exports.createStripePortalSession = onRequest(
     {
         region: REGION,
         timeoutSeconds: 30,
+        maxInstances: 10,
+        concurrency: 80,
         memory: "256MiB",
         secrets: [stripeSecretKey],
     },
@@ -324,6 +328,8 @@ exports.stripeWebhook = onRequest(
     {
         region: REGION,
         timeoutSeconds: 60,
+        maxInstances: 10,
+        concurrency: 80,
         memory: "256MiB",
         secrets: [
             stripeSecretKey,
@@ -409,7 +415,13 @@ function resultPage(status) {
     return `<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lectoro — Stripe</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#090b16;color:#eef2ff;font-family:system-ui,sans-serif}.card{max-width:520px;margin:24px;padding:36px;border:1px solid #30365b;border-radius:22px;background:#13162a;text-align:center;box-shadow:0 24px 70px #0008}.icon{display:grid;place-items:center;width:56px;height:56px;margin:auto;border-radius:50%;background:#6366f1;color:white;font-size:30px}h1{font-size:25px;margin:20px 0 10px}p{color:#b8bfd9;line-height:1.6;margin:0}</style></head><body><main class="card"><div class="icon">${message.icon}</div><h1>${message.title}</h1><p>${message.text}</p></main></body></html>`;
 }
 
-exports.stripeCheckoutResult = onRequest({ region: REGION }, (req, res) => {
+exports.stripeCheckoutResult = onRequest(
+    {
+        region: REGION,
+        maxInstances: 10,
+        concurrency: 80,
+    },
+    (req, res) => {
     res.set("Content-Type", "text/html; charset=utf-8");
     res.set("Cache-Control", "no-store");
     res.set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'");

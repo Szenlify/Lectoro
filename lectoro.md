@@ -169,3 +169,5 @@ Aby osiągnąć maksymalne rezultaty i wejść na poziom płynności (B2/C1), re
 
 **P: Czy mogę przenieść swoje fiszki do Anki na telefonie?**  
 *O:* Tak! W zakładce *Słowa* kliknij *Eksportuj*, wybierz format *Anki Deck* i zaimportuj plik jednym kliknięciem do AnkiDroid lub AnkiMobile.
+
+
