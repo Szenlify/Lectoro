@@ -288,22 +288,34 @@
         }
 
         const adapterElements = getAdapterElements(session.binding);
-        let lines = globalThis.LectoroBaseAdapter?.extractCueLines?.(adapterElements) || [];
+        const captionAdapter =
+            session.binding?.adapter ||
+            (isNetflixPage() ? globalThis.LectoroNetflixAdapter : null);
+        const indexedLines = captionAdapter?.getCurrentCueLines?.(
+            session.video,
+        );
+        const hasIndexedLines = Array.isArray(indexedLines);
+        // Netflix removes and recreates its caption DOM while seeking. Once an
+        // indexed timeline exists, it is the stable source of truth and avoids
+        // briefly clearing Lectoro's subtitle overlay.
+        let lines = hasIndexedLines
+            ? indexedLines
+            : globalThis.LectoroBaseAdapter?.extractCueLines?.(adapterElements) || [];
 
         // Direct container text fallback for #subtitles-container on TED
-        if (lines.length === 0 && globalThis.LectoroTedAdapter?.isPage?.()) {
+        if (!hasIndexedLines && lines.length === 0 && globalThis.LectoroTedAdapter?.isPage?.()) {
             const tedContainer = document.getElementById("subtitles-container");
             if (tedContainer && !tedContainer.classList.contains("opacity-0")) {
                 const tedText = (tedContainer.textContent || "").replace(/\s+/g, " ").trim();
                 if (tedText) lines = [tedText];
             }
         }
-        if (lines.length === 0 && session.video?.textTracks) {
+        if (!hasIndexedLines && lines.length === 0 && session.video?.textTracks) {
             const native = getNativeCueText(session.video);
             if (native) lines = [native];
         }
-        if (lines.length === 0) {
-            const getAllCuesFn = session.binding?.adapter?.getAllCues || (globalThis.LectoroTedAdapter?.isPage?.() ? globalThis.LectoroTedAdapter.getAllCues : null);
+        if (!hasIndexedLines && lines.length === 0) {
+            const getAllCuesFn = captionAdapter?.getAllCues || (globalThis.LectoroTedAdapter?.isPage?.() ? globalThis.LectoroTedAdapter.getAllCues : null);
             if (typeof getAllCuesFn === "function") {
                 const all = getAllCuesFn(session.video);
                 if (Array.isArray(all) && all.length > 0) {
@@ -498,7 +510,10 @@
                     return;
                 }
                 const now = performance.now();
-                if (now - session.lastFallbackAt < CAPTION_FALLBACK_MS) return;
+                const fallbackMs = isNetflixPage()
+                    ? 50
+                    : CAPTION_FALLBACK_MS;
+                if (now - session.lastFallbackAt < fallbackMs) return;
                 session.lastFallbackAt = now;
                 session.nativeText = getNativeCueText(video);
                 refreshCaptionBinding(session, !session.binding);
@@ -569,7 +584,9 @@
 
     function getAllCues(video) {
         const session = videoSessions.get(video);
-        const adapter = session?.binding?.adapter;
+        const adapter =
+            session?.binding?.adapter ||
+            (isNetflixPage() ? globalThis.LectoroNetflixAdapter : null);
         if (typeof adapter?.getAllCues === "function") {
             const adapterCues = adapter.getAllCues(video);
             if (Array.isArray(adapterCues) && adapterCues.length > 0) {
@@ -644,10 +661,8 @@
     }
 
     let netflixVirtualTargetTime = null;
-    let netflixSeekDebounceTimer = null;
     let netflixVirtualResetTimer = null;
     let netflixVideoBound = null;
-    const NETFLIX_SEEK_DEBOUNCE_MS = 160;
 
     function ensureNetflixVideoSeekedListener(video) {
         if (!video || netflixVideoBound === video) return;
@@ -655,7 +670,16 @@
         video.addEventListener(
             "seeked",
             () => {
-                netflixVirtualTargetTime = null;
+                if (
+                    Number.isFinite(netflixVirtualTargetTime) &&
+                    Math.abs(video.currentTime - netflixVirtualTargetTime) < 0.45
+                ) {
+                    netflixVirtualTargetTime = null;
+                }
+                const session = videoSessions.get(video);
+                if (session === videoSessions.get(activeVideo)) {
+                    dispatchSubtitleChange(session);
+                }
             },
             { passive: true },
         );
@@ -671,20 +695,33 @@
                     ? netflixVirtualTargetTime
                     : video.currentTime;
 
-            const nativeCues = getAllCues(video);
-            let targetTime = null;
-            if (nativeCues.length > 0) {
-                targetTime = getAdjacentCueTime(
-                    nativeCues,
-                    baseTime,
+            let targetTime = await globalThis.LectoroNetflixAdapter?.getAdjacentSubtitleTime?.(
+                baseTime,
+                direction,
+            );
+
+            // Several key presses may be waiting for the first subtitle
+            // download. Rebase later continuations on the virtual target
+            // selected by the earlier press instead of repeating one cue.
+            if (
+                Number.isFinite(netflixVirtualTargetTime) &&
+                Math.abs(netflixVirtualTargetTime - baseTime) > 0.04
+            ) {
+                targetTime = await globalThis.LectoroNetflixAdapter?.getAdjacentSubtitleTime?.(
+                    netflixVirtualTargetTime,
                     direction,
                 );
             }
-            if (targetTime === null) {
-                targetTime = await globalThis.LectoroNetflixAdapter?.getAdjacentSubtitleTime?.(
-                    baseTime,
-                    direction,
-                );
+
+            if (!Number.isFinite(targetTime)) {
+                const nativeCues = getAllCues(video);
+                if (nativeCues.length > 0) {
+                    targetTime = getAdjacentCueTime(
+                        nativeCues,
+                        baseTime,
+                        direction,
+                    );
+                }
             }
             if (!Number.isFinite(targetTime)) {
                 if (typeof QT !== "undefined" && QT.createHint) {
@@ -707,15 +744,16 @@
                 netflixVirtualTargetTime = null;
             }, 1500);
 
-            // Debounce physical seek to Netflix player API to prevent M7375 player crash
-            if (netflixSeekDebounceTimer) clearTimeout(netflixSeekDebounceTimer);
-            netflixSeekDebounceTimer = setTimeout(() => {
-                netflixSeekDebounceTimer = null;
-                const finalTarget = netflixVirtualTargetTime;
-                if (Number.isFinite(finalTarget)) {
-                    globalThis.LectoroNetflixAdapter?.requestSeek?.(finalTarget, video);
-                }
-            }, NETFLIX_SEEK_DEBOUNCE_MS);
+            // The bridge executes the first seek immediately and safely
+            // coalesces only genuinely rapid follow-up requests.
+            globalThis.LectoroNetflixAdapter?.requestSeek?.(targetTime, video);
+
+            // Render the indexed cue now instead of waiting for Netflix to
+            // rebuild .player-timedtext after its media pipeline catches up.
+            const session = videoSessions.get(video);
+            if (session === videoSessions.get(activeVideo)) {
+                dispatchSubtitleChange(session);
+            }
         } catch (error) {
             console.warn("[Lectoro] Netflix subtitle navigation failed:", error);
             if (typeof QT !== "undefined" && QT.createHint) {

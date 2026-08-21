@@ -20,7 +20,7 @@
 
     const FALLBACK_SKIP_SECONDS = 3;
     let lastNetflixNavRepeatTime = 0;
-    const NETFLIX_KEY_REPEAT_THROTTLE_MS = 220;
+    const NETFLIX_KEY_REPEAT_THROTTLE_MS = 120;
 
     function getRegistry() {
         return globalThis.LectoroPlayerRegistry;

@@ -24,7 +24,11 @@
     let cueIndexKey = "";
     let cueIndexPromise = null;
     let trackRequestSequence = 0;
+    let manifestRevision = 0;
+    let optimisticSeek = null;
     const manifestWaiters = new Set();
+    const OPTIMISTIC_SEEK_MAX_MS = 3000;
+    const POST_SEEK_DOM_GRACE_MS = 450;
 
     function getSubtitleService() {
         return (
@@ -52,7 +56,16 @@
 
     function requestSeek(targetSeconds, videoFallback = null) {
         if (!Number.isFinite(targetSeconds)) return;
-        const targetMs = Math.max(0, targetSeconds) * 1000;
+        const targetMs = Math.round(Math.max(0, targetSeconds) * 1000);
+
+        // Netflix rebuilds .player-timedtext after a seek. Keep the indexed cue
+        // available while that DOM is temporarily empty so Lectoro can render it
+        // on the same frame as the keyboard action.
+        optimisticSeek = {
+            targetTime: targetMs / 1000,
+            createdAt: performance.now(),
+            expiresAt: performance.now() + OPTIMISTIC_SEEK_MAX_MS,
+        };
 
         window.dispatchEvent(
             new CustomEvent(SEEK_EVENT, {
@@ -102,17 +115,14 @@
         cueIndex = [];
         cueIndexKey = "";
         cueIndexPromise = null;
+        manifestRevision += 1;
+        optimisticSeek = null;
         for (const resolve of manifestWaiters) resolve(manifest);
         manifestWaiters.clear();
 
-        // Eager background indexing (pre-warm subtitle timeline before user presses A/D)
-        if (typeof requestIdleCallback === "function") {
-            requestIdleCallback(() => ensureSubtitleIndex().catch(() => {}), {
-                timeout: 1500,
-            });
-        } else {
-            setTimeout(() => ensureSubtitleIndex().catch(() => {}), 100);
-        }
+        // Start downloading immediately. Waiting for an idle period caused the
+        // first A/D navigation to stall for up to 1.5 seconds.
+        ensureSubtitleIndex().catch(() => {});
     }
 
     function waitForTimedTextManifest(timeoutMs = 2500) {
@@ -205,7 +215,7 @@
             .sort((a, b) => b.score - a.score)[0]?.track;
     }
 
-    function selectDownload(track) {
+    function rankDownloads(track) {
         return (track?.downloads || [])
             .map((download, order) => {
                 const profile = normalizedValue(download.profile);
@@ -218,7 +228,8 @@
                 }
                 return { download, score };
             })
-            .sort((a, b) => b.score - a.score)[0]?.download;
+            .sort((a, b) => b.score - a.score)
+            .map(({ download }) => download);
     }
 
     function isWatchPage() {
@@ -250,53 +261,141 @@
     }
 
     async function buildSubtitleIndex() {
-        const manifest = await waitForTimedTextManifest();
-        if (!manifest) return [];
+        const buildRevision = manifestRevision;
+        // Both bridge calls are independent and event-based. Starting them
+        // together removes an avoidable active-track round trip after manifest.
+        const [manifest, activeTrack] = await Promise.all([
+            waitForTimedTextManifest(),
+            requestActiveTextTrack(),
+        ]);
+        if (!manifest || buildRevision !== manifestRevision) return [];
 
-        const activeTrack = await requestActiveTextTrack();
         const track = selectManifestTrack(manifest, activeTrack) || manifest.tracks?.[0];
         if (!track) return [];
 
-        const download = selectDownload(track);
-        const url = download?.urls?.[0];
-        if (!url) return [];
-
-        const nextKey = [
-            manifest.movieId,
-            track.id,
-            download.profile,
-            url,
-        ].join("|");
-        if (cueIndexKey === nextKey && cueIndex.length > 0) return cueIndex;
-
-        const response = await sendMessage({
-            type: "QT_FETCH_NETFLIX_TIMED_TEXT",
-            url,
-        });
-        if (!response?.text) return [];
-
         const subtitleService = getSubtitleService();
-        const parsed = subtitleService
-            ? subtitleService.parseTimedText(
-                  response.text,
-                  download.profile,
-                  response.contentType,
-              )
-            : [];
+        if (!subtitleService?.parseTimedText) return [];
 
-        if (parsed.length === 0) return [];
-        cueIndex = parsed;
-        cueIndexKey = nextKey;
-        return cueIndex;
+        // A manifest can contain multiple profiles and CDN URLs. Try the best
+        // WebVTT/TTML candidates in order instead of failing the entire index
+        // when Netflix's first CDN URL is expired or temporarily unavailable.
+        for (const download of rankDownloads(track)) {
+            for (const url of download?.urls || []) {
+                const nextKey = [
+                    manifest.movieId,
+                    track.id,
+                    download.profile,
+                    url,
+                ].join("|");
+                if (cueIndexKey === nextKey && cueIndex.length > 0) {
+                    return cueIndex;
+                }
+
+                const response = await sendMessage({
+                    type: "QT_FETCH_NETFLIX_TIMED_TEXT",
+                    url,
+                });
+                if (buildRevision !== manifestRevision) return [];
+                if (!response?.text) continue;
+
+                const parsed = subtitleService.parseTimedText(
+                    response.text,
+                    download.profile,
+                    response.contentType,
+                );
+                if (buildRevision !== manifestRevision) return [];
+                if (parsed.length === 0) continue;
+
+                cueIndex = parsed;
+                cueIndexKey = nextKey;
+                return cueIndex;
+            }
+        }
+
+        return [];
     }
 
     function ensureSubtitleIndex() {
         if (!cueIndexPromise) {
-            cueIndexPromise = buildSubtitleIndex().finally(() => {
-                cueIndexPromise = null;
+            const pending = buildSubtitleIndex().finally(() => {
+                if (cueIndexPromise === pending) cueIndexPromise = null;
             });
+            cueIndexPromise = pending;
         }
         return cueIndexPromise;
+    }
+
+    function findIndexedCueAt(time) {
+        if (!Number.isFinite(time) || cueIndex.length === 0) return null;
+
+        // Binary search for the last cue whose start is not after `time`.
+        let low = 0;
+        let high = cueIndex.length - 1;
+        let matchIndex = -1;
+        while (low <= high) {
+            const middle = (low + high) >> 1;
+            if (cueIndex[middle].startTime <= time + 0.035) {
+                matchIndex = middle;
+                low = middle + 1;
+            } else {
+                high = middle - 1;
+            }
+        }
+        if (matchIndex < 0) return null;
+
+        const cue = cueIndex[matchIndex];
+        const endTime = Number.isFinite(cue.endTime)
+            ? cue.endTime
+            : cue.startTime + 3;
+        return time <= endTime + 0.05 ? cue : null;
+    }
+
+    function getCurrentCueLines(video = null) {
+        // Outside the short post-seek window, Netflix's live DOM remains the
+        // visual source. This prevents an indexed fallback from outliving an
+        // actual cue or showing captions after the user disables the track.
+        if (cueIndex.length === 0 || !optimisticSeek) return null;
+
+        const now = performance.now();
+        let lookupTime = Number(video?.currentTime ?? NaN);
+        const closeToTarget =
+            Number.isFinite(lookupTime) &&
+            Math.abs(lookupTime - optimisticSeek.targetTime) < 0.45;
+        const oldEnoughToConfirm = now - optimisticSeek.createdAt > 60;
+
+        if (now >= optimisticSeek.expiresAt) {
+            optimisticSeek = null;
+            return null;
+        }
+        if (closeToTarget && oldEnoughToConfirm && !video?.seeking) {
+            optimisticSeek.confirmed = true;
+            optimisticSeek.confirmedAt ??= now;
+        }
+        if (
+            optimisticSeek.confirmedAt &&
+            now - optimisticSeek.confirmedAt >= POST_SEEK_DOM_GRACE_MS
+        ) {
+            optimisticSeek = null;
+            return null;
+        }
+        if (!optimisticSeek.confirmed) {
+            lookupTime = optimisticSeek.targetTime;
+        }
+
+        if (!Number.isFinite(lookupTime)) return [];
+        const cue = findIndexedCueAt(lookupTime);
+        return cue?.text ? [cue.text] : [];
+    }
+
+    function getCurrentSubtitleText(video = null) {
+        const lines = getCurrentCueLines(video);
+        return Array.isArray(lines) && lines.length > 0
+            ? lines.join(" ")
+            : "";
+    }
+
+    function getAllCues() {
+        return cueIndex;
     }
 
     /**
@@ -748,6 +847,10 @@
         setOriginalSubtitlesHidden,
         captureReviewImage,
         ensureSubtitleIndex,
+        getAllCues,
+        getCurrentCueLines,
+        getCurrentSubtitleText,
+        findIndexedCueAt,
         getAdjacentSubtitleTime,
     };
 
