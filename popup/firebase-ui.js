@@ -15,9 +15,50 @@ function sendBackgroundMessage(message) {
     });
 }
 
-function renderSyncUI() {
+const FIREBASE_SYNC_STATE_DEFAULTS = Object.freeze({
+    lastFirebaseSync: null,
+    lastFirebaseSyncError: null,
+    pendingFirebaseChanges: {},
+});
+
+let firebaseUiRenderRevision = 0;
+let firebaseUiAction = null;
+let firebaseUiFeedback = null;
+let firebaseUiFeedbackTimer = null;
+
+function escapeSyncHtml(value) {
+    return typeof SharedUtils !== "undefined" && SharedUtils.escapeHtml
+        ? SharedUtils.escapeHtml(String(value || ""))
+        : String(value || "")
+              .replace(/&/g, "&amp;")
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;")
+              .replace(/"/g, "&quot;")
+              .replace(/'/g, "&#039;");
+}
+
+function refreshViewsAfterSync() {
+    if (typeof loadWords === "function") loadWords();
+    if (typeof maybeRefreshReviewQueue === "function") maybeRefreshReviewQueue();
+    if (typeof initReviewBadge === "function") initReviewBadge();
+}
+
+function showFirebaseFeedback(type, message, duration = 2200) {
+    clearTimeout(firebaseUiFeedbackTimer);
+    firebaseUiFeedback = { type, message };
+    renderSyncUI();
+    if (duration > 0) {
+        firebaseUiFeedbackTimer = setTimeout(() => {
+            firebaseUiFeedback = null;
+            renderSyncUI();
+        }, duration);
+    }
+}
+
+async function renderSyncUI() {
     const container = document.getElementById("syncContent");
     if (!container) return;
+    const renderRevision = ++firebaseUiRenderRevision;
 
     if (typeof FirebaseSync === "undefined" || !FirebaseSync.isConfigured()) {
         container.innerHTML = `
@@ -27,100 +68,134 @@ function renderSyncUI() {
         return;
     }
 
-    FirebaseSync.getUser().then((user) => {
-        if (!user) {
-            container.innerHTML = `
-                <div style="font-size:12px; color:var(--text-muted); margin-bottom:12px; line-height:1.5;">
-                    Dane i ustawienia pozostają lokalne, dopóki nie uruchomisz synchronizacji Firebase.
-                </div>
-                <button id="firebaseSignIn" class="sync-btn sync-primary" style="width:100%;">
-                    🔑 Zaloguj się przez Google
-                </button>`;
-            document.getElementById("firebaseSignIn")?.addEventListener("click", async () => {
-                const button = document.getElementById("firebaseSignIn");
-                button.textContent = "⏳ Logowanie...";
-                button.disabled = true;
-                try {
-                    await sendBackgroundMessage({ type: "QT_FIREBASE_SIGN_IN" });
-                    renderSyncUI();
-                    loadWords();
-                    maybeRefreshReviewQueue();
-                    initReviewBadge();
-                } catch (error) {
-                    button.textContent = `✕ ${error.message || "Błąd logowania"}`;
-                    button.disabled = false;
-                    setTimeout(renderSyncUI, 3000);
-                }
-            });
-            return;
+    let user;
+    let data;
+    try {
+        [user, data] = await Promise.all([
+            FirebaseSync.getUser(),
+            chrome.storage.local.get(FIREBASE_SYNC_STATE_DEFAULTS),
+        ]);
+    } catch (error) {
+        if (renderRevision !== firebaseUiRenderRevision) return;
+        container.innerHTML = `
+            <div class="sync-status sync-status-error">
+                Nie udało się odczytać stanu synchronizacji: ${escapeSyncHtml(error.message)}
+            </div>
+            <button id="firebaseSyncRetry" class="sync-btn sync-primary" style="width:100%;">
+                Spróbuj ponownie
+            </button>`;
+        document.getElementById("firebaseSyncRetry")?.addEventListener("click", renderSyncUI);
+        return;
+    }
+
+    if (renderRevision !== firebaseUiRenderRevision || !container.isConnected) return;
+
+    if (!user) {
+        const signingIn = firebaseUiAction === "sign-in";
+        const signedOutStatusHtml = firebaseUiFeedback
+            ? `<div class="sync-status sync-status-${firebaseUiFeedback.type}">${escapeSyncHtml(firebaseUiFeedback.message)}</div>`
+            : "";
+        container.innerHTML = `
+            <div style="font-size:12px; color:var(--text-muted); margin-bottom:12px; line-height:1.5;">
+                Dane i ustawienia pozostają lokalne, dopóki nie uruchomisz synchronizacji Firebase.
+            </div>
+            <button id="firebaseSignIn" class="sync-btn sync-primary" style="width:100%;" ${signingIn ? "disabled" : ""}>
+                ${signingIn ? "⏳ Logowanie..." : "🔑 Zaloguj się przez Google"}
+            </button>
+            ${signedOutStatusHtml}`;
+        document.getElementById("firebaseSignIn")?.addEventListener("click", async () => {
+            if (firebaseUiAction) return;
+            firebaseUiAction = "sign-in";
+            firebaseUiFeedback = null;
+            renderSyncUI();
+            try {
+                await sendBackgroundMessage({ type: "QT_FIREBASE_SIGN_IN" });
+                firebaseUiAction = null;
+                refreshViewsAfterSync();
+                showFirebaseFeedback("success", "Zalogowano i zsynchronizowano dane.");
+            } catch (error) {
+                firebaseUiAction = null;
+                showFirebaseFeedback("error", error.message || "Błąd logowania", 0);
+            }
+        });
+        return;
+    }
+
+    const lastSyncText = typeof SharedUtils !== "undefined" && SharedUtils.formatTime
+        ? SharedUtils.formatTime(data.lastFirebaseSync)
+        : (data.lastFirebaseSync ? new Date(data.lastFirebaseSync).toLocaleTimeString("pl-PL") : "nigdy");
+    const pendingCount = Object.keys(data.pendingFirebaseChanges || {}).length;
+    const syncing = firebaseUiAction === "sync" || firebaseUiAction === "sign-in";
+    const signingOut = firebaseUiAction === "sign-out";
+    const syncButtonText = syncing
+        ? "⏳ Synchronizuję..."
+        : firebaseUiFeedback?.type === "success"
+          ? "✓ Gotowe!"
+          : firebaseUiFeedback?.type === "error"
+            ? "↻ Spróbuj ponownie"
+            : "🔄 Synchronizuj";
+    const statusHtml = firebaseUiFeedback
+        ? `<div class="sync-status sync-status-${firebaseUiFeedback.type}">${escapeSyncHtml(firebaseUiFeedback.message)}</div>`
+        : data.lastFirebaseSyncError
+          ? `<div class="sync-status sync-status-error">Ostatni błąd: ${escapeSyncHtml(data.lastFirebaseSyncError)}</div>`
+          : "";
+
+    container.innerHTML = `
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="color:var(--mint); font-size:13px;">✓</span>
+            <span style="font-size:12px; color:var(--text-secondary); font-weight:500;">${escapeSyncHtml(user.email)}</span>
+        </div>
+        <div style="font-size:10px; color:var(--text-ghost); margin-bottom:10px;">
+            Ostatnia synchronizacja: ${lastSyncText}
+        </div>
+        <div class="sync-actions">
+            <span class="sync-button-wrap">
+                <button id="firebaseSyncNow" class="sync-btn sync-primary" ${syncing || signingOut ? "disabled" : ""}>${syncButtonText}</button>
+                <span class="sync-pending-dot${pendingCount ? " visible" : ""}"
+                      title="${pendingCount} niezsynchronizowanych zmian"
+                      aria-label="Niezsynchronizowane zmiany"></span>
+            </span>
+            <button id="firebaseSignOut" class="sync-btn sync-danger" ${firebaseUiAction ? "disabled" : ""}>
+                ${signingOut ? "⏳ Wylogowuję..." : "Wyloguj"}
+            </button>
+        </div>
+        ${statusHtml}`;
+
+    document.getElementById("firebaseSyncNow")?.addEventListener("click", async () => {
+        if (firebaseUiAction) return;
+        firebaseUiAction = "sync";
+        firebaseUiFeedback = null;
+        clearTimeout(firebaseUiFeedbackTimer);
+        renderSyncUI();
+        try {
+            const result = await sendBackgroundMessage({ type: "QT_FIREBASE_SYNC" });
+            firebaseUiAction = null;
+            refreshViewsAfterSync();
+            const sent = Number(result.sent || 0);
+            const pulled = Number(result.pulled || 0);
+            const message = sent || pulled
+                ? `Gotowe — wysłano ${sent}, pobrano ${pulled}.`
+                : "Wszystkie dane są już zsynchronizowane.";
+            showFirebaseFeedback("success", message);
+        } catch (error) {
+            firebaseUiAction = null;
+            showFirebaseFeedback("error", error.message || "Synchronizacja nie powiodła się.", 0);
         }
+    });
 
-        const renderSyncState = (data) => {
-            const lastSyncText = typeof SharedUtils !== "undefined" && SharedUtils.formatTime
-                ? SharedUtils.formatTime(data.lastFirebaseSync)
-                : (data.lastFirebaseSync ? new Date(data.lastFirebaseSync).toLocaleTimeString("pl-PL") : "nigdy");
-            const pendingCount = Object.keys(data.pendingFirebaseChanges || {}).length;
-
-            container.innerHTML = `
-                <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-                    <span style="color:var(--mint); font-size:13px;">✓</span>
-                    <span style="font-size:12px; color:var(--text-secondary); font-weight:500;">${escapeHtml(user.email)}</span>
-                </div>
-                <div style="font-size:10px; color:var(--text-ghost); margin-bottom:10px;">
-                    Ostatnia synchronizacja: ${lastSyncText}
-                </div>
-                <div style="display:flex; gap:8px; align-items:center;">
-                    <span class="sync-button-wrap">
-                        <button id="firebaseSyncNow" class="sync-btn sync-primary">🔄 Synchronizuj</button>
-                        <span class="sync-pending-dot${pendingCount ? " visible" : ""}"
-                              title="${pendingCount} niezsynchronizowanych zmian"
-                              aria-label="Niezsynchronizowane zmiany"></span>
-                    </span>
-                    <button id="firebaseSignOut" class="sync-btn sync-danger">Wyloguj</button>
-                </div>`;
-
-            document.getElementById("firebaseSyncNow")?.addEventListener("click", async () => {
-                const button = document.getElementById("firebaseSyncNow");
-                button.textContent = "⏳ Synchronizuję...";
-                button.disabled = true;
-                try {
-                    await sendBackgroundMessage({ type: "QT_FIREBASE_SYNC" });
-                    button.textContent = "✓ Gotowe!";
-                    setTimeout(() => {
-                        renderSyncUI();
-                        loadWords();
-                        maybeRefreshReviewQueue();
-                        initReviewBadge();
-                    }, 700);
-                } catch (error) {
-                    button.textContent = "✕ Błąd";
-                    button.title = error.message;
-                    button.disabled = false;
-                }
-            });
-
-            document.getElementById("firebaseSignOut")?.addEventListener("click", async () => {
-                const button = document.getElementById("firebaseSignOut");
-                button.textContent = "⏳ Synchronizuję...";
-                button.disabled = true;
-                try {
-                    await sendBackgroundMessage({ type: "QT_FIREBASE_SIGN_OUT" });
-                    renderSyncUI();
-                } catch (error) {
-                    button.textContent = "✕ Nie wylogowano";
-                    button.title = error.message;
-                    button.disabled = false;
-                }
-            });
-        };
-
-        if (typeof whenPopupReady === "function") {
-            whenPopupReady(renderSyncState);
-        } else {
-            chrome.storage.local.get(
-                { lastFirebaseSync: null, pendingFirebaseChanges: {} },
-                renderSyncState,
-            );
+    document.getElementById("firebaseSignOut")?.addEventListener("click", async () => {
+        if (firebaseUiAction) return;
+        firebaseUiAction = "sign-out";
+        firebaseUiFeedback = null;
+        clearTimeout(firebaseUiFeedbackTimer);
+        renderSyncUI();
+        try {
+            await sendBackgroundMessage({ type: "QT_FIREBASE_SIGN_OUT" });
+            firebaseUiAction = null;
+            renderSyncUI();
+        } catch (error) {
+            firebaseUiAction = null;
+            showFirebaseFeedback("error", error.message || "Nie udało się wylogować.", 0);
         }
     });
 }
@@ -132,6 +207,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
     if (
         changes.firebaseAuth ||
         changes.lastFirebaseSync ||
+        changes.lastFirebaseSyncError ||
         changes.pendingFirebaseChanges
     ) {
         renderSyncUI();

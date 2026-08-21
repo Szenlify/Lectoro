@@ -31,6 +31,7 @@
 
     <!-- Settings Tab -->
     <div class="tab-content active" id="tab-settings">
+
         <div class="settings">
             <!-- Cloud Sync -->
             <div class="setting-group">
@@ -38,6 +39,38 @@
                 <div class="glass-card">
                     <div id="syncContent"></div>
                 </div>
+            </div>
+
+            <div class="setting-group">
+                <label for="targetLang">Język docelowy</label>
+                <select id="targetLang">
+                    <!-- Twoje oryginalne języki -->
+                    <option value="pl">🇵🇱 Polish</option>
+                    <option value="en">🇬🇧 English</option>
+                    <option value="de">🇩🇪 German</option>
+
+                    <!-- Popularne w Europie -->
+                    <option value="fr">🇫🇷 French</option>
+                    <option value="es">🇪🇸 Spanish</option>
+                    <option value="it">🇮🇹 Italian</option>
+                    <option value="pt">🇵🇹 Portuguese</option>
+                    <option value="nl">🇳🇱 Dutch</option>
+                    <option value="sv">🇸🇪 Swedish</option>
+
+                    <!-- Nasz region -->
+                    <option value="cs">🇨🇿 Czech</option>
+                    <option value="sk">🇸🇰 Slovak</option>
+                    <option value="uk">🇺🇦 Ukrainian</option>
+                    <option value="ru">🇷🇺 Russian</option>
+
+                    <!-- Języki światowe -->
+                    <option value="zh">🇨🇳 Chinese</option>
+                    <option value="ja">🇯🇵 Japanese</option>
+                    <option value="ko">🇰🇷 Korean</option>
+                    <option value="ar">🇸🇦 Arabic</option>
+                    <option value="hi">🇮🇳 Hindi</option>
+                    <option value="tr">🇹🇷 Turkish</option>
+                </select>
             </div>
 
             <!-- Compact subscription usage overview -->
@@ -102,37 +135,7 @@
                 <div class="stripe-billing-status" id="stripeBillingStatus" aria-live="polite"></div>
             </div>
 
-            <div class="setting-group">
-                <label for="targetLang">Język docelowy</label>
-                <select id="targetLang">
-                    <!-- Twoje oryginalne języki -->
-                    <option value="pl">🇵🇱 Polish</option>
-                    <option value="en">🇬🇧 English</option>
-                    <option value="de">🇩🇪 German</option>
 
-                    <!-- Popularne w Europie -->
-                    <option value="fr">🇫🇷 French</option>
-                    <option value="es">🇪🇸 Spanish</option>
-                    <option value="it">🇮🇹 Italian</option>
-                    <option value="pt">🇵🇹 Portuguese</option>
-                    <option value="nl">🇳🇱 Dutch</option>
-                    <option value="sv">🇸🇪 Swedish</option>
-
-                    <!-- Nasz region -->
-                    <option value="cs">🇨🇿 Czech</option>
-                    <option value="sk">🇸🇰 Slovak</option>
-                    <option value="uk">🇺🇦 Ukrainian</option>
-                    <option value="ru">🇷🇺 Russian</option>
-
-                    <!-- Języki światowe -->
-                    <option value="zh">🇨🇳 Chinese</option>
-                    <option value="ja">🇯🇵 Japanese</option>
-                    <option value="ko">🇰🇷 Korean</option>
-                    <option value="ar">🇸🇦 Arabic</option>
-                    <option value="hi">🇮🇳 Hindi</option>
-                    <option value="tr">🇹🇷 Turkish</option>
-                </select>
-            </div>
 
             <div class="setting-group">
                 <label>Czytanie napisów</label>
@@ -234,7 +237,8 @@
                     <div class="quiz-export-label">
                         <span class="quiz-icon-badge">🧠</span>
                         <span class="quiz-export-text">Quiz <span class="quiz-export-sub">AI</span></span>
-                        <span class="quiz-free-badge" id="quizFreeBadge" style="display:none;" title="Darmowe quizy">0/3</span>
+                        <span class="quiz-free-badge" id="quizFreeBadge" style="display:none;"
+                            title="Darmowe quizy">0/3</span>
                     </div>
                     <div class="quiz-mode-toggle">
                         <button type="button" class="quiz-mode-btn" id="quizModePdf" data-mode="pdf"
@@ -256,8 +260,7 @@
                         <option value="15">15 słów</option>
                         <option value="20">20 słów</option>
                     </select>
-                    <button class="export-btn export-quiz" id="exportQuiz"
-                        title="Wygeneruj quiz za pomocą AI">
+                    <button class="export-btn export-quiz" id="exportQuiz" title="Wygeneruj quiz za pomocą AI">
                         ✨ Generuj quiz
                     </button>
                 </div>
@@ -275,33 +278,51 @@
                         Polecane materiały i filmy do nauki języka (i inne serwisy z napisami CC).
                     </div>
                     <div class="library-platforms-bar">
-                        <a href="https://www.youtube.com" target="_blank" rel="noopener noreferrer" class="platform-badge platform-youtube" title="Otwórz YouTube">
+                        <a href="https://www.youtube.com" target="_blank" rel="noopener noreferrer"
+                            class="platform-badge platform-youtube" title="Otwórz YouTube">
                             <span class="platform-logo youtube-logo">
-                                <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                                <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
+                                    <path
+                                        d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                                </svg>
                             </span>
                             <span class="platform-name">YouTube</span>
                         </a>
-                        <a href="https://www.netflix.com" target="_blank" rel="noopener noreferrer" class="platform-badge platform-netflix" title="Otwórz Netflix">
+                        <a href="https://www.netflix.com" target="_blank" rel="noopener noreferrer"
+                            class="platform-badge platform-netflix" title="Otwórz Netflix">
                             <span class="platform-logo netflix-logo">
-                                <svg viewBox="0 0 24 24" width="13" height="15" fill="currentColor"><path d="M4 0h4.5l7 14V0H20v24h-4.5L8.5 10v14H4V0z"/></svg>
+                                <svg viewBox="0 0 24 24" width="13" height="15" fill="currentColor">
+                                    <path d="M4 0h4.5l7 14V0H20v24h-4.5L8.5 10v14H4V0z" />
+                                </svg>
                             </span>
                             <span class="platform-name">Netflix</span>
                         </a>
-                        <a href="https://www.plex.tv" target="_blank" rel="noopener noreferrer" class="platform-badge platform-plex" title="Otwórz Plex">
+                        <a href="https://www.plex.tv" target="_blank" rel="noopener noreferrer"
+                            class="platform-badge platform-plex" title="Otwórz Plex">
                             <span class="platform-logo plex-logo">
-                                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M11.643 0H4.68l6.812 12-6.812 12h6.963L18.455 12 11.643 0z"/></svg>
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                                    <path d="M11.643 0H4.68l6.812 12-6.812 12h6.963L18.455 12 11.643 0z" />
+                                </svg>
                             </span>
                             <span class="platform-name">Plex</span>
                         </a>
-                        <a href="https://x.com" target="_blank" rel="noopener noreferrer" class="platform-badge platform-x" title="Otwórz X">
+                        <a href="https://x.com" target="_blank" rel="noopener noreferrer"
+                            class="platform-badge platform-x" title="Otwórz X">
                             <span class="platform-logo x-logo">
-                                <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                                <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
+                                    <path
+                                        d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                                </svg>
                             </span>
                             <span class="platform-name">X</span>
                         </a>
-                        <a href="https://www.ted.com/talks" target="_blank" rel="noopener noreferrer" class="platform-badge platform-ted" title="Otwórz TED Talks">
+                        <a href="https://www.ted.com/talks" target="_blank" rel="noopener noreferrer"
+                            class="platform-badge platform-ted" title="Otwórz TED Talks">
                             <span class="platform-logo ted-logo">
-                                <svg viewBox="0 0 24 24" width="16" height="14" fill="currentColor"><path d="M0 7.5h6.667v2.222H4.444v6.667H2.222V9.722H0V7.5zm7.778 0h6.666v2.222H10v1.111h3.333v2.223H10v1.11H14.444v2.223H7.778V7.5zm7.778 0h4.444c1.84 0 3.334 1.494 3.334 3.333v2.223c0 1.839-1.494 3.333-3.334 3.333h-4.444V7.5zm2.222 2.222v4.445h2.222c.613 0 1.112-.498 1.112-1.111v-2.223c0-.613-.499-1.111-1.112-1.111h-2.222z"/></svg>
+                                <svg viewBox="0 0 24 24" width="16" height="14" fill="currentColor">
+                                    <path
+                                        d="M0 7.5h6.667v2.222H4.444v6.667H2.222V9.722H0V7.5zm7.778 0h6.666v2.222H10v1.111h3.333v2.223H10v1.11H14.444v2.223H7.778V7.5zm7.778 0h4.444c1.84 0 3.334 1.494 3.334 3.333v2.223c0 1.839-1.494 3.333-3.334 3.333h-4.444V7.5zm2.222 2.222v4.445h2.222c.613 0 1.112-.498 1.112-1.111v-2.223c0-.613-.499-1.111-1.112-1.111h-2.222z" />
+                                </svg>
                             </span>
                             <span class="platform-name">TED</span>
                         </a>
