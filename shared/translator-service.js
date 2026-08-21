@@ -175,6 +175,12 @@
             maxOutputTokens: 250,
         });
         return {
+            detectedLang:
+                parsed.source_language ||
+                parsed.sourceLanguage ||
+                parsed.detected_language ||
+                parsed.detectedLang ||
+                "",
             translation: parsed.translation || "",
             explanation: parsed.explanation || "",
         };

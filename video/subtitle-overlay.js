@@ -708,7 +708,49 @@
     }
     if (typeof QT !== "undefined" && QT.addDismissHandler) QT.addDismissHandler(closeAiTooltip);
 
-    function wireAiExplainSaveButton(text, translation, explanation, targetLang) {
+    function normalizeLanguageCode(value, fallback = "") {
+        const raw = String(value || "").trim().toLowerCase();
+        if (!raw) return fallback;
+
+        const codeCandidate = raw.replace(/_/g, "-").split("-")[0];
+        if (/^[a-z]{2,3}$/.test(codeCandidate)) return codeCandidate;
+
+        const languages = globalThis.LectoroConstants?.SUPPORTED_LANGUAGES || {};
+        for (const [code, language] of Object.entries(languages)) {
+            const names = [language?.name, language?.native]
+                .filter(Boolean)
+                .map((name) => String(name).trim().toLowerCase());
+            if (names.includes(raw)) return code;
+        }
+        return fallback;
+    }
+
+    function languageTag(code) {
+        return code && code !== "auto" ? QT.langTag(code) : "?";
+    }
+
+    function languageName(code) {
+        return globalThis.LectoroConstants?.getLanguageName?.(code) || languageTag(code);
+    }
+
+    async function detectSourceLanguage(text, targetLang, aiResult) {
+        const fromAi = normalizeLanguageCode(aiResult?.detectedLang);
+        if (fromAi) return fromAi;
+        try {
+            const detection = await QT.translate(text, targetLang);
+            return normalizeLanguageCode(detection?.detectedLang, "auto");
+        } catch (_) {
+            return "auto";
+        }
+    }
+
+    function wireAiExplainSaveButton(
+        text,
+        translation,
+        explanation,
+        sourceLang,
+        targetLang,
+    ) {
         const tooltipNode = translationOverlay || document.getElementById(PREFIX + "tooltip");
         const saveBtn = tooltipNode?.querySelector(`.${PREFIX}ai-explain-save-btn`);
         if (!saveBtn) return;
@@ -746,7 +788,7 @@
                 await QT.saveWord({
                     original: cleanedText,
                     translated: cleanedTranslation,
-                    srcLang: "en",
+                    srcLang: sourceLang,
                     tgtLang: targetLang,
                     sentence: "",
                     sentenceTranslated: "",
@@ -845,8 +887,12 @@
             const res = await QT.geminiExplainSentence(text, targetLang);
             if (!aiTooltipActive) return;
 
+            const sourceLang = await detectSourceLanguage(text, targetLang, res);
+            if (!aiTooltipActive) return;
             const translation = res.translation || "";
             const explanation = res.explanation || res;
+            const sourceTag = languageTag(sourceLang);
+            const targetTag = languageTag(targetLang);
             const aiSpeechText = [translation, explanation]
                 .filter(Boolean)
                 .join(". ");
@@ -854,13 +900,13 @@
             const html = `
                 <div class="${PREFIX}body">
                     <div class="${PREFIX}row">
-                        <span class="${PREFIX}label">EN</span>
+                        <span class="${PREFIX}label" title="Język źródłowy: ${QT.escapeAttr(languageName(sourceLang))}">${QT.escapeHtml(sourceTag)}</span>
                         <span class="${PREFIX}text ${PREFIX}original">${QT.escapeHtml(text)}</span>
                     </div>
                     <div class="${PREFIX}row">
-                        <span class="${PREFIX}label">PL</span>
+                        <span class="${PREFIX}label" title="Język tłumaczenia: ${QT.escapeAttr(languageName(targetLang))}">${QT.escapeHtml(targetTag)}</span>
                         <span class="${PREFIX}text ${PREFIX}translated">${QT.escapeHtml(translation)}</span>
-                        <button class="${PREFIX}speak" data-text="${QT.escapeAttr(aiSpeechText)}" data-lang="pl" title="Odtwórz tłumaczenie i wyjaśnienie" aria-label="Odtwórz tłumaczenie i wyjaśnienie">${SVG.SPEAKER}</button>
+                        <button class="${PREFIX}speak" data-text="${QT.escapeAttr(aiSpeechText)}" data-lang="${QT.escapeAttr(targetLang)}" title="Odtwórz tłumaczenie i wyjaśnienie" aria-label="Odtwórz tłumaczenie i wyjaśnienie">${SVG.SPEAKER}</button>
                     </div>
                     <div class="${PREFIX}ai-result">
                         <div class="${PREFIX}ai-label">Wyjaśnienie</div>
@@ -874,10 +920,16 @@
                 </div>`;
             applyAiExplanation(html, aiLayout);
             wireAiExplainSpeakButton();
-            wireAiExplainSaveButton(text, translation, explanation, targetLang);
+            wireAiExplainSaveButton(
+                text,
+                translation,
+                explanation,
+                sourceLang,
+                targetLang,
+            );
 
             if (aiTooltipActive) {
-                await QT.speak(aiSpeechText, "pl", {
+                await QT.speak(aiSpeechText, targetLang, {
                     isCancelled: () => !aiTooltipActive,
                 });
             }

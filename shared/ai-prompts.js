@@ -46,11 +46,12 @@ Respond ONLY with JSON:
 "${sentence}"
 
 Instructions:
-1. "translation": Most common, natural everyday equivalent in ${targetLang} (natural idiom/colloquial translation, avoid obscure slang).
-2. "explanation": Brief breakdown of grammar, idioms or vocabulary (1-2 lines) in ${targetLang}.
+1. "source_language": Detect the sentence language and return only its lowercase ISO 639-1 code (for example "en", "es", "de").
+2. "translation": Most common, natural everyday equivalent in ${targetLang} (natural idiom/colloquial translation, avoid obscure slang).
+3. "explanation": Brief breakdown of grammar, idioms or vocabulary (1-2 lines) in ${targetLang}.
 
 Respond ONLY with JSON:
-{"translation": "...", "explanation": "..."}`;
+{"source_language": "en", "translation": "...", "explanation": "..."}`;
     },
 
     /**
