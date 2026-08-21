@@ -16,6 +16,7 @@
     const TRACK_RESPONSE_EVENT = "__lectoro_netflix_track_response";
     const MANIFEST_EVENT = "__lectoro_netflix_timed_text_manifest";
     const MANIFEST_REQUEST_EVENT = "__lectoro_netflix_timed_text_manifest_request";
+    const PLAYER_STATE_RESET_EVENT = "__lectoro_netflix_player_state_reset";
     const HIDDEN_CLASS = "__qt_netflix-subtitles-hidden";
     const NETFLIX_HIDE_CONTROLS_CLASS = "__qt_netflix-hide-controls";
 
@@ -26,9 +27,20 @@
     let trackRequestSequence = 0;
     let manifestRevision = 0;
     let optimisticSeek = null;
+    let activeTextTrackState = {
+        playerReady: false,
+        isCcActive: false,
+        track: null,
+        movieId: "",
+    };
+    let trackPollInFlight = false;
     const manifestWaiters = new Set();
     const OPTIMISTIC_SEEK_MAX_MS = 3000;
     const POST_SEEK_DOM_GRACE_MS = 450;
+
+    function getWatchMovieId() {
+        return window.location.pathname.match(/^\/watch\/(\d+)/)?.[1] || "";
+    }
 
     function getSubtitleService() {
         return (
@@ -106,9 +118,50 @@
         document.documentElement.classList.toggle(HIDDEN_CLASS, !!hidden);
     }
 
+    function manifestKey(manifest) {
+        return [
+            manifest?.movieId || "",
+            ...(manifest?.tracks || []).map((track) => [
+                track.id,
+                track.bcp47 || track.language,
+                ...(track.downloads || []).flatMap((download) => [
+                    download.profile,
+                    ...(download.urls || []),
+                ]),
+            ].join("~")),
+        ].join("|");
+    }
+
+    function resetSubtitleState(movieId = getWatchMovieId()) {
+        timedTextManifest = null;
+        cueIndex = [];
+        cueIndexKey = "";
+        cueIndexPromise = null;
+        manifestRevision += 1;
+        optimisticSeek = null;
+        activeTextTrackState = {
+            playerReady: false,
+            isCcActive: false,
+            track: null,
+            movieId,
+        };
+        for (const resolve of manifestWaiters) resolve(null);
+        manifestWaiters.clear();
+    }
+
     function acceptTimedTextManifest(event) {
         const manifest = event.detail;
-        if (!Array.isArray(manifest?.tracks) || manifest.tracks.length === 0) {
+        const movieId = getWatchMovieId();
+        if (
+            !movieId ||
+            String(manifest?.movieId) !== movieId ||
+            !Array.isArray(manifest?.tracks) ||
+            manifest.tracks.length === 0
+        ) {
+            return;
+        }
+        if (timedTextManifest && manifestKey(timedTextManifest) === manifestKey(manifest)) {
+            ensureSubtitleIndex().catch(() => {});
             return;
         }
         timedTextManifest = manifest;
@@ -126,32 +179,55 @@
     }
 
     function waitForTimedTextManifest(timeoutMs = 2500) {
-        if (timedTextManifest) return Promise.resolve(timedTextManifest);
+        const movieId = getWatchMovieId();
+        if (timedTextManifest && String(timedTextManifest.movieId) === movieId) {
+            return Promise.resolve(timedTextManifest);
+        }
+        if (!movieId) return Promise.resolve(null);
         return new Promise((resolve) => {
+            let timer;
+            let retryTimer;
             const finish = (manifest) => {
                 clearTimeout(timer);
+                clearInterval(retryTimer);
                 manifestWaiters.delete(finish);
                 resolve(manifest || null);
             };
-            const timer = setTimeout(() => finish(null), timeoutMs);
+            timer = setTimeout(() => finish(null), timeoutMs);
+            retryTimer = setInterval(
+                () => window.dispatchEvent(new CustomEvent(MANIFEST_REQUEST_EVENT)),
+                250,
+            );
             manifestWaiters.add(finish);
             window.dispatchEvent(new CustomEvent(MANIFEST_REQUEST_EVENT));
         });
     }
 
-    function requestActiveTextTrack() {
+    function requestActiveTextTrack(timeoutMs = 400) {
         const requestId = `${Date.now()}-${++trackRequestSequence}`;
         return new Promise((resolve) => {
-            const finish = (track) => {
+            const finish = (state) => {
                 clearTimeout(timer);
                 window.removeEventListener(TRACK_RESPONSE_EVENT, onResponse);
-                resolve(track || null);
+                resolve(
+                    state || {
+                        playerReady: false,
+                        isCcActive: false,
+                        track: null,
+                        movieId: getWatchMovieId(),
+                    },
+                );
             };
             const onResponse = (event) => {
                 if (event.detail?.requestId !== requestId) return;
-                finish(event.detail?.track);
+                finish({
+                    playerReady: !!event.detail.playerReady,
+                    isCcActive: !!event.detail.isCcActive,
+                    track: event.detail.track || null,
+                    movieId: String(event.detail.movieId || ""),
+                });
             };
-            const timer = setTimeout(() => finish(null), 800);
+            const timer = setTimeout(() => finish(null), timeoutMs);
             window.addEventListener(TRACK_RESPONSE_EVENT, onResponse);
             window.dispatchEvent(
                 new CustomEvent(TRACK_REQUEST_EVENT, {
@@ -159,6 +235,18 @@
                 }),
             );
         });
+    }
+
+    async function waitForActiveTextTrack() {
+        let state = null;
+        for (let attempt = 0; attempt < 10; attempt += 1) {
+            state = await requestActiveTextTrack();
+            if (state.movieId !== getWatchMovieId()) continue;
+            if (state.playerReady && state.isCcActive && state.track) break;
+            await new Promise((resolve) => setTimeout(resolve, 150));
+        }
+        activeTextTrackState = state || activeTextTrackState;
+        return activeTextTrackState;
     }
 
     function normalizedValue(value) {
@@ -233,12 +321,7 @@
     }
 
     function isWatchPage() {
-        return (
-            isPage() &&
-            typeof window !== "undefined" &&
-            (/\/watch\/\d+/.test(window.location.pathname) ||
-             !!document.querySelector(".watch-video, [data-uia='video-canvas'], .nf-player-container"))
-        );
+        return isPage() && !!getWatchMovieId();
     }
 
     function isPreviewVideo(video) {
@@ -257,20 +340,33 @@
     function isCcActive(video = null) {
         if (!isWatchPage()) return false;
         if (isPreviewVideo(video)) return false;
-        return true;
+        return activeTextTrackState.playerReady
+            ? activeTextTrackState.isCcActive
+            : true;
     }
 
     async function buildSubtitleIndex() {
         const buildRevision = manifestRevision;
-        // Both bridge calls are independent and event-based. Starting them
-        // together removes an avoidable active-track round trip after manifest.
-        const [manifest, activeTrack] = await Promise.all([
-            waitForTimedTextManifest(),
-            requestActiveTextTrack(),
-        ]);
-        if (!manifest || buildRevision !== manifestRevision) return [];
+        const movieId = getWatchMovieId();
+        if (!movieId) return [];
 
-        const track = selectManifestTrack(manifest, activeTrack) || manifest.tracks?.[0];
+        const [manifest, trackState] = await Promise.all([
+            waitForTimedTextManifest(),
+            waitForActiveTextTrack(),
+        ]);
+        if (
+            !manifest ||
+            String(manifest.movieId) !== getWatchMovieId() ||
+            buildRevision !== manifestRevision
+        ) return [];
+
+        // If the player is ready and reports captions as disabled, do not fetch
+        // an arbitrary first language from the manifest.
+        if (trackState.playerReady && !trackState.isCcActive) return [];
+
+        const track = trackState.track
+            ? selectManifestTrack(manifest, trackState.track)
+            : manifest.tracks?.[0];
         if (!track) return [];
 
         const subtitleService = getSubtitleService();
@@ -294,6 +390,7 @@
                 const response = await sendMessage({
                     type: "QT_FETCH_NETFLIX_TIMED_TEXT",
                     url,
+                    movieId,
                 });
                 if (buildRevision !== manifestRevision) return [];
                 if (!response?.text) continue;
@@ -316,13 +413,69 @@
     }
 
     function ensureSubtitleIndex() {
+        const movieId = getWatchMovieId();
+        if (!movieId) return Promise.resolve([]);
+        if (
+            cueIndex.length > 0 &&
+            cueIndexKey.startsWith(`${movieId}|`)
+        ) {
+            return Promise.resolve(cueIndex);
+        }
         if (!cueIndexPromise) {
-            const pending = buildSubtitleIndex().finally(() => {
+            const pending = Promise.resolve().then(buildSubtitleIndex).finally(() => {
                 if (cueIndexPromise === pending) cueIndexPromise = null;
             });
             cueIndexPromise = pending;
         }
         return cueIndexPromise;
+    }
+
+    function trackStateKey(state) {
+        if (!state?.playerReady) return "loading";
+        if (!state.isCcActive || !state.track) return "off";
+        const track = state.track;
+        return [
+            track.new_track_id ?? track.trackId ?? track.track_id ?? track.id ?? "",
+            track.bcp47 ?? track.bcp47LanguageTag ?? track.language ?? track.languageCode ?? "",
+            track.displayName ?? track.languageDescription ?? track.description ?? "",
+        ].map(normalizedValue).join("|");
+    }
+
+    async function pollActiveTextTrack() {
+        if (trackPollInFlight || cueIndexPromise || !isWatchPage()) return;
+        if (!timedTextManifest) {
+            ensureSubtitleIndex().catch(() => {});
+            return;
+        }
+        trackPollInFlight = true;
+        try {
+            const nextState = await requestActiveTextTrack();
+            if (nextState.movieId !== getWatchMovieId()) return;
+
+            const previousKey = trackStateKey(activeTextTrackState);
+            const nextKey = trackStateKey(nextState);
+            activeTextTrackState = nextState;
+            if (previousKey === nextKey) {
+                if (
+                    cueIndex.length === 0 &&
+                    (!nextState.playerReady || nextState.isCcActive)
+                ) {
+                    ensureSubtitleIndex().catch(() => {});
+                }
+                return;
+            }
+
+            cueIndex = [];
+            cueIndexKey = "";
+            cueIndexPromise = null;
+            manifestRevision += 1;
+            optimisticSeek = null;
+            if (nextState.playerReady && nextState.isCcActive) {
+                ensureSubtitleIndex().catch(() => {});
+            }
+        } finally {
+            trackPollInFlight = false;
+        }
     }
 
     function findIndexedCueAt(time) {
@@ -800,9 +953,21 @@
 
     initNetflixControlsManagement();
 
-    // Attach manifest listener
+    // Keep page, title and selected-caption state aligned across Netflix SPA routes.
+    window.addEventListener(PLAYER_STATE_RESET_EVENT, (event) => {
+        resetSubtitleState(String(event.detail?.movieId || ""));
+        if (event.detail?.movieId) {
+            setTimeout(
+                () => ensureSubtitleIndex().catch(() => {}),
+                0,
+            );
+        }
+    });
     window.addEventListener(MANIFEST_EVENT, acceptTimedTextManifest);
-    window.dispatchEvent(new CustomEvent(MANIFEST_REQUEST_EVENT));
+    if (isPage()) setInterval(pollActiveTextTrack, 1000);
+    if (isWatchPage()) {
+        ensureSubtitleIndex().catch(() => {});
+    }
 
     const NetflixAdapter = {
         id: "netflix",

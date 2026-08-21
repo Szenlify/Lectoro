@@ -15,33 +15,52 @@
     const TRACK_RESPONSE_EVENT = "__lectoro_netflix_track_response";
     const MANIFEST_EVENT = "__lectoro_netflix_timed_text_manifest";
     const MANIFEST_REQUEST_EVENT = "__lectoro_netflix_timed_text_manifest_request";
+    const PLAYER_STATE_RESET_EVENT = "__lectoro_netflix_player_state_reset";
 
     let latestTimedTextManifest = null;
     let latestTimedTextSignature = "";
     let currentMovieId = "";
     let hasManifestForCurrentMovie = false;
+    const timedTextManifestsByMovieId = new Map();
+    const MAX_CACHED_TIMED_TEXT_MANIFESTS = 12;
+
+    function getWatchMovieId() {
+        return window.location.pathname.match(/^\/watch\/(\d+)/)?.[1] || "";
+    }
 
     function isWatchPage() {
-        return (
-            typeof window !== "undefined" &&
-            (/\/watch\/\d+/.test(window.location.pathname) ||
-             !!document.querySelector(".watch-video, [data-uia='video-canvas'], .nf-player-container"))
-        );
+        return !!getWatchMovieId();
     }
 
     function checkMovieChange() {
-        const match = window.location.pathname.match(/\/watch\/(\d+)/);
-        const movieId = match ? match[1] : "";
-        if (movieId && movieId !== currentMovieId) {
+        const movieId = getWatchMovieId();
+        if (movieId !== currentMovieId) {
             currentMovieId = movieId;
             hasManifestForCurrentMovie = false;
             latestTimedTextManifest = null;
             latestTimedTextSignature = "";
+            window.dispatchEvent(
+                new CustomEvent(PLAYER_STATE_RESET_EVENT, {
+                    detail: { movieId },
+                }),
+            );
+            const cachedManifest = timedTextManifestsByMovieId.get(movieId);
+            if (cachedManifest) publishTimedTextManifest(cachedManifest);
         }
     }
 
-    // Monitor SPA URL transitions on Netflix
+    // Netflix uses History API navigation, so popstate alone misses /browse -> /watch.
+    for (const method of ["pushState", "replaceState"]) {
+        const nativeMethod = history[method];
+        history[method] = function lectoraNetflixHistoryState(...args) {
+            const result = nativeMethod.apply(this, args);
+            queueMicrotask(checkMovieChange);
+            return result;
+        };
+    }
     window.addEventListener("popstate", checkMovieChange, { passive: true });
+    setInterval(checkMovieChange, 500);
+    checkMovieChange();
 
     function getNetflixPlayer() {
         try {
@@ -128,12 +147,32 @@
     }
 
     function getTimedTextTracks(payload) {
-        const tracks =
+        const explicitTracks =
             payload?.timedtexttracks ||
             payload?.timedTextTracks ||
-            payload?.textTracks ||
-            payload?.tracks;
-        return Array.isArray(tracks) && tracks.length > 0 ? tracks : null;
+            payload?.textTracks;
+        if (Array.isArray(explicitTracks) && explicitTracks.length > 0) {
+            return explicitTracks;
+        }
+
+        // A generic `tracks` collection may describe audio or video. Accept
+        // only entries which carry a known timed-text profile.
+        if (!Array.isArray(payload?.tracks)) return null;
+        const timedTextTracks = payload.tracks.filter((track) => {
+            if (track?.ttDownloadables) return true;
+            const downloads = track?.downloadables || track?.downloadUrls;
+            const profiles = Array.isArray(downloads)
+                ? downloads.map(
+                      (item) => item?.contentProfile || item?.profile || item?.type || "",
+                  )
+                : Object.keys(downloads || {});
+            return profiles.some((profile) =>
+                /webvtt|dfxp|ttml|timedtext|simple-sdh|simple-text/i.test(
+                    String(profile),
+                ),
+            );
+        });
+        return timedTextTracks.length > 0 ? timedTextTracks : null;
     }
 
     function normalizeDownloads(track) {
@@ -193,8 +232,14 @@
             .filter(Boolean);
 
         if (normalizedTracks.length === 0) return null;
+        let movieId = String(payload.movieId || payload.videoId || "");
+        if (!movieId) {
+            try {
+                movieId = String(getNetflixPlayer()?.getMovieId?.() || "");
+            } catch (_) {}
+        }
         return {
-            movieId: String(payload.movieId || payload.videoId || currentMovieId || ""),
+            movieId,
             tracks: normalizedTracks,
         };
     }
@@ -242,6 +287,21 @@
         if (!manifest || !Array.isArray(manifest.tracks) || manifest.tracks.length === 0) {
             return;
         }
+        const manifestMovieId = String(manifest.movieId || "");
+        if (!manifestMovieId) return;
+        if (timedTextManifestsByMovieId.has(manifestMovieId)) {
+            timedTextManifestsByMovieId.delete(manifestMovieId);
+        } else if (
+            timedTextManifestsByMovieId.size >= MAX_CACHED_TIMED_TEXT_MANIFESTS
+        ) {
+            const oldestMovieId = timedTextManifestsByMovieId.keys().next().value;
+            if (oldestMovieId) timedTextManifestsByMovieId.delete(oldestMovieId);
+        }
+        timedTextManifestsByMovieId.set(manifestMovieId, manifest);
+
+        const watchMovieId = getWatchMovieId();
+        if (!watchMovieId || manifestMovieId !== watchMovieId) return;
+
         const signature = [
             manifest.movieId,
             ...manifest.tracks.map((track) => [
@@ -257,7 +317,6 @@
         latestTimedTextManifest = manifest;
         latestTimedTextSignature = signature;
         hasManifestForCurrentMovie = true;
-        if (manifest.movieId) currentMovieId = manifest.movieId;
 
         window.dispatchEvent(
             new CustomEvent(MANIFEST_EVENT, { detail: manifest }),
@@ -265,13 +324,12 @@
     }
 
     function tryExtractManifest(data) {
+        if (isWatchPage()) checkMovieChange();
         try {
             const payload = findTimedTextPayload(data);
             if (!payload) return;
             const manifest = normalizeTimedTextManifest(payload);
-            if (manifest) {
-                publishTimedTextManifest(manifest);
-            }
+            if (manifest) publishTimedTextManifest(manifest);
         } catch (_) {}
     }
 
@@ -283,9 +341,11 @@
         const looksLikeTimedText =
             raw.includes("timedtexttracks") ||
             raw.includes("timedTextTracks") ||
+            raw.includes("textTracks") ||
             raw.includes("ttDownloadables");
         if (
-            (!hasManifestForCurrentMovie || looksLikeTimedText) &&
+            (looksLikeTimedText ||
+                (isWatchPage() && !hasManifestForCurrentMovie)) &&
             data &&
             typeof data === "object"
         ) {
@@ -332,7 +392,10 @@
             return originalOpen.call(this, method, url, ...args);
         };
         XMLHttpRequest.prototype.send = function (...args) {
-            if (!hasManifestForCurrentMovie || this.__lectoroTimedTextCandidate) {
+            if (
+                this.__lectoroTimedTextCandidate ||
+                (isWatchPage() && !hasManifestForCurrentMovie)
+            ) {
                 this.addEventListener("load", () => {
                     try {
                         const responseText = this.responseText;
@@ -340,6 +403,7 @@
                             responseText &&
                             (responseText.includes("timedtexttracks") ||
                                 responseText.includes("timedTextTracks") ||
+                                responseText.includes("textTracks") ||
                                 responseText.includes("ttDownloadables"))
                         ) {
                             const data = nativeJsonParse(responseText);
@@ -631,9 +695,11 @@
     window.addEventListener(TRACK_REQUEST_EVENT, (event) => {
         let track = null;
         let isCcActive = false;
+        let playerReady = false;
         if (isWatchPage()) {
             try {
                 const player = getNetflixPlayer();
+                playerReady = !!player;
                 const rawTrack =
                     player?.getTimedTextTrack?.() ||
                     player?.getTextTrack?.();
@@ -649,6 +715,8 @@
                     requestId: event.detail?.requestId || "",
                     track,
                     isCcActive,
+                    playerReady,
+                    movieId: getWatchMovieId(),
                 },
             }),
         );
@@ -657,7 +725,16 @@
     window.addEventListener(MANIFEST_REQUEST_EVENT, () => {
         if (!isWatchPage()) return;
         checkMovieChange();
-        if (latestTimedTextManifest) {
+        if (!latestTimedTextManifest) {
+            const cachedManifest = timedTextManifestsByMovieId.get(
+                getWatchMovieId(),
+            );
+            if (cachedManifest) publishTimedTextManifest(cachedManifest);
+        }
+        if (
+            latestTimedTextManifest &&
+            String(latestTimedTextManifest.movieId) === getWatchMovieId()
+        ) {
             window.dispatchEvent(
                 new CustomEvent(MANIFEST_EVENT, {
                     detail: latestTimedTextManifest,

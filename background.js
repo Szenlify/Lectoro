@@ -585,8 +585,11 @@ function isAllowedNetflixMediaHost(hostname) {
 
 const netflixTimedTextCache = new Map();
 const MAX_NETFLIX_CACHE_ENTRIES = 25;
+const netflixTimedTextRequests = new Map();
+const netflixTimedTextFailures = new Map();
+const NETFLIX_TIMED_TEXT_FAILURE_TTL_MS = 30_000;
 
-async function fetchNetflixTimedText(rawUrl) {
+async function downloadNetflixTimedText(rawUrl) {
     if (netflixTimedTextCache.has(rawUrl)) {
         return netflixTimedTextCache.get(rawUrl);
     }
@@ -632,8 +635,42 @@ async function fetchNetflixTimedText(rawUrl) {
         if (oldestKey) netflixTimedTextCache.delete(oldestKey);
     }
     netflixTimedTextCache.set(rawUrl, result);
-
     return result;
+}
+
+function fetchNetflixTimedText(rawUrl) {
+    if (netflixTimedTextCache.has(rawUrl)) {
+        return Promise.resolve(netflixTimedTextCache.get(rawUrl));
+    }
+
+    const recentFailure = netflixTimedTextFailures.get(rawUrl);
+    if (recentFailure?.expiresAt > Date.now()) {
+        return Promise.reject(new Error(recentFailure.message));
+    }
+    if (recentFailure) netflixTimedTextFailures.delete(rawUrl);
+
+    const existingRequest = netflixTimedTextRequests.get(rawUrl);
+    if (existingRequest) return existingRequest;
+
+    const request = downloadNetflixTimedText(rawUrl)
+        .catch((error) => {
+            if (netflixTimedTextFailures.size >= 100) {
+                const oldestKey = netflixTimedTextFailures.keys().next().value;
+                if (oldestKey) netflixTimedTextFailures.delete(oldestKey);
+            }
+            netflixTimedTextFailures.set(rawUrl, {
+                message: error?.message || String(error),
+                expiresAt: Date.now() + NETFLIX_TIMED_TEXT_FAILURE_TTL_MS,
+            });
+            throw error;
+        })
+        .finally(() => {
+            if (netflixTimedTextRequests.get(rawUrl) === request) {
+                netflixTimedTextRequests.delete(rawUrl);
+            }
+        });
+    netflixTimedTextRequests.set(rawUrl, request);
+    return request;
 }
 
 // Automatically sync plan and limits when Stripe checkout or portal completes
@@ -683,7 +720,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     if (message.type === "QT_FETCH_NETFLIX_TIMED_TEXT") {
-        if (!sender.tab?.url || !/^https:\/\/www\.netflix\.com\//i.test(sender.tab.url)) {
+        if (
+            !sender.tab?.url ||
+            !/^https:\/\/www\.netflix\.com\//i.test(sender.tab.url) ||
+            !/^\d+$/.test(String(message.movieId || ""))
+        ) {
             sendResponse({ error: "Żądanie nie pochodzi z karty Netflixa." });
             return false;
         }
