@@ -22,6 +22,7 @@
         SAVE_TOAST: `${PREFIX}save_toast`,
         AI_RESULT: `${PREFIX}ai-result`,
         SPEED_OVERLAY: `${PREFIX}speed-overlay`,
+        SENTENCE_TRANSLATION: `${PREFIX}sentence_translation`,
     });
 
     const UI_CLASSES = Object.freeze({
@@ -125,7 +126,7 @@
     /** Check if a target element is part of Lectoro's own overlay / tooltip / cloud UI */
     function isOwnUI(target) {
         if (!target) return false;
-        const selector = `#${UI_IDS.ICON}, #${UI_IDS.TOOLTIP}, #${UI_IDS.REVIEW_TOAST}, #${UI_IDS.SAVE_TOAST}, #${UI_IDS.SPEED_OVERLAY}, .${UI_CLASSES.WORD_CLOUD}, .${PREFIX}word-cloud`;
+        const selector = `#${UI_IDS.ICON}, #${UI_IDS.TOOLTIP}, #${UI_IDS.REVIEW_TOAST}, #${UI_IDS.SAVE_TOAST}, #${UI_IDS.SPEED_OVERLAY}, #${UI_IDS.SENTENCE_TRANSLATION}, .${UI_CLASSES.WORD_CLOUD}, .${PREFIX}word-cloud`;
         return !!target.closest?.(selector);
     }
 

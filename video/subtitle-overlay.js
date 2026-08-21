@@ -721,20 +721,28 @@
         }
 
         saveBtn.addEventListener("click", async (ev) => {
+            ev.preventDefault();
             ev.stopPropagation();
-            if (saveBtn.classList.contains("saved")) return;
-            const screenshot = await getPlayerRegistry()?.captureVideoReviewScreenshot(
-                getPlayerRegistry().getVideo(),
-            );
-            const clean =
-                typeof SharedUtils !== "undefined" && typeof SharedUtils.cleanCardText === "function"
-                    ? SharedUtils.cleanCardText
-                    : (s) => String(s || "").trim();
-            const cleanedText = clean(text) || text;
-            const cleanedTranslation = clean(translation) || translation || cleanedText;
-            const cleanedExplanation = clean(explanation);
+            if (saveBtn.classList.contains("saved") || saveBtn.classList.contains("saving")) {
+                return;
+            }
+
+            saveBtn.classList.add("saving");
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = `${SVG.SAVE_SENTENCE} <span>Zapisywanie…</span><kbd class="${PREFIX}key-hint">Z</kbd>`;
 
             try {
+                const screenshot = await getPlayerRegistry()?.captureVideoReviewScreenshot(
+                    getPlayerRegistry().getVideo(),
+                );
+                const clean =
+                    typeof SharedUtils !== "undefined" && typeof SharedUtils.cleanCardText === "function"
+                        ? SharedUtils.cleanCardText
+                        : (s) => String(s || "").trim();
+                const cleanedText = clean(text) || text;
+                const cleanedTranslation = clean(translation) || translation || cleanedText;
+                const cleanedExplanation = clean(explanation);
+
                 await QT.saveWord({
                     original: cleanedText,
                     translated: cleanedTranslation,
@@ -750,9 +758,12 @@
                     downloaded: false,
                 });
                 saveBtn.innerHTML = `${SVG.SAVE_SENTENCE_CHECK} <span>Zapisano!</span>`;
+                saveBtn.classList.remove("saving");
                 saveBtn.classList.add("saved");
             } catch (error) {
-                saveBtn.innerHTML = `${SVG.SAVE_SENTENCE} <span>Limit planu</span>`;
+                saveBtn.disabled = false;
+                saveBtn.classList.remove("saving");
+                saveBtn.innerHTML = `${SVG.SAVE_SENTENCE} <span>Nie udało się zapisać</span><kbd class="${PREFIX}key-hint">Z</kbd>`;
                 saveBtn.title = error.message;
             }
         });
@@ -786,11 +797,21 @@
     function wireAiExplainSpeakButton() {
         const speakBtn = translationOverlay?.querySelector(`.${PREFIX}speak`);
         if (!speakBtn) return;
-        speakBtn.addEventListener("click", (event) => {
+        speakBtn.addEventListener("click", async (event) => {
+            event.preventDefault();
             event.stopPropagation();
-            QT.speak(speakBtn.dataset.text || "", speakBtn.dataset.lang || "pl").catch(
-                () => {},
-            );
+            speakBtn.classList.add("speaking");
+            speakBtn.setAttribute("aria-label", "Odtwarzanie tłumaczenia i wyjaśnienia");
+            try {
+                await QT.speak(speakBtn.dataset.text || "", speakBtn.dataset.lang || "pl");
+            } catch (_) {
+                // The panel stays interactive even when browser TTS is unavailable.
+            } finally {
+                if (speakBtn.isConnected) {
+                    speakBtn.classList.remove("speaking");
+                    speakBtn.setAttribute("aria-label", "Odtwórz tłumaczenie i wyjaśnienie");
+                }
+            }
         });
     }
 
@@ -839,10 +860,10 @@
                     <div class="${PREFIX}row">
                         <span class="${PREFIX}label">PL</span>
                         <span class="${PREFIX}text ${PREFIX}translated">${QT.escapeHtml(translation)}</span>
-                        <button class="${PREFIX}speak" data-text="${QT.escapeAttr(aiSpeechText)}" data-lang="pl" title="Odczytaj tłumaczenie i wyjaśnienie">${SVG.SPEAKER}</button>
+                        <button class="${PREFIX}speak" data-text="${QT.escapeAttr(aiSpeechText)}" data-lang="pl" title="Odtwórz tłumaczenie i wyjaśnienie" aria-label="Odtwórz tłumaczenie i wyjaśnienie">${SVG.SPEAKER}</button>
                     </div>
-                    <div class="${PREFIX}ai-result" style="margin-top:10px;">
-                        <div class="${PREFIX}ai-label">Wyjaśnienie:</div>
+                    <div class="${PREFIX}ai-result">
+                        <div class="${PREFIX}ai-label">Wyjaśnienie</div>
                         <div class="${PREFIX}ai-text">${QT.escapeHtml(explanation)}</div>
                     </div>
                 </div>
@@ -1175,6 +1196,14 @@
         translationOverlay.setAttribute("aria-live", "polite");
         translationOverlay.setAttribute("aria-atomic", "true");
 
+        // Keep clicks inside the interactive bubble away from page/player
+        // click-away handlers. Button handlers still run before bubbling here.
+        ["pointerdown", "mousedown", "mouseup", "click", "dblclick"].forEach((eventName) => {
+            translationOverlay.addEventListener(eventName, (event) => {
+                event.stopPropagation();
+            });
+        });
+
         // The sentence translation follows the subtitle typography, but is
         // intentionally one visual step smaller so it reads as supporting UI.
         const subtitleReference = activeWordSpans.find((span) => span.isConnected) ||
@@ -1318,6 +1347,8 @@
     function applyAiExplanation(html, layout = translationAnchorLayout) {
         const overlay = translationOverlay || createOverlay(layout);
         overlay.classList.add(`${PREFIX}ai-explain-overlay`);
+        overlay.setAttribute("role", "dialog");
+        overlay.setAttribute("aria-live", "off");
         const copy = document.createElement("div");
         copy.className = `${PREFIX}translation-copy ${PREFIX}ai-explain-copy`;
         copy.setAttribute("dir", "auto");
