@@ -1193,6 +1193,15 @@ html.__qt_netflix-subtitles-hidden .player-timedtext {
    Netflix Player Control Suppression & Stabilization
    ═══════════════════════════════════════════════════════════════ */
 
+/* Hide Netflix maturity/content advisory (for example, "RATED 13+"). */
+.watch-video .watch-video--advisories-container,
+.watch-video [data-uia="advisory-content"] {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
+}
+
 /* Always hide Netflix 'Report Issue' flag button / intrusive badges */
 .watch-video--flag-container,
 .watch-video--report-problem-container,
