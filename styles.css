@@ -1226,7 +1226,7 @@ html.__qt_netflix-hide-controls [data-uia="watch-video-back-button"] {
     opacity: 0 !important;
     visibility: hidden !important;
     pointer-events: none !important;
-    transition: opacity 0.15s ease, visibility 0.15s ease !important;
+    transition: opacity 0s ease, visibility 0s ease !important;
 }
 
 
