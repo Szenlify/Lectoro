@@ -38,7 +38,6 @@
 
     let aiTooltipActive = false;
     let aiWasPlaying = false;
-    let aiShimmerEl = null;
     let aiExplainKeydownHandler = null;
 
     let speedOverlayEl = null;
@@ -666,37 +665,25 @@
 
     // ── AI Explanations ──────────────────────────────────────────
 
-    function showAiShimmer(rect) {
-        removeAiShimmer();
-        const parent = QT.getOverlayParent();
-        aiShimmerEl = document.createElement("div");
-        aiShimmerEl.className = `${PREFIX}ai-loader`;
-        aiShimmerEl.innerHTML = `<span class="${PREFIX}ai-loader-label">Analizuje...</span>`;
-        parent.appendChild(aiShimmerEl);
-        positionAiShimmer(rect);
-        ensureSubtitleUiTracking();
-    }
-
-    function positionAiShimmer(rect) {
-        if (!aiShimmerEl || !rect) return;
-        const loaderRect = aiShimmerEl.getBoundingClientRect();
-        let left = rect.left + (rect.width - loaderRect.width) / 2;
-        left = Math.max(4, Math.min(left, window.innerWidth - loaderRect.width - 4));
-        aiShimmerEl.style.left = left + "px";
-        aiShimmerEl.style.top = rect.top - loaderRect.height - 10 + "px";
+    function showAiShimmer(layout) {
+        const overlay = createOverlay(layout);
+        overlay.classList.add(`${PREFIX}ai-explain-overlay`);
+        overlay.dataset.state = "ai-loading";
+        overlay.setAttribute("aria-label", "Analiza zdania w toku");
+        overlay.innerHTML = `<span class="${PREFIX}ai-loader-label">Analizuje</span>`;
+        positionOverlay(layout);
     }
 
     function removeAiShimmer() {
-        if (aiShimmerEl) {
-            aiShimmerEl.remove();
-            aiShimmerEl = null;
+        if (translationOverlay?.classList.contains(`${PREFIX}ai-explain-overlay`)) {
+            removeOverlay();
         }
     }
     if (typeof QT !== "undefined" && QT.addCleanup) QT.addCleanup(removeAiShimmer);
 
     function closeAiTooltip(options = {}) {
         if (aiExplainKeydownHandler) {
-            window.removeEventListener("keydown", aiExplainKeydownHandler);
+            window.removeEventListener("keydown", aiExplainKeydownHandler, true);
             aiExplainKeydownHandler = null;
         }
         if (!aiTooltipActive) return;
@@ -722,14 +709,14 @@
     if (typeof QT !== "undefined" && QT.addDismissHandler) QT.addDismissHandler(closeAiTooltip);
 
     function wireAiExplainSaveButton(text, translation, explanation, targetLang) {
-        const tooltipNode = document.getElementById(PREFIX + "tooltip");
+        const tooltipNode = translationOverlay || document.getElementById(PREFIX + "tooltip");
         const saveBtn = tooltipNode?.querySelector(`.${PREFIX}ai-explain-save-btn`);
         if (!saveBtn) return;
 
         if (!saveBtn.querySelector(`.${PREFIX}key-hint`)) {
             const hintNode = document.createElement("kbd");
             hintNode.className = `${PREFIX}key-hint`;
-            hintNode.textContent = "PageDown";
+            hintNode.textContent = "Z";
             saveBtn.appendChild(hintNode);
         }
 
@@ -771,7 +758,7 @@
         });
 
         if (aiExplainKeydownHandler) {
-            window.removeEventListener("keydown", aiExplainKeydownHandler);
+            window.removeEventListener("keydown", aiExplainKeydownHandler, true);
         }
         aiExplainKeydownHandler = (ev) => {
             const isTyping =
@@ -779,17 +766,32 @@
                 ev.target?.isContentEditable;
             if (isTyping) return;
 
-            if (ev.key === "PageDown") {
+            if (ev.key === "z" || ev.key === "Z") {
                 if (document.contains(saveBtn)) {
                     ev.preventDefault();
+                    ev.stopPropagation();
+                    ev.stopImmediatePropagation();
                     saveBtn.click();
                 } else {
-                    window.removeEventListener("keydown", aiExplainKeydownHandler);
+                    window.removeEventListener("keydown", aiExplainKeydownHandler, true);
                     aiExplainKeydownHandler = null;
                 }
             }
         };
-        window.addEventListener("keydown", aiExplainKeydownHandler);
+        // Capture before video-hotkeys.js so Z activates this AI-result button
+        // instead of the global "save current subtitle" action.
+        window.addEventListener("keydown", aiExplainKeydownHandler, true);
+    }
+
+    function wireAiExplainSpeakButton() {
+        const speakBtn = translationOverlay?.querySelector(`.${PREFIX}speak`);
+        if (!speakBtn) return;
+        speakBtn.addEventListener("click", (event) => {
+            event.stopPropagation();
+            QT.speak(speakBtn.dataset.text || "", speakBtn.dataset.lang || "pl").catch(
+                () => {},
+            );
+        });
     }
 
     async function handleAIExplain(video) {
@@ -805,20 +807,22 @@
         aiTooltipActive = true;
         aiWasPlaying = !video.paused;
         if (aiWasPlaying) registry?.pauseVideo(video);
+        QT.hideTooltip();
 
-        const rect = getSubtitleRect() || {
+        const layout = captureSubtitleLayout();
+        const rect = layout?.rect || getSubtitleRect() || {
             left: window.innerWidth / 2 - 100,
             top: window.innerHeight - 150,
             width: 200,
             height: 50,
         };
+        const aiLayout = layout || { rect };
 
-        showAiShimmer(rect);
+        showAiShimmer(aiLayout);
         try {
             const targetLang = await QT.getTargetLang();
             const res = await QT.geminiExplainSentence(text, targetLang);
             if (!aiTooltipActive) return;
-            removeAiShimmer();
 
             const translation = res.translation || "";
             const explanation = res.explanation || res;
@@ -827,7 +831,6 @@
                 .join(". ");
 
             const html = `
-                <div class="${PREFIX}header"><span>✨ AI Wyjaśnia</span></div>
                 <div class="${PREFIX}body">
                     <div class="${PREFIX}row">
                         <span class="${PREFIX}label">EN</span>
@@ -848,8 +851,8 @@
                         ${SVG.SAVE_SENTENCE} <span>Zapisz do powtórek</span>
                     </button>
                 </div>`;
-            QT.showTooltip(html, rect, "top");
-            QT.attachTooltipHandlers();
+            applyAiExplanation(html, aiLayout);
+            wireAiExplainSpeakButton();
             wireAiExplainSaveButton(text, translation, explanation, targetLang);
 
             if (aiTooltipActive) {
@@ -858,16 +861,14 @@
                 });
             }
         } catch (err) {
-            removeAiShimmer();
             if (aiTooltipActive) {
                 const limitReached = typeof GeminiProxy !== "undefined" && GeminiProxy.isLimitError?.(err);
                 if (limitReached) {
                     closeAiTooltip();
                 } else {
-                    QT.showTooltip(
+                    applyAiExplanation(
                         `<div class="${PREFIX}error">⚠ ${QT.escapeHtml(err.message)}</div>`,
-                        rect,
-                        "top",
+                        aiLayout,
                     );
                 }
             }
@@ -964,16 +965,6 @@
                     QT.positionTooltip(replacementSpan.getBoundingClientRect(), "top");
                 } else {
                     scheduleCloseSubTooltip();
-                }
-            }
-        }
-
-        if (aiTooltipActive) {
-            const rect = getSubtitleRect();
-            if (rect) {
-                positionAiShimmer(rect);
-                if (QT.getTooltipEl()?.classList.contains("visible")) {
-                    QT.positionTooltip(rect, "top");
                 }
             }
         }
@@ -1270,31 +1261,26 @@
         positionOverlay();
     }
 
-    function applyTranslation(translatedText, layout = translationAnchorLayout) {
+    function revealOverlayContent(
+        content,
+        layout = translationAnchorLayout,
+        ariaLabel = "Gotowe",
+    ) {
         const overlay = translationOverlay || createOverlay(layout);
-        const sentence = String(translatedText || "").trim();
 
-        const copy = document.createElement("div");
-        copy.className = `${PREFIX}translation-copy`;
-        copy.setAttribute("dir", "auto");
-        const line = document.createElement("div");
-        line.className = PREFIX + "sub-overlay-line";
-        line.setAttribute("dir", "auto");
-        line.textContent = sentence;
-        copy.append(line);
-
-        // Measure the real translated sentence before the user can see it.
-        // The bubble then grows from the spinner's exact dimensions to the
-        // measured target, avoiding the old skeleton-to-text size jump.
+        // Measure the final content before the user can see it. Both sentence
+        // translation and Enter analysis grow from their loading-state size
+        // to the measured target through this exact same transition.
         const loadingRect = overlay.getBoundingClientRect();
+        overlay.classList.remove(`${PREFIX}translation-reveal`);
         overlay.dataset.state = "measuring";
-        overlay.replaceChildren(copy);
+        overlay.replaceChildren(content);
         const targetRect = overlay.getBoundingClientRect();
 
         overlay.style.setProperty("width", `${loadingRect.width}px`, "important");
         overlay.style.setProperty("height", `${loadingRect.height}px`, "important");
         overlay.dataset.state = "expanding";
-        overlay.setAttribute("aria-label", "Przetłumaczone zdanie");
+        overlay.setAttribute("aria-label", ariaLabel);
         positionOverlay(layout);
 
         requestAnimationFrame(() => {
@@ -1311,7 +1297,32 @@
                 positionOverlay(layout);
             }, 260);
         });
+        return overlay;
+    }
+
+    function applyTranslation(translatedText, layout = translationAnchorLayout) {
+        const sentence = String(translatedText || "").trim();
+        const copy = document.createElement("div");
+        copy.className = `${PREFIX}translation-copy`;
+        copy.setAttribute("dir", "auto");
+        const line = document.createElement("div");
+        line.className = PREFIX + "sub-overlay-line";
+        line.setAttribute("dir", "auto");
+        line.textContent = sentence;
+        copy.append(line);
+
+        revealOverlayContent(copy, layout, "Przetłumaczone zdanie");
         eTranslateActive = true;
+    }
+
+    function applyAiExplanation(html, layout = translationAnchorLayout) {
+        const overlay = translationOverlay || createOverlay(layout);
+        overlay.classList.add(`${PREFIX}ai-explain-overlay`);
+        const copy = document.createElement("div");
+        copy.className = `${PREFIX}translation-copy ${PREFIX}ai-explain-copy`;
+        copy.setAttribute("dir", "auto");
+        copy.innerHTML = html;
+        revealOverlayContent(copy, layout, "Analiza zdania");
     }
 
     async function doSentenceTranslation(video, sourceText = null, options = {}) {
@@ -1558,7 +1569,7 @@
             eTranslateActive ||
             wordCloudActive ||
             subtitleModeStarting ||
-            (translationOverlay?.isConnected ?? false),
+            (!aiTooltipActive && (translationOverlay?.isConnected ?? false)),
         showWordClouds,
         removeWordClouds,
         doSentenceTranslation,

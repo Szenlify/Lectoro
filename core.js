@@ -756,7 +756,7 @@
                     <span class="${P}text ${P}original">${escapeHtml(original)}</span>
                     <span class="${P}word-actions">
                         <button class="${P}speak" data-text="${escapeAttr(original)}" data-lang="${escapeAttr(srcLang)}" title="Odczytaj oryginał">${SVG.SPEAKER || "🔊"}</button>
-                        <button class="${P}img-search" data-word="${escapeAttr(original)}" title="Szukaj obrazu w Google (nowa karta)">${SVG.IMAGE_SEARCH || "🔍"}</button>
+                        <button class="${P}img-search" data-word="${escapeAttr(original)}" title="Google Images">${SVG.IMAGE_SEARCH || "🔍"}</button>
                     </span>
                 </div>
                 <div class="${P}row">
@@ -764,7 +764,6 @@
                     <span class="${P}text ${P}translated">${escapeHtml(translated)}</span>
                     <span class="${P}word-actions">
                         <button class="${P}speak" data-text="${escapeAttr(translated)}" data-lang="${escapeAttr(targetLang)}" title="Odczytaj tłumaczenie">${SVG.SPEAKER || "🔊"}</button>
-                        <button class="${P}img-search" data-word="${escapeAttr(translated)}" title="Szukaj obrazu w Google (nowa karta)">${SVG.IMAGE_SEARCH || "🔍"}</button>
                     </span>
                 </div>
                 ${fullLineHtml}
@@ -864,7 +863,7 @@
         tooltipEl.querySelectorAll(`.${PREFIX}img-search`).forEach((btn) => {
             btn.addEventListener("click", (ev) => {
                 ev.stopPropagation();
-                const word = ("meaning " + (btn.dataset.word || "")).trim();
+                const word = ((btn.dataset.word + " clipart" || "")).trim();
                 if (!word) return;
                 const url = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(word)}`;
                 window.open(url, "_blank", "noopener,noreferrer");
