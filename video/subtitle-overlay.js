@@ -1165,7 +1165,28 @@
         removeOverlay();
         translationAnchorLayout = layout;
         translationOverlay = document.createElement("div");
+        translationOverlay.id = `${PREFIX}sentence_translation`;
         translationOverlay.className = PREFIX + "sub-overlay";
+        translationOverlay.setAttribute("role", "status");
+        translationOverlay.setAttribute("aria-live", "polite");
+        translationOverlay.setAttribute("aria-atomic", "true");
+
+        // The sentence translation follows the subtitle typography, but is
+        // intentionally one visual step smaller so it reads as supporting UI.
+        const subtitleReference = activeWordSpans.find((span) => span.isConnected) ||
+            customSubBoxEl?.querySelector(`.${PREFIX}custom-sub-line`);
+        const liveFontSize = subtitleReference
+            ? window.getComputedStyle(subtitleReference).fontSize
+            : "";
+        const sourceFontSize = Number.parseFloat(layout?.fontSize || liveFontSize);
+        const translationFontSize = Number.isFinite(sourceFontSize)
+            ? Math.round(sourceFontSize * 0.8 * 100) / 100
+            : 20;
+        translationOverlay.style.setProperty(
+            "--lectoro-translation-font-size",
+            `${translationFontSize}px`,
+        );
+
         const parent = QT.getOverlayParent();
         parent.appendChild(translationOverlay);
         ensureSubtitleUiTracking();
@@ -1185,60 +1206,95 @@
         const rect = getSubtitleRect() || layout?.rect;
         if (!rect) return;
 
-        translationOverlay.style.position = "fixed";
-        translationOverlay.style.left = rect.left + "px";
-        translationOverlay.style.width = rect.width + "px";
-        translationOverlay.style.padding = "8px";
-        const overlayH = translationOverlay.offsetHeight || 40;
-        translationOverlay.style.top = `${Math.max(10, rect.top - overlayH - 14)}px`;
+        const viewportWidth = Math.max(1, window.innerWidth);
+        const viewportHeight = Math.max(1, window.innerHeight);
+        const bubbleRect = translationOverlay.getBoundingClientRect();
+        const bubbleWidth = bubbleRect.width || Math.min(420, viewportWidth - 24);
+        const bubbleHeight = bubbleRect.height || 64;
+        const anchorCenter = rect.left + rect.width / 2;
+        const edgeGap = 12;
+        const bubbleGap = 16;
+
+        const left = Math.max(
+            edgeGap,
+            Math.min(
+                anchorCenter - bubbleWidth / 2,
+                viewportWidth - bubbleWidth - edgeGap,
+            ),
+        );
+        const aboveTop = rect.top - bubbleHeight - bubbleGap;
+        const placeBelow = aboveTop < edgeGap;
+        const top = placeBelow
+            ? Math.min(
+                  rect.bottom + bubbleGap,
+                  viewportHeight - bubbleHeight - edgeGap,
+              )
+            : aboveTop;
+        const arrowX = Math.max(
+            24,
+            Math.min(anchorCenter - left, bubbleWidth - 24),
+        );
+
+        translationOverlay.classList.toggle(`${PREFIX}bubble-below`, placeBelow);
+        translationOverlay.style.setProperty("left", `${left}px`, "important");
+        translationOverlay.style.setProperty(
+            "top",
+            `${Math.max(edgeGap, top)}px`,
+            "important",
+        );
+        translationOverlay.style.setProperty(
+            "--lectoro-bubble-arrow-x",
+            `${arrowX}px`,
+        );
     }
 
     function showSubLoading(layout = null) {
         const overlay = createOverlay(layout);
-        overlay.innerHTML = `<div class="${PREFIX}shimmer-bar"><div class="${PREFIX}shimmer-line"></div><div class="${PREFIX}shimmer-line ${PREFIX}shimmer-short"></div></div>`;
+        overlay.dataset.state = "loading";
+        overlay.setAttribute("aria-label", "Tłumaczenie zdania w toku");
+        overlay.innerHTML = `
+            <div class="${PREFIX}translation-shell">
+                <div class="${PREFIX}translation-kicker">
+                    <span class="${PREFIX}translation-orb" aria-hidden="true"></span>
+                    <span>Tłumaczę zdanie</span>
+                </div>
+                <div class="${PREFIX}translation-shimmer" aria-hidden="true">
+                    <span class="${PREFIX}translation-shimmer-line"></span>
+                    <span class="${PREFIX}translation-shimmer-line ${PREFIX}short"></span>
+                </div>
+            </div>`;
         positionOverlay();
     }
 
     function applyTranslation(translatedText, layout = translationAnchorLayout) {
-        const lineLengths = layout?.lineLengths || (activeLines.length > 0 ? activeLines.map((l) => l.length) : [1]);
         const overlay = translationOverlay || createOverlay(layout);
-        const words = translatedText.split(/\s+/).filter(Boolean);
-        if (lineLengths.length <= 1) {
-            const line = document.createElement("div");
-            line.className = PREFIX + "sub-overlay-line";
-            line.textContent = words.join(" ");
-            overlay.replaceChildren(line);
-        } else {
-            const totalOrigLen = lineLengths.reduce((a, b) => a + b, 0);
-            const totalWords = words.length;
-            let wordIdx = 0;
-            const lines = [];
-            lineLengths.forEach((lineLength, i) => {
-                if (i === lineLengths.length - 1) {
-                    lines.push(words.slice(wordIdx).join(" "));
-                } else {
-                    const remainingLines = lineLengths.length - i;
-                    const remainingWords = totalWords - wordIdx;
-                    const proportionalShare = Math.round(
-                        (lineLength / totalOrigLen) * totalWords,
-                    );
-                    const share = Math.max(
-                        1,
-                        Math.min(proportionalShare, remainingWords - (remainingLines - 1)),
-                    );
-                    lines.push(words.slice(wordIdx, wordIdx + share).join(" "));
-                    wordIdx += share;
-                }
-            });
-            overlay.replaceChildren(
-                ...lines.map((text) => {
-                    const line = document.createElement("div");
-                    line.className = PREFIX + "sub-overlay-line";
-                    line.textContent = text;
-                    return line;
-                }),
-            );
-        }
+        const sentence = String(translatedText || "").trim();
+
+        const shell = document.createElement("div");
+        shell.className = `${PREFIX}translation-shell`;
+
+        const kicker = document.createElement("div");
+        kicker.className = `${PREFIX}translation-kicker`;
+        const orb = document.createElement("span");
+        orb.className = `${PREFIX}translation-orb`;
+        orb.setAttribute("aria-hidden", "true");
+        const label = document.createElement("span");
+        label.textContent = "Tłumaczenie";
+        kicker.append(orb, label);
+
+        const copy = document.createElement("div");
+        copy.className = `${PREFIX}translation-copy`;
+        copy.setAttribute("dir", "auto");
+        const line = document.createElement("div");
+        line.className = PREFIX + "sub-overlay-line";
+        line.setAttribute("dir", "auto");
+        line.textContent = sentence;
+        copy.append(line);
+        shell.append(kicker, copy);
+
+        overlay.dataset.state = "ready";
+        overlay.setAttribute("aria-label", "Przetłumaczone zdanie");
+        overlay.replaceChildren(shell);
         positionOverlay(layout);
         eTranslateActive = true;
     }

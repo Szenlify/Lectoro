@@ -1023,21 +1023,145 @@ body[data-lectoro-platform="ted"] #__qt_custom_subtitles_layer .__qt_custom-sub-
    Subtitle In-place Translation (E key)
    ═══════════════════════════════════════════════════════════════ */
 
-.__qt_sub-overlay {
+#__qt_sentence_translation.__qt_sub-overlay {
     position: fixed !important;
     z-index: 2147483647 !important;
-    color: #00f2a2 !important;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Inter, sans-serif !important;
-    font-size: calc(var(--lectoro-sub-font-size, 25px)) !important;
+    width: max-content !important;
+    min-width: min(180px, calc(100vw - 24px)) !important;
+    max-width: min(860px, calc(100vw - 24px)) !important;
+    padding: 10px 15px 12px !important;
+    border: 1px solid rgba(129, 140, 248, 0.24) !important;
+    border-radius: 17px !important;
+    background:
+        radial-gradient(circle at 12% 0%, rgba(129, 140, 248, 0.16), transparent 48%),
+        radial-gradient(circle at 92% 110%, rgba(110, 231, 183, 0.1), transparent 44%),
+        linear-gradient(145deg, rgba(4, 26, 36, 0.96), rgba(16, 16, 31, 0.96)) !important;
+    box-shadow:
+        0 18px 48px rgba(0, 0, 0, 0.42),
+        0 0 0 1px rgba(255, 255, 255, 0.025) inset,
+        0 8px 30px rgba(129, 140, 248, 0.08) !important;
+    backdrop-filter: blur(20px) saturate(1.3) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(1.3) !important;
+    color: #ffffff !important;
+    font-family: "Netflix Sans Variable", "Netflix Sans", "Helvetica Neue", "Segoe UI", Roboto, Arial, sans-serif !important;
+    font-size: var(--lectoro-translation-font-size, 20px) !important;
+    font-style: normal !important;
     font-weight: 600 !important;
+    font-variant: normal !important;
     line-height: 1.35 !important;
     letter-spacing: 0.015em !important;
     text-align: center !important;
+    unicode-bidi: plaintext !important;
+    text-decoration: none !important;
+    text-transform: none !important;
+    text-rendering: geometricPrecision !important;
+    -webkit-font-smoothing: antialiased !important;
     pointer-events: none !important;
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
     justify-content: center !important;
+    box-sizing: border-box !important;
+    isolation: isolate !important;
+    overflow: visible !important;
+    transform-origin: 50% 100% !important;
+    animation: __qt_translation_bubble_in 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both !important;
+}
+
+#__qt_sentence_translation.__qt_sub-overlay::after {
+    content: "" !important;
+    position: absolute !important;
+    left: var(--lectoro-bubble-arrow-x, 50%) !important;
+    bottom: -7px !important;
+    width: 13px !important;
+    height: 13px !important;
+    border-right: 1px solid rgba(129, 140, 248, 0.24) !important;
+    border-bottom: 1px solid rgba(129, 140, 248, 0.24) !important;
+    background: #0c1627 !important;
+    transform: translateX(-50%) rotate(45deg) !important;
+    pointer-events: none !important;
+}
+
+#__qt_sentence_translation.__qt_bubble-below {
+    transform-origin: 50% 0% !important;
+}
+
+#__qt_sentence_translation.__qt_bubble-below::after {
+    top: -7px !important;
+    bottom: auto !important;
+    border: 0 !important;
+    border-left: 1px solid rgba(129, 140, 248, 0.24) !important;
+    border-top: 1px solid rgba(129, 140, 248, 0.24) !important;
+}
+
+#__qt_sentence_translation .__qt_translation-shell {
+    display: flex !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 6px !important;
+    color: inherit !important;
+    font: inherit !important;
+}
+
+#__qt_sentence_translation .__qt_translation-kicker {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    align-self: flex-start !important;
+    color: rgba(199, 210, 254, 0.72) !important;
+    font: 700 9px/1.2 Inter, system-ui, sans-serif !important;
+    letter-spacing: 0.1em !important;
+    text-transform: uppercase !important;
+    white-space: nowrap !important;
+    text-shadow: none !important;
+}
+
+#__qt_sentence_translation .__qt_translation-orb {
+    position: relative !important;
+    display: inline-grid !important;
+    width: 14px !important;
+    height: 14px !important;
+    flex: 0 0 14px !important;
+    place-items: center !important;
+    border-radius: 50% !important;
+    background: linear-gradient(135deg, rgba(129, 140, 248, 0.92), rgba(110, 231, 183, 0.86)) !important;
+    box-shadow: 0 0 14px rgba(129, 140, 248, 0.28) !important;
+}
+
+#__qt_sentence_translation .__qt_translation-orb::after {
+    content: "" !important;
+    width: 4px !important;
+    height: 4px !important;
+    border-radius: 50% !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+}
+
+#__qt_sentence_translation[data-state="loading"] .__qt_translation-orb {
+    animation: __qt_translation_orb 1.15s ease-in-out infinite !important;
+}
+
+#__qt_sentence_translation .__qt_translation-copy {
+    display: flex !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    color: inherit !important;
+    font: inherit !important;
+    animation: __qt_translation_copy_in 0.2s ease-out both !important;
+}
+
+#__qt_sentence_translation .__qt_sub-overlay-line {
+    display: block !important;
+    max-width: 100% !important;
+    margin: 1px 0 !important;
+    color: #ffffff !important;
+    font: inherit !important;
+    line-height: inherit !important;
+    letter-spacing: inherit !important;
+    text-align: center !important;
     text-shadow:
         -0.07em -0.07em 0 #000,
         0.07em -0.07em 0 #000,
@@ -1048,48 +1172,71 @@ body[data-lectoro-platform="ted"] #__qt_custom_subtitles_layer .__qt_custom-sub-
         0px -0.07em 0 #000,
         0px 0.07em 0 #000,
         0px 0.15em 0.35em rgba(0, 0, 0, 0.9) !important;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    hyphens: none !important;
 }
 
-.__qt_sub-overlay-line {
-    display: inline-block !important;
-    margin: 2px 0 !important;
-    white-space: pre-wrap !important;
-    word-break: break-word !important;
+#__qt_sentence_translation .__qt_translation-shimmer {
+    display: flex !important;
+    width: min(420px, 72vw) !important;
+    max-width: 100% !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 7px !important;
+    padding: 2px 0 1px !important;
 }
 
-.__qt_shimmer-bar {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding: 4px 0;
-    width: 100%;
-}
-
-.__qt_shimmer-line {
-    height: 20px;
-    width: 85%;
-    border-radius: 6px;
+#__qt_sentence_translation .__qt_translation-shimmer-line {
+    display: block !important;
+    width: 92% !important;
+    height: max(10px, calc(var(--lectoro-translation-font-size, 20px) * 0.62)) !important;
+    border-radius: 999px !important;
     background: linear-gradient(
         90deg,
-        rgba(255, 255, 255, 0.06) 25%,
-        rgba(255, 255, 255, 0.22) 50%,
-        rgba(255, 255, 255, 0.06) 75%
-    );
-    background-size: 200% 100%;
-    animation: __qt_shimmer 1.4s ease-in-out infinite;
+        rgba(129, 140, 248, 0.08) 0%,
+        rgba(129, 140, 248, 0.34) 34%,
+        rgba(110, 231, 183, 0.34) 52%,
+        rgba(255, 255, 255, 0.2) 64%,
+        rgba(129, 140, 248, 0.08) 100%
+    ) !important;
+    background-size: 240% 100% !important;
+    box-shadow: 0 0 18px rgba(129, 140, 248, 0.06) !important;
+    animation: __qt_translation_sheen 1.25s ease-in-out infinite !important;
 }
 
-.__qt_shimmer-short {
-    width: 55%;
+#__qt_sentence_translation .__qt_translation-shimmer-line.__qt_short {
+    width: 64% !important;
+    animation-delay: 0.08s !important;
 }
 
-@keyframes __qt_shimmer {
-    0% {
-        background-position: 200% 0;
-    }
+@keyframes __qt_translation_bubble_in {
+    from { opacity: 0; transform: translateY(7px) scale(0.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
 
-    100% {
-        background-position: -200% 0;
+@keyframes __qt_translation_copy_in {
+    from { opacity: 0; transform: translateY(3px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes __qt_translation_orb {
+    0%, 100% { transform: scale(0.84); filter: saturate(0.9); }
+    50% { transform: scale(1.08); filter: saturate(1.25); }
+}
+
+@keyframes __qt_translation_sheen {
+    from { background-position: 110% 0; }
+    to { background-position: -110% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #__qt_sentence_translation.__qt_sub-overlay,
+    #__qt_sentence_translation .__qt_translation-copy,
+    #__qt_sentence_translation .__qt_translation-orb,
+    #__qt_sentence_translation .__qt_translation-shimmer-line {
+        animation: none !important;
     }
 }
 

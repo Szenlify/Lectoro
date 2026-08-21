@@ -398,7 +398,7 @@
             const sourceHeight = media.videoHeight || media.naturalHeight || media.height;
             if (!sourceWidth || !sourceHeight) return null;
 
-            const MAX = 480;
+            const MAX = 330;
             const scale = Math.min(MAX / sourceWidth, MAX / sourceHeight, 1);
             const width = Math.max(1, Math.round(sourceWidth * scale));
             const height = Math.max(1, Math.round(sourceHeight * scale));
@@ -423,7 +423,7 @@
 
     function cropAndScaleCanvas(img, sx, sy, sw, sh) {
         if (sw <= 0 || sh <= 0) return null;
-        const MAX = 480;
+        const MAX = 330;
         const scale = Math.min(MAX / sw, MAX / sh, 1);
         const dw = Math.max(1, Math.round(sw * scale));
         const dh = Math.max(1, Math.round(sh * scale));
