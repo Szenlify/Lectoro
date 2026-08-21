@@ -334,9 +334,22 @@
             return;
         }
 
-        const displayLines = rawCleanLines;
-        const newText = displayLines.join(" ");
-        if (newText === activeText && box.children.length === displayLines.length) {
+        let displayLines = rawCleanLines;
+        const newText = displayLines.join(" ").replace(/\s+/g, " ").trim();
+
+        // Netflix may rebuild the same cue first as one DOM line and then as
+        // two lines (or the reverse). Preserve the first accepted layout for
+        // as long as the normalized cue text itself has not changed.
+        if (isNetflixPage() && newText === activeText && activeLines.length > 0) {
+            displayLines = activeLines;
+            if (box.children.length === activeLines.length) {
+                syncCustomSubtitlePosition();
+                return;
+            }
+        } else if (
+            newText === activeText &&
+            box.children.length === displayLines.length
+        ) {
             syncCustomSubtitlePosition();
             return;
         }
