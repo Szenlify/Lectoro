@@ -641,7 +641,7 @@ video::cue {
    Lectoro Universal Custom Subtitles (SSOT & Responsive)
    ═══════════════════════════════════════════════════════════════ */
 
-.__qt_custom-subtitles-layer {
+#__qt_custom_subtitles_layer.__qt_custom-subtitles-layer {
     position: absolute !important;
     inset: 0 !important;
     width: 100% !important;
@@ -656,30 +656,58 @@ video::cue {
     justify-content: center !important;
     overflow: hidden !important;
     transition: opacity 0.15s ease !important;
+    isolation: isolate !important;
+    contain: layout style !important;
+    color: #ffffff !important;
+    font-family: "Netflix Sans Variable", "Netflix Sans", "Helvetica Neue", "Segoe UI", Roboto, Arial, sans-serif !important;
+    font-style: normal !important;
+    font-weight: 600 !important;
+    font-variant: normal !important;
+    text-transform: none !important;
+    text-rendering: geometricPrecision !important;
+    -webkit-font-smoothing: antialiased !important;
 }
 
-.__qt_custom-subtitles-box {
+#__qt_custom_subtitles_layer .__qt_custom-subtitles-box {
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
     justify-content: center !important;
     text-align: center !important;
-    max-width: min(86%, 920px) !important;
+    width: max-content !important;
+    max-width: 94% !important;
+    min-width: 0 !important;
+    flex: 0 0 auto !important;
     margin-bottom: var(--lectoro-sub-bottom, 68px) !important;
     pointer-events: auto !important;
     user-select: text !important;
+    color: inherit !important;
+    font: inherit !important;
+    line-height: inherit !important;
+    letter-spacing: inherit !important;
+    text-transform: none !important;
+    white-space: normal !important;
     transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), opacity 0s ease !important;
 }
 
-.__qt_custom-sub-line {
+#__qt_custom_subtitles_layer .__qt_custom-sub-line {
     display: inline-block !important;
+    width: max-content !important;
+    max-width: none !important;
     margin: 2.5px 0 !important;
     color: #ffffff !important;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Inter, sans-serif !important;
+    font-family: "Netflix Sans Variable", "Netflix Sans", "Helvetica Neue", "Segoe UI", Roboto, Arial, sans-serif !important;
     font-size: var(--lectoro-sub-font-size, 25px) !important;
+    font-style: normal !important;
     font-weight: 600 !important;
+    font-variant: normal !important;
     line-height: 1.35 !important;
     letter-spacing: 0.015em !important;
+    word-spacing: normal !important;
+    text-align: center !important;
+    text-decoration: none !important;
+    text-transform: none !important;
+    unicode-bidi: plaintext !important;
     text-shadow:
         -0.07em -0.07em 0 #000,
         0.07em -0.07em 0 #000,
@@ -690,46 +718,60 @@ video::cue {
         0px -0.07em 0 #000,
         0px 0.07em 0 #000,
         0px 0.15em 0.35em rgba(0, 0, 0, 0.9) !important;
-    white-space: pre-wrap !important;
-    word-break: break-word !important;
+    white-space: nowrap !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    hyphens: none !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════
    Platform-Specific Subtitle Font Sizes (Dynamic Variable Driven)
    ═══════════════════════════════════════════════════════════════ */
 
-[data-platform="youtube"] .__qt_custom-sub-line,
-body[data-lectoro-platform="youtube"] .__qt_custom-sub-line {
+#__qt_custom_subtitles_layer[data-platform="youtube"] .__qt_custom-sub-line,
+body[data-lectoro-platform="youtube"] #__qt_custom_subtitles_layer .__qt_custom-sub-line {
     font-size: var(--lectoro-sub-font-size, 25px) !important;
 }
 
-[data-platform="netflix"] .__qt_custom-sub-line,
-body[data-lectoro-platform="netflix"] .__qt_custom-sub-line {
+#__qt_custom_subtitles_layer[data-platform="netflix"] .__qt_custom-sub-line,
+body[data-lectoro-platform="netflix"] #__qt_custom_subtitles_layer .__qt_custom-sub-line {
     font-size: var(--lectoro-sub-font-size, 31px) !important;
 }
 
-[data-platform="lookmovie"] .__qt_custom-sub-line,
-body[data-lectoro-platform="lookmovie"] .__qt_custom-sub-line {
+#__qt_custom_subtitles_layer[data-platform="lookmovie"] .__qt_custom-sub-line,
+body[data-lectoro-platform="lookmovie"] #__qt_custom_subtitles_layer .__qt_custom-sub-line {
     font-size: var(--lectoro-sub-font-size, 29px) !important;
 }
 
-[data-platform="ted"] .__qt_custom-sub-line,
-body[data-lectoro-platform="ted"] .__qt_custom-sub-line {
+#__qt_custom_subtitles_layer[data-platform="ted"] .__qt_custom-sub-line,
+body[data-lectoro-platform="ted"] #__qt_custom_subtitles_layer .__qt_custom-sub-line {
     font-size: var(--lectoro-sub-font-size, 27px) !important;
 }
 
-.__qt_sub-word {
+#__qt_custom_subtitles_layer .__qt_sub-word {
     cursor: pointer !important;
     display: inline !important;
     pointer-events: auto !important;
     border-radius: 4px !important;
-    padding: 0 2px !important;
-    margin: 0 1px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    color: inherit !important;
+    font: inherit !important;
+    line-height: inherit !important;
+    letter-spacing: inherit !important;
+    word-spacing: inherit !important;
+    text-shadow: inherit !important;
+    text-decoration: inherit !important;
+    text-transform: none !important;
+    white-space: inherit !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    hyphens: none !important;
     transition: background-color 0.12s ease, color 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease !important;
 }
 
-.__qt_sub-word:hover,
-.__qt_sub-word.__qt_word-hover {
+#__qt_custom_subtitles_layer .__qt_sub-word:hover,
+#__qt_custom_subtitles_layer .__qt_sub-word.__qt_word-hover {
     background: rgba(74, 108, 247, 0.55) !important;
     color: #ffffff !important;
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25) inset !important;

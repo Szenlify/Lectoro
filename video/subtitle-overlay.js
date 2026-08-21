@@ -152,8 +152,27 @@
         const platform = getPlatformName();
 
         if (customSubLayerEl && customSubLayerEl.isConnected) {
+            customSubLayerEl.id = `${PREFIX}custom_subtitles_layer`;
+            customSubLayerEl.classList.add(`${PREFIX}custom-subtitles-layer`);
+            customSubLayerEl.setAttribute("data-platform", platform);
+            if (!customSubBoxEl) {
+                customSubBoxEl = document.createElement("div");
+                customSubBoxEl.style.setProperty(
+                    "opacity",
+                    activeLines.length > 0 ? "1" : "0",
+                    "important",
+                );
+            }
+            customSubBoxEl.classList.add(`${PREFIX}custom-subtitles-box`);
+            customSubBoxEl.setAttribute("data-platform", platform);
+            if (customSubBoxEl.parentElement !== customSubLayerEl) {
+                customSubLayerEl.appendChild(customSubBoxEl);
+            }
             if (parent && customSubLayerEl.parentElement !== parent) {
                 parent.appendChild(customSubLayerEl);
+            }
+            if (document.body) {
+                document.body.setAttribute("data-lectoro-platform", platform);
             }
             return { layer: customSubLayerEl, box: customSubBoxEl };
         }
@@ -166,9 +185,10 @@
         customSubBoxEl = document.createElement("div");
         customSubBoxEl.className = `${PREFIX}custom-subtitles-box`;
         customSubBoxEl.setAttribute("data-platform", platform);
-        customSubBoxEl.style.opacity = "0";
+        customSubBoxEl.style.setProperty("opacity", "0", "important");
+        customSubBoxEl.style.setProperty("pointer-events", "none", "important");
 
-        if (document.body && !document.body.hasAttribute("data-lectoro-platform")) {
+        if (document.body) {
             document.body.setAttribute("data-lectoro-platform", platform);
         }
 
@@ -176,6 +196,33 @@
         parent.appendChild(customSubLayerEl);
 
         return { layer: customSubLayerEl, box: customSubBoxEl };
+    }
+
+    function fitCustomSubtitleLines(availableWidth, baseFontSize) {
+        if (!customSubLayerEl || !customSubBoxEl || activeLines.length === 0) {
+            return;
+        }
+        const lineElements = Array.from(
+            customSubBoxEl.querySelectorAll(`.${PREFIX}custom-sub-line`),
+        );
+        if (lineElements.length === 0) return;
+
+        const allowedWidth = Math.max(180, availableWidth * 0.92);
+        const widestLine = Math.max(
+            ...lineElements.map((line) =>
+                Math.max(line.scrollWidth, line.getBoundingClientRect().width),
+            ),
+        );
+        if (!Number.isFinite(widestLine) || widestLine <= allowedWidth) return;
+
+        const fittedFontSize = Math.max(
+            16,
+            Math.floor(baseFontSize * (allowedWidth / widestLine)),
+        );
+        customSubLayerEl.style.setProperty(
+            "--lectoro-sub-font-size",
+            `${fittedFontSize}px`,
+        );
     }
 
     function isYouTubePage() {
@@ -191,7 +238,7 @@
             const video = registry?.getVideo();
 
             if (!video || !video.isConnected || registry?.isPreviewOrThumbnailVideo?.(video)) {
-                layer.style.display = "none";
+                layer.style.setProperty("display", "none", "important");
                 return;
             }
 
@@ -234,11 +281,11 @@
             const actualHeight = playerRect.height || videoRect.height || video.offsetHeight || window.innerHeight;
 
             if (actualWidth <= 0 || actualHeight <= 0) {
-                layer.style.display = "none";
+                layer.style.setProperty("display", "none", "important");
                 return;
             }
 
-            layer.style.display = "flex";
+            layer.style.setProperty("display", "flex", "important");
             layer.style.position = "absolute";
             layer.style.inset = "0px";
             layer.style.width = "100%";
@@ -249,6 +296,7 @@
             // Proportional font sizing: small video = smaller font, large video = larger font
             const fontSizePx = Math.max(16, Math.min(54, Math.round(actualWidth * 0.027 + 2)));
             layer.style.setProperty("--lectoro-sub-font-size", `${fontSizePx}px`);
+            fitCustomSubtitleLines(actualWidth, fontSizePx);
 
             // Bottom offset inside video player
             const isNetflix = isNetflixPage();
@@ -278,8 +326,8 @@
             activeText = "";
             activeWordSpans = [];
             box.innerHTML = "";
-            box.style.opacity = "0";
-            box.style.pointerEvents = "none";
+            box.style.setProperty("opacity", "0", "important");
+            box.style.setProperty("pointer-events", "none", "important");
             if (isSubHovering && !subClickLocked) {
                 closeSubTooltip();
             }
@@ -301,6 +349,7 @@
         for (const lineText of displayLines) {
             const lineEl = document.createElement("div");
             lineEl.className = `${PREFIX}custom-sub-line`;
+            lineEl.setAttribute("dir", "auto");
 
             const parts = lineText.match(/\S+|\s+/g) || [];
             for (const part of parts) {
@@ -317,8 +366,8 @@
             box.appendChild(lineEl);
         }
 
-        box.style.opacity = "1";
-        box.style.pointerEvents = "auto";
+        box.style.setProperty("opacity", "1", "important");
+        box.style.setProperty("pointer-events", "auto", "important");
         syncCustomSubtitlePosition();
     }
 

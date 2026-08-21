@@ -809,8 +809,8 @@
         name: "Netflix",
         playerSelector: ".watch-video, [data-uia='video-canvas'], .nf-player-container",
         containerSelector: ".player-timedtext",
-        cueSelector: ".player-timedtext-text-container span",
-        leafOnly: true,
+        cueSelector: ".player-timedtext-text-container",
+        leafOnly: false,
         documentFallback: true,
         isPage,
         isWatchPage,
@@ -830,14 +830,14 @@
         getCueElements: (container) => {
             if (!isWatchPage() || !container || !container.isConnected) return [];
             const candidates = Array.from(
-                container.querySelectorAll(".player-timedtext-text-container span"),
+                container.querySelectorAll(".player-timedtext-text-container"),
             );
             return (
                 globalThis.LectoroBaseAdapter?.filterCueCandidates ||
                 ((x) => x)
             )(candidates, {
-                leafOnly: true,
-                cueSelector: ".player-timedtext-text-container span",
+                leafOnly: false,
+                cueSelector: ".player-timedtext-text-container",
             });
         },
         requestSeek,
