@@ -1230,9 +1230,10 @@
                   viewportHeight - bubbleHeight - edgeGap,
               )
             : aboveTop;
+        const arrowInset = Math.min(24, bubbleWidth / 2);
         const arrowX = Math.max(
-            24,
-            Math.min(anchorCenter - left, bubbleWidth - 24),
+            arrowInset,
+            Math.min(anchorCenter - left, bubbleWidth - arrowInset),
         );
 
         translationOverlay.classList.toggle(`${PREFIX}bubble-below`, placeBelow);
@@ -1252,35 +1253,13 @@
         const overlay = createOverlay(layout);
         overlay.dataset.state = "loading";
         overlay.setAttribute("aria-label", "Tłumaczenie zdania w toku");
-        overlay.innerHTML = `
-            <div class="${PREFIX}translation-shell">
-                <div class="${PREFIX}translation-kicker">
-                    <span class="${PREFIX}translation-orb" aria-hidden="true"></span>
-                    <span>Tłumaczę zdanie</span>
-                </div>
-                <div class="${PREFIX}translation-shimmer" aria-hidden="true">
-                    <span class="${PREFIX}translation-shimmer-line"></span>
-                    <span class="${PREFIX}translation-shimmer-line ${PREFIX}short"></span>
-                </div>
-            </div>`;
+        overlay.innerHTML = `<span class="${PREFIX}translation-spinner" aria-hidden="true"></span>`;
         positionOverlay();
     }
 
     function applyTranslation(translatedText, layout = translationAnchorLayout) {
         const overlay = translationOverlay || createOverlay(layout);
         const sentence = String(translatedText || "").trim();
-
-        const shell = document.createElement("div");
-        shell.className = `${PREFIX}translation-shell`;
-
-        const kicker = document.createElement("div");
-        kicker.className = `${PREFIX}translation-kicker`;
-        const orb = document.createElement("span");
-        orb.className = `${PREFIX}translation-orb`;
-        orb.setAttribute("aria-hidden", "true");
-        const label = document.createElement("span");
-        label.textContent = "Tłumaczenie";
-        kicker.append(orb, label);
 
         const copy = document.createElement("div");
         copy.className = `${PREFIX}translation-copy`;
@@ -1290,12 +1269,35 @@
         line.setAttribute("dir", "auto");
         line.textContent = sentence;
         copy.append(line);
-        shell.append(kicker, copy);
 
-        overlay.dataset.state = "ready";
+        // Measure the real translated sentence before the user can see it.
+        // The bubble then grows from the spinner's exact dimensions to the
+        // measured target, avoiding the old skeleton-to-text size jump.
+        const loadingRect = overlay.getBoundingClientRect();
+        overlay.dataset.state = "measuring";
+        overlay.replaceChildren(copy);
+        const targetRect = overlay.getBoundingClientRect();
+
+        overlay.style.setProperty("width", `${loadingRect.width}px`, "important");
+        overlay.style.setProperty("height", `${loadingRect.height}px`, "important");
+        overlay.dataset.state = "expanding";
         overlay.setAttribute("aria-label", "Przetłumaczone zdanie");
-        overlay.replaceChildren(shell);
         positionOverlay(layout);
+
+        requestAnimationFrame(() => {
+            if (overlay !== translationOverlay || !overlay.isConnected) return;
+            overlay.style.setProperty("width", `${targetRect.width}px`, "important");
+            overlay.style.setProperty("height", `${targetRect.height}px`, "important");
+
+            setTimeout(() => {
+                if (overlay !== translationOverlay || !overlay.isConnected) return;
+                overlay.dataset.state = "ready";
+                overlay.style.removeProperty("width");
+                overlay.style.removeProperty("height");
+                overlay.classList.add(`${PREFIX}translation-reveal`);
+                positionOverlay(layout);
+            }, 260);
+        });
         eTranslateActive = true;
     }
 

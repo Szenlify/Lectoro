@@ -1027,7 +1027,7 @@ body[data-lectoro-platform="ted"] #__qt_custom_subtitles_layer .__qt_custom-sub-
     position: fixed !important;
     z-index: 2147483647 !important;
     width: max-content !important;
-    min-width: min(180px, calc(100vw - 24px)) !important;
+    min-width: 0 !important;
     max-width: min(860px, calc(100vw - 24px)) !important;
     padding: 10px 15px 12px !important;
     border: 1px solid rgba(129, 140, 248, 0.24) !important;
@@ -1068,6 +1068,34 @@ body[data-lectoro-platform="ted"] #__qt_custom_subtitles_layer .__qt_custom-sub-
     animation: __qt_translation_bubble_in 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both !important;
 }
 
+#__qt_sentence_translation[data-state="loading"] {
+    width: 42px !important;
+    height: 42px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+}
+
+#__qt_sentence_translation[data-state="measuring"] {
+    width: max-content !important;
+    height: auto !important;
+    visibility: hidden !important;
+    animation: none !important;
+}
+
+#__qt_sentence_translation[data-state="expanding"] {
+    min-width: 0 !important;
+    border-radius: 17px !important;
+    animation: none !important;
+    transition:
+        width 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
+        height 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
+        border-radius 0.16s ease-out !important;
+}
+
+#__qt_sentence_translation[data-state="ready"] {
+    animation: none !important;
+}
+
 #__qt_sentence_translation.__qt_sub-overlay::after {
     content: "" !important;
     position: absolute !important;
@@ -1094,68 +1122,45 @@ body[data-lectoro-platform="ted"] #__qt_custom_subtitles_layer .__qt_custom-sub-
     border-top: 1px solid rgba(129, 140, 248, 0.24) !important;
 }
 
-#__qt_sentence_translation .__qt_translation-shell {
-    display: flex !important;
-    width: 100% !important;
-    min-width: 0 !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    gap: 6px !important;
-    color: inherit !important;
-    font: inherit !important;
-}
-
-#__qt_sentence_translation .__qt_translation-kicker {
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 6px !important;
-    align-self: flex-start !important;
-    color: rgba(199, 210, 254, 0.72) !important;
-    font: 700 9px/1.2 Inter, system-ui, sans-serif !important;
-    letter-spacing: 0.1em !important;
-    text-transform: uppercase !important;
-    white-space: nowrap !important;
-    text-shadow: none !important;
-}
-
-#__qt_sentence_translation .__qt_translation-orb {
-    position: relative !important;
-    display: inline-grid !important;
-    width: 14px !important;
-    height: 14px !important;
-    flex: 0 0 14px !important;
-    place-items: center !important;
+#__qt_sentence_translation .__qt_translation-spinner {
+    display: block !important;
+    width: 18px !important;
+    height: 18px !important;
+    box-sizing: border-box !important;
+    border: 2px solid rgba(129, 140, 248, 0.22) !important;
+    border-top-color: #6ee7b7 !important;
+    border-right-color: #818cf8 !important;
     border-radius: 50% !important;
-    background: linear-gradient(135deg, rgba(129, 140, 248, 0.92), rgba(110, 231, 183, 0.86)) !important;
-    box-shadow: 0 0 14px rgba(129, 140, 248, 0.28) !important;
-}
-
-#__qt_sentence_translation .__qt_translation-orb::after {
-    content: "" !important;
-    width: 4px !important;
-    height: 4px !important;
-    border-radius: 50% !important;
-    background: rgba(255, 255, 255, 0.95) !important;
-}
-
-#__qt_sentence_translation[data-state="loading"] .__qt_translation-orb {
-    animation: __qt_translation_orb 1.15s ease-in-out infinite !important;
+    filter: drop-shadow(0 0 5px rgba(129, 140, 248, 0.3)) !important;
+    animation: __qt_translation_spinner 0.72s linear infinite !important;
 }
 
 #__qt_sentence_translation .__qt_translation-copy {
     display: flex !important;
-    width: 100% !important;
+    width: auto !important;
+    max-width: min(830px, calc(100vw - 54px)) !important;
     min-width: 0 !important;
+    flex: 0 1 auto !important;
     flex-direction: column !important;
     align-items: center !important;
     color: inherit !important;
     font: inherit !important;
-    animation: __qt_translation_copy_in 0.2s ease-out both !important;
+    opacity: 1;
+}
+
+#__qt_sentence_translation[data-state="expanding"] .__qt_translation-copy {
+    opacity: 0 !important;
+    transition: none !important;
+}
+
+#__qt_sentence_translation[data-state="ready"].__qt_translation-reveal .__qt_translation-copy {
+    animation: __qt_translation_copy_reveal 0.13s ease-out both !important;
 }
 
 #__qt_sentence_translation .__qt_sub-overlay-line {
     display: block !important;
-    max-width: 100% !important;
+    width: max-content !important;
+    max-width: min(830px, calc(100vw - 54px)) !important;
     margin: 1px 0 !important;
     color: #ffffff !important;
     font: inherit !important;
@@ -1178,65 +1183,26 @@ body[data-lectoro-platform="ted"] #__qt_custom_subtitles_layer .__qt_custom-sub-
     hyphens: none !important;
 }
 
-#__qt_sentence_translation .__qt_translation-shimmer {
-    display: flex !important;
-    width: min(420px, 72vw) !important;
-    max-width: 100% !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    gap: 7px !important;
-    padding: 2px 0 1px !important;
-}
-
-#__qt_sentence_translation .__qt_translation-shimmer-line {
-    display: block !important;
-    width: 92% !important;
-    height: max(10px, calc(var(--lectoro-translation-font-size, 20px) * 0.62)) !important;
-    border-radius: 999px !important;
-    background: linear-gradient(
-        90deg,
-        rgba(129, 140, 248, 0.08) 0%,
-        rgba(129, 140, 248, 0.34) 34%,
-        rgba(110, 231, 183, 0.34) 52%,
-        rgba(255, 255, 255, 0.2) 64%,
-        rgba(129, 140, 248, 0.08) 100%
-    ) !important;
-    background-size: 240% 100% !important;
-    box-shadow: 0 0 18px rgba(129, 140, 248, 0.06) !important;
-    animation: __qt_translation_sheen 1.25s ease-in-out infinite !important;
-}
-
-#__qt_sentence_translation .__qt_translation-shimmer-line.__qt_short {
-    width: 64% !important;
-    animation-delay: 0.08s !important;
-}
-
 @keyframes __qt_translation_bubble_in {
     from { opacity: 0; transform: translateY(7px) scale(0.96); }
     to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-@keyframes __qt_translation_copy_in {
-    from { opacity: 0; transform: translateY(3px); }
+@keyframes __qt_translation_spinner {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes __qt_translation_copy_reveal {
+    from { opacity: 0; transform: translateY(2px); }
     to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes __qt_translation_orb {
-    0%, 100% { transform: scale(0.84); filter: saturate(0.9); }
-    50% { transform: scale(1.08); filter: saturate(1.25); }
-}
-
-@keyframes __qt_translation_sheen {
-    from { background-position: 110% 0; }
-    to { background-position: -110% 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
     #__qt_sentence_translation.__qt_sub-overlay,
     #__qt_sentence_translation .__qt_translation-copy,
-    #__qt_sentence_translation .__qt_translation-orb,
-    #__qt_sentence_translation .__qt_translation-shimmer-line {
+    #__qt_sentence_translation .__qt_translation-spinner {
         animation: none !important;
+        transition: none !important;
     }
 }
 
