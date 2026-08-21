@@ -21,6 +21,8 @@ const SubscriptionService = (() => {
             uid,
             plan: Config.SUBSCRIPTION_PLANS.FREE,
             subscriptionStatus: "active",
+            stripeTrialEnd: null,
+            trialEligible: true,
             usage: {
                 ai: { month, used: 0 },
                 elevenLabsCharacters: { month, used: 0 },
@@ -302,7 +304,11 @@ const SubscriptionService = (() => {
         const url = new URL(data.url);
         if (url.protocol !== "https:") throw new Error("Nieprawidłowy adres Stripe.");
         await chrome.tabs.create({ url: url.href });
-        return { opened: true, redirectedToPortal: response.status === 409 };
+        return {
+            opened: true,
+            redirectedToPortal: response.status === 409,
+            trialDays: Math.max(0, Number(data.trialDays) || 0),
+        };
     }
 
     function startCheckout(plan) {

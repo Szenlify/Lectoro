@@ -18,7 +18,11 @@ function getStripeSdk() {
     }
     return StripeSdk;
 }
-const { SUBSCRIPTION_PLANS, normalizePlan } = require("./subscription-config");
+const {
+    SUBSCRIPTION_PLANS,
+    getPlanLimits,
+    normalizePlan,
+} = require("./subscription-config");
 
 const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
@@ -161,6 +165,43 @@ function subscriptionPeriodEnd(subscription) {
     return ends.length ? Math.max(...ends) : null;
 }
 
+function isTrialEligible(subscriptions = [], userData = {}) {
+    if (userData.stripeTrialUsed || userData.stripeHasSubscribed) return false;
+    return !subscriptions.some(
+        (subscription) =>
+            subscription?.id ||
+            Number(subscription?.trial_start || 0) > 0 ||
+            Number(subscription?.trial_end || 0) > 0,
+    );
+}
+
+function checkoutSessionOptions({ customerId, uid, plan, priceId, trialDays = 0 }) {
+    const normalizedTrialDays = Math.max(0, Number(trialDays) || 0);
+    const successStatus = normalizedTrialDays > 0 ? "trial_success" : "success";
+    return {
+        mode: "subscription",
+        customer: customerId,
+        client_reference_id: uid,
+        line_items: [{ price: priceId, quantity: 1 }],
+        payment_method_collection: "always",
+        allow_promotion_codes: true,
+        locale: "pl",
+        success_url: `${CHECKOUT_RESULT_URL}?status=${successStatus}&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${CHECKOUT_RESULT_URL}?status=cancel`,
+        metadata: {
+            firebaseUid: uid,
+            plan,
+            trialDays: String(normalizedTrialDays),
+        },
+        subscription_data: {
+            metadata: { firebaseUid: uid, plan },
+            ...(normalizedTrialDays > 0
+                ? { trial_period_days: normalizedTrialDays }
+                : {}),
+        },
+    };
+}
+
 async function applySubscriptionState(uid, customerId, subscription) {
     const entitled =
         !!subscription &&
@@ -168,6 +209,9 @@ async function applySubscriptionState(uid, customerId, subscription) {
         planForSubscription(subscription) !== SUBSCRIPTION_PLANS.FREE;
     const plan = entitled ? planForSubscription(subscription) : SUBSCRIPTION_PLANS.FREE;
     const status = subscription?.status || "inactive";
+    const usedTrial =
+        Number(subscription?.trial_start || 0) > 0 ||
+        Number(subscription?.trial_end || 0) > 0;
     const authUser = await getAdmin().auth().getUser(uid);
 
     await getAdmin().auth().setCustomUserClaims(uid, {
@@ -188,6 +232,11 @@ async function applySubscriptionState(uid, customerId, subscription) {
                 stripeCurrentPeriodEnd:
                     unixTimestamp(subscriptionPeriodEnd(subscription)) ||
                     getAdmin().firestore.FieldValue.delete(),
+                stripeTrialEnd:
+                    unixTimestamp(subscription?.trial_end) ||
+                    getAdmin().firestore.FieldValue.delete(),
+                ...(subscription ? { stripeHasSubscribed: true } : {}),
+                ...(usedTrial ? { stripeTrialUsed: true } : {}),
                 planUpdatedAt: getAdmin().firestore.FieldValue.serverTimestamp(),
             },
             { merge: true },
@@ -267,21 +316,27 @@ exports.createStripeCheckoutSession = onRequest(
             if (!selectedPrice?.startsWith("price_")) {
                 throw new Error(`Stripe price for ${requestedPlan} is not configured`);
             }
-            const session = await stripe.checkout.sessions.create({
-                mode: "subscription",
-                customer: customer.id,
-                client_reference_id: decodedToken.uid,
-                line_items: [{ price: selectedPrice, quantity: 1 }],
-                allow_promotion_codes: true,
-                locale: "pl",
-                success_url: `${CHECKOUT_RESULT_URL}?status=success&session_id={CHECKOUT_SESSION_ID}`,
-                cancel_url: `${CHECKOUT_RESULT_URL}?status=cancel`,
-                metadata: { firebaseUid: decodedToken.uid, plan: requestedPlan },
-                subscription_data: {
-                    metadata: { firebaseUid: decodedToken.uid, plan: requestedPlan },
-                },
-            });
-            return res.status(200).json({ url: session.url });
+            const userSnapshot = await getAdmin()
+                .firestore()
+                .collection("users")
+                .doc(decodedToken.uid)
+                .get();
+            const trialDays = isTrialEligible(
+                activeSubscriptions.data,
+                userSnapshot.data() || {},
+            )
+                ? getPlanLimits(requestedPlan).trialDays
+                : 0;
+            const session = await stripe.checkout.sessions.create(
+                checkoutSessionOptions({
+                    customerId: customer.id,
+                    uid: decodedToken.uid,
+                    plan: requestedPlan,
+                    priceId: selectedPrice,
+                    trialDays,
+                }),
+            );
+            return res.status(200).json({ url: session.url, trialDays });
         } catch (error) {
             console.error("[Stripe Checkout] Error:", error);
             return res.status(500).json({
@@ -395,6 +450,11 @@ exports.stripeWebhook = onRequest(
 
 function resultPage(status) {
     const messages = {
+        trial_success: {
+            icon: "✓",
+            title: "3 dni za darmo rozpoczęte",
+            text: "Karta została zapisana, ale dziś nic nie pobraliśmy. Zamknij tę kartę i wróć do Lectoro — plan pojawi się po kilku sekundach.",
+        },
         success: {
             icon: "✓",
             title: "Płatność zakończona",
@@ -431,5 +491,11 @@ exports.stripeCheckoutResult = onRequest(
 // Non-enumerable means Firebase does not deploy these pure helpers as functions.
 Object.defineProperty(exports, "_test", {
     enumerable: false,
-    value: { planForSubscription, resultPage, subscriptionPeriodEnd },
+    value: {
+        checkoutSessionOptions,
+        isTrialEligible,
+        planForSubscription,
+        resultPage,
+        subscriptionPeriodEnd,
+    },
 });

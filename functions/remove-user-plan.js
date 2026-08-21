@@ -19,6 +19,7 @@ const SUBSCRIPTION_FIELDS = [
     "stripeSubscriptionId",
     "stripeCancelAtPeriodEnd",
     "stripeCurrentPeriodEnd",
+    "stripeTrialEnd",
     "planUpdatedAt",
 ];
 

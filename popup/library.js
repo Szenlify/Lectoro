@@ -1,6 +1,6 @@
 // ── Library tab: curated titles well-suited for learning English ──
 // Static, hand-picked list (title / difficulty / short note / link / image),
-// stored in shared/library-items.json and loaded once when the popup opens.
+// stored in shared/library-items.json and loaded when the tab opens for the first time.
 let LIBRARY_ITEMS = [];
 let libraryItemsLoaded = false;
 

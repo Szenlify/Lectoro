@@ -22,6 +22,7 @@
     const SUBSCRIPTION_LIMITS = Object.freeze({
         [SUBSCRIPTION_PLANS.FREE]: Object.freeze({
             displayName: "FREE",
+            trialDays: 0,
             priceMonthly: Object.freeze({ amount: 0, currency: "PLN" }),
             ai: Object.freeze({ usesPerMonth: 10 }),
             srs: Object.freeze({ maxSavedCards: 50 }),
@@ -33,6 +34,7 @@
         }),
         [SUBSCRIPTION_PLANS.BASIC]: Object.freeze({
             displayName: "BASIC",
+            trialDays: 3,
             priceMonthly: Object.freeze({ amount: 7.99, currency: "USD" }),
             ai: Object.freeze({ usesPerMonth: 200 }),
             srs: Object.freeze({ maxSavedCards: 3000 }),
@@ -44,6 +46,7 @@
         }),
         [SUBSCRIPTION_PLANS.PRO]: Object.freeze({
             displayName: "PRO",
+            trialDays: 3,
             priceMonthly: Object.freeze({ amount: 19.99, currency: "USD" }),
             ai: Object.freeze({ usesPerMonth: 1200 }),
             srs: Object.freeze({ maxSavedCards: 10000 }),

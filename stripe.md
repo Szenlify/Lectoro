@@ -10,6 +10,11 @@ Instrukcja jest przygotowana dla tego konkretnego projektu:
 - plan `BASIC`: `7.99 USD` co miesiąc,
 - plan `PRO`: `19.99 USD` co miesiąc.
 
+Pierwsza subskrypcja BASIC lub PRO ma 3-dniowy okres próbny. Stripe Checkout
+wymaga karty, ale nie pobiera opłaty w dniu rozpoczęcia trialu. Po 3 dniach
+zaczyna się standardowe miesięczne rozliczenie, o ile użytkownik wcześniej nie
+anuluje subskrypcji.
+
 > **Bardzo ważne:** najpierw wykonaj wszystko w środowisku testowym Stripe. Nie wklejaj prawdziwego klucza `sk_live_...`, dopóki test kartą `4242 4242 4242 4242` nie przejdzie od początku do końca.
 
 ## 1. Co zostało już zrobione w kodzie
@@ -22,8 +27,9 @@ Nie musisz pisać mechanizmu płatności od zera. Projekt ma już:
 4. webhook, czyli bezpieczne „powiadomienie od Stripe do Firebase”;
 5. automatyczne zapisanie planu w Firebase Auth Custom Claims i Firestore;
 6. blokadę przed kupieniem dwóch aktywnych abonamentów naraz;
-7. stronę potwierdzenia po zakupie lub anulowaniu płatności;
-8. testy mapowania identyfikatorów cen Stripe na plany Lectoro.
+7. jednorazowy, 3-dniowy trial wymagający podania karty;
+8. stronę potwierdzenia po zakupie lub anulowaniu płatności;
+9. testy mapowania identyfikatorów cen Stripe na plany Lectoro.
 
 Najważniejsze pliki:
 
@@ -36,11 +42,11 @@ Najważniejsze pliki:
 ## 2. Jak płatność działa — prosty obrazek słowny
 
 1. Użytkownik loguje się w Lectoro.
-2. Klika `Wybierz BASIC` albo `Wybierz PRO`.
+2. Klika `Wypróbuj 3 dni za darmo` przy planie BASIC albo PRO.
 3. Rozszerzenie wysyła do Firebase tylko nazwę planu i token zalogowanego użytkownika.
 4. Firebase sam wybiera właściwy `price_...`. Użytkownik nie może podmienić ceny.
 5. Firebase prosi Stripe o bezpieczną stronę Checkout.
-6. Użytkownik wpisuje kartę na stronie Stripe. Dane karty nie przechodzą przez Lectoro.
+6. Użytkownik wpisuje kartę na stronie Stripe. Dane karty nie przechodzą przez Lectoro, a przez pierwsze 3 dni Stripe nie pobiera opłaty.
 7. Stripe wysyła webhook do Firebase.
 8. Firebase sprawdza podpis webhooka i dopiero wtedy ustawia plan BASIC albo PRO.
 9. Po ponownym otwarciu rozszerzenia Lectoro odświeża token i pokazuje nowy plan.

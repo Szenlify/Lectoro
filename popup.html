@@ -44,32 +44,36 @@
             <div class="setting-group">
                 <label for="targetLang">Język docelowy</label>
                 <select id="targetLang">
-                    <!-- Twoje oryginalne języki -->
-                    <option value="pl">🇵🇱 Polish</option>
-                    <option value="en">🇬🇧 English</option>
-                    <option value="de">🇩🇪 German</option>
-
-                    <!-- Popularne w Europie -->
-                    <option value="fr">🇫🇷 French</option>
-                    <option value="es">🇪🇸 Spanish</option>
-                    <option value="it">🇮🇹 Italian</option>
-                    <option value="pt">🇵🇹 Portuguese</option>
-                    <option value="nl">🇳🇱 Dutch</option>
-                    <option value="sv">🇸🇪 Swedish</option>
-
-                    <!-- Nasz region -->
-                    <option value="cs">🇨🇿 Czech</option>
-                    <option value="sk">🇸🇰 Slovak</option>
-                    <option value="uk">🇺🇦 Ukrainian</option>
-                    <option value="ru">🇷🇺 Russian</option>
-
-                    <!-- Języki światowe -->
+                    <option value="ar">🇸🇦 Arabic</option>
+                    <option value="pt-br">🇧🇷 Brazil</option>
+                    <option value="bg">🇧🇬 Bulgarian</option>
                     <option value="zh">🇨🇳 Chinese</option>
+                    <option value="hr">🇭🇷 Croatian</option>
+                    <option value="cs">🇨🇿 Czech</option>
+                    <option value="da">🇩🇰 Danish</option>
+                    <option value="nl">🇳🇱 Dutch</option>
+                    <option value="en">🇬🇧 English</option>
+                    <option value="fr">🇫🇷 French</option>
+                    <option value="de">🇩🇪 German</option>
+                    <option value="el">🇬🇷 Greek</option>
+                    <option value="he">🇮🇱 Hebrew</option>
+                    <option value="hi">🇮🇳 Hindi</option>
+                    <option value="hu">🇭🇺 Hungarian</option>
+                    <option value="id">🇮🇩 Indonesian</option>
+                    <option value="it">🇮🇹 Italian</option>
                     <option value="ja">🇯🇵 Japanese</option>
                     <option value="ko">🇰🇷 Korean</option>
-                    <option value="ar">🇸🇦 Arabic</option>
-                    <option value="hi">🇮🇳 Hindi</option>
+                    <option value="pl">🇵🇱 Polish</option>
+                    <option value="pt">🇵🇹 Portuguese</option>
+                    <option value="ro">🇷🇴 Romanian</option>
+                    <option value="ru">🇷🇺 Russian</option>
+                    <option value="sk">🇸🇰 Slovak</option>
+                    <option value="es">🇪🇸 Spanish</option>
+                    <option value="sv">🇸🇪 Swedish</option>
+                    <option value="th">🇹🇭 Thai</option>
                     <option value="tr">🇹🇷 Turkish</option>
+                    <option value="uk">🇺🇦 Ukrainian</option>
+                    <option value="vi">🇻🇳 Vietnamese</option>
                 </select>
             </div>
 
@@ -127,9 +131,15 @@
                 <div class="setting-heading-row subscription-heading">
                     <div>
                         <label>Plany subskrypcyjne</label>
-                        <p>Wybierz pakiet dopasowany do Twojej nauki.</p>
+                        <p>Odblokuj naturalne głosy i więcej nauki z AI.</p>
                     </div>
-
+                </div>
+                <div class="subscription-trial-banner" id="subscriptionTrialBanner" hidden>
+                    <span class="subscription-trial-icon" aria-hidden="true">✦</span>
+                    <div>
+                        <strong>3 dni pełnego dostępu za 0 zł</strong>
+                        <span>Karta wymagana · przez pierwsze 3 dni nic nie pobierzemy</span>
+                    </div>
                 </div>
                 <div class="subscription-plans-grid" id="subscriptionPlansGrid"></div>
                 <div class="stripe-billing-status" id="stripeBillingStatus" aria-live="polite"></div>
@@ -200,303 +210,311 @@
     </div>
 
     <!-- Words Tab -->
-    <div class="tab-content" id="tab-words">
-        <div class="words-panel">
+    <template id="tab-words-template">
+        <div class="tab-content" id="tab-words">
+            <div class="words-panel">
 
 
-            <!-- Filters -->
-            <div class="filters">
-                <button class="filter-btn active" data-filter="all">Wszystkie</button>
-                <button class="filter-btn" data-filter="today">Dziś</button>
-                <button class="filter-btn" data-filter="week">Tydzień</button>
-                <button class="filter-btn" data-filter="month">Miesiąc</button>
-                <button class="filter-btn" data-filter="new">🆕 Niepobrane</button>
-            </div>
-            <!-- Search -->
-            <input type="text" id="wordSearch" class="word-search"
-                placeholder="Szukaj słowa, tłumaczenia lub zdania...">
-            <div class="stats" id="stats"></div>
-
-            <!-- Word list -->
-            <div class="word-list" id="wordList"></div>
-
-            <!-- Export -->
-            <div class="export-section">
-                <button class="export-btn export-anki" id="exportAnki" title="Eksportuj do pliku Anki (.txt)">
-                    📋 Anki
-                </button>
-                <button class="export-btn export-csv" id="exportCsv" title="Eksportuj do Excel (.csv)">
-                    📊 Excel CSV
-                </button>
-                <button class="export-btn export-clear" id="clearAll" title="Usuń widoczne słowa">
-                    🗑
-                </button>
-            </div>
-            <div class="quiz-export-row">
-                <div class="quiz-export-top">
-                    <div class="quiz-export-label">
-                        <span class="quiz-icon-badge">🧠</span>
-                        <span class="quiz-export-text">Quiz <span class="quiz-export-sub">AI</span></span>
-                        <span class="quiz-free-badge" id="quizFreeBadge" style="display:none;"
-                            title="Darmowe quizy">0/3</span>
-                    </div>
-                    <div class="quiz-mode-toggle">
-                        <button type="button" class="quiz-mode-btn" id="quizModePdf" data-mode="pdf"
-                            title="Statyczna strona do wydruku / zapisu jako PDF">📄 PDF</button>
-                        <button type="button" class="quiz-mode-btn active" id="quizModeInteractive"
-                            data-mode="interactive"
-                            title="Interaktywna strona - zaznaczasz odpowiedzi i sprawdzasz wynik na miejscu">🖱️
-                            WEB</button>
-                    </div>
+                <!-- Filters -->
+                <div class="filters">
+                    <button class="filter-btn active" data-filter="all">Wszystkie</button>
+                    <button class="filter-btn" data-filter="today">Dziś</button>
+                    <button class="filter-btn" data-filter="week">Tydzień</button>
+                    <button class="filter-btn" data-filter="month">Miesiąc</button>
+                    <button class="filter-btn" data-filter="new">🆕 Niepobrane</button>
                 </div>
-                <div class="quiz-export-bottom">
-                    <select class="quiz-source-select" id="quizSource" title="Z jakich słówek ułożyć quiz">
-                        <option value="recent" selected>Ostatnie</option>
-                        <option value="random">Losowe</option>
-                    </select>
-                    <select class="quiz-scope-select" id="quizScope" title="Ile słówek uwzględnić w quizie">
-                        <option value="5">5 słów</option>
-                        <option value="10" selected>10 słów</option>
-                        <option value="15">15 słów</option>
-                        <option value="20">20 słów</option>
-                    </select>
-                    <button class="export-btn export-quiz" id="exportQuiz" title="Wygeneruj quiz za pomocą AI">
-                        ✨ Generuj quiz
+                <!-- Search -->
+                <input type="text" id="wordSearch" class="word-search"
+                    placeholder="Szukaj słowa, tłumaczenia lub zdania...">
+                <div class="stats" id="stats"></div>
+
+                <!-- Word list -->
+                <div class="word-list" id="wordList"></div>
+
+                <!-- Export -->
+                <div class="export-section">
+                    <button class="export-btn export-anki" id="exportAnki" title="Eksportuj do pliku Anki (.txt)">
+                        📋 Anki
                     </button>
+                    <button class="export-btn export-csv" id="exportCsv" title="Eksportuj do Excel (.csv)">
+                        📊 Excel CSV
+                    </button>
+                    <button class="export-btn export-clear" id="clearAll" title="Usuń widoczne słowa">
+                        🗑
+                    </button>
+                </div>
+                <div class="quiz-export-row">
+                    <div class="quiz-export-top">
+                        <div class="quiz-export-label">
+                            <span class="quiz-icon-badge">🧠</span>
+                            <span class="quiz-export-text">Quiz <span class="quiz-export-sub">AI</span></span>
+                            <span class="quiz-free-badge" id="quizFreeBadge" style="display:none;"
+                                title="Darmowe quizy">0/3</span>
+                        </div>
+                        <div class="quiz-mode-toggle">
+                            <button type="button" class="quiz-mode-btn" id="quizModePdf" data-mode="pdf"
+                                title="Statyczna strona do wydruku / zapisu jako PDF">📄 PDF</button>
+                            <button type="button" class="quiz-mode-btn active" id="quizModeInteractive"
+                                data-mode="interactive"
+                                title="Interaktywna strona - zaznaczasz odpowiedzi i sprawdzasz wynik na miejscu">🖱️
+                                WEB</button>
+                        </div>
+                    </div>
+                    <div class="quiz-export-bottom">
+                        <select class="quiz-source-select" id="quizSource" title="Z jakich słówek ułożyć quiz">
+                            <option value="recent" selected>Ostatnie</option>
+                            <option value="random">Losowe</option>
+                        </select>
+                        <select class="quiz-scope-select" id="quizScope" title="Ile słówek uwzględnić w quizie">
+                            <option value="5">5 słów</option>
+                            <option value="10" selected>10 słów</option>
+                            <option value="15">15 słów</option>
+                            <option value="20">20 słów</option>
+                        </select>
+                        <button class="export-btn export-quiz" id="exportQuiz" title="Wygeneruj quiz za pomocą AI">
+                            ✨ Generuj quiz
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+    </template>
 
     <!-- Library Tab (curated titles for English learners) -->
-    <div class="tab-content" id="tab-library">
-        <div class="library-panel">
+    <template id="tab-library-template">
+        <div class="tab-content" id="tab-library">
+            <div class="library-panel">
 
-            <div class="library-scroll">
-                <div class="library-intro-box">
-                    <div class="library-intro-title">
-                        Polecane materiały i filmy do nauki języka (i inne serwisy z napisami CC).
+                <div class="library-scroll">
+                    <div class="library-intro-box">
+                        <div class="library-intro-title">
+                            Polecane materiały i filmy do nauki języka (i inne serwisy z napisami CC).
+                        </div>
+                        <div class="library-platforms-bar">
+                            <a href="https://www.youtube.com" target="_blank" rel="noopener noreferrer"
+                                class="platform-badge platform-youtube" title="Otwórz YouTube">
+                                <span class="platform-logo youtube-logo">
+                                    <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
+                                        <path
+                                            d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                                    </svg>
+                                </span>
+                                <span class="platform-name">YouTube</span>
+                            </a>
+                            <a href="https://www.netflix.com" target="_blank" rel="noopener noreferrer"
+                                class="platform-badge platform-netflix" title="Otwórz Netflix">
+                                <span class="platform-logo netflix-logo">
+                                    <svg viewBox="0 0 24 24" width="13" height="15" fill="currentColor">
+                                        <path d="M4 0h4.5l7 14V0H20v24h-4.5L8.5 10v14H4V0z" />
+                                    </svg>
+                                </span>
+                                <span class="platform-name">Netflix</span>
+                            </a>
+                            <a href="https://www.plex.tv" target="_blank" rel="noopener noreferrer"
+                                class="platform-badge platform-plex" title="Otwórz Plex">
+                                <span class="platform-logo plex-logo">
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                                        <path d="M11.643 0H4.68l6.812 12-6.812 12h6.963L18.455 12 11.643 0z" />
+                                    </svg>
+                                </span>
+                                <span class="platform-name">Plex</span>
+                            </a>
+                            <a href="https://x.com" target="_blank" rel="noopener noreferrer"
+                                class="platform-badge platform-x" title="Otwórz X">
+                                <span class="platform-logo x-logo">
+                                    <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
+                                        <path
+                                            d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                                    </svg>
+                                </span>
+                                <span class="platform-name">X</span>
+                            </a>
+                            <a href="https://www.ted.com/talks" target="_blank" rel="noopener noreferrer"
+                                class="platform-badge platform-ted" title="Otwórz TED Talks">
+                                <span class="platform-logo ted-logo">
+                                    <svg viewBox="0 0 24 24" width="16" height="14" fill="currentColor">
+                                        <path
+                                            d="M0 7.5h6.667v2.222H4.444v6.667H2.222V9.722H0V7.5zm7.778 0h6.666v2.222H10v1.111h3.333v2.223H10v1.11H14.444v2.223H7.778V7.5zm7.778 0h4.444c1.84 0 3.334 1.494 3.334 3.333v2.223c0 1.839-1.494 3.333-3.334 3.333h-4.444V7.5zm2.222 2.222v4.445h2.222c.613 0 1.112-.498 1.112-1.111v-2.223c0-.613-.499-1.111-1.112-1.111h-2.222z" />
+                                    </svg>
+                                </span>
+                                <span class="platform-name">TED</span>
+                            </a>
+                        </div>
                     </div>
-                    <div class="library-platforms-bar">
-                        <a href="https://www.youtube.com" target="_blank" rel="noopener noreferrer"
-                            class="platform-badge platform-youtube" title="Otwórz YouTube">
-                            <span class="platform-logo youtube-logo">
-                                <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
-                                    <path
-                                        d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-                                </svg>
-                            </span>
-                            <span class="platform-name">YouTube</span>
-                        </a>
-                        <a href="https://www.netflix.com" target="_blank" rel="noopener noreferrer"
-                            class="platform-badge platform-netflix" title="Otwórz Netflix">
-                            <span class="platform-logo netflix-logo">
-                                <svg viewBox="0 0 24 24" width="13" height="15" fill="currentColor">
-                                    <path d="M4 0h4.5l7 14V0H20v24h-4.5L8.5 10v14H4V0z" />
-                                </svg>
-                            </span>
-                            <span class="platform-name">Netflix</span>
-                        </a>
-                        <a href="https://www.plex.tv" target="_blank" rel="noopener noreferrer"
-                            class="platform-badge platform-plex" title="Otwórz Plex">
-                            <span class="platform-logo plex-logo">
-                                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
-                                    <path d="M11.643 0H4.68l6.812 12-6.812 12h6.963L18.455 12 11.643 0z" />
-                                </svg>
-                            </span>
-                            <span class="platform-name">Plex</span>
-                        </a>
-                        <a href="https://x.com" target="_blank" rel="noopener noreferrer"
-                            class="platform-badge platform-x" title="Otwórz X">
-                            <span class="platform-logo x-logo">
-                                <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
-                                    <path
-                                        d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                                </svg>
-                            </span>
-                            <span class="platform-name">X</span>
-                        </a>
-                        <a href="https://www.ted.com/talks" target="_blank" rel="noopener noreferrer"
-                            class="platform-badge platform-ted" title="Otwórz TED Talks">
-                            <span class="platform-logo ted-logo">
-                                <svg viewBox="0 0 24 24" width="16" height="14" fill="currentColor">
-                                    <path
-                                        d="M0 7.5h6.667v2.222H4.444v6.667H2.222V9.722H0V7.5zm7.778 0h6.666v2.222H10v1.111h3.333v2.223H10v1.11H14.444v2.223H7.778V7.5zm7.778 0h4.444c1.84 0 3.334 1.494 3.334 3.333v2.223c0 1.839-1.494 3.333-3.334 3.333h-4.444V7.5zm2.222 2.222v4.445h2.222c.613 0 1.112-.498 1.112-1.111v-2.223c0-.613-.499-1.111-1.112-1.111h-2.222z" />
-                                </svg>
-                            </span>
-                            <span class="platform-name">TED</span>
-                        </a>
-                    </div>
+                    <div class="library-grid" id="libraryGrid"></div>
                 </div>
-                <div class="library-grid" id="libraryGrid"></div>
             </div>
         </div>
-    </div>
+    </template>
 
     <!-- Review Tab (Spaced Repetition) -->
-    <div class="tab-content" id="tab-review">
-        <div class="review-panel">
-            <div class="review-header">
-                <span class="review-icon">🧠</span>
-                <span class="review-title">Powtórka dnia</span>
-                <span class="review-count" id="reviewCount"></span>
-                <button class="review-dir-btn" id="reviewDirBtn" title="Zmień kierunek powtórek">EN <span
-                        class="dir-arrow">→</span> PL</button>
-                <div class="review-voice-picker" id="reviewVoicePicker">
-                    <button class="review-voice-btn" id="reviewVoiceBtn" type="button" aria-expanded="false"
-                        aria-controls="reviewVoiceMenu" title="Wybierz głos powtórek">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-                        </svg>
-                        <span id="reviewVoiceBtnLabel">Głos</span>
-                        <span class="review-voice-ai-badge" id="reviewVoiceAiBadge">AI</span>
-                        <span class="review-voice-chevron" aria-hidden="true">⌄</span>
-                    </button>
-                    <div class="review-voice-menu" id="reviewVoiceMenu" hidden>
-                        <div class="review-voice-menu-head">
-                            <div>
-                                <strong>Głos powtórek</strong>
-                                <span>Słuchaj i zapamiętuj naturalniej</span>
-                            </div>
-                            <button type="button" class="review-voice-close" id="reviewVoiceClose"
-                                aria-label="Zamknij">×</button>
-                        </div>
-                        <button type="button" class="review-voice-system" id="reviewBrowserVoiceOption">
-                            <span class="review-voice-avatar system">🔊</span>
-                            <span class="review-voice-option-copy">
-                                <strong>Głos systemowy</strong>
-                                <small>Szybki i bez limitu</small>
-                            </span>
-                            <span class="review-voice-check" aria-hidden="true">✓</span>
+    <template id="tab-review-template">
+        <div class="tab-content" id="tab-review">
+            <div class="review-panel">
+                <div class="review-header">
+                    <span class="review-icon">🧠</span>
+                    <span class="review-title">Powtórka dnia</span>
+                    <span class="review-count" id="reviewCount"></span>
+                    <button class="review-dir-btn" id="reviewDirBtn" title="Zmień kierunek powtórek">EN <span
+                            class="dir-arrow">→</span> PL</button>
+                    <div class="review-voice-picker" id="reviewVoicePicker">
+                        <button class="review-voice-btn" id="reviewVoiceBtn" type="button" aria-expanded="false"
+                            aria-controls="reviewVoiceMenu" title="Wybierz głos powtórek">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                            </svg>
+                            <span id="reviewVoiceBtnLabel">Głos</span>
+                            <span class="review-voice-ai-badge" id="reviewVoiceAiBadge">AI</span>
+                            <span class="review-voice-chevron" aria-hidden="true">⌄</span>
                         </button>
-                        <div class="review-voice-el-head">
-                            <span>ElevenLabs</span>
-                            <span class="review-voice-premium">PREMIUM</span>
+                        <div class="review-voice-menu" id="reviewVoiceMenu" hidden>
+                            <div class="review-voice-menu-head">
+                                <div>
+                                    <strong>Głos powtórek</strong>
+                                    <span>Słuchaj i zapamiętuj naturalniej</span>
+                                </div>
+                                <button type="button" class="review-voice-close" id="reviewVoiceClose"
+                                    aria-label="Zamknij">×</button>
+                            </div>
+                            <button type="button" class="review-voice-system" id="reviewBrowserVoiceOption">
+                                <span class="review-voice-avatar system">🔊</span>
+                                <span class="review-voice-option-copy">
+                                    <strong>Głos systemowy</strong>
+                                    <small>Szybki i bez limitu</small>
+                                </span>
+                                <span class="review-voice-check" aria-hidden="true">✓</span>
+                            </button>
+                            <div class="review-voice-el-head">
+                                <span>ElevenLabs</span>
+                                <span class="review-voice-premium">PREMIUM</span>
+                            </div>
+                            <div id="reviewElevenLabsContent"></div>
+                            <div class="review-voice-status" id="reviewVoiceStatus" aria-live="polite"></div>
                         </div>
-                        <div id="reviewElevenLabsContent"></div>
-                        <div class="review-voice-status" id="reviewVoiceStatus" aria-live="polite"></div>
                     </div>
                 </div>
+                <div class="review-progress" id="reviewProgress">
+                    <div class="review-progress-bar" id="reviewProgressBar" style="width: 0%"></div>
+                </div>
+
+
+
+                <div class="review-card" id="reviewCard"></div>
             </div>
-            <div class="review-progress" id="reviewProgress">
-                <div class="review-progress-bar" id="reviewProgressBar" style="width: 0%"></div>
-            </div>
-
-
-
-            <div class="review-card" id="reviewCard"></div>
         </div>
-    </div>
+    </template>
 
     <!-- Help Tab (Instructions) -->
-    <div class="tab-content" id="tab-help">
-        <div class="help-panel">
+    <template id="tab-help-template">
+        <div class="tab-content" id="tab-help">
+            <div class="help-panel">
 
-            <!-- Quick start: translating selected text -->
-            <div class="help-section">
-                <div class="help-section-header">
-                    <span class="help-icon-badge badge-accent">🖱️</span>
-                    <span class="help-section-title">Tłumaczenie tekstu</span>
-                </div>
-                <div class="glass-card help-card">
-                    <div class="help-steps">
-                        <div class="help-step">
-                            <span class="step-num">1</span>
-                            <span class="step-text">Zaznacz dowolne słowo lub przeciągnij zdanie na jakiejkolwiek
-                                stronie internetowej.</span>
-                        </div>
-                        <div class="help-step">
-                            <span class="step-num">2</span>
-                            <span class="step-text">Kliknij ikonkę tłumacza, która pojawi się obok
-                                zaznaczenia.</span>
-                        </div>
-                        <div class="help-step">
-                            <span class="step-num">3</span>
-                            <span class="step-text">Gotowe! Zobaczysz tłumaczenie i wymowę (TTS), a
-                                słowo trafi na listę do powtórek w zakładce <strong>📚 Słowa</strong>.</span>
-                        </div>
+                <!-- Quick start: translating selected text -->
+                <div class="help-section">
+                    <div class="help-section-header">
+                        <span class="help-icon-badge badge-accent">🖱️</span>
+                        <span class="help-section-title">Tłumaczenie tekstu</span>
                     </div>
-                </div>
-            </div>
-
-            <!-- Video subtitles -->
-            <div class="help-section">
-                <div class="help-section-header">
-                    <span class="help-icon-badge badge-mint">🎬</span>
-                    <span class="help-section-title">Oglądanie filmów</span>
-                </div>
-                <div class="glass-card help-card">
-                    <p class="help-lead">Działa na stronach z wideo i napisami — m.in. na
-                        <a href="https://www.youtube.com" target="_blank">youtube.com</a> oraz
-                        <a href="https://www.netflix.com" target="_blank">netflix.com</a>.
-                        Kliknij napis, aby zobaczyć tłumaczenie, albo używaj skrótów klawiszowych:
-                    </p>
-
-                    <div class="shortcut-group">
-                        <div class="shortcut-group-title">▶️ Odtwarzanie</div>
-                        <div class="shortcut-row">
-                            <div class="key-combo"><span class="key">W</span><span class="key-or">/</span><span
-                                    class="key">↑</span></div>
-                            <span class="shortcut-desc">Play / Pauza</span>
-                        </div>
-                        <div class="shortcut-row">
-                            <div class="key-combo"><span class="key">A</span><span class="key-or">/</span><span
-                                    class="key">←</span></div>
-                            <span class="shortcut-desc">Poprzedni napis / cofnij</span>
-                        </div>
-                        <div class="shortcut-row">
-                            <div class="key-combo"><span class="key">D</span><span class="key-or">/</span><span
-                                    class="key">→</span></div>
-                            <span class="shortcut-desc">Następny napis / przewiń</span>
-                        </div>
-                        <div class="shortcut-row">
-                            <div class="key-combo"><span class="key">[</span><span class="key-or">/</span><span
-                                    class="key">]</span></div>
-                            <span class="shortcut-desc">Zwolnij / przyspiesz odtwarzanie</span>
-                        </div>
-                    </div>
-
-                    <div class="shortcut-group">
-                        <div class="shortcut-group-title">🧠 Nauka</div>
-                        <div class="shortcut-row">
-                            <div class="key-combo"><span class="key">S</span><span class="key-or">/</span><span
-                                    class="key">↓</span><span class="key-or">/</span><span class="key">E</span>
+                    <div class="glass-card help-card">
+                        <div class="help-steps">
+                            <div class="help-step">
+                                <span class="step-num">1</span>
+                                <span class="step-text">Zaznacz dowolne słowo lub przeciągnij zdanie na jakiejkolwiek
+                                    stronie internetowej.</span>
                             </div>
-                            <span class="shortcut-desc">Przetłumacz i odczytaj bieżący napis</span>
-                        </div>
-                        <div class="shortcut-row">
-                            <div class="key-combo"><span class="key">Z</span></div>
-                            <span class="shortcut-desc">Zapisz bieżące zdanie do powtórek</span>
-                        </div>
-                        <div class="shortcut-row">
-                            <div class="key-combo"><span class="key">Q</span><span class="key-or">/</span><span
-                                    class="key">Enter</span></div>
-                            <span class="shortcut-desc">Wyjaśnienie zdania od AI ✨</span>
+                            <div class="help-step">
+                                <span class="step-num">2</span>
+                                <span class="step-text">Kliknij ikonkę tłumacza, która pojawi się obok
+                                    zaznaczenia.</span>
+                            </div>
+                            <div class="help-step">
+                                <span class="step-num">3</span>
+                                <span class="step-text">Gotowe! Zobaczysz tłumaczenie i wymowę (TTS), a
+                                    słowo trafi na listę do powtórek w zakładce <strong>📚 Słowa</strong>.</span>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Learning & review -->
-            <div class="help-section">
-                <div class="help-section-header">
-                    <span class="help-icon-badge badge-amber">🧩</span>
-                    <span class="help-section-title">Nauka i powtórki</span>
-                </div>
-                <div class="glass-card help-card">
-                    <p>Każde zapisane słowo lub zdanie trafia do zakładki <strong>📚 Słowa</strong>,
-                        skąd możesz je eksportować do Anki, Excela lub wygenerować Quizy za pomocą AI.</p>
-                    <div class="help-tip">
-                        <span class="help-tip-icon">💡</span>
-                        <span>Zakładka <strong>🧠 Powtórki</strong> pokazuje codzienną sesję metodą
-                            spaced repetition, dzięki której zapamiętasz słówka na dłużej.</span>
+                <!-- Video subtitles -->
+                <div class="help-section">
+                    <div class="help-section-header">
+                        <span class="help-icon-badge badge-mint">🎬</span>
+                        <span class="help-section-title">Oglądanie filmów</span>
+                    </div>
+                    <div class="glass-card help-card">
+                        <p class="help-lead">Działa na stronach z wideo i napisami — m.in. na
+                            <a href="https://www.youtube.com" target="_blank">youtube.com</a> oraz
+                            <a href="https://www.netflix.com" target="_blank">netflix.com</a>.
+                            Kliknij napis, aby zobaczyć tłumaczenie, albo używaj skrótów klawiszowych:
+                        </p>
+
+                        <div class="shortcut-group">
+                            <div class="shortcut-group-title">▶️ Odtwarzanie</div>
+                            <div class="shortcut-row">
+                                <div class="key-combo"><span class="key">W</span><span class="key-or">/</span><span
+                                        class="key">↑</span></div>
+                                <span class="shortcut-desc">Play / Pauza</span>
+                            </div>
+                            <div class="shortcut-row">
+                                <div class="key-combo"><span class="key">A</span><span class="key-or">/</span><span
+                                        class="key">←</span></div>
+                                <span class="shortcut-desc">Poprzedni napis / cofnij</span>
+                            </div>
+                            <div class="shortcut-row">
+                                <div class="key-combo"><span class="key">D</span><span class="key-or">/</span><span
+                                        class="key">→</span></div>
+                                <span class="shortcut-desc">Następny napis / przewiń</span>
+                            </div>
+                            <div class="shortcut-row">
+                                <div class="key-combo"><span class="key">[</span><span class="key-or">/</span><span
+                                        class="key">]</span></div>
+                                <span class="shortcut-desc">Zwolnij / przyspiesz odtwarzanie</span>
+                            </div>
+                        </div>
+
+                        <div class="shortcut-group">
+                            <div class="shortcut-group-title">🧠 Nauka</div>
+                            <div class="shortcut-row">
+                                <div class="key-combo"><span class="key">S</span><span class="key-or">/</span><span
+                                        class="key">↓</span><span class="key-or">/</span><span class="key">E</span>
+                                </div>
+                                <span class="shortcut-desc">Przetłumacz i odczytaj bieżący napis</span>
+                            </div>
+                            <div class="shortcut-row">
+                                <div class="key-combo"><span class="key">Z</span></div>
+                                <span class="shortcut-desc">Zapisz bieżące zdanie do powtórek</span>
+                            </div>
+                            <div class="shortcut-row">
+                                <div class="key-combo"><span class="key">Q</span><span class="key-or">/</span><span
+                                        class="key">Enter</span></div>
+                                <span class="shortcut-desc">Wyjaśnienie zdania od AI ✨</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
+                <!-- Learning & review -->
+                <div class="help-section">
+                    <div class="help-section-header">
+                        <span class="help-icon-badge badge-amber">🧩</span>
+                        <span class="help-section-title">Nauka i powtórki</span>
+                    </div>
+                    <div class="glass-card help-card">
+                        <p>Każde zapisane słowo lub zdanie trafia do zakładki <strong>📚 Słowa</strong>,
+                            skąd możesz je eksportować do Anki, Excela lub wygenerować Quizy za pomocą AI.</p>
+                        <div class="help-tip">
+                            <span class="help-tip-icon">💡</span>
+                            <span>Zakładka <strong>🧠 Powtórki</strong> pokazuje codzienną sesję metodą
+                                spaced repetition, dzięki której zapamiętasz słówka na dłużej.</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
         </div>
-    </div>
+    </template>
     <script src="shared/constants.js"></script>
     <script src="functions/subscription-config.js"></script>
     <script src="shared/utils.js"></script>
@@ -514,10 +532,6 @@
     <script src="popup/init.js"></script>
     <script src="popup/tts.js"></script>
     <script src="popup/settings.js"></script>
-    <script src="popup/words.js"></script>
-    <script src="popup/export.js"></script>
-    <script src="popup/review.js"></script>
-    <script src="popup/library.js"></script>
 </body>
 
 </html>

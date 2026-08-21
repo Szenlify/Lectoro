@@ -523,7 +523,7 @@ function updateReviewTabBadge(count) {
     tab.innerHTML = `<span class="tab-icon">🧠</span><span class="tab-label">Powtórki</span>${badge}`;
 }
 
-// ── On popup open → load badge count (Instant) ───────────────────
+// ── On first Review-tab open → refresh badge count ───────────────
 function initReviewBadge() {
     if (typeof whenPopupReady === "function") {
         whenPopupReady((data) => {

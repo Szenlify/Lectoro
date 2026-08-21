@@ -37,12 +37,61 @@ chrome.storage.local.get(POPUP_INIT_KEYS, (data) => {
 // ── Elements ──────────────────────────────────────────────────────
 const select = document.getElementById("targetLang");
 const savedMsg = document.getElementById("saved");
-const wordListEl = document.getElementById("wordList");
-const statsEl = document.getElementById("stats");
+let wordListEl = document.getElementById("wordList");
+let statsEl = document.getElementById("stats");
 
-// ── Tab switching (Centralized) ──────────────────────────────────
-function switchTab(tabName) {
-    if (typeof stopPopupSpeak === "function") stopPopupSpeak();
+// ── Lazy tab mounting + centralized switching ───────────────────
+const TAB_SCRIPTS = Object.freeze({
+    words: ["popup/words.js", "popup/export.js"],
+    library: ["popup/library.js"],
+    review: ["popup/review.js"],
+    help: [],
+});
+const loadedPopupScripts = new Map();
+const tabLoadPromises = new Map();
+let requestedTab = "settings";
+
+function loadPopupScript(src) {
+    if (loadedPopupScripts.has(src)) return loadedPopupScripts.get(src);
+    const promise = new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = () => reject(new Error(`Nie udało się załadować ${src}.`));
+        document.body.appendChild(script);
+    });
+    loadedPopupScripts.set(src, promise);
+    return promise;
+}
+
+async function ensureTabLoaded(tabName) {
+    const existing = document.getElementById(`tab-${tabName}`);
+    if (existing) return existing;
+    if (tabLoadPromises.has(tabName)) return tabLoadPromises.get(tabName);
+
+    const promise = (async () => {
+        const template = document.getElementById(`tab-${tabName}-template`);
+        if (!(template instanceof HTMLTemplateElement)) {
+            throw new Error(`Brak szablonu zakładki: ${tabName}.`);
+        }
+        template.replaceWith(template.content.cloneNode(true));
+        const content = document.getElementById(`tab-${tabName}`);
+        if (!content) throw new Error(`Nie udało się zamontować zakładki: ${tabName}.`);
+
+        if (tabName === "words") {
+            wordListEl = document.getElementById("wordList");
+            statsEl = document.getElementById("stats");
+        }
+        for (const src of TAB_SCRIPTS[tabName] || []) {
+            await loadPopupScript(src);
+        }
+        return content;
+    })();
+    tabLoadPromises.set(tabName, promise);
+    return promise;
+}
+
+function activateMountedTab(tabName) {
     document.querySelectorAll(".tab").forEach((tab) => {
         tab.classList.toggle("active", tab.dataset.tab === tabName);
     });
@@ -59,9 +108,31 @@ function switchTab(tabName) {
     }
 }
 
+async function switchTab(tabName) {
+    requestedTab = tabName;
+    if (typeof stopPopupSpeak === "function") stopPopupSpeak();
+    if (document.getElementById(`tab-${tabName}`)) {
+        activateMountedTab(tabName);
+        return;
+    }
+
+    const selectedButton = document.querySelector(`.tab[data-tab="${tabName}"]`);
+    selectedButton?.classList.add("is-loading");
+    try {
+        await ensureTabLoaded(tabName);
+    } catch (error) {
+        tabLoadPromises.delete(tabName);
+        console.error("[Lectoro] Ładowanie zakładki:", error);
+        return;
+    } finally {
+        selectedButton?.classList.remove("is-loading");
+    }
+    if (requestedTab === tabName) activateMountedTab(tabName);
+}
+
 document.querySelectorAll(".tab").forEach((tab) => {
     tab.addEventListener("click", () => {
-        if (tab.dataset.tab) switchTab(tab.dataset.tab);
+        if (tab.dataset.tab) void switchTab(tab.dataset.tab);
     });
 });
 
@@ -72,15 +143,25 @@ const rateValue = document.getElementById("rateValue");
 const volumeRange = document.getElementById("volumeRange");
 const volumeValue = document.getElementById("volumeValue");
 
-// ── Auto-switch to Review tab if there are due reviews (Instant) ──
+// ── Review badge from the initial storage batch (without loading the tab) ──
+function updateInitialReviewBadge(words = []) {
+    if (typeof countDueWords !== "function") return;
+    const dueCount = countDueWords(words, Date.now());
+    const tab = document.getElementById("tabReview");
+    if (!tab) return;
+    const badge = dueCount > 0
+        ? `<span class="tab-badge">${dueCount > 999 ? "999+" : dueCount}</span>`
+        : "";
+    tab.innerHTML = `<span class="tab-icon">🧠</span><span class="tab-label">Powtórki</span>${badge}`;
+}
+
 whenPopupReady((state) => {
-    const words = state.savedWords || [];
-    const now = Date.now();
-    if (typeof countDueWords === "function") {
-        const dueCount = countDueWords(words, now);
-        if (dueCount > 0) {
-            switchTab("review");
-        }
+    updateInitialReviewBadge(state.savedWords || []);
+});
+
+chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === "local" && changes.savedWords) {
+        updateInitialReviewBadge(changes.savedWords.newValue || []);
     }
 });
 

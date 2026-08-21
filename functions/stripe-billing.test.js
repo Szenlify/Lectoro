@@ -27,6 +27,45 @@ test("subscription period end is read from Stripe subscription items", () => {
     assert.equal(_test.subscriptionPeriodEnd(null), null);
 });
 
+test("three-day trial is available only before the first subscription", () => {
+    assert.equal(_test.isTrialEligible([], {}), true);
+    assert.equal(_test.isTrialEligible([], { stripeTrialUsed: true }), false);
+    assert.equal(_test.isTrialEligible([], { stripeHasSubscribed: true }), false);
+    assert.equal(_test.isTrialEligible([subscription("canceled", "price_basic")], {}), false);
+});
+
+test("trial Checkout requires a card and defers billing for exactly three days", () => {
+    const options = _test.checkoutSessionOptions({
+        customerId: "cus_test",
+        uid: "firebase_user",
+        plan: "basic",
+        priceId: "price_basic",
+        trialDays: 3,
+    });
+    assert.equal(options.payment_method_collection, "always");
+    assert.equal(options.subscription_data.trial_period_days, 3);
+    assert.equal(options.metadata.trialDays, "3");
+    assert.match(options.success_url, /status=trial_success/);
+});
+
+test("Checkout starts normal billing when trial is no longer available", () => {
+    const options = _test.checkoutSessionOptions({
+        customerId: "cus_test",
+        uid: "firebase_user",
+        plan: "pro",
+        priceId: "price_pro",
+    });
+    assert.equal(options.payment_method_collection, "always");
+    assert.equal(options.subscription_data.trial_period_days, undefined);
+    assert.match(options.success_url, /status=success/);
+});
+
+test("Stripe result page clearly confirms a trial without claiming a payment", () => {
+    const html = _test.resultPage("trial_success");
+    assert.match(html, /3 dni za darmo rozpoczęte/);
+    assert.match(html, /dziś nic nie pobraliśmy/);
+});
+
 test("Stripe result page contains no reflected query text", () => {
     const html = _test.resultPage('<script>alert("x")</script>');
     assert.doesNotMatch(html, /<script>/);

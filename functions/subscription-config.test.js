@@ -16,6 +16,7 @@ test("central configuration matches the three product plans", () => {
             Object.entries(SUBSCRIPTION_LIMITS).map(([plan, value]) => [
                 plan,
                 {
+                    trialDays: value.trialDays,
                     price: value.priceMonthly.amount,
                     currency: value.priceMonthly.currency,
                     ai: value.ai.usesPerMonth,
@@ -27,9 +28,9 @@ test("central configuration matches the three product plans", () => {
             ]),
         ),
         {
-            free: { price: 0, currency: "PLN", ai: 10, srs: 50, ttsEnabled: false, ttsRequest: 0, ttsMonth: 0 },
-            basic: { price: 7.99, currency: "USD", ai: 200, srs: 3000, ttsEnabled: true, ttsRequest: 500, ttsMonth: 20000 },
-            pro: { price: 19.99, currency: "USD", ai: 1200, srs: 10000, ttsEnabled: true, ttsRequest: 1000, ttsMonth: 120000 },
+            free: { trialDays: 0, price: 0, currency: "PLN", ai: 10, srs: 50, ttsEnabled: false, ttsRequest: 0, ttsMonth: 0 },
+            basic: { trialDays: 3, price: 7.99, currency: "USD", ai: 200, srs: 3000, ttsEnabled: true, ttsRequest: 500, ttsMonth: 20000 },
+            pro: { trialDays: 3, price: 19.99, currency: "USD", ai: 1200, srs: 10000, ttsEnabled: true, ttsRequest: 1000, ttsMonth: 120000 },
         },
     );
 });

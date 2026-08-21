@@ -125,8 +125,13 @@ function renderSubscriptionPlans(subscription, signedIn = true) {
         : SubscriptionConfig.SUBSCRIPTION_PLANS.FREE;
     const hasPaidPlan =
         signedIn && activePlan !== SubscriptionConfig.SUBSCRIPTION_PLANS.FREE;
+    const trialEligible = !signedIn || subscription?.trialEligible !== false;
+    const isTrialing =
+        signedIn && subscription?.subscriptionStatus === "trialing";
+    const trialBanner = document.getElementById("subscriptionTrialBanner");
+    if (trialBanner) trialBanner.hidden = hasPaidPlan || !trialEligible;
 
-    const renderKey = `${activePlan}:${signedIn}:${hasPaidPlan}`;
+    const renderKey = `${activePlan}:${signedIn}:${hasPaidPlan}:${trialEligible}:${isTrialing}`;
     if (grid.dataset.renderedKey === renderKey && grid.children.length > 0) {
         return;
     }
@@ -137,6 +142,10 @@ function renderSubscriptionPlans(subscription, signedIn = true) {
             const isCurrent = signedIn && planId === activePlan;
             const isRecommended =
                 planId === SubscriptionConfig.SUBSCRIPTION_PLANS.BASIC;
+            const hasTrialOffer =
+                planId !== SubscriptionConfig.SUBSCRIPTION_PLANS.FREE &&
+                !hasPaidPlan &&
+                trialEligible;
             const price =
                 limits.priceMonthly.amount === 0
                     ? "0 zł"
@@ -158,23 +167,29 @@ function renderSubscriptionPlans(subscription, signedIn = true) {
                     action =
                         '<button type="button" class="subscription-plan-button" data-billing-action="portal"><span class="subscription-button-label">Zmień plan</span><span aria-hidden="true">→</span></button>';
                 } else {
-                    action = `<button type="button" class="subscription-plan-button" data-billing-action="checkout" data-plan="${planId}"><span class="subscription-button-label">Wybierz ${limits.displayName}</span><span aria-hidden="true">→</span></button>`;
+                    action = `<button type="button" class="subscription-plan-button ${hasTrialOffer ? "is-trial" : ""}" data-billing-action="checkout" data-plan="${planId}"><span class="subscription-button-label">${hasTrialOffer ? "3 dni za darmo" : `Wybierz ${limits.displayName}`}</span><span aria-hidden="true">→</span></button>`;
                 }
             } else if (hasPaidPlan) {
                 action =
                     '<button type="button" class="subscription-plan-button is-secondary" data-billing-action="portal"><span class="subscription-button-label">Zarządzaj planem</span><span aria-hidden="true">→</span></button>';
             }
-            return `<article class="subscription-plan-card ${isCurrent ? "is-current" : ""} ${isRecommended ? "is-recommended" : ""}">
+            const billingNote = hasTrialOffer
+                ? `<span class="subscription-trial-note"><b>Dzisiaj 0 zł</b> · potem ${price}/mies.<br>Możesz anulować w każdej chwili.</span>`
+                : "";
+            return `<article class="subscription-plan-card ${isCurrent ? "is-current" : ""} ${isRecommended ? "is-recommended" : ""} ${hasTrialOffer ? "has-trial-offer" : ""}">
                 <div class="subscription-plan-topline">
                     <strong>${limits.displayName}</strong>
                     ${
-                        isCurrent
+                        isCurrent && isTrialing
+                            ? '<span class="subscription-plan-badge is-trialing">Okres próbny</span>'
+                            : isCurrent
                             ? '<span class="subscription-plan-badge is-active">Aktywny</span>'
                             : isRecommended
                               ? '<span class="subscription-plan-badge">Popularny</span>'
                               : ""
                     }
                 </div>
+                ${hasTrialOffer ? `<div class="subscription-plan-trial-kicker">3 dni gratis</div>` : ""}
                 <div class="subscription-plan-price"><b>${price}</b><span>${limits.priceMonthly.amount === 0 ? "na zawsze" : "/ miesiąc"}</span></div>
                 <div class="subscription-plan-features">
                     <span><i aria-hidden="true">✓</i><b>${limits.ai.usesPerMonth.toLocaleString("pl-PL")}</b> użyć AI / mies.</span>
@@ -191,7 +206,7 @@ function renderSubscriptionPlans(subscription, signedIn = true) {
                     }
                     <span class="${limits.elevenLabs.enabled ? "" : "is-muted"}"><i aria-hidden="true">${limits.elevenLabs.enabled ? "✓" : "—"}</i>${tts}</span>
                 </div>
-                <div class="subscription-plan-action">${action}</div>
+                <div class="subscription-plan-action">${action}${billingNote}</div>
             </article>`;
         })
         .join("");
@@ -484,7 +499,9 @@ document
                 status.className = "stripe-billing-status is-success";
                 status.textContent = result?.redirectedToPortal
                     ? "Masz już subskrypcję — otwarto panel zmiany planu."
-                    : "Stripe został otwarty w nowej karcie.";
+                    : result?.trialDays > 0
+                      ? "Na stronie Stripe dodaj kartę — dzisiaj nic nie zapłacisz."
+                      : "Stripe został otwarty w nowej karcie.";
             }
             startBillingPolling();
         } catch (error) {
@@ -542,37 +559,38 @@ if (location.hash === "#plans") {
     setTimeout(showAiPlans, 80);
 }
 
-// Initial render from local cache (Zero Lag) + background check
-(async () => {
-    try {
-        await refreshAiUsageUI();
-        const profile = await SubscriptionService.effectiveProfile(false);
-        if (profile) {
-            await SubscriptionService.applyPlanToUI();
-            await refreshAiUsageUI();
-        }
-    } catch (error) {
-        console.warn("[Lectoro] Inicjalizacja UI planu:", error);
+let _subscriptionUiRefreshPromise = null;
+let _subscriptionUiLastRefresh = 0;
+
+function refreshSubscriptionUi() {
+    if (_subscriptionUiRefreshPromise) return _subscriptionUiRefreshPromise;
+    if (Date.now() - _subscriptionUiLastRefresh < 1000) {
+        return Promise.resolve();
     }
-})();
+    _subscriptionUiLastRefresh = Date.now();
+    _subscriptionUiRefreshPromise = (async () => {
+        await refreshAiUsageUI();
+        await SubscriptionService.applyPlanToUI();
+    })()
+        .catch((error) => {
+            console.warn("[Lectoro] Inicjalizacja UI planu:", error);
+        })
+        .finally(() => {
+            _subscriptionUiRefreshPromise = null;
+        });
+    return _subscriptionUiRefreshPromise;
+}
+
+// One startup refresh. Focus, visibility and storage events reuse this same flight.
+void refreshSubscriptionUi();
 
 window.addEventListener("focus", () => {
-    SubscriptionService.effectiveProfile(false)
-        .then(async () => {
-            await SubscriptionService.applyPlanToUI();
-            await refreshAiUsageUI();
-        })
-        .catch(() => {});
+    void refreshSubscriptionUi();
 });
 
 document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
-        SubscriptionService.effectiveProfile(false)
-            .then(async () => {
-                await SubscriptionService.applyPlanToUI();
-                await refreshAiUsageUI();
-            })
-            .catch(() => {});
+        void refreshSubscriptionUi();
     }
 });
 
@@ -586,18 +604,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
     ) {
         clearTimeout(_refreshAiUsageTimeout);
         _refreshAiUsageTimeout = setTimeout(() => {
-            SubscriptionService.applyPlanToUI().catch((error) =>
-                console.warn(
-                    "[Lectoro] Aktualizacja blokad planu nie powiodła się:",
-                    error,
-                ),
-            );
-            refreshAiUsageUI().catch((error) =>
-                console.warn(
-                    "[Lectoro] Aktualizacja wykorzystania nie powiodła się:",
-                    error,
-                ),
-            );
+            void refreshSubscriptionUi();
         }, 50);
     }
 });

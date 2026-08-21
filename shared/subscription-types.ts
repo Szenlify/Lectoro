@@ -36,6 +36,9 @@ export interface UserProfile {
     stripeSubscriptionId?: string;
     stripeCancelAtPeriodEnd?: boolean;
     stripeCurrentPeriodEnd?: unknown;
+    stripeTrialEnd?: unknown;
+    stripeTrialUsed?: boolean;
+    stripeHasSubscribed?: boolean;
     aiCallsThisMonth: number;
     aiCallsResetDate: string;
     elevenLabsCharactersThisMonth: number;
@@ -47,6 +50,8 @@ export interface SubscriptionProfile {
     uid: string;
     plan: SubscriptionPlan;
     subscriptionStatus: SubscriptionStatus;
+    stripeTrialEnd?: unknown;
+    trialEligible: boolean;
     usage: UserSubscriptionUsage;
     updatedAt: number;
 }
