@@ -1,6 +1,8 @@
 [TODO]
 wyslano 2 pobrano 2 w synchronizacji
 
+ograniczone tlumaczenia na godzine
+
 Cashing subskrypcji w Storage rozszerzenia:
 Wtyczka przechowuje profil subskrypcji w chrome.storage.local i odpytuje backend o status tylko raz na godzinę (lub po zakupie), co minimalizuje obciążenie Firestore.
 
