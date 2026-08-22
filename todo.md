@@ -3,43 +3,36 @@ wyslano 2 pobrano 2 w synchronizacji
 
 ograniczone tlumaczenia na godzine
 
-Cashing subskrypcji w Storage rozszerzenia:
-Wtyczka przechowuje profil subskrypcji w chrome.storage.local i odpytuje backend o status tylko raz na godzinę (lub po zakupie), co minimalizuje obciążenie Firestore.
-
-Wprowadź 3-dniowy Darmowy Okres Próbny (Free Trial) w Stripe:
-Wymaga podania karty, ale nie pobiera opłaty przez pierwsze 3 dni.
 Oferuj Plan Roczny z góry:
 Użytkownik płaci od razu $59.99 (ok. 240 PLN). Jeden taki zakup daje Ci natychmiastowy zastrzyk gotówki równy 7-8 miesiącom pojedynczego abonamentu!
 Wykorzystaj e-mail marketing:
 Każdy, kto loguje się w Firebase Auth, zostawia swój e-mail. Wyślij po 3 dniach automatyczny mail: "Oto 3 triki, jak uczyć się 2x szybciej z Lectoro + zniżka 20% na plan Basic ważna przez 48h".
 
-Produkt & Launch
-    Publikacja w Chrome Store & Testy     :done, 2026-01-01, 14d
-    Uruchomienie Stripe Live & Plany Roczne:2026-01-15, 14d
-    section Marketing Organiczny
-    TikTok / Reels / Shorts (1 wideo/dzień):2026-01-15, 150d
-    Reddit / Grupy FB / Product 
-    r/EnglishLearningHunt       :2026-02-01, 60d
-    section Skalowanie & Influencerzy
-    Ekspansja Globalna (Język EN/ES)       :2026-03-01, 90d
-    Współpraca z mikro-twórcami (Affiliate):2026-04-01, 60d
 
-. 💎 Dlaczego Lectoro ma ogromny potencjał na ten wynik?
 
 Ból klienta jest silny i powtarzalny: Ludzie mają wyrzuty sumienia, że marnują czas na Netflixie/YouTube zamiast się uczyć. Lectoro daje im rozgrzeszenie: "Oglądasz serial, ale w rzeczywistości uczysz się angielskiego/hiszpańskiego".
 
 Efekt "WOW" w 15 sekund: Użytkownik instaluje wtyczkę, odpala film, najeżdża na słowo, natychmiast słyszy krystaliczny głos ElevenLabs i widzi zrzut kadru. To natychmiast buduje wysoką postrzeganą wartość.
 
+do usuniecia pozniej:
+.git/
+functions/
+scratch/
+dev.md
+todo.md
+stripe.md
+firebase.json
+.firebaserc
+.DS_Store
+testy i pliki TypeScript
 
-1. jakie klucze co i jak krok por kroku co musze mieniac kiedy bede stawial juz produkcyjna chrome extension
 
 2. zrob w kazdym jezyku aby był text UI nagłowki wszystkie w zaleznosci jaki zalezny jest język a jako defaul jest angielski [na pozniej jako ostatnie]
 
-5. dodaj na netflixie ze po kazdym wypowiedzianym zdaniu i opcje 1. moze byc zatrzymany film 2. wstrzymuje sie na 1s/2s/3s z paskiem ladowania na samej gorze od prawej do lewej
+1. https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev/audio/EXAVITQu4vr4xnSDxMaL/5870cc58ef1c7f7a54cd4ddfcb1ebccb16b0de0d54e55f8f3751233e9e8dd55c.mp3
+sposob na pobieranie audio bed uzywania sekretow do R2 moze zapisac audio w inny sposob ale musi byc ono krotkie po w url moze chyba byc 64znaki wiec jesli jesli text jest dluzszy wtedy juz nie zapisze a chodzilo mi o https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev/audio/where-are-you-been.mp3 takie uniwersalne audio chce zeby uzytkownicy kazdy uzytkownik nie tworzyl od nowa tylko aby sprawdzal czy jest taki url jesli nie ma blad 404 to wtedy niech generuje, a dluzsze slowa lub slowa z zdaniami to chyba nie znajde uniwersalnego sposobu
 
-11. popraw prompty AI tak aby byly krotkie, po angielsku, zeby mniej tokenow ai zuzywalo i idealnie dopracowane
-
-15. w powtorkach rewiew zrob z Web Speech API opcje pod klikniecie przycik "spacja" nagrywanie slowa/zdania ktore musze powtorzyc tak samo jak w powtorce oraz niech pokazuje litery na zielono ktore dobrze wypowiedziane a na czerwono te co zle to bedzie opcja shadowing ze sprawdzaniem wymowy. niech w czasie sluchaia bedzie ikona ktora emituje sluchanie
+2. popraw prompty AI bo teraz tlumacza czesto bez sensu lub nie w tym jezyku
 
 firebase login
 firebase deploy --only functions --project extension-eng"
