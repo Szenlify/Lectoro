@@ -499,3 +499,31 @@ test("SharedUtils.toRelativeImagePath extracts clean relative path from URLs or 
     );
 });
 
+test("SharedUtils.computeTextHash standardizes text with trim and lowercase", async () => {
+    const SharedUtils = require("../shared/utils");
+    const crypto = require("crypto");
+
+    const hash1 = await SharedUtils.computeTextHash("Apple ");
+    const hash2 = await SharedUtils.computeTextHash("  apple");
+    const hash3 = await SharedUtils.computeTextHash("APPLE");
+
+    const expected = crypto.createHash("sha256").update("apple").digest("hex");
+
+    assert.equal(hash1, expected);
+    assert.equal(hash2, expected);
+    assert.equal(hash3, expected);
+});
+
+test("SharedUtils.getR2AudioUrl builds deterministic CDN URL", async () => {
+    const SharedUtils = require("../shared/utils");
+    const crypto = require("crypto");
+
+    const url = await SharedUtils.getR2AudioUrl("21m00Tcm4TlvDq8ikWAM", "Hello World! ");
+    const expectedHash = crypto.createHash("sha256").update("hello world!").digest("hex");
+
+    assert.equal(
+        url,
+        `https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev/audio/21m00Tcm4TlvDq8ikWAM/${expectedHash}.mp3`,
+    );
+});
+

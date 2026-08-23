@@ -226,24 +226,55 @@
                 }
 
                 const cacheKey = `${cleaned}|${targetVoiceId}`;
+                // Step 1 (Local Cache): Check IndexedDB (LectoroAudioDB)
                 let blob = await AudioCache.get(cacheKey, { notBefore: cacheNotBefore });
 
                 if (!blob) {
-                    if (providerError) {
-                        const err = new Error(providerError.message);
-                        err.code = providerError.code;
-                        throw err;
+                    // Step 2 (Global R2 Cache): Check deterministic public CDN URL directly
+                    let r2Url = null;
+                    if (
+                        typeof SharedUtils !== "undefined" &&
+                        typeof SharedUtils.getR2AudioUrl === "function"
+                    ) {
+                        r2Url = await SharedUtils.getR2AudioUrl(targetVoiceId, cleaned);
                     }
-                    const validation = await SubscriptionService.checkElevenLabs(cleaned);
-                    if (typeof SubscriptionConfig !== "undefined") {
-                        SubscriptionConfig.assertAllowed(validation);
+
+                    if (r2Url) {
+                        try {
+                            const r2Res = await fetch(r2Url);
+                            if (r2Res.ok) {
+                                blob = await r2Res.blob();
+                                // Cache in local IndexedDB for future instant playback
+                                await AudioCache.set(cacheKey, blob);
+                            }
+                        } catch (r2Err) {
+                            console.warn(
+                                "[Lectoro TTS] Direct R2 CDN fetch warning:",
+                                r2Err.message || r2Err,
+                            );
+                        }
                     }
-                    blob = await SubscriptionService.synthesizeElevenLabs(
-                        cleaned,
-                        targetVoiceId,
-                        "review",
-                    );
-                    await AudioCache.set(cacheKey, blob);
+
+                    // Step 3 (ElevenLabs Synthesis - Cache MISS):
+                    // Synthesize via proxy only if neither local DB nor R2 CDN had the audio
+                    if (!blob) {
+                        if (providerError) {
+                            const err = new Error(providerError.message);
+                            err.code = providerError.code;
+                            throw err;
+                        }
+                        const validation =
+                            await SubscriptionService.checkElevenLabs(cleaned);
+                        if (typeof SubscriptionConfig !== "undefined") {
+                            SubscriptionConfig.assertAllowed(validation);
+                        }
+                        blob = await SubscriptionService.synthesizeElevenLabs(
+                            cleaned,
+                            targetVoiceId,
+                            "review",
+                        );
+                        await AudioCache.set(cacheKey, blob);
+                    }
                 }
 
                 if (isCancelled?.() || currentToken !== globalSpeechToken) {

@@ -112,6 +112,54 @@
             return trimmed.replace(/^images\//, "").replace(/^\/+/, "");
         },
 
+        /**
+         * Computes deterministic SHA-256 hex hash from text normalized with .trim().toLowerCase().
+         * Works identically in Browser (crypto.subtle) and Node.js.
+         *
+         * @param {string} text
+         * @returns {Promise<string>}
+         */
+        async computeTextHash(text) {
+            const normalized = String(text || "").trim().toLowerCase();
+            if (
+                typeof crypto !== "undefined" &&
+                crypto.subtle &&
+                typeof TextEncoder !== "undefined"
+            ) {
+                const data = new TextEncoder().encode(normalized);
+                const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+            }
+            if (typeof require !== "undefined") {
+                try {
+                    const nodeCrypto = require("crypto");
+                    return nodeCrypto.createHash("sha256").update(normalized).digest("hex");
+                } catch (_) {}
+            }
+            let hash = 0;
+            for (let i = 0; i < normalized.length; i++) {
+                hash = ((hash << 5) - hash) + normalized.charCodeAt(i);
+                hash |= 0;
+            }
+            return Math.abs(hash).toString(16).padStart(8, "0");
+        },
+
+        /**
+         * Returns the deterministic Cloudflare R2 CDN URL for a given voice and text.
+         * Format: https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev/audio/{voiceId}/{sha256_hash_tekstu}.mp3
+         *
+         * @param {string} voiceId
+         * @param {string} text
+         * @returns {Promise<string>}
+         */
+        async getR2AudioUrl(voiceId, text) {
+            const safeVoiceId = String(voiceId || "default").replace(/[^a-zA-Z0-9_-]/g, "");
+            const hash = await this.computeTextHash(text);
+            const baseCdn = "https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev";
+            return `${baseCdn}/audio/${safeVoiceId}/${hash}.mp3`;
+        },
+
         /** Format timestamp into localized Polish date */
         formatDate(timestamp, options = { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" }) {
             if (!timestamp) return "";
