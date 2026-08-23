@@ -138,8 +138,9 @@
         ) {
             GeminiProxy.uploadCardImage(newEntry.id, newEntry.screenshot)
                 .then(async (uploaded) => {
-                    if (uploaded && uploaded.url) {
-                        await updateWord(newEntry.id, { screenshot: uploaded.url });
+                    const savedPath = uploaded?.relativePath || uploaded?.path || uploaded?.url;
+                    if (savedPath) {
+                        await updateWord(newEntry.id, { screenshot: savedPath });
                     }
                 })
                 .catch((err) => {
@@ -208,8 +209,9 @@
         ) {
             GeminiProxy.uploadCardImage(updated.id, updated.screenshot)
                 .then(async (uploaded) => {
-                    if (uploaded && uploaded.url) {
-                        await updateWord(updated.id, { screenshot: uploaded.url });
+                    const savedPath = uploaded?.relativePath || uploaded?.path || uploaded?.url;
+                    if (savedPath) {
+                        await updateWord(updated.id, { screenshot: savedPath });
                     }
                 })
                 .catch((err) => {

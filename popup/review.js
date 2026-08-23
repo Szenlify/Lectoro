@@ -728,10 +728,14 @@ function attachReviewCardControls(card, w) {
 
 function reviewScreenshotHtml(url) {
     if (!url) return "";
+    const resolvedUrl =
+        typeof SharedUtils !== "undefined" && typeof SharedUtils.resolveImageUrl === "function"
+            ? SharedUtils.resolveImageUrl(url)
+            : url;
     return `
         <div class="review-screenshot">
             <div class="review-screenshot-box">
-                <img src="${escapeAttr(url)}"
+                <img src="${escapeAttr(resolvedUrl)}"
                      alt="Screenshot"
                      class="review-screenshot-img"
                      loading="eager">

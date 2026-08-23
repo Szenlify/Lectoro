@@ -186,11 +186,12 @@ async function flushPendingChanges() {
                             targetWordId,
                             entry.word.screenshot,
                         );
-                        if (uploaded?.url) {
-                            entry.word.screenshot = uploaded.url;
+                        const savedPath = uploaded?.relativePath || uploaded?.path || uploaded?.url;
+                        if (savedPath) {
+                            entry.word.screenshot = savedPath;
                             if (typeof SharedWordRepository !== "undefined") {
                                 await SharedWordRepository.updateWord(targetWordId, {
-                                    screenshot: uploaded.url,
+                                    screenshot: savedPath,
                                 });
                             }
                         }
@@ -333,11 +334,12 @@ async function fullSync({ pull = true } = {}) {
                         targetWordId,
                         word.screenshot,
                     );
-                    if (uploaded?.url) {
-                        word.screenshot = uploaded.url;
+                    const savedPath = uploaded?.relativePath || uploaded?.path || uploaded?.url;
+                    if (savedPath) {
+                        word.screenshot = savedPath;
                         if (typeof SharedWordRepository !== "undefined") {
                             await SharedWordRepository.updateWord(targetWordId, {
-                                screenshot: uploaded.url,
+                                screenshot: savedPath,
                             });
                         }
                     }

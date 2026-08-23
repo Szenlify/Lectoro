@@ -299,8 +299,13 @@ const FirebaseSync = (() => {
         };
         if (word.screenshot && typeof word.screenshot === "string") {
             const trimmed = word.screenshot.trim();
-            if (/^https?:\/\//i.test(trimmed) && trimmed.length <= 500) {
-                f.screenshot = { stringValue: trimmed };
+            if (!trimmed.startsWith("data:") && trimmed.length <= 500) {
+                const relativePath =
+                    typeof SharedUtils !== "undefined" &&
+                    typeof SharedUtils.toRelativeImagePath === "function"
+                        ? SharedUtils.toRelativeImagePath(trimmed)
+                        : trimmed.replace(/^https?:\/\/[^/]+\/(?:images\/)?/i, "").replace(/^images\//, "");
+                f.screenshot = { stringValue: relativePath };
             }
         }
 

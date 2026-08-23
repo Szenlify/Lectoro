@@ -210,6 +210,8 @@ test("GeminiProxy.uploadCardImage sends image to backend and returns url", async
         result.url,
         "https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev/images/user-1/word-1.webp",
     );
+    assert.equal(result.relativePath, "user-1/word-1.webp");
+    assert.equal(result.path, "user-1/word-1.webp");
     assert.equal(sentBody.action, "uploadCardImage");
     assert.equal(sentBody.wordId, "word-1");
     assert.equal(sentBody.contentType, "image/webp");
@@ -453,5 +455,47 @@ test("AIPrompts generate concise token-saving prompts with JSON instructions", (
 
     const standard = AIPrompts.standardTranslate("run", "She runs fast", "en", "pl");
     assert.ok(standard.includes("Translate \"run\" (English) to Polish."));
+});
+
+test("SharedUtils.resolveImageUrl resolves relative R2 paths and preserves URLs/data URIs", () => {
+    const SharedUtils = require("../shared/utils");
+    assert.equal(
+        SharedUtils.resolveImageUrl("user123/word456.webp"),
+        "https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev/images/user123/word456.webp",
+    );
+    assert.equal(
+        SharedUtils.resolveImageUrl("images/user123/word456.webp"),
+        "https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev/images/user123/word456.webp",
+    );
+    assert.equal(
+        SharedUtils.resolveImageUrl("https://custom.cdn.com/myimg.webp"),
+        "https://custom.cdn.com/myimg.webp",
+    );
+    assert.equal(
+        SharedUtils.resolveImageUrl("data:image/webp;base64,abc"),
+        "data:image/webp;base64,abc",
+    );
+    assert.equal(SharedUtils.resolveImageUrl(""), "");
+    assert.equal(SharedUtils.resolveImageUrl(null), "");
+});
+
+test("SharedUtils.toRelativeImagePath extracts clean relative path from URLs or keys", () => {
+    const SharedUtils = require("../shared/utils");
+    assert.equal(
+        SharedUtils.toRelativeImagePath("https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev/images/user123/word456.webp"),
+        "user123/word456.webp",
+    );
+    assert.equal(
+        SharedUtils.toRelativeImagePath("images/user123/word456.webp"),
+        "user123/word456.webp",
+    );
+    assert.equal(
+        SharedUtils.toRelativeImagePath("user123/word456.webp"),
+        "user123/word456.webp",
+    );
+    assert.equal(
+        SharedUtils.toRelativeImagePath("data:image/webp;base64,abc"),
+        "data:image/webp;base64,abc",
+    );
 });
 

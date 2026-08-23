@@ -77,6 +77,41 @@
             return val;
         },
 
+        /**
+         * Resolves a screenshot value (relative R2 key, full URL, or base64 data URI)
+         * to a full public URL or data URI.
+         *
+         * Relative path format: "{userId}/{imageId}.webp" or "images/{userId}/{imageId}.webp"
+         * Base URL: "https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev/images/"
+         */
+        resolveImageUrl(screenshot) {
+            if (!screenshot || typeof screenshot !== "string") return "";
+            const trimmed = screenshot.trim();
+            if (!trimmed) return "";
+            if (trimmed.startsWith("data:") || /^https?:\/\//i.test(trimmed)) {
+                return trimmed;
+            }
+            const cleanPath = trimmed.replace(/^\/+/, "");
+            if (cleanPath.startsWith("images/")) {
+                return `https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev/${cleanPath}`;
+            }
+            return `https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev/images/${cleanPath}`;
+        },
+
+        /**
+         * Extracts relative path "{userId}/{imageId}.webp" from a full R2 URL or relative key.
+         */
+        toRelativeImagePath(screenshot) {
+            if (!screenshot || typeof screenshot !== "string") return "";
+            const trimmed = screenshot.trim();
+            if (!trimmed || trimmed.startsWith("data:")) return trimmed;
+            const match = trimmed.match(/(?:https?:\/\/[^/]+\/)?(?:images\/)?([^?#]+)/i);
+            if (match && match[1]) {
+                return match[1].replace(/^\/+/, "");
+            }
+            return trimmed.replace(/^images\//, "").replace(/^\/+/, "");
+        },
+
         /** Format timestamp into localized Polish date */
         formatDate(timestamp, options = { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" }) {
             if (!timestamp) return "";

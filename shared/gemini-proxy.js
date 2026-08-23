@@ -446,8 +446,18 @@ const GeminiProxy = (() => {
             }
 
             const data = await res.json();
-            if (data?.ok && data?.url) {
-                return { key: data.key, url: data.url };
+            if (data?.ok && (data?.path || data?.relativePath || data?.key || data?.url)) {
+                const relativePath =
+                    data.path ||
+                    data.relativePath ||
+                    (data.key ? data.key.replace(/^images\//, "") : "") ||
+                    (data.url ? data.url.replace(/^https?:\/\/[^/]+\/(?:images\/)?/, "") : "");
+                return {
+                    key: data.key,
+                    relativePath,
+                    path: relativePath,
+                    url: data.url,
+                };
             }
             return null;
         } catch (error) {

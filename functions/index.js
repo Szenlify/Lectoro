@@ -337,6 +337,8 @@ exports.geminiProxy = onRequest(
             return res.status(200).json({
                 ok: true,
                 key: result.key,
+                relativePath: result.relativePath,
+                path: result.relativePath,
                 url: result.publicUrl,
             });
         }

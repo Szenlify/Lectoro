@@ -150,7 +150,8 @@ async function saveCardImage(config, uid, wordId, imageBuffer, contentType = "im
         : contentType.includes("png")
           ? "png"
           : "jpg";
-    const key = `images/${safeUid}/${safeWordId}.${ext}`;
+    const relativePath = `${safeUid}/${safeWordId}.${ext}`;
+    const key = `images/${relativePath}`;
 
     try {
         const { PutObjectCommand } = getS3Sdk();
@@ -165,7 +166,7 @@ async function saveCardImage(config, uid, wordId, imageBuffer, contentType = "im
         const basePublicUrl = config.publicUrl || "https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev";
         const publicUrl = `${basePublicUrl.replace(/\/+$/, "")}/${key}`;
         console.log(`[R2 Storage] Uploaded image: ${key} (${imageBuffer.length} bytes)`);
-        return { key, publicUrl };
+        return { key, relativePath, path: relativePath, publicUrl };
     } catch (error) {
         console.warn(`[R2 Storage] saveCardImage failed for ${key}:`, error.message);
         return null;

@@ -191,26 +191,32 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
                         files.push({ name: imgFile, data: imgData });
                         backText += `<br><br><img src="${imgFile}">`;
                     }
-                } else if (/^https?:\/\//i.test(w.screenshot)) {
-                    try {
-                        const imgRes = await fetch(w.screenshot);
-                        if (imgRes.ok) {
-                            const contentType = imgRes.headers.get("content-type") || "";
-                            let ext = "jpg";
-                            if (contentType.includes("webp") || w.screenshot.endsWith(".webp")) ext = "webp";
-                            else if (contentType.includes("png") || w.screenshot.endsWith(".png")) ext = "png";
-                            else if (contentType.includes("jpeg") || contentType.includes("jpg") || w.screenshot.endsWith(".jpg") || w.screenshot.endsWith(".jpeg")) ext = "jpg";
+                } else {
+                    const resolvedUrl =
+                        typeof SharedUtils !== "undefined" && typeof SharedUtils.resolveImageUrl === "function"
+                            ? SharedUtils.resolveImageUrl(w.screenshot)
+                            : w.screenshot;
+                    if (/^https?:\/\//i.test(resolvedUrl)) {
+                        try {
+                            const imgRes = await fetch(resolvedUrl);
+                            if (imgRes.ok) {
+                                const contentType = imgRes.headers.get("content-type") || "";
+                                let ext = "jpg";
+                                if (contentType.includes("webp") || resolvedUrl.endsWith(".webp")) ext = "webp";
+                                else if (contentType.includes("png") || resolvedUrl.endsWith(".png")) ext = "png";
+                                else if (contentType.includes("jpeg") || contentType.includes("jpg") || resolvedUrl.endsWith(".jpg") || resolvedUrl.endsWith(".jpeg")) ext = "jpg";
 
-                            const imgFile = `lectoro_img_${ts}.${ext}`;
-                            const imgData = new Uint8Array(await imgRes.arrayBuffer());
-                            files.push({ name: imgFile, data: imgData });
-                            backText += `<br><br><img src="${imgFile}">`;
-                        } else {
-                            backText += `<br><br><img src="${escapeAttr(w.screenshot)}">`;
+                                const imgFile = `lectoro_img_${ts}.${ext}`;
+                                const imgData = new Uint8Array(await imgRes.arrayBuffer());
+                                files.push({ name: imgFile, data: imgData });
+                                backText += `<br><br><img src="${imgFile}">`;
+                            } else {
+                                backText += `<br><br><img src="${escapeAttr(resolvedUrl)}">`;
+                            }
+                        } catch (imgErr) {
+                            console.warn("[Lectoro] Could not download remote screenshot for Anki:", imgErr);
+                            backText += `<br><br><img src="${escapeAttr(resolvedUrl)}">`;
                         }
-                    } catch (imgErr) {
-                        console.warn("[Lectoro] Could not download remote screenshot for Anki:", imgErr);
-                        backText += `<br><br><img src="${escapeAttr(w.screenshot)}">`;
                     }
                 }
             }
@@ -294,8 +300,11 @@ document.getElementById("exportCsv").addEventListener("click", () => {
             const date = w.timestamp
                 ? new Date(w.timestamp).toLocaleDateString("pl-PL")
                 : "";
-            const screenshotUrl =
-                w.screenshot && /^https?:\/\//i.test(w.screenshot) ? w.screenshot : "";
+            const screenshotUrl = w.screenshot
+                ? (typeof SharedUtils !== "undefined" && typeof SharedUtils.resolveImageUrl === "function"
+                    ? SharedUtils.resolveImageUrl(w.screenshot)
+                    : w.screenshot)
+                : "";
             return [
                 csvCell(w.original),
                 csvCell(w.translated),
