@@ -734,9 +734,7 @@ function reviewScreenshotHtml(url) {
                 <img src="${escapeAttr(url)}"
                      alt="Screenshot"
                      class="review-screenshot-img"
-                     loading="eager"
-                     onload="this.closest('.review-screenshot-box')?.classList.add('is-loaded')"
-                     onerror="this.closest('.review-screenshot')?.remove()">
+                     loading="eager">
             </div>
         </div>`;
 }
@@ -796,14 +794,21 @@ function renderQuestion(w) {
     requestAnimationFrame(scrollToTop);
     const qShotImg = card.querySelector(".review-screenshot-img");
     if (qShotImg) {
-        if (qShotImg.complete && qShotImg.naturalWidth > 0) {
+        const markLoaded = () => {
             qShotImg.closest(".review-screenshot-box")?.classList.add("is-loaded");
             scrollToTop();
+        };
+        if (qShotImg.complete && qShotImg.naturalWidth > 0) {
+            markLoaded();
         } else {
-            qShotImg.addEventListener("load", () => {
-                qShotImg.closest(".review-screenshot-box")?.classList.add("is-loaded");
-                scrollToTop();
-            }, { once: true });
+            qShotImg.addEventListener("load", markLoaded, { once: true });
+            qShotImg.addEventListener(
+                "error",
+                () => {
+                    qShotImg.closest(".review-screenshot")?.remove();
+                },
+                { once: true },
+            );
         }
     }
 }
@@ -1109,14 +1114,21 @@ function renderAnswer(w) {
     requestAnimationFrame(scrollToTop);
     const shotImg = card.querySelector(".review-screenshot-img");
     if (shotImg) {
-        if (shotImg.complete && shotImg.naturalWidth > 0) {
+        const markLoaded = () => {
             shotImg.closest(".review-screenshot-box")?.classList.add("is-loaded");
             scrollToTop();
+        };
+        if (shotImg.complete && shotImg.naturalWidth > 0) {
+            markLoaded();
         } else {
-            shotImg.addEventListener("load", () => {
-                shotImg.closest(".review-screenshot-box")?.classList.add("is-loaded");
-                scrollToTop();
-            }, { once: true });
+            shotImg.addEventListener("load", markLoaded, { once: true });
+            shotImg.addEventListener(
+                "error",
+                () => {
+                    shotImg.closest(".review-screenshot")?.remove();
+                },
+                { once: true },
+            );
         }
     }
 }

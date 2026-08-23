@@ -215,6 +215,50 @@ test("GeminiProxy.uploadCardImage sends image to backend and returns url", async
     assert.equal(sentBody.contentType, "image/webp");
 });
 
+test("GeminiProxy.uploadCardImage retries with refreshed token on 401", async (t) => {
+    let callCount = 0;
+    const tokensUsed = [];
+    global.FirebaseSync = {
+        getUser: async () => ({ uid: "user-1" }),
+        getValidToken: async (force) => (force ? "token-refreshed" : "token-expired"),
+    };
+    global.chrome = {
+        storage: { local: { get: async () => ({}), set: async () => {} } },
+    };
+    global.fetch = async (_url, options) => {
+        callCount++;
+        tokensUsed.push(options.headers.Authorization);
+        if (callCount === 1) {
+            return {
+                status: 401,
+                ok: false,
+                json: async () => ({ error: "Invalid token" }),
+            };
+        }
+        return {
+            status: 200,
+            ok: true,
+            json: async () => ({
+                ok: true,
+                key: "images/user-1/word-1.webp",
+                url: "https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev/images/user-1/word-1.webp",
+            }),
+        };
+    };
+    t.after(() => {
+        delete global.FirebaseSync;
+        delete global.chrome;
+        delete global.fetch;
+        delete require.cache[require.resolve("../shared/gemini-proxy")];
+    });
+
+    const GeminiProxy = require("../shared/gemini-proxy");
+    const result = await GeminiProxy.uploadCardImage("word-1", "data:image/webp;base64,AAA");
+    assert.ok(result);
+    assert.equal(callCount, 2);
+    assert.deepEqual(tokensUsed, ["Bearer token-expired", "Bearer token-refreshed"]);
+});
+
 test("GeminiProxy.deleteCardImage and deleteAllUserImages send correct actions", async (t) => {
     const sentBodies = [];
     global.FirebaseSync = {

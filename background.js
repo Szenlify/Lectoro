@@ -175,14 +175,21 @@ async function flushPendingChanges() {
                     typeof GeminiProxy.uploadCardImage === "function"
                 ) {
                     try {
+                        const targetWordId =
+                            entry.word.id ||
+                            (typeof FirebaseSync !== "undefined" &&
+                            typeof FirebaseSync.wordDocId === "function"
+                                ? await FirebaseSync.wordDocId(entry.word)
+                                : String(Date.now()));
+                        entry.word.id = targetWordId;
                         const uploaded = await GeminiProxy.uploadCardImage(
-                            entry.word.id,
+                            targetWordId,
                             entry.word.screenshot,
                         );
                         if (uploaded?.url) {
                             entry.word.screenshot = uploaded.url;
                             if (typeof SharedWordRepository !== "undefined") {
-                                await SharedWordRepository.updateWord(entry.word.id, {
+                                await SharedWordRepository.updateWord(targetWordId, {
                                     screenshot: uploaded.url,
                                 });
                             }
@@ -305,6 +312,41 @@ async function fullSync({ pull = true } = {}) {
         return !remote || wordTimestamp(word) > wordTimestamp(remote);
     });
     if (localToPush.length > 0) {
+        // Upload any pending base64 screenshots to Cloudflare R2 before syncing to Firestore
+        for (const word of localToPush) {
+            if (
+                word?.screenshot &&
+                typeof word.screenshot === "string" &&
+                word.screenshot.startsWith("data:") &&
+                typeof GeminiProxy !== "undefined" &&
+                typeof GeminiProxy.uploadCardImage === "function"
+            ) {
+                try {
+                    const targetWordId =
+                        word.id ||
+                        (typeof FirebaseSync !== "undefined" &&
+                        typeof FirebaseSync.wordDocId === "function"
+                            ? await FirebaseSync.wordDocId(word)
+                            : String(Date.now()));
+                    word.id = targetWordId;
+                    const uploaded = await GeminiProxy.uploadCardImage(
+                        targetWordId,
+                        word.screenshot,
+                    );
+                    if (uploaded?.url) {
+                        word.screenshot = uploaded.url;
+                        if (typeof SharedWordRepository !== "undefined") {
+                            await SharedWordRepository.updateWord(targetWordId, {
+                                screenshot: uploaded.url,
+                            });
+                        }
+                    }
+                } catch (uploadError) {
+                    console.warn("[Lectoro] R2 upload during syncAll warning:", uploadError);
+                }
+            }
+        }
+
         await FirebaseSync.writeBatch(context.user.uid, context.token, {
             upserts: localToPush,
         });

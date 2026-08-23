@@ -297,8 +297,11 @@ const FirebaseSync = (() => {
         f.ttsCacheInvalidatedAt = {
             integerValue: String(word.ttsCacheInvalidatedAt || 0),
         };
-        if (word.screenshot) {
-            f.screenshot = { stringValue: word.screenshot };
+        if (word.screenshot && typeof word.screenshot === "string") {
+            const trimmed = word.screenshot.trim();
+            if (/^https?:\/\//i.test(trimmed) && trimmed.length <= 500) {
+                f.screenshot = { stringValue: trimmed };
+            }
         }
 
         // SR data (flattened for simpler REST handling)

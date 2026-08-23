@@ -64,7 +64,7 @@ function renderLibraryGrid() {
         .map((item) => {
             const hasImage = !!(item.image && item.image.trim());
             const posterImg = hasImage
-                ? `<img src="${escapeAttr(item.image)}" alt="${escapeAttr(item.title)}" loading="lazy" onerror="this.remove(); this.parentElement.classList.add('no-image');">`
+                ? `<img src="${escapeAttr(item.image)}" alt="${escapeAttr(item.title)}" loading="lazy">`
                 : "";
             return `
         <div class="library-card" data-title="${escapeAttr(item.title)}" data-link="${escapeAttr(item.link || "")}">
@@ -81,6 +81,17 @@ function renderLibraryGrid() {
         </div>`;
         })
         .join("");
+
+    grid.querySelectorAll("img").forEach((img) => {
+        img.addEventListener(
+            "error",
+            () => {
+                img.parentElement?.classList.add("no-image");
+                img.remove();
+            },
+            { once: true },
+        );
+    });
 
     grid.querySelectorAll(".library-card[data-title]").forEach((card) => {
         card.addEventListener("click", () => {

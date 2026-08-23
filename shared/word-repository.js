@@ -197,6 +197,26 @@
         };
         words[index] = updated;
         await setStoredWords(words);
+
+        // Asynchronously offload screenshot to Cloudflare R2 if a base64 image is updated
+        if (
+            updated.screenshot &&
+            typeof updated.screenshot === "string" &&
+            updated.screenshot.startsWith("data:") &&
+            typeof GeminiProxy !== "undefined" &&
+            typeof GeminiProxy.uploadCardImage === "function"
+        ) {
+            GeminiProxy.uploadCardImage(updated.id, updated.screenshot)
+                .then(async (uploaded) => {
+                    if (uploaded && uploaded.url) {
+                        await updateWord(updated.id, { screenshot: uploaded.url });
+                    }
+                })
+                .catch((err) => {
+                    console.warn("[WordRepository] Background R2 upload failed on update:", err);
+                });
+        }
+
         return updated;
     }
 

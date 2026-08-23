@@ -49,11 +49,11 @@ function getR2SecretAccessKey() {
 
 function getR2Config() {
     return {
-        accountId: process.env.R2_ACCOUNT_ID || "",
-        accessKeyId: process.env.R2_ACCESS_KEY_ID || "",
+        accountId: process.env.R2_ACCOUNT_ID || "94b9a2de404c8e3f8efa532d0607b5f1",
+        accessKeyId: process.env.R2_ACCESS_KEY_ID || "75713468bf056703eec66c5821e564f5",
         secretAccessKey: getR2SecretAccessKey(),
         bucketName: process.env.R2_BUCKET_NAME || "lectoro-media",
-        publicUrl: process.env.R2_PUBLIC_URL || "",
+        publicUrl: process.env.R2_PUBLIC_URL || "https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev",
     };
 }
 

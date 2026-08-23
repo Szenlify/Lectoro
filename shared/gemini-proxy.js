@@ -387,10 +387,15 @@ const GeminiProxy = (() => {
      * @returns {Promise<{key: string, url: string}|null>}
      */
     async function uploadCardImage(wordId, imageBase64, contentType = "image/webp") {
-        if (!wordId || !imageBase64 || typeof imageBase64 !== "string") {
+        if (!imageBase64 || typeof imageBase64 !== "string") {
             return null;
         }
-        const token = await getToken();
+        const effectiveWordId =
+            wordId ||
+            (typeof crypto !== "undefined" && crypto.randomUUID
+                ? crypto.randomUUID()
+                : Date.now().toString(36));
+        let token = await getToken();
         if (!token) {
             return null;
         }
@@ -403,20 +408,36 @@ const GeminiProxy = (() => {
             }
         }
 
+        const payload = JSON.stringify({
+            action: "uploadCardImage",
+            wordId: effectiveWordId,
+            imageBase64,
+            contentType: resolvedContentType,
+        });
+
         try {
-            const res = await fetch(PROXY_URL, {
+            let res = await fetch(PROXY_URL, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify({
-                    action: "uploadCardImage",
-                    wordId,
-                    imageBase64,
-                    contentType: resolvedContentType,
-                }),
+                body: payload,
             });
+
+            if (res.status === 401) {
+                token = await getToken(true);
+                if (token) {
+                    res = await fetch(PROXY_URL, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${token}`,
+                        },
+                        body: payload,
+                    });
+                }
+            }
 
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}));

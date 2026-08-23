@@ -162,9 +162,8 @@ async function saveCardImage(config, uid, wordId, imageBuffer, contentType = "im
             CacheControl: "public, max-age=31536000, immutable",
         });
         await s3.send(command);
-        const publicUrl = config.publicUrl
-            ? `${config.publicUrl.replace(/\/+$/, "")}/${key}`
-            : null;
+        const basePublicUrl = config.publicUrl || "https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev";
+        const publicUrl = `${basePublicUrl.replace(/\/+$/, "")}/${key}`;
         console.log(`[R2 Storage] Uploaded image: ${key} (${imageBuffer.length} bytes)`);
         return { key, publicUrl };
     } catch (error) {
