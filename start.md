@@ -18,3 +18,7 @@
 - R2_BUCKET_NAME=lectoro-media
 - R2_PUBLIC_URL=https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev
 - R2_ACCESS_KEY_ID=75713468bf056703eec66c5821e564f5
+
+
+po zmianie - R2_PUBLIC_URL=https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev
+musisz zmienic w calym projekcie bo sa dynamiczne URL

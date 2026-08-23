@@ -17,19 +17,25 @@
         "https://firestore.googleapis.com/*",
         "https://securetoken.googleapis.com/*",
         "https://europe-west1-extension-eng.cloudfunctions.net/*",
-        "https://geminiproxy-gyagzflbra-ew.a.run.app/*",
-        "<all_urls>"
+        "https://geminiproxy-gyagzflbra-ew.a.run.app/*"
     ],
     "background": {
         "service_worker": "background.js"
     },
     "action": {
         "default_popup": "popup.html",
-        "default_title": "Lectoro - Settings"
+        "default_title": "Lectoro - Settings",
+        "default_icon": {
+        "16": "icon16.png",
+        "48": "icon48.png",
+        "128": "icon128.png"
+    }
     },
-    "icons": {
-        "48": "icon48.png"
-    },
+"icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+},
     "content_scripts": [
         {
             "matches": ["https://www.netflix.com/*"],
@@ -47,7 +53,7 @@
             "world": "MAIN"
         },
         {
-            "matches": ["<all_urls>"],
+            "matches": ["*://*/*"],
             "css": ["styles.css"],
             "js": [
                 "shared/constants.js",
@@ -57,7 +63,6 @@
                 "shared/translator-service.js",
                 "shared/tts-service.js",
                 "shared/audio-cache.js",
-                "shared/srs.js",
                 "shared/ai-prompts.js",
                 "firebase/firebase-config.js",
                 "firebase/firebase-sync.js",
@@ -79,7 +84,7 @@
             "run_at": "document_idle"
         },
         {
-            "matches": ["<all_urls>"],
+            "matches": ["*://*/*"],
             "js": ["video-frame-bootstrap.js"],
             "run_at": "document_idle",
             "all_frames": true,
