@@ -127,7 +127,7 @@ ${opts.wordList}
 
 Respond ONLY with JSON (no markdown outside JSON):
 {
-  "title": "LetFluent ${tgtName}",
+  "title": "Lectoro AI Quiz ${tgtName}",
   "sections": [
     {
       "type": "multiple_choice",

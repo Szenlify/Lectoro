@@ -1,10 +1,6 @@
-# Audyt Lectoro — Etap 1
-
 Jesteś ekspertem od Chrome Extensions, Manifest V3 oraz zasad Chrome Web Store.
 
 Przeanalizuj całe repozytorium tej wtyczki Chrome:
-
-https://github.com/Szenlify/Lectoro
 
 Celem jest przygotowanie projektu do publikacji w Chrome Web Store.
 
@@ -590,15 +586,12 @@ Jeżeli jakaś kwestia zależy od aktualnych zasad Chrome Web Store, sprawdź ak
 
 
 
-ETAP 2 
 
 # Lectoro — ETAP 2
 
 ## Privacy, dane użytkownika i przygotowanie do Chrome Web Store
 
 Pracujesz nad rozszerzeniem Chrome **Lectoro**:
-
-https://github.com/Szenlify/Lectoro
 
 W ETAPIE 1 wykonano audyt techniczny projektu pod kątem Chrome Web Store.
 
@@ -1212,14 +1205,11 @@ Celem jest przygotowanie Lectoro do rzeczywistego submission review w Chrome Web
 
 
 
-ETAP 3
 # Lectoro — ETAP 3
 
 ## Implementacja poprawek technicznych przed Chrome Web Store
 
 Pracujesz nad rozszerzeniem Chrome **Lectoro**:
-
-https://github.com/Szenlify/Lectoro
 
 Wykonałeś wcześniej:
 

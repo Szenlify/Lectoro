@@ -18,7 +18,11 @@
         "https://firestore.googleapis.com/*",
         "https://securetoken.googleapis.com/*",
         "https://europe-west1-extension-eng.cloudfunctions.net/*",
-        "https://geminiproxy-gyagzflbra-ew.a.run.app/*"
+        "https://geminiproxy-gyagzflbra-ew.a.run.app/*",
+        "https://*.nflxvideo.net/*",
+        "https://*.nflxso.net/*",
+        "https://*.nflximg.net/*",
+        "https://*.nflxext.com/*"
     ],
     "background": {
         "service_worker": "background.js"
@@ -36,6 +40,15 @@
         "16": "icons/icon16.png",
         "48": "icons/icon48.png",
         "128": "icons/icon128.png"
+    },
+    "sandbox": {
+        "pages": [
+            "quiz-runner.html"
+        ]
+    },
+    "content_security_policy": {
+        "extension_pages": "script-src 'self'; object-src 'self';",
+        "sandbox": "sandbox allow-scripts allow-forms allow-popups allow-modals; script-src 'self' 'unsafe-inline' 'unsafe-eval';"
     },
     "content_scripts": [
         {
@@ -58,7 +71,7 @@
             "css": ["styles.css"],
             "js": [
                 "shared/constants.js",
-                "functions/subscription-config.js",
+                "shared/subscription-config.js",
                 "shared/utils.js",
                 "shared/word-repository.js",
                 "shared/translator-service.js",

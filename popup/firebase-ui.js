@@ -127,6 +127,7 @@ async function renderSyncUI() {
     const pendingCount = Object.keys(data.pendingFirebaseChanges || {}).length;
     const syncing = firebaseUiAction === "sync" || firebaseUiAction === "sign-in";
     const signingOut = firebaseUiAction === "sign-out";
+    const deletingAccount = firebaseUiAction === "delete-account";
     const syncButtonText = syncing
         ? "⏳ Synchronizuję..."
         : firebaseUiFeedback?.type === "success"
@@ -150,13 +151,16 @@ async function renderSyncUI() {
         </div>
         <div class="sync-actions">
             <span class="sync-button-wrap">
-                <button id="firebaseSyncNow" class="sync-btn sync-primary" ${syncing || signingOut ? "disabled" : ""}>${syncButtonText}</button>
+                <button id="firebaseSyncNow" class="sync-btn sync-primary" ${syncing || signingOut || deletingAccount ? "disabled" : ""}>${syncButtonText}</button>
                 <span class="sync-pending-dot${pendingCount ? " visible" : ""}"
                       title="${pendingCount} niezsynchronizowanych zmian"
                       aria-label="Niezsynchronizowane zmiany"></span>
             </span>
-            <button id="firebaseSignOut" class="sync-btn sync-danger" ${firebaseUiAction ? "disabled" : ""}>
+            <button id="firebaseSignOut" class="sync-btn" ${firebaseUiAction ? "disabled" : ""}>
                 ${signingOut ? "⏳ Wylogowuję..." : "Wyloguj"}
+            </button>
+            <button id="firebaseDeleteAccount" class="sync-btn sync-danger" ${firebaseUiAction ? "disabled" : ""} title="Bezpowrotnie usuń konto i wszystkie dane w chmurze">
+                ${deletingAccount ? "⏳ Usuwam..." : "Usuń konto"}
             </button>
         </div>
         ${statusHtml}`;
@@ -196,6 +200,29 @@ async function renderSyncUI() {
         } catch (error) {
             firebaseUiAction = null;
             showFirebaseFeedback("error", error.message || "Nie udało się wylogować.", 0);
+        }
+    });
+
+    document.getElementById("firebaseDeleteAccount")?.addEventListener("click", async () => {
+        if (firebaseUiAction) return;
+        const confirmed = confirm(
+            "Czy na pewno chcesz bezpowrotnie usunąć swoje konto Lectoro oraz wszystkie zsynchronizowane słówka i zrzuty ekranu w chmurze?\n\nTej operacji nie można cofnąć."
+        );
+        if (!confirmed) return;
+
+        firebaseUiAction = "delete-account";
+        firebaseUiFeedback = null;
+        clearTimeout(firebaseUiFeedbackTimer);
+        renderSyncUI();
+        try {
+            await sendBackgroundMessage({ type: "QT_FIREBASE_DELETE_ACCOUNT" });
+            firebaseUiAction = null;
+            renderSyncUI();
+            refreshViewsAfterSync();
+            showFirebaseFeedback("success", "Konto i dane w chmurze zostały bezpowrotnie usunięte.");
+        } catch (error) {
+            firebaseUiAction = null;
+            showFirebaseFeedback("error", error.message || "Nie udało się usunąć konta.", 0);
         }
     });
 }

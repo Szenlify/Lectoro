@@ -62,7 +62,7 @@
             goodLuck: "Powodzenia!",
             wordsCount: "słówek",
             printBtn: "🖨️ Drukuj / Zapisz jako PDF",
-            checkAllBtn: "✅ Sprawdź wszystko i pokaż wynik",
+            checkAllBtn: "✅ Sprawdź",
             resetBtn: "🔄 Zacznij od nowa",
             answered: "Odpowiedziano",
             streak: "Seria",
@@ -1663,7 +1663,7 @@
     }
 
     // ── 5. High-Level Export Orchestrator ──────────────────────────────
-    async function runExport({ words, scope = "20", source = "recent", mode = "interactive", targetLang = "pl" }) {
+    async function runExport({ words, scope = "5", source = "recent", mode = "interactive", targetLang = "pl" }) {
         if (!words || !words.length) {
             throw new Error("Brak słów do wygenerowania quizu.");
         }
@@ -1671,7 +1671,7 @@
         const sorted = [...words].sort(
             (a, b) => (b.timestamp || 0) - (a.timestamp || 0),
         );
-        const count = scope === "all" ? 60 : parseInt(scope, 10) || 20;
+        const count = scope === "all" ? 60 : parseInt(scope, 10) || 5;
         const quizWords = pickQuizWords(sorted, count, source);
 
         const quiz = await generateQuizWithGemini(quizWords, { tgtLang: targetLang });
@@ -1680,8 +1680,28 @@
                 ? buildInteractiveQuizHtml(quiz, quizWords, { tgtLang: targetLang })
                 : buildQuizHtml(quiz, quizWords, { tgtLang: targetLang });
 
-        const dataUrl = "data:text/html;charset=utf-8," + encodeURIComponent(html);
-        chrome.tabs.create({ url: dataUrl });
+        if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+            await new Promise((resolve) => {
+                chrome.storage.local.set(
+                    {
+                        latestQuizHtml: html,
+                        latestQuizTitle: quiz.title || "Lectoro_Quiz",
+                        latestQuizMode: mode,
+                        latestQuizDate: Date.now(),
+                    },
+                    resolve,
+                );
+            });
+        }
+
+        if (typeof chrome !== "undefined" && chrome.tabs?.create) {
+            const quizUrl = chrome.runtime.getURL("quiz.html");
+            chrome.tabs.create({ url: quizUrl });
+        } else if (typeof window !== "undefined") {
+            const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+            const blobUrl = URL.createObjectURL(blob);
+            window.open(blobUrl, "_blank");
+        }
         return { quizWords, count: quizWords.length };
     }
 

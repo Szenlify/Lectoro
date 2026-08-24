@@ -165,14 +165,55 @@ function subscriptionPeriodEnd(subscription) {
     return ends.length ? Math.max(...ends) : null;
 }
 
-function isTrialEligible(subscriptions = [], userData = {}) {
+/**
+ * Check trial eligibility across ALL Stripe customers sharing this email,
+ * not just the current customer. This prevents trial abuse via account
+ * deletion + re-registration with the same Google account.
+ */
+async function isTrialEligible(stripe, email, currentSubscriptions = [], userData = {}) {
+    // Fast path: Firestore flags from previous subscription on this uid
     if (userData.stripeTrialUsed || userData.stripeHasSubscribed) return false;
-    return !subscriptions.some(
+
+    // Check current customer's subscriptions
+    const hasCurrentHistory = currentSubscriptions.some(
         (subscription) =>
             subscription?.id ||
             Number(subscription?.trial_start || 0) > 0 ||
             Number(subscription?.trial_end || 0) > 0,
     );
+    if (hasCurrentHistory) return false;
+
+    // Cross-customer check: look up ALL Stripe customers with this email
+    // to catch re-registrations after account deletion
+    if (email) {
+        try {
+            const customers = await stripe.customers.list({
+                email: email.toLowerCase().trim(),
+                limit: 100,
+            });
+            for (const customer of customers.data) {
+                if (customer.deleted) continue;
+                const subs = await stripe.subscriptions.list({
+                    customer: customer.id,
+                    status: "all",
+                    limit: 10,
+                });
+                const hasHistory = subs.data.some(
+                    (sub) =>
+                        sub?.id ||
+                        Number(sub?.trial_start || 0) > 0 ||
+                        Number(sub?.trial_end || 0) > 0,
+                );
+                if (hasHistory) return false;
+            }
+        } catch (err) {
+            console.warn("[Stripe] isTrialEligible cross-customer check warning:", err.message);
+            // On Stripe API error, deny trial to be safe
+            return false;
+        }
+    }
+
+    return true;
 }
 
 function checkoutSessionOptions({ customerId, uid, plan, priceId, trialDays = 0 }) {
@@ -321,10 +362,12 @@ exports.createStripeCheckoutSession = onRequest(
                 .collection("users")
                 .doc(decodedToken.uid)
                 .get();
-            const trialDays = isTrialEligible(
+            const trialDays = (await isTrialEligible(
+                stripe,
+                decodedToken.email || "",
                 activeSubscriptions.data,
                 userSnapshot.data() || {},
-            )
+            ))
                 ? getPlanLimits(requestedPlan).trialDays
                 : 0;
             const session = await stripe.checkout.sessions.create(

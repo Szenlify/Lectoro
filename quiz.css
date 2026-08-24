@@ -1,0 +1,115 @@
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #f8fafc;
+}
+
+.quiz-topbar {
+    height: 60px;
+    background: #1e293b;
+    border-bottom: 1px solid #334155;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    position: relative;
+    z-index: 10;
+}
+
+.quiz-brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.brand-logo {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+}
+
+.brand-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.brand-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #f8fafc;
+    letter-spacing: -0.01em;
+}
+
+
+.quiz-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.btn-ctrl {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 36px;
+    padding: 0 14px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 8px;
+    border: 1px solid #475569;
+    background: #334155;
+    color: #f8fafc;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-ctrl:hover {
+    background: #475569;
+    border-color: #64748b;
+    transform: translateY(-1px);
+}
+
+.btn-ctrl:active {
+    transform: translateY(0);
+}
+
+.btn-download {
+    background: #4f46e5;
+    border-color: #6366f1;
+    color: #ffffff;
+}
+
+.btn-download:hover {
+    background: #4338ca;
+    border-color: #4f46e5;
+}
+
+.ctrl-icon {
+    width: 16px;
+    height: 16px;
+}
+
+.quiz-container {
+    width: 100%;
+    height: calc(100% - 60px);
+    background: #f8fafc;
+    position: relative;
+}
+
+.quiz-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+    background: transparent;
+}

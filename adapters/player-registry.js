@@ -43,9 +43,12 @@
         if (!raw) return "";
         if (!raw.includes("<")) return raw;
 
-        const holder = document.createElement("div");
-        holder.innerHTML = raw;
-        return extractCueText(holder);
+        try {
+            const doc = new DOMParser().parseFromString(raw, "text/html");
+            return extractCueText(doc.body);
+        } catch (_) {
+            return raw.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+        }
     }
 
     function getNativeCueText(video) {

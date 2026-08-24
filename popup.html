@@ -231,49 +231,46 @@
                 <!-- Word list -->
                 <div class="word-list" id="wordList"></div>
 
-                <!-- Export -->
-                <div class="export-section">
-                    <button class="export-btn export-anki" id="exportAnki" title="Eksportuj do pliku Anki (.txt)">
-                        📋 Anki
-                    </button>
-                    <button class="export-btn export-csv" id="exportCsv" title="Eksportuj do Excel (.csv)">
-                        📊 Excel CSV
-                    </button>
-                    <button class="export-btn export-clear" id="clearAll" title="Usuń widoczne słowa">
-                        🗑
-                    </button>
-                </div>
-                <div class="quiz-export-row">
-                    <div class="quiz-export-top">
-                        <div class="quiz-export-label">
-                            <span class="quiz-icon-badge">🧠</span>
-                            <span class="quiz-export-text">Quiz <span class="quiz-export-sub">AI</span></span>
-                            <span class="quiz-free-badge" id="quizFreeBadge" style="display:none;"
-                                title="Darmowe quizy">0/3</span>
+                <!-- Compact Unified Export & Quiz Bar -->
+                <div class="words-export-footer">
+                    <div class="export-compact-row">
+                        <!-- Left: Quiz AI group -->
+                        <div class="quiz-compact-group">
+
+                            <select class="quiz-select-compact" id="quizScope" title="Ile słówek uwzględnić w quizie">
+                                <option value="5" selected>5 słów</option>
+                                <option value="10">10 słów</option>
+                                <option value="15">15 słów</option>
+                                <option value="20">20 słów</option>
+                                <option value="all">Wszystkie</option>
+                            </select>
+                            <select class="quiz-select-compact" id="quizSource" title="Z jakich słówek ułożyć quiz">
+                                <option value="recent" selected>Ostatnie</option>
+                                <option value="random">Losowe</option>
+                            </select>
+                            <button type="button" class="export-btn export-quiz" id="exportQuiz"
+                                title="Wygeneruj interaktywny quiz za pomocą AI">
+                                <span class="quiz-btn-label">✨ Quiz AI</span>
+                                <span class="quiz-free-badge" id="quizFreeBadge" style="display:none;"
+                                    title="Darmowe quizy">0/3</span>
+                            </button>
                         </div>
-                        <div class="quiz-mode-toggle">
-                            <button type="button" class="quiz-mode-btn" id="quizModePdf" data-mode="pdf"
-                                title="Statyczna strona do wydruku / zapisu jako PDF">📄 PDF</button>
-                            <button type="button" class="quiz-mode-btn active" id="quizModeInteractive"
-                                data-mode="interactive"
-                                title="Interaktywna strona - zaznaczasz odpowiedzi i sprawdzasz wynik na miejscu">🖱️
-                                WEB</button>
+
+                        <!-- Right: Anki, Excel, Delete -->
+                        <div class="export-compact-actions">
+                            <button type="button" class="export-btn export-anki" id="exportAnki"
+                                title="Eksportuj do pliku Anki (.txt)">
+                                📋 Anki
+                            </button>
+                            <button type="button" class="export-btn export-csv" id="exportCsv"
+                                title="Eksportuj do Excel (.csv)">
+                                📊 Excel
+                            </button>
+                            <button type="button" class="export-btn export-clear" id="clearAll"
+                                title="Usuń widoczne słowa">
+                                🗑
+                            </button>
                         </div>
-                    </div>
-                    <div class="quiz-export-bottom">
-                        <select class="quiz-source-select" id="quizSource" title="Z jakich słówek ułożyć quiz">
-                            <option value="recent" selected>Ostatnie</option>
-                            <option value="random">Losowe</option>
-                        </select>
-                        <select class="quiz-scope-select" id="quizScope" title="Ile słówek uwzględnić w quizie">
-                            <option value="5">5 słów</option>
-                            <option value="10" selected>10 słów</option>
-                            <option value="15">15 słów</option>
-                            <option value="20">20 słów</option>
-                        </select>
-                        <button class="export-btn export-quiz" id="exportQuiz" title="Wygeneruj quiz za pomocą AI">
-                            ✨ Generuj quiz
-                        </button>
                     </div>
                 </div>
             </div>
@@ -526,7 +523,7 @@
             LLC.</div>
     </footer>
     <script src="shared/constants.js"></script>
-    <script src="functions/subscription-config.js"></script>
+    <script src="shared/subscription-config.js"></script>
     <script src="shared/utils.js"></script>
     <script src="shared/word-repository.js"></script>
     <script src="shared/translator-service.js"></script>

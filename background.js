@@ -3,7 +3,7 @@
 try {
     importScripts(
         "shared/constants.js",
-        "functions/subscription-config.js",
+        "shared/subscription-config.js",
         "shared/utils.js",
         "shared/word-repository.js",
         "firebase/firebase-config.js",
@@ -790,7 +790,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     target,
                     files: [
                         "shared/constants.js",
-                        "functions/subscription-config.js",
+                        "shared/subscription-config.js",
                         "shared/utils.js",
                         "shared/word-repository.js",
                         "shared/translator-service.js",
@@ -851,6 +851,40 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         fullSync({ pull: false })
             .then(() => clearLocalUserDataAfterSignOut())
             .then(() => sendResponse({ ok: true }))
+            .catch((error) => sendResponse({ error: error.message }));
+        return true;
+    }
+
+    if (message.type === "QT_FIREBASE_DELETE_ACCOUNT") {
+        (async () => {
+            const token = await getSingleFlightToken(true);
+            if (!token) throw new Error("Brak aktywnej sesji.");
+
+            const endpoint = typeof GeminiProxy !== "undefined" && typeof GeminiProxy.endpoint === "function"
+                ? GeminiProxy.endpoint()
+                : "https://geminiproxy-gyagzflbra-ew.a.run.app";
+
+            const res = await fetch(endpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ action: "deleteUserAccount" }),
+            });
+
+            if (!res.ok) {
+                const details = await res.json().catch(() => ({}));
+                throw new Error(details.error || `Błąd usuwania konta (${res.status})`);
+            }
+
+            await clearLocalUserDataAfterSignOut();
+            if (typeof FirebaseSync !== "undefined" && typeof FirebaseSync.signOut === "function") {
+                await FirebaseSync.signOut();
+            }
+            return { ok: true };
+        })()
+            .then((result) => sendResponse(result))
             .catch((error) => sendResponse({ error: error.message }));
         return true;
     }

@@ -363,6 +363,47 @@ exports.geminiProxy = onRequest(
             return res.status(200).json({ ok: true, deletedCount: count });
         }
 
+        if (req.body?.action === "deleteUserAccount") {
+            const r2Config = getR2Config();
+
+            // 1. Usunięcie wszystkich grafik użytkownika z Cloudflare R2
+            try {
+                await deleteAllUserImages(r2Config, uid);
+            } catch (r2Err) {
+                console.warn("[geminiProxy] deleteUserAccount R2 cleanup warning:", r2Err.message);
+            }
+
+            // 2. Usunięcie wszystkich dokumentów z subkolekcji słówek w Firestore
+            try {
+                const wordsSnapshot = await userRef.collection("words").get();
+                const batchSize = 400;
+                const docs = wordsSnapshot.docs;
+                for (let i = 0; i < docs.length; i += batchSize) {
+                    const batch = db.batch();
+                    docs.slice(i, i + batchSize).forEach((doc) => batch.delete(doc.ref));
+                    await batch.commit();
+                }
+            } catch (fsErr) {
+                console.warn("[geminiProxy] deleteUserAccount Firestore words cleanup warning:", fsErr.message);
+            }
+
+            // 3. Usunięcie dokumentu profilu użytkownika w Firestore
+            try {
+                await userRef.delete();
+            } catch (docErr) {
+                console.warn("[geminiProxy] deleteUserAccount Firestore userRef delete warning:", docErr.message);
+            }
+
+            // 4. Usunięcie konta użytkownika z Firebase Authentication
+            try {
+                await getAdmin().auth().deleteUser(uid);
+            } catch (authErr) {
+                console.warn("[geminiProxy] deleteUserAccount Firebase Auth deleteUser warning:", authErr.message);
+            }
+
+            return res.status(200).json({ ok: true, message: "Konto i dane zostały bezpowrotnie usunięte." });
+        }
+
         if (req.body?.action === "elevenLabsVoices") {
             if (!isReviewContext(req.body?.context)) {
                 return res.status(403).json({

@@ -27,11 +27,38 @@ test("subscription period end is read from Stripe subscription items", () => {
     assert.equal(_test.subscriptionPeriodEnd(null), null);
 });
 
-test("three-day trial is available only before the first subscription", () => {
-    assert.equal(_test.isTrialEligible([], {}), true);
-    assert.equal(_test.isTrialEligible([], { stripeTrialUsed: true }), false);
-    assert.equal(_test.isTrialEligible([], { stripeHasSubscribed: true }), false);
-    assert.equal(_test.isTrialEligible([subscription("canceled", "price_basic")], {}), false);
+// Minimal Stripe mock for isTrialEligible
+function mockStripe({ customersByEmail = [], subsByCustomer = {} } = {}) {
+    return {
+        customers: {
+            list: async () => ({ data: customersByEmail }),
+        },
+        subscriptions: {
+            list: async ({ customer }) => ({
+                data: subsByCustomer[customer] || [],
+            }),
+        },
+    };
+}
+
+test("three-day trial is available only before the first subscription", async () => {
+    const stripe = mockStripe();
+    assert.equal(await _test.isTrialEligible(stripe, "new@test.com", [], {}), true);
+    assert.equal(await _test.isTrialEligible(stripe, "new@test.com", [], { stripeTrialUsed: true }), false);
+    assert.equal(await _test.isTrialEligible(stripe, "new@test.com", [], { stripeHasSubscribed: true }), false);
+    assert.equal(await _test.isTrialEligible(stripe, "new@test.com", [subscription("canceled", "price_basic")], {}), false);
+});
+
+test("trial is denied when same email had a subscription on a deleted account", async () => {
+    const oldCustomer = { id: "cus_old", deleted: false };
+    const stripe = mockStripe({
+        customersByEmail: [oldCustomer],
+        subsByCustomer: {
+            cus_old: [subscription("canceled", "price_basic")],
+        },
+    });
+    // New account (empty currentSubscriptions, clean userData) but old Stripe customer exists
+    assert.equal(await _test.isTrialEligible(stripe, "reuser@test.com", [], {}), false);
 });
 
 test("trial Checkout requires a card and defers billing for exactly three days", () => {

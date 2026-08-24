@@ -411,12 +411,15 @@ async function refreshAiUsageUI() {
     if (quizButton) {
         quizButton.classList.toggle("credits-empty", limitReached);
         quizButton.setAttribute("aria-disabled", String(limitReached));
-        quizButton.innerHTML = limitReached
-            ? "✦ Brak kredytów AI"
-            : "✨ Generuj quiz";
+        const labelEl = quizButton.querySelector(".quiz-btn-label");
+        if (labelEl) {
+            labelEl.textContent = limitReached ? "✦ Brak AI" : "✨ Quiz AI";
+        } else {
+            quizButton.textContent = limitReached ? "✦ Brak AI" : "✨ Quiz AI";
+        }
         quizButton.title = limitReached
             ? "Miesięczny limit AI został wykorzystany — zobacz dostępne plany"
-            : "Wygeneruj quiz za pomocą AI";
+            : "Wygeneruj interaktywny quiz za pomocą AI";
     }
 
     await GeminiProxy.applyLocalLimitToUI();

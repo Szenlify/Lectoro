@@ -332,17 +332,7 @@ document.getElementById("exportCsv").addEventListener("click", () => {
 });
 
 // ── Export: AI-generated Quiz (Lazy Loaded) ───────────────────────
-let quizOutputMode = "interactive";
-const quizModePdfBtn = document.getElementById("quizModePdf");
-const quizModeInteractiveBtn = document.getElementById("quizModeInteractive");
-
-function setQuizMode(mode) {
-    quizOutputMode = mode;
-    quizModePdfBtn?.classList.toggle("active", mode === "pdf");
-    quizModeInteractiveBtn?.classList.toggle("active", mode === "interactive");
-}
-quizModePdfBtn?.addEventListener("click", () => setQuizMode("pdf"));
-quizModeInteractiveBtn?.addEventListener("click", () => setQuizMode("interactive"));
+const quizOutputMode = "interactive";
 
 let quizScriptLoadingPromise = null;
 async function ensureQuizExportLoaded() {
@@ -486,13 +476,18 @@ if (exportQuizBtn) {
             return;
         }
 
-        const scope = document.getElementById("quizScope")?.value || "10";
+        const scope = document.getElementById("quizScope")?.value || "5";
         const source = document.getElementById("quizSource")?.value || "recent";
         const targetLang = data.targetLang || "pl";
 
+        const labelEl = exportQuizBtn.querySelector(".quiz-btn-label");
         exportQuizBtn.disabled = true;
         exportQuizBtn.classList.add("loading");
-        exportQuizBtn.innerHTML = '<span class="quiz-btn-spinner"></span><span>Generuję quiz…</span>';
+        if (labelEl) {
+            labelEl.innerHTML = '<span class="quiz-btn-spinner"></span><span>AI…</span>';
+        } else {
+            exportQuizBtn.innerHTML = '<span class="quiz-btn-spinner"></span><span>AI…</span>';
+        }
 
         try {
             const QuizEngine = await ensureQuizExportLoaded();
@@ -529,8 +524,13 @@ if (exportQuizBtn) {
         } finally {
             exportQuizBtn.disabled = false;
             exportQuizBtn.classList.remove("loading");
-            exportQuizBtn.innerHTML = origText;
+            if (labelEl) {
+                labelEl.textContent = "✨ Quiz AI";
+            } else {
+                exportQuizBtn.innerHTML = origText;
+            }
             if (typeof refreshAiUsageUI === "function") refreshAiUsageUI();
+            await updateQuizQuotaUI();
         }
     });
 }
