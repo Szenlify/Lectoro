@@ -29,9 +29,6 @@ testy i pliki TypeScript
 
 2. zrob w kazdym jezyku aby był text UI nagłowki wszystkie w zaleznosci jaki zalezny jest język a jako defaul jest angielski [na pozniej jako ostatnie]
 
-1. https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev/audio/EXAVITQu4vr4xnSDxMaL/5870cc58ef1c7f7a54cd4ddfcb1ebccb16b0de0d54e55f8f3751233e9e8dd55c.mp3
-sposob na pobieranie audio bed uzywania sekretow do R2 moze zapisac audio w inny sposob ale musi byc ono krotkie po w url moze chyba byc 64znaki wiec jesli jesli text jest dluzszy wtedy juz nie zapisze a chodzilo mi o https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev/audio/where-are-you-been.mp3 takie uniwersalne audio chce zeby uzytkownicy kazdy uzytkownik nie tworzyl od nowa tylko aby sprawdzal czy jest taki url jesli nie ma blad 404 to wtedy niech generuje, a dluzsze slowa lub slowa z zdaniami to chyba nie znajde uniwersalnego sposobu
-
 2. popraw prompty AI bo teraz tlumacza czesto bez sensu lub nie w tym jezyku
 
 firebase login
@@ -61,11 +58,7 @@ fiszki z social media / facebook / X / instagram / komentarze
 
 Platformy najbardziej otwarte na przechwytywanie napisów
 
-3. Disney+ & Max (HBO)Jak działa: Obie platformy korzystają z odtwarzaczy bazujących na standardzie HTML5 (np. Shaka Player) i plikach WebVTT/TTML. Wnioski: Napisy trafiają do kontenerów tekstowych w DOM (np. .shaka-text-container), skąd wtyczka może łatwo czytać tekst w czasie rzeczywistym.
-
-4. Amazon Prime VideoJak działa: Napisy są osadzane w przejrzystej strukturze HTML (np. .atvwebplayersdk-captions-text). Wnioski: Bardzo łatwy odczyt przez standardowy podgląd zmian w drzewie DOM.
-
-Wciel się w rolę doświadczonego Software Architekta i Senior Developera. Twoim zadaniem jest przeprowadzenie dogłębnego audytu (Code Review) kodu projektu. Zależy mi na maksymalnym uporządkowaniu architektury.
+## Wciel się w rolę doświadczonego Software Architekta i Senior Developera. Twoim zadaniem jest przeprowadzenie dogłębnego audytu (Code Review) kodu projektu. Zależy mi na maksymalnym uporządkowaniu architektury.
 
 Przeanalizuj kod pod kątem trzech głównych obszarów:
 
@@ -77,7 +70,3 @@ Przeanalizuj kod pod kątem trzech głównych obszarów:
 
 3. Centralizacja Logiki (Single Source of Truth)
    Zaproponuj plan refaktoryzacji, który przeniesie rozproszoną logikę do jednego, spójnego miejsca. Inne pliki powinny jedynie importować gotowe metody/funkcje, stając się "głupimi" konsumentami logiki biznesowej. Zastanów się, czy logikę lepiej wydzielić do klasycznych funkcji pomocniczych (utils), dedykowanych serwisów (services)
-
-Wciel się w rolę doświadczonego Software Architekta i Senior Developera.
-
-przeanalizuj aplikacje zrob aby byla oszczedna bo bedzie ja pobierac tysiace uzytkownikow wiec kazde zaoszczedzone pytanie token do serverow jest bardzo potrzebna przy tym zachowanie bezpieczenstwa aplikacji oraz szybka bo popup teraz czasami dlugo sie otwiera oraz zachowanie dalania wszystkich funkcji jak gemini ai, eleven laps oraz pamietaj o Centralizacja Logiki (Single Source of Truth) i Wykrywanie Duplikacji (Zasada DRY - Don't Repeat Yourself)oraz na koniec zrob firebase deploy i sprawdz czy wszystko dziala 

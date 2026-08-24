@@ -21,4 +21,4 @@
 
 
 po zmianie - R2_PUBLIC_URL=https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev
-musisz zmienic w calym projekcie bo sa dynamiczne URL
+musisz zmienic w calym projekcie bo sa dynamiczne URL audio i images
