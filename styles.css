@@ -662,7 +662,7 @@ video::cue {
     font-family: "Netflix Sans Variable", "Netflix Sans", "Helvetica Neue", "Segoe UI", Roboto, Arial, sans-serif !important;
     font-style: normal !important;
     font-weight: 600 !important;
-    font-variant: normal !important;
+    font-variant: normal !important; 
     text-transform: none !important;
     text-rendering: geometricPrecision !important;
     -webkit-font-smoothing: antialiased !important;

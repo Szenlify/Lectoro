@@ -422,20 +422,6 @@ async function scheduleNextDueAlarm(words, now) {
     }
 }
 
-async function checkAndNotify() {
-    const data = await chrome.storage.local.get({ savedWords: [] });
-    const dueCount = countDueWords(data.savedWords || [], Date.now());
-    if (dueCount > 0) {
-        chrome.notifications.create("reviewReminder", {
-            type: "basic",
-            iconUrl: "icon48.png",
-            title: "Lectoro Powtórki",
-            message: `Masz ${dueCount} powtórki!`,
-            priority: 1,
-        });
-    }
-}
-
 async function notifyTabsReviewDue(dueCount) {
     const tabs = await chrome.tabs.query({});
     for (const tab of tabs) {
@@ -448,7 +434,6 @@ async function notifyTabsReviewDue(dueCount) {
 }
 
 chrome.alarms.create("updateBadge", { periodInMinutes: 5 });
-chrome.alarms.create("reviewNotification", { periodInMinutes: 360 });
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
     if (alarm.name === "updateBadge") updateBadge();
@@ -465,7 +450,6 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
         if (dueCount > 0) notifyTabsReviewDue(dueCount);
         updateBadge();
     }
-    if (alarm.name === "reviewNotification") checkAndNotify();
 });
 
 chrome.runtime.onInstalled.addListener(() => {
