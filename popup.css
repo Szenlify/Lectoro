@@ -751,7 +751,7 @@ body::before {
 
 /* Stats */
 .stats {
-    padding: 0 22px 10px;
+    padding: 0 22px 2px;
     font-size: 10.5px;
     color: var(--text-ghost);
     font-weight: 600;
@@ -976,7 +976,7 @@ body::before {
 
 /* Export section */
 .export-section {
-    padding: 12px 22px 10px;
+    padding: 2px 20px 2px;
     border-top: 1px solid rgba(255, 255, 255, 0.03);
     display: flex;
     gap: 8px;
