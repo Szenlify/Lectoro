@@ -97,7 +97,7 @@
         const hostname = (typeof window !== "undefined" && window.location?.hostname) || "";
         if (/(^|\.)youtube\.com$/i.test(hostname)) return "youtube";
         if (/(^|\.)netflix\.com$/i.test(hostname)) return "netflix";
-        if (/lookmovie/i.test(hostname)) return "lookmovie";
+        if (document.querySelector(".video-js")) return "videojs";
         if (/ted\.com$/i.test(hostname)) return "ted";
         const regType = getPlayerRegistry()?.type;
         if (regType) return regType;
@@ -115,7 +115,7 @@
         const nf = video.closest?.(".watch-video, [data-uia='video-canvas'], .nf-player-container");
         if (nf) return nf;
 
-        // 3. LookMovie / VideoJS / Plyr / JWPlayer
+        // 3. VideoJS / Plyr / JWPlayer / Generic HTML5
         const vjs = video.closest?.(".video-js, .jwplayer, .plyr, .player-container");
         if (vjs) return vjs;
 

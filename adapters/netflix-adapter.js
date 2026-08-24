@@ -1,6 +1,6 @@
 /**
  * Lectoro – Netflix Player Caption Adapter & Controller (Single Source of Truth)
- * Unified DOM caption adapter (matching YouTube & LookMovie), subtitle indexing,
+ * Unified DOM caption adapter (matching YouTube & HTML5 video players), subtitle indexing,
  * video seeking, eager pre-fetching, and fast review artwork for Netflix.
  */
 (() => {

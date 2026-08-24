@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
-    "name": "Lectoro AI - Translation & Reader",
+    "name": "Lectoro AI - Language Learning & Video Subtitles",
     "version": "1.0.0",
-    "description": "Select any word or sentence, click the translate icon, and get an instant translation. Choose your target language in the popup.",
+    "description": "Learn languages with ease: instant text translation on any page, bilingual video subtitles for YouTube & Netflix, SRS flashcards, and AI tutor explanations.",
     "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtmvOPueMBDjgnUCbKHIBnguWJiIUF61+cCFSfTUvojuAlkAXn4kCUldxtmIB/dbE6COCzdiEZkJRgh4XD0GQlEllmvRc8Z08sjg4yvCunhSPlJnb8d/xS7At0upIFS/Z0AUFmgYKiBjpLEQg6Ts9XVtZDKjLFGkczfbbxp7zSTp0o0zFY0PvYdQ9EuSTtFea/lNCfW+mgWyn7MSkXZS3xOD1HegsvuG6gfXkR+AN8V1p6gocZJ4ZRUYhjaV7+Bnx2uio+Y/fZus7svcHftie+OCuFdJ8z67Pj0kbX/W37mjkNupL2zVQFp7KuBFeQejhWnqlIvrm8X9HEeGfVx45UQIDAQAB",
     "permissions": [
         "storage",
@@ -12,6 +12,8 @@
         "activeTab"
     ],
     "host_permissions": [
+        "https://translate.googleapis.com/*",
+        "https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev/*",
         "https://identitytoolkit.googleapis.com/*",
         "https://firestore.googleapis.com/*",
         "https://securetoken.googleapis.com/*",
@@ -23,18 +25,18 @@
     },
     "action": {
         "default_popup": "popup.html",
-        "default_title": "Lectoro - Settings",
+        "default_title": "Lectoro - Language Learning",
         "default_icon": {
+            "16": "icons/icon16.png",
+            "48": "icons/icon48.png",
+            "128": "icons/icon128.png"
+        }
+    },
+    "icons": {
         "16": "icons/icon16.png",
         "48": "icons/icon48.png",
         "128": "icons/icon128.png"
-    }
     },
-"icons": {
-    "16": "icons/icon16.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
-},
     "content_scripts": [
         {
             "matches": ["https://www.netflix.com/*"],
@@ -72,7 +74,7 @@
                 "adapters/base-adapter.js",
                 "adapters/youtube-adapter.js",
                 "adapters/netflix-adapter.js",
-                "adapters/lookmovie-adapter.js",
+                "adapters/generic-video-adapter.js",
                 "adapters/generic-adapters.js",
                 "adapters/ted-adapter.js",
                 "adapters/player-registry.js",

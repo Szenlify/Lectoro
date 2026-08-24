@@ -1,46 +1,37 @@
 [
     {
-        "title": "Peppa Pig",
-        "level": "beginner",
-        "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQQnUGM4oUDwhRZBnFfKO52B8vjuo6Nng_7qgyJGVl2Cg&s=10",
-        "note": "",
-        "link": "https://www.youtube.com/watch?v=_8j4Vxb4DRI"
-    },
-    {
-        "title": "Bluey",
-        "level": "beginner",
-        "image": "https://www.lookmovie2.to/images/p/w200/b45fbec38ad45c7ec5ea66a090e80372.webp",
-        "note": "",
-        "link": "https://www.youtube.com/watch?v=AMppfY8aF6M&t=208s"
-    },
-    {
-        "title": "Wild Kratts",
-        "level": "beginner",
-        "image": "https://www.lookmovie2.to/images/p/w200/a01fddf851ee980b4d44b915b9eec5a4.webp",
-        "note": "",
-        "link": "https://www.youtube.com/watch?v=G9BU8vJf8gQ&t=152s"
-    },
-   
-    {
-        "title": "Friends",
+        "title": "TED: The power of vulnerability",
         "level": "intermediate",
-        "image": "https://www.lookmovie2.to/images/p/w200/337fd6865f385a7e39bf9c2620250b3d.webp",
-        "note": "",
-        "link": "https://www.netflix.com/watch/70273997"
+        "image": "https://img.youtube.com/vi/iCvmsMzlF7o/mqdefault.jpg",
+        "note": "Brené Brown o odwadze, empatii i relacjach międzyludzkich.",
+        "link": "https://www.youtube.com/watch?v=iCvmsMzlF7o"
     },
     {
-        "title": "Hannah Montana",
+        "title": "English with Lucy - 10 Common Idioms",
+        "level": "beginner",
+        "image": "https://img.youtube.com/vi/AMppfY8aF6M/mqdefault.jpg",
+        "note": "Podstawowe idiomy angielskie używane w codziennej mowie.",
+        "link": "https://www.youtube.com/watch?v=AMppfY8aF6M"
+    },
+    {
+        "title": "Kurzgesagt – What If We Nuke a City?",
         "level": "intermediate",
-        "image": "https://www.lookmovie2.to/images/p/w200/aacd99a61c9a53cdbe112790b42ea5cf.webp",
-        "note": "",
-        "link": "https://www.youtube.com/watch?v=xvj-fNOVJbo"
+        "image": "https://img.youtube.com/vi/5iPH-br_SOo/mqdefault.jpg",
+        "note": "Przejrzysta narracja, bogate słownictwo popularnonaukowe.",
+        "link": "https://www.youtube.com/watch?v=5iPH-br_SOo"
     },
-    
     {
-        "title": "Inception",
+        "title": "BBC Learning English - Masterclass",
+        "level": "beginner",
+        "image": "https://img.youtube.com/vi/G9BU8vJf8gQ/mqdefault.jpg",
+        "note": "Wyraźna wymowa, naturalne dialogi i transkrypcja.",
+        "link": "https://www.youtube.com/watch?v=G9BU8vJf8gQ"
+    },
+    {
+        "title": "Steve Jobs – Stanford Commencement Speech",
         "level": "advanced",
-        "image": "https://www.lookmovie2.to/images/p/w400/7b7cd824a913e459a4b9d0b8f01ba731.webp",
-        "note": "Szybkie tempo dynamicznych dialogów, skomplikowana terminologia i abstrakcyjne pojęcia.",
-        "link": ""
+        "image": "https://img.youtube.com/vi/UF8uR6Z6KLc/mqdefault.jpg",
+        "note": "Kultowe przemówienie. Zaawansowane struktury gramatyczne.",
+        "link": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
     }
 ]

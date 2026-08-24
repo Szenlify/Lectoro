@@ -130,10 +130,10 @@
                 return;
             }
 
-            // Hide LookMovie / VideoJS controls
-            if (globalThis.LectoroLookmovieAdapter?.ensureControlsHidden) {
-                globalThis.LectoroLookmovieAdapter.ensureControlsHidden();
-                globalThis.LectoroLookmovieAdapter.clearControlBarTimer();
+            // Hide Video.js controls
+            if (globalThis.LectoroGenericVideoAdapter?.ensureControlsHidden) {
+                globalThis.LectoroGenericVideoAdapter.ensureControlsHidden();
+                globalThis.LectoroGenericVideoAdapter.clearControlBarTimer();
             }
 
             // Hide Netflix controls & badges when navigating via keyboard hotkeys

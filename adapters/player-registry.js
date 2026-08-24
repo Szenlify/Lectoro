@@ -15,7 +15,7 @@
     function getRegisteredAdapters() {
         const adapters = [];
         if (globalThis.LectoroYouTubeAdapter) adapters.push(globalThis.LectoroYouTubeAdapter);
-        if (globalThis.LectoroLookmovieAdapter) adapters.push(globalThis.LectoroLookmovieAdapter);
+        if (globalThis.LectoroGenericVideoAdapter) adapters.push(globalThis.LectoroGenericVideoAdapter);
         if (globalThis.LectoroNetflixAdapter) adapters.push(globalThis.LectoroNetflixAdapter);
         if (globalThis.LectoroTedAdapter) adapters.push(globalThis.LectoroTedAdapter);
         if (Array.isArray(globalThis.LectoroGenericAdapters)) {
@@ -184,7 +184,7 @@
             return true;
         }
 
-        // 5. LookMovie / VideoJS / generic DOM container check
+        // 5. Video.js / HTML5 / generic DOM container check
         if (session?.binding?.container) {
             const container = session.binding.container;
             if (container.isConnected && container.offsetParent !== null) {
@@ -434,8 +434,8 @@
 
         refreshNativeTracks(session);
         refreshCaptionBinding(session, true);
-        if (globalThis.LectoroLookmovieAdapter?.ensureControlsHidden) {
-            globalThis.LectoroLookmovieAdapter.ensureControlsHidden();
+        if (globalThis.LectoroGenericVideoAdapter?.ensureControlsHidden) {
+            globalThis.LectoroGenericVideoAdapter.ensureControlsHidden();
         }
     }
 

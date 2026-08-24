@@ -604,7 +604,7 @@ html[data-lectoro-ai-limit-reached] .__qt_save-ai-btn {
 
 /* ═══════════════════════════════════════════════════════════════
    Universal Native Subtitle Clean Hiding (DRY / Single Source of Truth)
-   Cleanly hides native subtitle displays across Netflix, YouTube, Lookmovie,
+   Cleanly hides native subtitle displays across Netflix, YouTube,
    Video.js, Shaka, Plyr, JWPlayer, Clappr, and native HTML5 video tracks.
    ═══════════════════════════════════════════════════════════════ */
 
@@ -738,8 +738,8 @@ body[data-lectoro-platform="netflix"] #__qt_custom_subtitles_layer .__qt_custom-
     font-size: var(--lectoro-sub-font-size, 31px) !important;
 }
 
-#__qt_custom_subtitles_layer[data-platform="lookmovie"] .__qt_custom-sub-line,
-body[data-lectoro-platform="lookmovie"] #__qt_custom_subtitles_layer .__qt_custom-sub-line {
+#__qt_custom_subtitles_layer[data-platform="videojs"] .__qt_custom-sub-line,
+body[data-lectoro-platform="videojs"] #__qt_custom_subtitles_layer .__qt_custom-sub-line {
     font-size: var(--lectoro-sub-font-size, 29px) !important;
 }
 

@@ -1,6 +1,6 @@
 /**
- * Lectoro – LookMovie / Video.js Player Caption Adapter (DRY)
- * Handles LookMovie (and any Video.js based video player) captions and control-bar auto-hiding.
+ * Lectoro – Generic Video.js / HTML5 Player Caption Adapter
+ * Handles Video.js based video player captions and control-bar auto-hiding.
  */
 (() => {
     "use strict";
@@ -39,15 +39,15 @@
 
     const { createDomAdapter } = globalThis.LectoroBaseAdapter || {};
 
-    const LookmovieAdapter = typeof createDomAdapter === "function"
+    const GenericVideoAdapter = typeof createDomAdapter === "function"
         ? createDomAdapter({
               id: "videojs",
-              name: "Video.js / LookMovie",
+              name: "Video.js / HTML5 Player",
               playerSelector: ".video-js",
               containerSelector: ".vjs-text-track-display",
               cueSelector: ".vjs-text-track-cue div",
               leafOnly: true,
-              isPage: () => /(^|\.)lookmovie/i.test(window.location.hostname),
+              isPage: () => !!document.querySelector(".video-js"),
               extraProps: {
                   ensureControlsHidden,
                   clearControlBarTimer() {
@@ -57,17 +57,17 @@
           })
         : {
               id: "videojs",
-              name: "Video.js / LookMovie",
+              name: "Video.js / HTML5 Player",
               playerSelector: ".video-js",
               containerSelector: ".vjs-text-track-display",
               cueSelector: ".vjs-text-track-cue div",
               leafOnly: true,
-              isPage: () => /(^|\.)lookmovie/i.test(window.location.hostname),
+              isPage: () => !!document.querySelector(".video-js"),
               ensureControlsHidden,
               clearControlBarTimer() {
                   clearTimeout(controlBarTimer);
               },
           };
 
-    globalThis.LectoroLookmovieAdapter = LookmovieAdapter;
+    globalThis.LectoroGenericVideoAdapter = GenericVideoAdapter;
 })();

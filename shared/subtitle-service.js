@@ -20,18 +20,17 @@
             try {
                 // Quick check if contains HTML/XML tags
                 if (text.includes("<") && text.includes(">")) {
-                    const holder = document.createElement("div");
-                    holder.innerHTML = text
+                    const cleanHtml = text
                         .replace(/<br\s*\/?>/gi, " ")
                         .replace(/\n+/g, " ");
-
+                    const doc = new DOMParser().parseFromString(cleanHtml, "text/html");
                     if (
                         typeof SharedUtils !== "undefined" &&
                         typeof SharedUtils.extractSubtitleText === "function"
                     ) {
-                        text = SharedUtils.extractSubtitleText(holder);
+                        text = SharedUtils.extractSubtitleText(doc.body);
                     } else {
-                        text = holder.textContent || "";
+                        text = doc.body.textContent || "";
                     }
                 }
             } catch (_) {
