@@ -70,3 +70,16 @@ Przeanalizuj kod pod kątem trzech głównych obszarów:
 
 3. Centralizacja Logiki (Single Source of Truth)
    Zaproponuj plan refaktoryzacji, który przeniesie rozproszoną logikę do jednego, spójnego miejsca. Inne pliki powinny jedynie importować gotowe metody/funkcje, stając się "głupimi" konsumentami logiki biznesowej. Zastanów się, czy logikę lepiej wydzielić do klasycznych funkcji pomocniczych (utils), dedykowanych serwisów (services)
+
+
+Jesteś ekspertem od Chrome Extensions, Manifest V3 oraz zasad Chrome Web Store.
+
+Przeanalizuj całe repozytorium tej wtyczki Chrome:
+
+Celem jest przygotowanie projektu do publikacji w Chrome Web Store.
+
+## WAŻNE
+
+Nie przepisuj całego projektu i nie wykonuj zmian w ciemno.
+
+Najpierw dokładnie przeanalizuj kod i wskaż konkretne problemy.
