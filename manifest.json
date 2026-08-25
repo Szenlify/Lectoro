@@ -2,6 +2,7 @@
     "manifest_version": 3,
     "name": "Lectoro AI - Language Learning & Video Subtitles",
     "version": "1.0.0",
+    "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtmvOPueMBDjgnUCbKHIBnguWJiIUF61+cCFSfTUvojuAlkAXn4kCUldxtmIB/dbE6COCzdiEZkJRgh4XD0GQlEllmvRc8Z08sjg4yvCunhSPlJnb8d/xS7At0upIFS/Z0AUFmgYKiBjpLEQg6Ts9XVtZDKjLFGkczfbbxp7zSTp0o0zFY0PvYdQ9EuSTtFea/lNCfW+mgWyn7MSkXZS3xOD1HegsvuG6gfXkR+AN8V1p6gocZJ4ZRUYhjaV7+Bnx2uio+Y/fZus7svcHftie+OCuFdJ8z67Pj0kbX/W37mjkNupL2zVQFp7KuBFeQejhWnqlIvrm8X9HEeGfVx45UQIDAQAB",
     "description": "Learn languages with ease: instant text translation on any page, bilingual video subtitles for YouTube & Netflix, SRS flashcards, and AI tutor explanations.",
     "permissions": [
         "storage",
