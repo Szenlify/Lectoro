@@ -9,11 +9,6 @@ Wykorzystaj e-mail marketing:
 Każdy, kto loguje się w Firebase Auth, zostawia swój e-mail. Wyślij po 3 dniach automatyczny mail: "Oto 3 triki, jak uczyć się 2x szybciej z Lectoro + zniżka 20% na plan Basic ważna przez 48h".
 
 
-
-Ból klienta jest silny i powtarzalny: Ludzie mają wyrzuty sumienia, że marnują czas na Netflixie/YouTube zamiast się uczyć. Lectoro daje im rozgrzeszenie: "Oglądasz serial, ale w rzeczywistości uczysz się angielskiego/hiszpańskiego".
-
-Efekt "WOW" w 15 sekund: Użytkownik instaluje wtyczkę, odpala film, najeżdża na słowo, natychmiast słyszy krystaliczny głos ElevenLabs i widzi zrzut kadru. To natychmiast buduje wysoką postrzeganą wartość.
-
 do usuniecia pozniej:
 .git/
 functions/
@@ -32,31 +27,8 @@ testy i pliki TypeScript
 2. popraw prompty AI bo teraz tlumacza czesto bez sensu lub nie w tym jezyku
 
 firebase login
-firebase deploy --only functions --project extension-eng"
-lub
-firebase deploy --only functions,firestore:rules --project extension-eng
-
-firebase use extension-eng
-firebase functions:secrets:set ELEVENLABS_API_KEY
-
-firebase.cmd functions:secrets:set LECTORO_GEMINI_API_KEY
 firebase.cmd functions:secrets:set ELEVENLABS_API_KEY
 
-Po ustawieniu obu sekretów odczekaj 2–5 minut i wdrażaj osobno:
-firebase.cmd deploy --only "functions:geminiProxy"
-Następnie:
-firebase.cmd deploy --only "functions:syncUserPlanClaim"
-Na końcu:
-firebase.cmd deploy --only "firestore:rules"
-
-firebase deploy --only "functions,firestore:rules"
-
-zalety:
-
-fiszki z youtube reels
-fiszki z social media / facebook / X / instagram / komentarze
-
-Platformy najbardziej otwarte na przechwytywanie napisów
 
 ## Wciel się w rolę doświadczonego Software Architekta i Senior Developera. Twoim zadaniem jest przeprowadzenie dogłębnego audytu (Code Review) kodu projektu. Zależy mi na maksymalnym uporządkowaniu architektury.
 
