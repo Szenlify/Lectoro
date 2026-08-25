@@ -55,3 +55,5 @@ Celem jest przygotowanie projektu do publikacji w Chrome Web Store.
 Nie przepisuj całego projektu i nie wykonuj zmian w ciemno.
 
 Najpierw dokładnie przeanalizuj kod i wskaż konkretne problemy.
+
+

@@ -24,24 +24,24 @@ po zmianie - R2_PUBLIC_URL=https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev
 musisz zmienic w calym projekcie bo sa dynamiczne URL audio i images
 
 
-2. Gotowe Uzasadnienia Uprawnień do Wklejenia w Panelu Google
-W sekcji Privacy practices Google zażąda wyjaśnienia każdego uprawnienia (w języku angielskim):
+4. Gotowe uzasadnienia uprawnień do wklejenia w panelu Chrome Web Store (Privacy Practices)
+W panelu dewelopera Google zażąda wyjaśnienia (Permission Justification) w języku angielskim dla każdego zadeklarowanego uprawnienia:
 
 Single Purpose Description:
 
-"Lectoro is a comprehensive language learning assistant that provides instant text translation on web pages, interactive bilingual subtitles for video platforms (YouTube & Netflix), spaced repetition (SRS) flashcards, and AI-powered grammar explanations."
+"Lectoro is a comprehensive language learning assistant that provides instant text translation on web pages, interactive bilingual subtitles for video platforms (YouTube & Netflix), spaced repetition (SRS) flashcards, and AI tutor explanations."
 
-Host Permissions (*://*/* & CDN masks):
+Host Permissions (*://*/* oraz maski CDN/Firebase/Cloud Run):
 
-"Needed to provide the floating translation tooltip when users select text on any website, render dual subtitle overlays on HTML5 video players, and communicate with our secure backend proxy for AI explanations and audio synthesis."
+"Required to display the interactive translation and audio pronunciation tooltip when the user highlights foreign text on any web page, render dual subtitle overlays on HTML5 video players, and securely communicate with our backend proxy for AI explanations, cloud sync, and audio synthesis."
 
 storage:
 
-"Used to persist user preferences (target languages, voice speed), the offline-first vocabulary flashcards database, and spaced repetition review schedules locally."
+"Used to persist user settings (target language, speech rate), vocabulary flashcards, SRS review schedules, and offline sync queues locally on the user's device."
 
 identity:
 
-"Used for one-click Google Sign-In authentication to securely synchronize the user's saved vocabulary and flashcards across devices via Firebase."
+"Used for secure Google Sign-In authentication via Firebase to synchronize the user's saved vocabulary and flashcards across multiple devices."
 
 alarms:
 
@@ -49,11 +49,11 @@ alarms:
 
 scripting:
 
-"Used to dynamically inject the subtitle overlay components into embedded video iframes when the user interacts with video content."
+"Used to dynamically inject subtitle overlay components into embedded video frames (iframes) when the user interacts with video content."
 
 activeTab:
 
-"Used exclusively to capture a screenshot of the current video frame as a visual context memory aid when the user saves a new flashcard."
+"Used exclusively to capture a screenshot of the current video frame as a visual memory aid when the user saves a new flashcard."
 
 3. Wymogi Konta i Materiały Graficzne
 2-Step Verification: Włączona weryfikacja dwuetapowa na koncie Google dewelopera.
@@ -94,3 +94,86 @@ Wgraj plik dist/lectoro-cws-v1.0.0.zip do Chrome Web Store Developer Console.
 Skopiuj przydzielony przez sklep Extension ID (32 litery).
 Wejdź do Google Cloud Console -> Credentials -> Ustaw ten Extension ID w konfiguracji OAuth klienta.
 (Opcjonalnie) Skopiuj klucz publiczny z konsoli CWS i wklej go do lokalnego manifest.json w repozytorium do dalszego lokalnego developmentu
+
+
+Obowiązkowy fragment do umieszczenia na stronie https://lectoro.app/privacy:
+
+"Lectoro's use and transfer of information received from Google APIs to any other app will adhere to the Chrome Web Store User Data Policy, including the Limited Use requirements."
+
+Ponadto strona musi jasno wskazywać:
+
+Jakie dane są zbierane (adres e-mail konta Google, zapisane słownictwo/fiszki, preferencje językowe).
+Cel zbierania danych (synchronizacja postępów w nauce, personalizacja powtórek SRS, realizacja subskrypcji).
+Że dane przeglądania nie są gromadzone ani sprzedawane podmiotom trzecim/brokerom danych.
+
+
+
+5. Plan działania przed wysłaniem paczki
+Wprowadzenie drobnych poprawek w kodzie:
+Dopisanie "https://translate.google.com/*" do host_permissions w 
+
+manifest.json
+.
+Usunięcie shared/srs.js z dynamicznego wstrzykiwania w 
+
+background.js
+.
+Usunięcie zewnętrznych linków Google Fonts z 
+
+quiz.html
+.
+Wykluczenie plików .ts w 
+
+scripts/build-cws-zip.js
+.
+Przygotowanie strony WWW:
+Upewnienie się, że pod adresem https://lectoro.app/privacy oraz https://lectoro.app/terms znajdują się aktywne strony z klauzulą Limited Use.
+Generowanie paczki:
+Uruchomienie node scripts/build-cws-zip.js, który utworzy czysty plik dist/lectoro-cws-v1.0.0.zip (bez zbędnych plików deweloperskich i z automatycznie usuniętym polem key).
+Konfiguracja OAuth / Firebase:
+Po pierwszym wgraniu paczki do CWS Dashboard, skopiowanie wygenerowanego 32-literowego Extension ID i wklejenie go w Google Cloud Console -> OAuth 2.0 Client IDs (Client Type: Chrome Extension).
+
+📋 Ostateczna Checklista przed kliknięciem „Submit for Review”:
+1. Działająca strona Polityki Prywatności (Kluczowe!)
+Pod adresem https://lectoro.app/privacy musi działać strona zawierająca oświadczenie wymagane przez 
+
+Google-Web-Store-Policies.md
+:
+
+"Lectoro's use and transfer of information received from Google APIs to any other app will adhere to the Chrome Web Store User Data Policy, including the Limited Use requirements."
+
+(Warto też upewnić się, że strona wymienia cel zbierania danych: e-mail do konta i synchronizacja słówek).
+
+2. Uzasadnienia uprawnień w formularzu Privacy Practices (w CWS Dashboard)
+Wklej przygotowane uzasadnienia w języku angielskim w odpowiednie pola:
+
+Single purpose:
+Lectoro is a comprehensive language learning assistant that provides instant text translation on web pages, interactive bilingual subtitles for video platforms (YouTube & Netflix), spaced repetition (SRS) flashcards, and AI tutor explanations.
+
+Permission Justification (*://*/* & host permissions):
+Required to display the interactive translation and audio pronunciation tooltip when the user highlights foreign text on any web page, render dual subtitle overlays on HTML5 video players, and securely communicate with our backend proxy for AI explanations, cloud sync, and audio synthesis.
+
+storage:
+Used to persist user settings, vocabulary flashcards, SRS review schedules, and offline sync queues locally on the device.
+
+identity:
+Used for secure Google Sign-In authentication via Firebase to synchronize the user's saved vocabulary and flashcards across devices.
+
+alarms:
+Used for periodic background synchronization of learning data, token refresh, and scheduling notifications for due spaced repetition reviews.
+
+scripting:
+Used to dynamically inject subtitle overlay components into embedded video frames (iframes) when the user interacts with video content.
+
+activeTab:
+Used exclusively to capture a screenshot of the current video frame as a visual memory aid when the user saves a new flashcard.
+
+3. Wymagane materiały graficzne w zakładce Store Listing
+Ikona: Plik icons/icon128.png (128x128 px).
+Zrzuty ekranu: Min. 1 zrzut (najlepiej 3-4) o wymiarach 1280x800 px lub 640x400 px (np. dymek tłumaczenia, napisy na YouTube/Netflix, widok powtórek fiszek).
+Kafelek promocyjny (Small Promo Tile): 440x280 px (wymagany do publikacji).
+4. Połączenie Extension ID z Google Cloud (żeby logowanie działało od razu)
+Wgraj plik dist/lectoro-cws-v1.0.0.zip do CWS Dashboard jako wersję roboczą (Draft).
+Skopiuj przydzielony przez sklep 32-literowy Extension ID.
+Wejdź do Google Cloud Console – Credentials dla projektu extension-eng -> Wybierz identyfikator OAuth (lub stwórz typu Chrome Extension) i wklej ten Extension ID w polu Item ID.
+Gdy powyższe 4 punkty są spełnione, wtyczka przechodzi proces review bez przeszkód. Paczka dist/lectoro-cws-v1.0.0.zip jest w 100% gotowa do wgrania.

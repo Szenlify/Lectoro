@@ -81,6 +81,7 @@ for (const entry of INCLUDED_ENTRIES) {
                 return (
                     base !== ".DS_Store" &&
                     !base.endsWith(".test.js") &&
+                    !base.endsWith(".ts") &&
                     base !== "__MACOSX"
                 );
             },

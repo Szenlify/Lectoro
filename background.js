@@ -796,7 +796,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                         "shared/translator-service.js",
                         "shared/tts-service.js",
                         "shared/audio-cache.js",
-                        "shared/srs.js",
                         "shared/ai-prompts.js",
                         "firebase/firebase-config.js",
                         "firebase/firebase-sync.js",
