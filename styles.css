@@ -1152,7 +1152,6 @@ video::cue {
     letter-spacing: 0.03em !important;
     text-align: center !important;
     margin: 0 auto !important;
-    color: transparent !important;
     background: linear-gradient(
         90deg,
         #a855f7 0%,
@@ -1161,19 +1160,20 @@ video::cue {
         #4ecdc4 75%,
         #a855f7 100%
     ) !important;
-    background-size: 200% auto !important;
+    background-size: 200% 100% !important;
     -webkit-background-clip: text !important;
     background-clip: text !important;
     -webkit-text-fill-color: transparent !important;
-    animation: __qt_ai_shimmer 2s linear infinite !important;
+    color: transparent !important;
+    animation: __qt_ai_shimmer 1.8s linear infinite !important;
 }
 
 @keyframes __qt_ai_shimmer {
     0% {
-        background-position: 200% 0;
+        background-position: 0% 50%;
     }
     100% {
-        background-position: -200% 0;
+        background-position: 200% 50%;
     }
 }
 
@@ -1373,38 +1373,6 @@ video::cue {
     color: #fda4af;
     font-size: 13px;
     font-weight: 500;
-}
-
-@keyframes __qt_ai_shimmer {
-    from { background-position: 100% 0; }
-    to { background-position: -100% 0; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    #__qt_sentence_translation .__qt_ai-loader-label {
-        animation: none !important;
-        color: #6ee7b7 !important;
-        background: none !important;
-    }
-}
-
-@media (max-width: 560px) {
-    #__qt_sentence_translation.__qt_ai-explain-overlay {
-        padding: 13px 13px 12px !important;
-    }
-
-    #__qt_sentence_translation .__qt_ai-explain-copy {
-        width: calc(100vw - 52px) !important;
-    }
-
-    #__qt_sentence_translation .__qt_row {
-        grid-template-columns: 29px minmax(0, 1fr) 32px;
-        gap: 8px;
-    }
-
-    #__qt_sentence_translation .__qt_save-footer-btn {
-        width: 100%;
-    }
 }
 
 /* Zastąp PREFIX odpowiednią nazwą klasy w CSS */
