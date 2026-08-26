@@ -13,13 +13,8 @@ do usuniecia pozniej:
 .git/
 functions/
 scratch/
-dev.md
 todo.md
 stripe.md
-firebase.json
-.firebaserc
-.DS_Store
-testy i pliki TypeScript
 
 
 2. zrob w kazdym jezyku aby był text UI nagłowki wszystkie w zaleznosci jaki zalezny jest język a jako defaul jest angielski [na pozniej jako ostatnie]

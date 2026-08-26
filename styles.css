@@ -998,59 +998,54 @@ video::cue {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   Subtitle In-place Translation (E key)
+   Subtitle In-place Translation (E key) & AI Explanation (Enter key)
    ═══════════════════════════════════════════════════════════════ */
 
 #__qt_sentence_translation.__qt_sub-overlay {
     position: fixed !important;
     z-index: 2147483647 !important;
-    width: max-content !important;
+    width: auto !important;
     min-width: 0 !important;
-    max-width: min(860px, calc(100vw - 24px)) !important;
-    padding: 10px 15px 12px !important;
-    border: 1px solid rgba(129, 140, 248, 0.24) !important;
-    border-radius: 17px !important;
-    background:
-        radial-gradient(circle at 12% 0%, rgba(129, 140, 248, 0.16), transparent 48%),
-        radial-gradient(circle at 92% 110%, rgba(110, 231, 183, 0.1), transparent 44%),
-        linear-gradient(145deg, rgba(4, 26, 36, 0.96), rgba(16, 16, 31, 0.96)) !important;
+    max-width: min(520px, calc(100vw - 24px)) !important;
+    padding: 0 !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 16px !important;
+    background: #0f0f23bf !important;
     box-shadow:
-        0 18px 48px rgba(0, 0, 0, 0.42),
-        0 0 0 1px rgba(255, 255, 255, 0.025) inset,
-        0 8px 30px rgba(129, 140, 248, 0.08) !important;
-    backdrop-filter: blur(20px) saturate(1.3) !important;
-    -webkit-backdrop-filter: blur(20px) saturate(1.3) !important;
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(255, 255, 255, 0.08) inset !important;
+    backdrop-filter: blur(20px) saturate(1.4) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(1.4) !important;
     color: #ffffff !important;
-    font-family: "Netflix Sans Variable", "Netflix Sans", "Helvetica Neue", "Segoe UI", Roboto, Arial, sans-serif !important;
-    font-size: var(--lectoro-translation-font-size, 20px) !important;
-    font-style: normal !important;
-    font-weight: 600 !important;
-    font-variant: normal !important;
-    line-height: 1.35 !important;
-    letter-spacing: 0.015em !important;
-    text-align: center !important;
-    unicode-bidi: plaintext !important;
-    text-decoration: none !important;
-    text-transform: none !important;
-    text-rendering: geometricPrecision !important;
-    -webkit-font-smoothing: antialiased !important;
-    pointer-events: none !important;
+    font:
+        14px/1.5 "Inter",
+        -apple-system,
+        "Segoe UI",
+        Roboto,
+        Helvetica,
+        Arial,
+        sans-serif !important;
+    pointer-events: auto !important;
     display: flex !important;
     flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
     box-sizing: border-box !important;
     isolation: isolate !important;
     overflow: visible !important;
     transform-origin: 50% 100% !important;
-    animation: __qt_translation_bubble_in 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both !important;
+    animation: __qt_translation_bubble_in 0.2s cubic-bezier(0.34, 1.3, 0.64, 1) both !important;
 }
 
 #__qt_sentence_translation[data-state="loading"] {
-    width: 42px !important;
-    height: 42px !important;
+    width: 48px !important;
+    height: 48px !important;
     padding: 0 !important;
     border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
 }
 
 #__qt_sentence_translation[data-state="measuring"] {
@@ -1062,7 +1057,7 @@ video::cue {
 
 #__qt_sentence_translation[data-state="expanding"] {
     min-width: 0 !important;
-    border-radius: 17px !important;
+    border-radius: 16px !important;
     animation: none !important;
     transition:
         width 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
@@ -1074,53 +1069,24 @@ video::cue {
     animation: none !important;
 }
 
-#__qt_sentence_translation.__qt_sub-overlay::after {
-    content: "" !important;
-    position: absolute !important;
-    left: var(--lectoro-bubble-arrow-x, 50%) !important;
-    bottom: -7px !important;
-    width: 13px !important;
-    height: 13px !important;
-    border-right: 1px solid rgba(129, 140, 248, 0.24) !important;
-    border-bottom: 1px solid rgba(129, 140, 248, 0.24) !important;
-    background: #0c1627 !important;
-    transform: translateX(-50%) rotate(45deg) !important;
-    pointer-events: none !important;
-}
-
-#__qt_sentence_translation.__qt_bubble-below {
-    transform-origin: 50% 0% !important;
-}
-
-#__qt_sentence_translation.__qt_bubble-below::after {
-    top: -7px !important;
-    bottom: auto !important;
-    border: 0 !important;
-    border-left: 1px solid rgba(129, 140, 248, 0.24) !important;
-    border-top: 1px solid rgba(129, 140, 248, 0.24) !important;
-}
-
 #__qt_sentence_translation .__qt_translation-spinner {
     display: block !important;
     width: 18px !important;
     height: 18px !important;
     box-sizing: border-box !important;
-    border: 2px solid rgba(129, 140, 248, 0.22) !important;
-    border-top-color: #6ee7b7 !important;
-    border-right-color: #818cf8 !important;
+    border: 2px solid rgba(255, 255, 255, 0.1) !important;
+    border-top-color: #4a6cf7 !important;
     border-radius: 50% !important;
-    filter: drop-shadow(0 0 5px rgba(129, 140, 248, 0.3)) !important;
-    animation: __qt_translation_spinner 0.72s linear infinite !important;
+    animation: __qt_spin 0.6s linear infinite !important;
+    margin: auto !important;
 }
 
 #__qt_sentence_translation .__qt_translation-copy {
     display: flex !important;
-    width: auto !important;
-    max-width: min(830px, calc(100vw - 54px)) !important;
+    width: 100% !important;
     min-width: 0 !important;
-    flex: 0 1 auto !important;
     flex-direction: column !important;
-    align-items: center !important;
+    align-items: stretch !important;
     color: inherit !important;
     font: inherit !important;
     opacity: 1;
@@ -1135,39 +1101,9 @@ video::cue {
     animation: __qt_translation_copy_reveal 0.13s ease-out both !important;
 }
 
-#__qt_sentence_translation .__qt_sub-overlay-line {
-    display: block !important;
-    width: max-content !important;
-    max-width: min(830px, calc(100vw - 54px)) !important;
-    margin: 1px 0 !important;
-    color: #ffffff !important;
-    font: inherit !important;
-    line-height: inherit !important;
-    letter-spacing: inherit !important;
-    text-align: center !important;
-    text-shadow:
-        -0.07em -0.07em 0 #000,
-        0.07em -0.07em 0 #000,
-        -0.07em 0.07em 0 #000,
-        0.07em 0.07em 0 #000,
-        -0.07em 0px 0 #000,
-        0.07em 0px 0 #000,
-        0px -0.07em 0 #000,
-        0px 0.07em 0 #000,
-        0px 0.15em 0.35em rgba(0, 0, 0, 0.9) !important;
-    white-space: normal !important;
-    word-break: normal !important;
-    overflow-wrap: normal !important;
-    hyphens: none !important;
-}
-
 @keyframes __qt_translation_bubble_in {
     from { opacity: 0; transform: translateY(7px) scale(0.96); }
     to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-@keyframes __qt_translation_spinner {
-    to { transform: rotate(360deg); }
 }
 
 @keyframes __qt_translation_copy_reveal {
@@ -1184,12 +1120,8 @@ video::cue {
     }
 }
 
-/* Enter/Q uses the same bubble, palette and expansion animation as the
-   full-sentence translation mode. */
 #__qt_sentence_translation.__qt_ai-explain-overlay {
     pointer-events: auto !important;
-    padding: 16px 17px 14px !important;
-    border-color: rgba(129, 140, 248, 0.3) !important;
     cursor: default !important;
     user-select: text !important;
 }
@@ -1197,16 +1129,29 @@ video::cue {
 #__qt_sentence_translation[data-state="ai-loading"] {
     width: max-content !important;
     height: auto !important;
-    min-width: 104px !important;
-    padding: 10px 16px 11px !important;
-    border-radius: 17px !important;
+    min-width: 130px !important;
+    padding: 10px 18px !important;
+    border-radius: 16px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+}
+
+#__qt_sentence_translation .__qt_ai-loader-container {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    margin: 0 auto !important;
 }
 
 #__qt_sentence_translation .__qt_ai-loader-label {
     font:
-        600 13px/1.2 "Netflix Sans Variable",
-        "Netflix Sans",
-        system-ui,
+        600 13px/1.2 "Inter",
+        -apple-system,
+        "Segoe UI",
+        Roboto,
         sans-serif;
     letter-spacing: 0.025em;
 
@@ -1226,75 +1171,70 @@ video::cue {
     animation: __qt_ai_shimmer 1.8s ease-in-out infinite;
 }
 
-#__qt_sentence_translation .__qt_ai-explain-copy {
-    width: min(500px, calc(100vw - 58px)) !important;
-    align-items: stretch !important;
-    text-align: left !important;
-    font-size: 14px !important;
-    font-weight: 500 !important;
-    line-height: 1.5 !important;
+#__qt_sentence_translation .__qt_header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 10px 14px 8px !important;
+    font-size: 11px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.8px !important;
+    font-weight: 600 !important;
+    color: rgba(255, 255, 255, 0.35) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+    background: rgba(255, 255, 255, 0.02) !important;
+    border-radius: 16px 16px 0 0 !important;
 }
 
 #__qt_sentence_translation .__qt_body {
-    display: flex;
-    flex-direction: column;
-    gap: 11px;
-    width: 100%;
-    box-sizing: border-box;
-    padding: 1px 1px 14px;
+    padding: 12px 14px 14px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    text-align: left !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
 }
 
 #__qt_sentence_translation .__qt_row {
-    display: grid;
-    grid-template-columns: 32px minmax(0, 1fr) 34px;
-    align-items: center;
-    gap: 10px;
-    min-height: 30px;
-    margin: 0;
-    padding: 0 2px;
+    display: flex !important;
+    font-size: 18px !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
 }
 
 #__qt_sentence_translation .__qt_label {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 21px;
-    min-width: 28px;
-    box-sizing: border-box;
-    padding: 0;
-    border: 1px solid rgba(129, 140, 248, 0.2);
-    border-radius: 6px;
-    color: rgba(199, 210, 254, 0.74);
-    background: rgba(129, 140, 248, 0.08);
-    font-size: 9px;
-    font-weight: 750;
-    line-height: 1;
-    letter-spacing: 0.065em;
-}
-
-#__qt_sentence_translation .__qt_row:first-child .__qt_label {
-    border-color: rgba(110, 231, 183, 0.2);
-    color: rgba(167, 243, 208, 0.82);
-    background: rgba(110, 231, 183, 0.07);
+    flex-shrink: 0 !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.4px !important;
+    color: rgba(255, 255, 255, 0.3) !important;
+    padding-top: 3px !important;
+    min-width: 30px !important;
+    border: none !important;
+    background: none !important;
 }
 
 #__qt_sentence_translation .__qt_text {
-    flex: 1;
-    min-width: 0;
-    color: rgba(255, 255, 255, 0.84);
-    font-size: 14px;
-    line-height: 1.48;
-    overflow-wrap: anywhere;
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+    word-break: break-word !important;
+    flex: 1 !important;
+    color: rgba(255, 255, 255, 0.92) !important;
 }
 
 #__qt_sentence_translation .__qt_original {
-    color: #8ce9c5;
-    font-weight: 600;
+    color: #4ecdc4 !important;
+    font-weight: 600 !important;
 }
 
 #__qt_sentence_translation .__qt_translated {
-    color: rgba(255, 255, 255, 0.92);
+    color: rgba(255, 255, 255, 0.65) !important;
+    font-weight: normal !important;
 }
 
 #__qt_sentence_translation button {
@@ -1303,181 +1243,124 @@ video::cue {
     cursor: pointer;
 }
 
+#__qt_sentence_translation .__qt_word-actions {
+    flex-shrink: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+}
+
 #__qt_sentence_translation .__qt_speak {
-    display: inline-flex;
-    flex: 0 0 auto;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    padding: 0;
-    border: 1px solid rgba(129, 140, 248, 0.24);
-    border-radius: 10px;
-    color: #a5b4fc;
-    background: linear-gradient(145deg, rgba(129, 140, 248, 0.14), rgba(129, 140, 248, 0.07));
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-    transition:
-        color 0.16s ease,
-        border-color 0.16s ease,
-        background 0.16s ease,
-        transform 0.16s ease,
-        box-shadow 0.16s ease;
+    flex-shrink: 0 !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    color: rgba(255, 255, 255, 0.4) !important;
+    cursor: pointer !important;
+    padding: 4px !important;
+    border-radius: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 26px !important;
+    height: 26px !important;
+    transition: all 0.2s ease !important;
 }
 
 #__qt_sentence_translation .__qt_speak:hover {
-    color: #ffffff;
-    border-color: rgba(129, 140, 248, 0.48);
-    background: rgba(129, 140, 248, 0.2);
-    box-shadow: 0 6px 16px rgba(49, 46, 129, 0.22);
-    transform: translateY(-1px);
-}
-
-#__qt_sentence_translation .__qt_speak:active {
-    transform: translateY(0) scale(0.96);
-}
-
-#__qt_sentence_translation .__qt_speak:focus-visible,
-#__qt_sentence_translation .__qt_save-footer-btn:focus-visible {
-    outline: 2px solid rgba(165, 180, 252, 0.9);
-    outline-offset: 2px;
+    color: #ffffff !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
 }
 
 #__qt_sentence_translation .__qt_speak.speaking {
-    color: #6ee7b7;
-    border-color: rgba(110, 231, 183, 0.4);
-    background: rgba(110, 231, 183, 0.14);
-    box-shadow: 0 0 0 3px rgba(110, 231, 183, 0.07);
+    color: #4ecdc4 !important;
+    border-color: rgba(78, 205, 196, 0.3) !important;
+    background: rgba(78, 205, 196, 0.1) !important;
 }
 
 #__qt_sentence_translation .__qt_speak svg {
-    width: 15px;
-    height: 15px;
+    width: 14px;
+    height: 14px;
 }
 
 #__qt_sentence_translation .__qt_ai-result {
-    position: relative;
-    margin-top: 2px;
-    padding: 12px 13px 13px 15px;
-    border: 1px solid rgba(168, 85, 247, 0.2);
-    border-radius: 12px;
-    background:
-        linear-gradient(135deg, rgba(168, 85, 247, 0.095), rgba(129, 140, 248, 0.045));
-    box-shadow:
-        3px 0 0 rgba(192, 132, 252, 0.42) inset,
-        0 8px 22px rgba(13, 8, 32, 0.1);
+    margin-top: 8px !important;
+    padding: 10px 12px !important;
+    border-radius: 12px !important;
+    background: rgba(168, 85, 247, 0.08) !important;
+    border: 1px solid rgba(168, 85, 247, 0.2) !important;
+    font-size: 13px !important;
+    line-height: 1.5 !important;
+    color: rgba(255, 255, 255, 0.88) !important;
+    box-shadow: none !important;
+    text-align: left !important;
 }
 
 #__qt_sentence_translation .__qt_ai-label {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 6px;
-    color: rgba(216, 180, 254, 0.88);
-    font-size: 9px;
-    font-weight: 750;
-    line-height: 1.2;
-    letter-spacing: 0.085em;
-    text-transform: uppercase;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    color: #c084fc !important;
+    margin-bottom: 4px !important;
+    display: block !important;
 }
 
 #__qt_sentence_translation .__qt_ai-label::before {
-    content: "";
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: #c084fc;
-    box-shadow: 0 0 8px rgba(192, 132, 252, 0.65);
+    display: none !important;
 }
 
 #__qt_sentence_translation .__qt_ai-text {
-    color: #e5d8ff;
-    font-size: 13px;
-    font-weight: 500;
-    line-height: 1.52;
-    overflow-wrap: anywhere;
+    color: #e5d8ff !important;
+    font-size: 13px !important;
+    line-height: 1.5 !important;
 }
 
 #__qt_sentence_translation .__qt_save-footer {
-    display: flex;
-    justify-content: center;
-    width: 100%;
-    box-sizing: border-box;
-    padding: 12px 1px 1px;
-    border-top: 1px solid rgba(129, 140, 248, 0.16);
+    display: flex !important;
+    gap: 6px !important;
+    padding: 6px 10px 8px !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+    justify-content: center !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
 }
 
 #__qt_sentence_translation .__qt_save-footer-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    min-width: 190px;
-    min-height: 36px;
-    padding: 8px 13px;
-    border: 1px solid rgba(129, 140, 248, 0.3);
-    border-radius: 10px;
-    color: rgba(255, 255, 255, 0.86);
-    background: linear-gradient(145deg, rgba(129, 140, 248, 0.16), rgba(99, 102, 241, 0.09));
-    box-shadow: 0 6px 18px rgba(10, 10, 30, 0.12);
-    font-size: 11px;
-    font-weight: 650;
-    line-height: 1;
-    letter-spacing: 0.01em;
-    transition:
-        color 0.16s ease,
-        border-color 0.16s ease,
-        background 0.16s ease,
-        transform 0.16s ease,
-        box-shadow 0.16s ease;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    padding: 5px 10px !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 8px !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+    font-size: 11px !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    white-space: nowrap !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    box-shadow: none !important;
 }
 
 #__qt_sentence_translation .__qt_save-footer-btn:hover {
-    color: #ffffff;
-    border-color: rgba(110, 231, 183, 0.38);
-    background: linear-gradient(145deg, rgba(110, 231, 183, 0.16), rgba(129, 140, 248, 0.12));
-    box-shadow: 0 8px 22px rgba(4, 25, 30, 0.2);
-    transform: translateY(-1px);
-}
-
-#__qt_sentence_translation .__qt_save-footer-btn:active {
-    transform: translateY(0) scale(0.985);
-}
-
-#__qt_sentence_translation .__qt_save-footer-btn.saving {
-    color: rgba(255, 255, 255, 0.6);
-    cursor: wait;
-    opacity: 0.78;
-    transform: none;
+    background: rgba(255, 255, 255, 0.12) !important;
+    color: #fff !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+    transform: translateY(-1px) !important;
 }
 
 #__qt_sentence_translation .__qt_save-footer-btn.saved {
-    color: #6ee7b7;
-    border-color: rgba(110, 231, 183, 0.34);
-    background: rgba(110, 231, 183, 0.1);
-    pointer-events: none;
+    color: #4ecdc4 !important;
+    border-color: rgba(78, 205, 196, 0.3) !important;
+    background: rgba(78, 205, 196, 0.1) !important;
+    pointer-events: none !important;
 }
 
 #__qt_sentence_translation .__qt_save-footer-btn svg {
     width: 14px;
     height: 14px;
     flex: 0 0 auto;
-}
-
-#__qt_sentence_translation .__qt_key-hint {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 18px;
-    height: 18px;
-    margin-left: 4px;
-    box-sizing: border-box;
-    padding: 0 5px;
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    border-radius: 5px;
-    color: rgba(255, 255, 255, 0.64);
-    background: rgba(255, 255, 255, 0.055);
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset;
-    font: 700 9px/1 system-ui, sans-serif;
 }
 
 #__qt_sentence_translation .__qt_error {

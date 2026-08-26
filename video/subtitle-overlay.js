@@ -673,7 +673,7 @@
         overlay.classList.add(`${PREFIX}ai-explain-overlay`);
         overlay.dataset.state = "ai-loading";
         overlay.setAttribute("aria-label", "Analiza zdania w toku");
-        overlay.innerHTML = `<span class="${PREFIX}ai-loader-label">Analizuje</span>`;
+        overlay.innerHTML = `<div class="${PREFIX}ai-loader-container"><span class="${PREFIX}spinner" style="width:14px;height:14px;border-width:2px;flex-shrink:0;"></span><span class="${PREFIX}ai-loader-label">Analizuje…</span></div>`;
         positionOverlay(layout);
     }
 
@@ -729,7 +729,14 @@
     }
 
     function languageTag(code) {
-        return code && code !== "auto" ? QT.langTag(code) : "?";
+        if (code && code !== "auto" && code !== "?") {
+            return QT.langTag(code);
+        }
+        const playerLang = getPlayerRegistry()?.getCurrentLanguage?.() || getPlayerRegistry()?.getTrackLanguage?.();
+        if (playerLang && playerLang !== "auto") {
+            return QT.langTag(playerLang);
+        }
+        return "EN";
     }
 
     function languageName(code) {
@@ -900,6 +907,9 @@
                 .join(". ");
 
             const html = `
+                <div class="${PREFIX}header">
+                    <span>${QT.escapeHtml(sourceTag)} → ${QT.escapeHtml(targetTag)}</span>
+                </div>
                 <div class="${PREFIX}body">
                     <div class="${PREFIX}row">
                         <span class="${PREFIX}label" title="Język źródłowy: ${QT.escapeAttr(languageName(sourceLang))}">${QT.escapeHtml(sourceTag)}</span>
@@ -908,16 +918,18 @@
                     <div class="${PREFIX}row">
                         <span class="${PREFIX}label" title="Język tłumaczenia: ${QT.escapeAttr(languageName(targetLang))}">${QT.escapeHtml(targetTag)}</span>
                         <span class="${PREFIX}text ${PREFIX}translated">${QT.escapeHtml(translation)}</span>
-                        <button class="${PREFIX}speak" data-text="${QT.escapeAttr(aiSpeechText)}" data-lang="${QT.escapeAttr(targetLang)}" title="Odtwórz tłumaczenie i wyjaśnienie" aria-label="Odtwórz tłumaczenie i wyjaśnienie">${SVG.SPEAKER}</button>
+                        <span class="${PREFIX}word-actions">
+                            <button class="${PREFIX}speak" data-text="${QT.escapeAttr(aiSpeechText)}" data-lang="${QT.escapeAttr(targetLang)}" title="Odtwórz tłumaczenie i wyjaśnienie" aria-label="Odtwórz tłumaczenie i wyjaśnienie">${SVG.SPEAKER}</button>
+                        </span>
                     </div>
                     <div class="${PREFIX}ai-result">
-                        <div class="${PREFIX}ai-label">Wyjaśnienie</div>
+                        <div class="${PREFIX}ai-label">✨ Wyjaśnienie AI:</div>
                         <div class="${PREFIX}ai-text">${QT.escapeHtml(explanation)}</div>
                     </div>
                 </div>
                 <div class="${PREFIX}save-footer">
-                    <button class="${PREFIX}ai-explain-save-btn ${PREFIX}save-footer-btn" title="Zapisz zdanie razem ze zdjęciem do powtórek">
-                        ${SVG.SAVE_SENTENCE} <span>Zapisz do powtórek</span>
+                    <button class="${PREFIX}ai-explain-save-btn ${PREFIX}save-footer-btn" title="Zapisz zdanie do powtórek">
+                        ${SVG.SAVE || "💾"} <span>Zapisz</span>
                     </button>
                 </div>`;
             applyAiExplanation(html, aiLayout);
@@ -1191,12 +1203,12 @@
         const targetLang = await QT.getTargetLang();
         if (modeRevision !== subtitleModeRevision) return null;
         try {
-            const { translated } = await QT.translate(text, targetLang);
+            const { translated, detectedLang } = await QT.translate(text, targetLang);
             if (modeRevision !== subtitleModeRevision) return null;
-            return { targetLang, translatedText: translated || text };
+            return { targetLang, translatedText: translated || text, detectedLang: detectedLang || "en" };
         } catch (_) {
             if (modeRevision !== subtitleModeRevision) return null;
-            return { targetLang, translatedText: text };
+            return { targetLang, translatedText: text, detectedLang: "en" };
         }
     }
 
@@ -1341,7 +1353,7 @@
         overlay.dataset.state = "loading";
         overlay.setAttribute("aria-label", "Tłumaczenie zdania w toku");
         overlay.innerHTML = `<span class="${PREFIX}translation-spinner" aria-hidden="true"></span>`;
-        positionOverlay();
+        positionOverlay(layout);
     }
 
     function revealOverlayContent(
@@ -1383,18 +1395,45 @@
         return overlay;
     }
 
-    function applyTranslation(translatedText, layout = translationAnchorLayout) {
+    function applyTranslation(translatedText, layout = translationAnchorLayout, sourceText = null, srcLang = null, tgtLang = null) {
         const sentence = String(translatedText || "").trim();
-        const copy = document.createElement("div");
-        copy.className = `${PREFIX}translation-copy`;
-        copy.setAttribute("dir", "auto");
-        const line = document.createElement("div");
-        line.className = PREFIX + "sub-overlay-line";
-        line.setAttribute("dir", "auto");
-        line.textContent = sentence;
-        copy.append(line);
+        const originalText = String(sourceText || activeText || getPlayerRegistry()?.getCurrentText() || "").trim();
+        const sourceTag = languageTag(srcLang || "auto");
+        const targetTag = languageTag(tgtLang || "pl");
 
-        revealOverlayContent(copy, layout, "Przetłumaczone zdanie");
+        const html = `
+            <div class="${PREFIX}header">
+                <span>${QT.escapeHtml(sourceTag)} → ${QT.escapeHtml(targetTag)}</span>
+            </div>
+            <div class="${PREFIX}body">
+                ${originalText ? `
+                <div class="${PREFIX}row">
+                    <span class="${PREFIX}label" title="Język źródłowy">${QT.escapeHtml(sourceTag)}</span>
+                    <span class="${PREFIX}text ${PREFIX}original">${QT.escapeHtml(originalText)}</span>
+                </div>` : ""}
+                <div class="${PREFIX}row">
+                    <span class="${PREFIX}label" title="Język tłumaczenia">${QT.escapeHtml(targetTag)}</span>
+                    <span class="${PREFIX}text ${PREFIX}translated">${QT.escapeHtml(sentence)}</span>
+                    <span class="${PREFIX}word-actions">
+                        <button class="${PREFIX}speak" data-text="${QT.escapeAttr(sentence)}" data-lang="${QT.escapeAttr(tgtLang || "pl")}" title="Odtwórz tłumaczenie">${SVG.SPEAKER}</button>
+                    </span>
+                </div>
+            </div>
+            <div class="${PREFIX}save-footer">
+                <button class="${PREFIX}ai-explain-save-btn ${PREFIX}save-footer-btn" title="Zapisz zdanie do powtórek">
+                    ${SVG.SAVE || "💾"} <span>Zapisz</span>
+                </button>
+            </div>`;
+
+        applyAiExplanation(html, layout);
+        wireAiExplainSpeakButton();
+        wireAiExplainSaveButton(
+            originalText || sentence,
+            sentence,
+            "",
+            srcLang || "auto",
+            tgtLang || "pl"
+        );
         eTranslateActive = true;
     }
 
@@ -1427,7 +1466,7 @@
         const translation = await (options.translationTask ||
             createSubtitleTranslationTask(text, modeRevision));
         if (!translation || modeRevision !== subtitleModeRevision) return;
-        applyTranslation(translation.translatedText, layout);
+        applyTranslation(translation.translatedText, layout, text, translation.detectedLang, translation.targetLang);
         if (options.speakTranslated) {
             await QT.speak(translation.translatedText, translation.targetLang, {
                 isCancelled: () => modeRevision !== subtitleModeRevision,

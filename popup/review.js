@@ -1015,23 +1015,48 @@ function ensureReviewAiPanel(id) {
 }
 
 function renderReviewTranslationResult(panel, result) {
+    const srcTag = (result.srcLang || "en").toUpperCase();
+    const tgtTag = (result.targetLang || "pl").toUpperCase();
     const speakText = [result.wordTr, result.sentTr, result.explanation]
         .filter(Boolean)
         .join(". ");
+
+    let explanationHtml = "";
+    if (result.explanation) {
+        explanationHtml = `
+            <div class="review-ai-explanation">
+                <div class="review-ai-explanation-label">✨ Wyjaśnienie AI:</div>
+                <div class="review-ai-explanation-text">${escapeHtml(result.explanation)}</div>
+            </div>`;
+    }
+
     panel.innerHTML = `
-        <div class="review-ai-translate-label">Tłumaczenie AI</div>
-        <div class="review-ai-result-row">
-            <div class="review-ai-translate-word">${escapeHtml(result.wordTr || "—")}</div>
+        <div class="review-ai-header">
+            <span>${escapeHtml(srcTag)} → ${escapeHtml(tgtTag)}</span>
+        </div>
+        <div class="review-ai-body">
+            <div class="review-ai-row">
+                <span class="review-ai-label">${escapeHtml(srcTag)}</span>
+                <span class="review-ai-text review-ai-original">${escapeHtml(result.wordTr || "—")}</span>
+            </div>
             ${
-                speakText
+                result.sentTr
                     ? `
-                <button class="review-speak-btn review-speak-sm" data-text="${escapeAttr(speakText)}" data-lang="${escapeAttr(result.targetLang)}" data-force-browser-tts="true" data-use-configured-rate="true" title="Odczytaj tłumaczenie i wyjaśnienie głosem systemowym" aria-label="Odczytaj tłumaczenie i wyjaśnienie głosem systemowym">${SPEAK_SVG}</button>
-            `
+            <div class="review-ai-row">
+                <span class="review-ai-label">${escapeHtml(tgtTag)}</span>
+                <span class="review-ai-text review-ai-translated">${escapeHtml(result.sentTr)}</span>
+                <span class="review-ai-actions">
+                    ${
+                        speakText
+                            ? `<button class="review-speak-btn review-speak-sm" data-text="${escapeAttr(speakText)}" data-lang="${escapeAttr(result.targetLang)}" data-force-browser-tts="true" data-use-configured-rate="true" title="Odczytaj tłumaczenie i wyjaśnienie">${SPEAK_SVG}</button>`
+                            : ""
+                    }
+                </span>
+            </div>`
                     : ""
             }
+            ${explanationHtml}
         </div>
-        ${result.sentTr ? `<div class="review-ai-translate-sentence">"${escapeHtml(result.sentTr)}"</div>` : ""}
-        ${result.explanation ? `<div class="review-ai-translate-explanation">${escapeHtml(result.explanation)}</div>` : ""}
     `;
     attachReviewSpeakHandlers(panel);
 }
