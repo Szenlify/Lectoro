@@ -777,10 +777,9 @@
                 const screenshot = await getPlayerRegistry()?.captureVideoReviewScreenshot(
                     getPlayerRegistry().getVideo(),
                 );
-                const clean =
-                    typeof SharedUtils !== "undefined" && typeof SharedUtils.cleanCardText === "function"
-                        ? SharedUtils.cleanCardText
-                        : (s) => String(s || "").trim();
+                const clean = typeof SharedUtils !== "undefined" && typeof SharedUtils.cleanCardText === "function"
+                    ? SharedUtils.cleanCardText
+                    : (s) => String(s || "").trim();
                 const cleanedText = clean(text) || text;
                 const cleanedTranslation = clean(translation) || translation || cleanedText;
                 const cleanedExplanation = clean(explanation);

@@ -16,15 +16,15 @@ const AIPrompts = {
         if (typeof SharedConstants !== "undefined" && typeof SharedConstants.getLanguageName === "function") {
             return SharedConstants.getLanguageName(code);
         }
-        const c = String(code || "").toLowerCase();
-        const fallback = {
-            pl: "Polish", en: "English", de: "German", fr: "French",
-            es: "Spanish", it: "Italian", pt: "Portuguese", nl: "Dutch",
-            sv: "Swedish", cs: "Czech", sk: "Slovak", uk: "Ukrainian",
-            ru: "Russian", zh: "Chinese", ja: "Japanese", ko: "Korean",
-            ar: "Arabic", hi: "Hindi", tr: "Turkish"
-        };
-        return fallback[c] || (code ? String(code).toUpperCase() : "Polish");
+        if (typeof require !== "undefined") {
+            try {
+                const constants = require("./constants");
+                if (constants && typeof constants.getLanguageName === "function") {
+                    return constants.getLanguageName(code);
+                }
+            } catch (_) {}
+        }
+        return code ? String(code).toUpperCase() : "Polish";
     },
 
     /**

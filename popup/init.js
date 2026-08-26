@@ -1,4 +1,4 @@
-const { escapeHtml, escapeAttr, isDueForReview, countDueWords, dateTag, csvCell } = SharedUtils;
+const { escapeHtml, escapeAttr, isDueForReview, countDueWords, dateTag } = SharedUtils;
 
 // ── Centralized Initial Popup State (Batch Read) ──────────────────
 const POPUP_INIT_KEYS = Object.freeze({

@@ -16,14 +16,17 @@
     let saveWordQueue = Promise.resolve();
 
     function generateId() {
-        if (typeof crypto !== "undefined" && crypto.randomUUID) {
-            return crypto.randomUUID();
-        }
-        return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+        return typeof SharedUtils !== "undefined" && typeof SharedUtils.generateId === "function"
+            ? SharedUtils.generateId()
+            : (typeof crypto !== "undefined" && crypto.randomUUID
+                  ? crypto.randomUUID()
+                  : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`);
     }
 
     function wordKey(w) {
-        return w.id || `${w.original || ""}|${w.translated || ""}`;
+        return typeof SharedUtils !== "undefined" && typeof SharedUtils.wordKey === "function"
+            ? SharedUtils.wordKey(w)
+            : w.id || `${w.original || ""}|${w.translated || ""}`;
     }
 
     function createDefaultSR() {

@@ -1161,10 +1161,9 @@ function showReviewEditForm(w, returnToAnswer = reviewAnswerShown) {
     });
 
     document.getElementById("editSave").addEventListener("click", () => {
-        const clean =
-            typeof SharedUtils !== "undefined" && typeof SharedUtils.cleanCardText === "function"
-                ? SharedUtils.cleanCardText
-                : (s) => String(s || "").replace(/^[,\s:;>«»<\\/|~*#—–-]+/, "").replace(/[.,\s]+$/, "").trim();
+        const clean = typeof SharedUtils !== "undefined" && typeof SharedUtils.cleanCardText === "function"
+            ? SharedUtils.cleanCardText
+            : (s) => String(s || "").trim();
 
         const newOriginal = clean(document.getElementById("editOriginal").value);
         const newTranslated = clean(document.getElementById("editTranslated").value);

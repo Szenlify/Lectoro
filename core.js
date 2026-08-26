@@ -98,14 +98,6 @@
         lastMouseY = e.clientY;
     });
 
-    /** Strip [bracketed] content (e.g. [Applause], [Music]) */
-    function stripBrackets(text) {
-        return String(text || "")
-            .replace(/\[.*?\]/g, "")
-            .replace(/\s{2,}/g, " ")
-            .trim();
-    }
-
     // ═══════════════════════════════════════════════════════════════
     //  UI – Overlay Parent & Tooltip
     // ═══════════════════════════════════════════════════════════════
@@ -719,8 +711,8 @@
         speakFullLine = false,
     }) {
         const P = PREFIX;
-        const cleanFullLine = fullLine ? stripBrackets(fullLine) : "";
-        const cleanFullTranslated = fullTranslated ? stripBrackets(fullTranslated) : "";
+        const cleanFullLine = fullLine ? cleanCardText(fullLine) : "";
+        const cleanFullTranslated = fullTranslated ? cleanCardText(fullTranslated) : "";
 
         let fullLineHtml = "";
         if (fullLine && fullTranslated && cleanFullLine) {
@@ -871,12 +863,7 @@
         });
 
         async function buildSaveEntry(btn, screenshotPromise = null) {
-            const clean =
-                typeof cleanCardText === "function"
-                    ? cleanCardText
-                    : (typeof SharedUtils !== "undefined" && typeof SharedUtils.cleanCardText === "function"
-                        ? SharedUtils.cleanCardText
-                        : (s) => String(s || "").replace(/^[,\s:;>«»<\\/|~*#—–-]+/, "").replace(/[.,\s]+$/, "").trim());
+            const clean = typeof cleanCardText === "function" ? cleanCardText : (s) => String(s || "").trim();
             const screenshot = screenshotPromise
                 ? await screenshotPromise
                 : await captureContextScreenshot();
@@ -1208,7 +1195,7 @@
 
         escapeHtml,
         escapeAttr,
-        stripBrackets,
+        cleanCardText,
         cleanTextForTTS,
         langTag,
         isOwnUI,

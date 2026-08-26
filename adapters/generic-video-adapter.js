@@ -39,15 +39,23 @@
 
     const { createDomAdapter } = globalThis.LectoroBaseAdapter || {};
 
+    const adapterConfig = {
+        id: "videojs",
+        name: "Video.js / HTML5 Player",
+        playerSelector: ".video-js",
+        containerSelector: ".vjs-text-track-display",
+        cueSelector: ".vjs-text-track-cue div",
+        leafOnly: true,
+        isPage: () => !!document.querySelector(".video-js"),
+        ensureControlsHidden,
+        clearControlBarTimer() {
+            clearTimeout(controlBarTimer);
+        },
+    };
+
     const GenericVideoAdapter = typeof createDomAdapter === "function"
         ? createDomAdapter({
-              id: "videojs",
-              name: "Video.js / HTML5 Player",
-              playerSelector: ".video-js",
-              containerSelector: ".vjs-text-track-display",
-              cueSelector: ".vjs-text-track-cue div",
-              leafOnly: true,
-              isPage: () => !!document.querySelector(".video-js"),
+              ...adapterConfig,
               extraProps: {
                   ensureControlsHidden,
                   clearControlBarTimer() {
@@ -55,19 +63,7 @@
                   },
               },
           })
-        : {
-              id: "videojs",
-              name: "Video.js / HTML5 Player",
-              playerSelector: ".video-js",
-              containerSelector: ".vjs-text-track-display",
-              cueSelector: ".vjs-text-track-cue div",
-              leafOnly: true,
-              isPage: () => !!document.querySelector(".video-js"),
-              ensureControlsHidden,
-              clearControlBarTimer() {
-                  clearTimeout(controlBarTimer);
-              },
-          };
+        : adapterConfig;
 
     globalThis.LectoroGenericVideoAdapter = GenericVideoAdapter;
 })();

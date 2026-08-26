@@ -66,6 +66,10 @@
 
         const sorted = [...filtered].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
+        const EDIT_SVG = typeof LectoroConstants !== "undefined" && LectoroConstants.SVG_ICONS?.EDIT
+            ? LectoroConstants.SVG_ICONS.EDIT
+            : `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>`;
+
         wordListEl.innerHTML = sorted
             .map((w, i) => {
                 const date = typeof SharedUtils !== "undefined" ? SharedUtils.formatDate(w.timestamp) : "";
@@ -89,7 +93,7 @@
                     </div>
                     <div class="wi-actions">
                         <button class="wi-edit" type="button" data-index="${i}" title="Edytuj" aria-label="Edytuj ${escapeAttr(w.original)}">
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>
+                            ${EDIT_SVG}
                         </button>
                         <button class="wi-delete" type="button" data-id="${escapeAttr(w.id || "")}" data-original="${escapeAttr(w.original)}" data-ts="${w.timestamp}" title="Usuń" aria-label="Usuń ${escapeAttr(w.original)}">✕</button>
                     </div>
@@ -154,10 +158,9 @@
         form?.addEventListener("submit", async (event) => {
             event.preventDefault();
             const formData = new FormData(form);
-            const clean =
-                typeof SharedUtils !== "undefined" && typeof SharedUtils.cleanCardText === "function"
-                    ? SharedUtils.cleanCardText
-                    : (s) => String(s || "").replace(/^[,\s:;>«»<\\/|~*#—–-]+/, "").replace(/[.,\s]+$/, "").trim();
+            const clean = typeof SharedUtils !== "undefined" && typeof SharedUtils.cleanCardText === "function"
+                ? SharedUtils.cleanCardText
+                : (s) => String(s || "").trim();
             const edits = {
                 original: clean(formData.get("original")),
                 translated: clean(formData.get("translated")),
