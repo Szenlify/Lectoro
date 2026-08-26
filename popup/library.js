@@ -1,5 +1,5 @@
 // ── Library tab: curated titles well-suited for learning English ──
-// Static, hand-picked list (title / difficulty / short note / link / image),
+// Static, hand-picked list (title / difficulty / link / image),
 // stored in shared/library-items.json and loaded when the tab opens for the first time.
 let LIBRARY_ITEMS = [];
 let libraryItemsLoaded = false;
@@ -75,7 +75,6 @@ function renderLibraryGrid() {
             <span class="library-level-badge lvl-${item.level || "beginner"}">${levelIcon[item.level] || "🟢"} ${levelLabel[item.level] || "A1/A2"}</span>
             <div class="library-card-info">
                 <div class="library-card-title">${escapeHtml(item.title)}</div>
-                <div class="library-card-note">${escapeHtml(item.note || "")}</div>
             </div>
             <div class="library-poster-overlay"><span>▶ Oglądaj</span></div>
         </div>`;

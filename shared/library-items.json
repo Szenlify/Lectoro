@@ -1,37 +1,50 @@
 [
     {
-        "title": "TED: The power of vulnerability",
-        "level": "intermediate",
-        "image": "https://img.youtube.com/vi/iCvmsMzlF7o/mqdefault.jpg",
-        "note": "Brené Brown o odwadze, empatii i relacjach międzyludzkich.",
-        "link": "https://www.youtube.com/watch?v=iCvmsMzlF7o"
-    },
-    {
-        "title": "English with Lucy - 10 Common Idioms",
+        "title": "Bluey",
         "level": "beginner",
         "image": "https://img.youtube.com/vi/AMppfY8aF6M/mqdefault.jpg",
-        "note": "Podstawowe idiomy angielskie używane w codziennej mowie.",
         "link": "https://www.youtube.com/watch?v=AMppfY8aF6M"
     },
     {
-        "title": "Kurzgesagt – What If We Nuke a City?",
-        "level": "intermediate",
-        "image": "https://img.youtube.com/vi/5iPH-br_SOo/mqdefault.jpg",
-        "note": "Przejrzysta narracja, bogate słownictwo popularnonaukowe.",
-        "link": "https://www.youtube.com/watch?v=5iPH-br_SOo"
-    },
-    {
-        "title": "BBC Learning English - Masterclass",
+        "title": "Speak English With Class",
         "level": "beginner",
-        "image": "https://img.youtube.com/vi/G9BU8vJf8gQ/mqdefault.jpg",
-        "note": "Wyraźna wymowa, naturalne dialogi i transkrypcja.",
-        "link": "https://www.youtube.com/watch?v=G9BU8vJf8gQ"
+        "image": "https://i.ytimg.com/vi/rf3VXMY9-4A/hqdefault.jpg?sqp=-oaymwEnCNACELwBSFryq4qpAxkIARUAAIhCGAHYAQHiAQoIGBACGAY4AUAB&rs=AOn4CLDzaSme8VZEb5VnxoPy7EMEceV7RQ",
+        "link": "https://www.youtube.com/@SpeakEnglishWithClass"
     },
     {
-        "title": "Steve Jobs – Stanford Commencement Speech",
+        "title": "Wild Kratts",
+        "level": "beginner",
+        "image": "https://i.ytimg.com/vi/fUUBCajm2vQ/hq720.jpg?sqp=-oaymwEnCNAFEJQDSFryq4qpAxkIARUAAIhCGAHYAQHiAQoIGBACGAY4AUAB&rs=AOn4CLCbMKbIpZKmmt5n-M5wStlK9wQrKQ",
+        "link": "https://www.youtube.com/@WildKratts/videos"
+    },
+    {
+        "title": "Kurzgesagt",
+        "level": "intermediate",
+        "image": "https://i.ytimg.com/vi/8qQW4LTWgtc/hqdefault.jpg?sqp=-oaymwEnCNACELwBSFryq4qpAxkIARUAAIhCGAHYAQHiAQoIGBACGAY4AUAB&rs=AOn4CLCZM5VzbfY_f-vtiO8gTW-VWRwcQQ",
+        "link": "https://www.youtube.com/@kurzgesagt"
+    },
+    {
+        "title": "BBC Learning English",
+        "level": "intermediate",
+        "image": "https://i.ytimg.com/vi/fLB70DZdqIE/hqdefault.jpg?sqp=-oaymwEnCNACELwBSFryq4qpAxkIARUAAIhCGAHYAQHiAQoIGBACGAY4AUAB&rs=AOn4CLB7mGgNcOjdd31TNlDfyEjulHbl2A",
+        "link": "https://www.youtube.com/@bbclearningenglish"
+    },
+    {
+        "title": "Love Is Blind",
+        "level": "intermediate",
+        "image": "https://occ-0-2506-1489.1.nflxso.net/dnm/api/v6/0Qzqdxw-HG1AiOKLWWPsFOUDA2E/AAAABXguf4LAxcfI6_emVDNxB9cZ6d8RSbGc92Zeb8Nejn6UtztYqGaiP4y3gAtJtrruXd8ZPDv910YfA_lP3tL9ua3cdgzgcvhPdX35rMeobvgggR6uTcR9yfsJa9iKVJeW4pv74yJNvkOm4TpR97YpC4uR5bl55ygYEoa5lSFMjEcKGkuDgldh8AEZ0ZJuSn2somJh1P7EU2ipzic.webp?r=1e4",
+        "link": "https://www.netflix.com/watch/82022877?trackId=264293154"
+    },
+    {
+        "title": "Halo 4",
         "level": "advanced",
-        "image": "https://img.youtube.com/vi/UF8uR6Z6KLc/mqdefault.jpg",
-        "note": "Kultowe przemówienie. Zaawansowane struktury gramatyczne.",
-        "link": "https://www.youtube.com/watch?v=UF8uR6Z6KLc"
+        "image": "https://images.plex.tv/photo?size=medium-360&scale=1&url=https%3A%2F%2Fimage.tmdb.org%2Ft%2Fp%2Foriginal%2FoYoMI0bU6hcccrqBwcN2hlNLSN9.jpg",
+        "link": "https://watch.plex.tv/show/halo-4-forward-unto-dawn"
+    },
+    {
+        "title": "History of Steve Jobs",
+        "level": "advanced",
+        "image": "https://i.ytimg.com/vi/s4pVFLUlx8g/hq720.jpg?sqp=-oaymwEnCNAFEJQDSFryq4qpAxkIARUAAIhCGAHYAQHiAQoIGBACGAY4AUAB&rs=AOn4CLCAtjjmmDHM7hfZaP1BcyVSOwfV-w",
+        "link": "https://www.youtube.com/watch?v=s4pVFLUlx8g"
     }
 ]
