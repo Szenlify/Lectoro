@@ -29,6 +29,12 @@
             : w.id || `${w.original || ""}|${w.translated || ""}`;
     }
 
+    function cleanCardText(text) {
+        return typeof SharedUtils !== "undefined" && typeof SharedUtils.cleanCardText === "function"
+            ? SharedUtils.cleanCardText(text)
+            : String(text || "").trim();
+    }
+
     function createDefaultSR() {
         return {
             step: 0,
@@ -79,17 +85,12 @@
             return { saved: false, reason: "STORAGE_UNAVAILABLE" };
         }
 
-        const clean =
-            typeof SharedUtils !== "undefined" && typeof SharedUtils.cleanCardText === "function"
-                ? SharedUtils.cleanCardText
-                : (t) => String(t || "").replace(/^[,\s:;>«»<\\/|~*#—–-]+/, "").replace(/[.,\s]+$/, "").trim();
-
-        const cleanedOriginal = clean(entry?.original);
-        const cleanedTranslated = clean(entry?.translated);
-        const cleanedSentence = clean(entry?.sentence);
-        const cleanedSentenceTranslated = clean(entry?.sentenceTranslated);
-        const cleanedAiSentence = clean(entry?.aiSentence);
-        const cleanedAiSentenceTranslated = clean(entry?.aiSentenceTranslated);
+        const cleanedOriginal = cleanCardText(entry?.original);
+        const cleanedTranslated = cleanCardText(entry?.translated);
+        const cleanedSentence = cleanCardText(entry?.sentence);
+        const cleanedSentenceTranslated = cleanCardText(entry?.sentenceTranslated);
+        const cleanedAiSentence = cleanCardText(entry?.aiSentence);
+        const cleanedAiSentenceTranslated = cleanCardText(entry?.aiSentenceTranslated);
 
         const sanitizedEntry = {
             ...entry,
@@ -169,29 +170,24 @@
 
         const existing = words[index];
         const changes = typeof updater === "function" ? updater(existing) : updater;
-        const clean =
-            typeof SharedUtils !== "undefined" && typeof SharedUtils.cleanCardText === "function"
-                ? SharedUtils.cleanCardText
-                : (t) => String(t || "").replace(/^[,\s:;>«»<\\/|~*#—–-]+/, "").replace(/[.,\s]+$/, "").trim();
-
         const sanitizedChanges = { ...changes };
         if (typeof sanitizedChanges.original === "string") {
-            sanitizedChanges.original = clean(sanitizedChanges.original);
+            sanitizedChanges.original = cleanCardText(sanitizedChanges.original);
         }
         if (typeof sanitizedChanges.translated === "string") {
-            sanitizedChanges.translated = clean(sanitizedChanges.translated);
+            sanitizedChanges.translated = cleanCardText(sanitizedChanges.translated);
         }
         if (typeof sanitizedChanges.sentence === "string") {
-            sanitizedChanges.sentence = clean(sanitizedChanges.sentence);
+            sanitizedChanges.sentence = cleanCardText(sanitizedChanges.sentence);
         }
         if (typeof sanitizedChanges.sentenceTranslated === "string") {
-            sanitizedChanges.sentenceTranslated = clean(sanitizedChanges.sentenceTranslated);
+            sanitizedChanges.sentenceTranslated = cleanCardText(sanitizedChanges.sentenceTranslated);
         }
         if (typeof sanitizedChanges.aiSentence === "string") {
-            sanitizedChanges.aiSentence = clean(sanitizedChanges.aiSentence);
+            sanitizedChanges.aiSentence = cleanCardText(sanitizedChanges.aiSentence);
         }
         if (typeof sanitizedChanges.aiSentenceTranslated === "string") {
-            sanitizedChanges.aiSentenceTranslated = clean(sanitizedChanges.aiSentenceTranslated);
+            sanitizedChanges.aiSentenceTranslated = cleanCardText(sanitizedChanges.aiSentenceTranslated);
         }
 
         const updated = {

@@ -454,7 +454,8 @@ test("AIPrompts generate concise token-saving prompts with JSON instructions", (
     assert.ok(explain.includes("Break a leg!"));
 
     const standard = AIPrompts.standardTranslate("run", "She runs fast", "en", "pl");
-    assert.ok(standard.includes("Translate \"run\" (English) to Polish."));
+    assert.ok(standard.includes("understand the word \"run\" in English"));
+    assert.ok(standard.includes("Word: \"run\""));
 });
 
 test("SharedUtils.resolveImageUrl resolves relative R2 paths and preserves URLs/data URIs", () => {

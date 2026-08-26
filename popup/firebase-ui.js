@@ -28,13 +28,8 @@ let firebaseUiFeedbackTimer = null;
 
 function escapeSyncHtml(value) {
     return typeof SharedUtils !== "undefined" && SharedUtils.escapeHtml
-        ? SharedUtils.escapeHtml(String(value || ""))
-        : String(value || "")
-              .replace(/&/g, "&amp;")
-              .replace(/</g, "&lt;")
-              .replace(/>/g, "&gt;")
-              .replace(/"/g, "&quot;")
-              .replace(/'/g, "&#039;");
+        ? SharedUtils.escapeHtml(value)
+        : String(value || "");
 }
 
 function refreshViewsAfterSync() {

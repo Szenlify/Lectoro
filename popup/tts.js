@@ -5,9 +5,9 @@
 (() => {
     "use strict";
 
-    const { cleanTextForTTS, pickBestVoice } = typeof SharedUtils !== "undefined"
+    const { cleanTextForTTS } = typeof SharedUtils !== "undefined"
         ? SharedUtils
-        : { cleanTextForTTS: (t) => t, pickBestVoice: () => null };
+        : { cleanTextForTTS: (t) => t };
 
     const SPEAK_SVG = typeof LectoroConstants !== "undefined" && LectoroConstants.SVG_ICONS?.SPEAKER
         ? LectoroConstants.SVG_ICONS.SPEAKER

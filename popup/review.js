@@ -443,6 +443,59 @@ document.addEventListener("keydown", (event) => {
 
 // Voice selection is handled by the compact picker above.
 
+// ── Delete review words & queue management ────────────────────────
+async function deleteReviewWord(w) {
+    if (!confirm(`Usunąć "${w.original}" z bazy danych?`)) return;
+    if (typeof stopPopupSpeak === "function") stopPopupSpeak();
+    try {
+        if (typeof SharedWordRepository !== "undefined") {
+            await SharedWordRepository.deleteWord(w.id || w.original, w.timestamp);
+        } else {
+            const data = await chrome.storage.local.get({ savedWords: [] });
+            const words = (data.savedWords || []).filter(
+                (x) => !(x.original === w.original && x.translated === w.translated),
+            );
+            await chrome.storage.local.set({ savedWords: words });
+        }
+    } catch (err) {
+        console.error("[Lectoro] Nie udało się usunąć słowa:", err);
+    }
+    // Remove from current queue and continue
+    reviewQueue.splice(reviewIndex, 1);
+    reviewTotalDue = reviewQueue.length;
+    if (reviewIndex >= reviewQueue.length)
+        reviewIndex = reviewQueue.length - 1;
+    if (reviewIndex < 0) reviewIndex = 0;
+    reviewAnswerShown = false;
+    renderReview();
+}
+
+async function deleteAllReviews() {
+    if (!confirm("Usunąć WSZYSTKIE słowa w kolejce powtórek?")) return;
+    if (typeof stopPopupSpeak === "function") stopPopupSpeak();
+    try {
+        if (typeof SharedWordRepository !== "undefined") {
+            await SharedWordRepository.deleteDueReviews();
+        } else {
+            const data = await chrome.storage.local.get({ savedWords: [] });
+            const allWords = data.savedWords || [];
+            const now = Date.now();
+            const isDueFn = typeof isDueForReview === "function"
+                ? isDueForReview
+                : (typeof SharedUtils !== "undefined" && SharedUtils.isDueForReview ? SharedUtils.isDueForReview : () => false);
+            const remaining = allWords.filter((w) => !isDueFn(w, now));
+            await chrome.storage.local.set({ savedWords: remaining });
+        }
+    } catch (err) {
+        console.error("[Lectoro] Nie udało się usunąć słów powtórek:", err);
+    }
+    reviewQueue = [];
+    reviewIndex = 0;
+    reviewTotalDue = 0;
+    reviewAnswerShown = false;
+    renderReview();
+}
+
 // ── Delete all reviews button ─────────────────────────────────────
 document.getElementById("reviewDeleteAll")?.addEventListener("click", () => {
     deleteAllReviews();

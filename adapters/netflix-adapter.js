@@ -7,18 +7,20 @@
     "use strict";
 
     const HOST_RE = /(^|\.)netflix\.com$/i;
-    const SEEK_EVENT = "__lectoro_netflix_seek";
-    const PAUSE_EVENT = "__lectoro_netflix_pause";
-    const PLAY_EVENT = "__lectoro_netflix_play";
-    const ARTWORK_REQUEST_EVENT = "__lectoro_netflix_artwork_request";
-    const ARTWORK_RESPONSE_EVENT = "__lectoro_netflix_artwork_response";
-    const TRACK_REQUEST_EVENT = "__lectoro_netflix_track_request";
-    const TRACK_RESPONSE_EVENT = "__lectoro_netflix_track_response";
-    const MANIFEST_EVENT = "__lectoro_netflix_timed_text_manifest";
-    const MANIFEST_REQUEST_EVENT = "__lectoro_netflix_timed_text_manifest_request";
-    const PLAYER_STATE_RESET_EVENT = "__lectoro_netflix_player_state_reset";
-    const HIDDEN_CLASS = "__qt_netflix-subtitles-hidden";
-    const NETFLIX_HIDE_CONTROLS_CLASS = "__qt_netflix-hide-controls";
+    const EVT = (typeof LectoroConstants !== "undefined" && LectoroConstants.EVENT_NAMES) || {};
+    const UIC = (typeof LectoroConstants !== "undefined" && LectoroConstants.UI_CLASSES) || {};
+    const SEEK_EVENT = EVT.NETFLIX_SEEK || "__lectoro_netflix_seek";
+    const PAUSE_EVENT = EVT.NETFLIX_PAUSE || "__lectoro_netflix_pause";
+    const PLAY_EVENT = EVT.NETFLIX_PLAY || "__lectoro_netflix_play";
+    const ARTWORK_REQUEST_EVENT = EVT.NETFLIX_ARTWORK_REQUEST || "__lectoro_netflix_artwork_request";
+    const ARTWORK_RESPONSE_EVENT = EVT.NETFLIX_ARTWORK_RESPONSE || "__lectoro_netflix_artwork_response";
+    const TRACK_REQUEST_EVENT = EVT.NETFLIX_TRACK_REQUEST || "__lectoro_netflix_track_request";
+    const TRACK_RESPONSE_EVENT = EVT.NETFLIX_TRACK_RESPONSE || "__lectoro_netflix_track_response";
+    const MANIFEST_EVENT = EVT.NETFLIX_MANIFEST || "__lectoro_netflix_timed_text_manifest";
+    const MANIFEST_REQUEST_EVENT = EVT.NETFLIX_MANIFEST_REQUEST || "__lectoro_netflix_timed_text_manifest_request";
+    const PLAYER_STATE_RESET_EVENT = EVT.NETFLIX_PLAYER_STATE_RESET || "__lectoro_netflix_player_state_reset";
+    const HIDDEN_CLASS = UIC.NETFLIX_HIDDEN || "__qt_netflix-subtitles-hidden";
+    const NETFLIX_HIDE_CONTROLS_CLASS = UIC.NETFLIX_HIDE_CONTROLS || "__qt_netflix-hide-controls";
 
     let timedTextManifest = null;
     let cueIndex = [];

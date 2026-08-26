@@ -16,6 +16,7 @@ try {
 }
 
 const { wordKey, countDueWords } = SharedUtils;
+const MSG = (typeof LectoroConstants !== "undefined" && LectoroConstants.MESSAGE_TYPES) || {};
 const PENDING_CHANGES_KEY = "pendingFirebaseChanges";
 const AUTO_SYNC_ALARM = "firebaseAutoSync";
 const AUTO_SYNC_DELAY_MS = 60_000;
@@ -714,7 +715,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.type === "QT_CAPTURE_VISIBLE_TAB") {
+    if (message.type === (MSG.CAPTURE_VISIBLE_TAB || "QT_CAPTURE_VISIBLE_TAB")) {
         const captureOptions = { format: "jpeg", quality: 85 };
         const windowId = Number.isInteger(sender.tab?.windowId)
             ? sender.tab.windowId
@@ -747,7 +748,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
     }
 
-    if (message.type === "QT_FETCH_NETFLIX_TIMED_TEXT") {
+    if (message.type === (MSG.FETCH_NETFLIX_TIMED_TEXT || "QT_FETCH_NETFLIX_TIMED_TEXT")) {
         if (
             !sender.tab?.url ||
             !/^https:\/\/www\.netflix\.com\//i.test(sender.tab.url) ||
@@ -762,14 +763,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
     }
 
-    if (message.type === "QT_FETCH_CONTEXT_IMAGE") {
+    if (message.type === (MSG.FETCH_CONTEXT_IMAGE || "QT_FETCH_CONTEXT_IMAGE")) {
         fetchContextImageDataUrl(message.url)
             .then((dataUrl) => sendResponse({ dataUrl }))
             .catch((error) => sendResponse({ error: error.message }));
         return true;
     }
 
-    if (message.type === "QT_ENABLE_VIDEO_FRAME") {
+    if (message.type === (MSG.ENABLE_VIDEO_FRAME || "QT_ENABLE_VIDEO_FRAME")) {
         if (
             !sender.tab?.id ||
             !Number.isInteger(sender.frameId) ||
@@ -821,7 +822,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
     }
 
-    if (message.type === "QT_OPEN_PLANS") {
+    if (message.type === (MSG.OPEN_PLANS || "QT_OPEN_PLANS")) {
         chrome.windows
             .create({
                 url: chrome.runtime.getURL("popup.html#plans"),
@@ -835,7 +836,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
     }
 
-    if (message.type === "QT_FIREBASE_SIGN_IN") {
+    if (message.type === (MSG.FIREBASE_SIGN_IN || "QT_FIREBASE_SIGN_IN")) {
         FirebaseSync.signIn()
             .then(async (auth) => {
                 await fullSync();
@@ -846,7 +847,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
     }
 
-    if (message.type === "QT_FIREBASE_SIGN_OUT") {
+    if (message.type === (MSG.FIREBASE_SIGN_OUT || "QT_FIREBASE_SIGN_OUT")) {
         fullSync({ pull: false })
             .then(() => clearLocalUserDataAfterSignOut())
             .then(() => sendResponse({ ok: true }))
@@ -854,7 +855,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
     }
 
-    if (message.type === "QT_FIREBASE_DELETE_ACCOUNT") {
+    if (message.type === (MSG.FIREBASE_DELETE_ACCOUNT || "QT_FIREBASE_DELETE_ACCOUNT")) {
         (async () => {
             const token = await getSingleFlightToken(true);
             if (!token) throw new Error("Brak aktywnej sesji.");
@@ -888,21 +889,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
     }
 
-    if (message.type === "QT_GET_FIREBASE_TOKEN") {
+    if (message.type === (MSG.GET_FIREBASE_TOKEN || "QT_GET_FIREBASE_TOKEN")) {
         getSingleFlightToken(!!message.forceRefresh)
             .then((token) => sendResponse({ token }))
             .catch((error) => sendResponse({ token: null, error: error.message }));
         return true;
     }
 
-    if (message.type === "QT_GET_FIREBASE_USER") {
+    if (message.type === (MSG.GET_FIREBASE_USER || "QT_GET_FIREBASE_USER")) {
         (typeof FirebaseSync !== "undefined" ? FirebaseSync.getUser() : Promise.resolve(null))
             .then((user) => sendResponse({ user }))
             .catch((error) => sendResponse({ user: null, error: error.message }));
         return true;
     }
 
-    if (message.type === "QT_FIREBASE_SYNC") {
+    if (message.type === (MSG.FIREBASE_SYNC || "QT_FIREBASE_SYNC")) {
         fullSync()
             .then((result) => sendResponse({ ok: true, ...result }))
             .catch((error) => sendResponse({ error: error.message }));
@@ -911,20 +912,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     // Backward-compatible callers now enqueue deletes instead of touching
     // Firestore immediately. The next manual/automatic sync batches them.
-    if (message.type === "QT_FIRESTORE_DELETE" && message.word) {
+    if (message.type === (MSG.FIRESTORE_DELETE || "QT_FIRESTORE_DELETE") && message.word) {
         enqueueDeletes([message.word])
             .then(() => sendResponse({ ok: true, queued: true }))
             .catch((error) => sendResponse({ error: error.message }));
         return true;
     }
-    if (message.type === "QT_FIRESTORE_DELETE_BATCH" && message.words) {
+    if (message.type === (MSG.FIRESTORE_DELETE_BATCH || "QT_FIRESTORE_DELETE_BATCH") && message.words) {
         enqueueDeletes(message.words)
             .then(() => sendResponse({ ok: true, queued: true }))
             .catch((error) => sendResponse({ error: error.message }));
         return true;
     }
 
-    if (message.type === "QT_GEMINI_REQUEST") {
+    if (message.type === (MSG.GEMINI_REQUEST || "QT_GEMINI_REQUEST")) {
         (async () => {
             if (typeof GeminiProxy === "undefined") {
                 throw new Error("GeminiProxy niedostępny w procesie tła.");
@@ -942,7 +943,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
     }
 
-    if (message.type === "QT_GEMINI_REFRESH_USAGE") {
+    if (message.type === (MSG.GEMINI_REFRESH_USAGE || "QT_GEMINI_REFRESH_USAGE")) {
         (async () => {
             if (typeof GeminiProxy === "undefined") {
                 throw new Error("GeminiProxy niedostępny w procesie tła.");
@@ -954,7 +955,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
     }
 
-    if (message.type === "QT_GEMINI_UPLOAD_CARD_IMAGE") {
+    if (message.type === (MSG.GEMINI_UPLOAD_CARD_IMAGE || "QT_GEMINI_UPLOAD_CARD_IMAGE")) {
         (async () => {
             if (typeof GeminiProxy === "undefined") {
                 throw new Error("GeminiProxy niedostępny w procesie tła.");
@@ -970,7 +971,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
     }
 
-    if (message.type === "QT_GEMINI_DELETE_CARD_IMAGES") {
+    if (message.type === (MSG.GEMINI_DELETE_CARD_IMAGES || "QT_GEMINI_DELETE_CARD_IMAGES")) {
         (async () => {
             if (typeof GeminiProxy === "undefined") {
                 throw new Error("GeminiProxy niedostępny w procesie tła.");
@@ -982,7 +983,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
     }
 
-    if (message.type === "QT_GEMINI_DELETE_ALL_USER_IMAGES") {
+    if (message.type === (MSG.GEMINI_DELETE_ALL_USER_IMAGES || "QT_GEMINI_DELETE_ALL_USER_IMAGES")) {
         (async () => {
             if (typeof GeminiProxy === "undefined") {
                 throw new Error("GeminiProxy niedostępny w procesie tła.");
@@ -994,7 +995,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
     }
 
-    if (message.type === "QT_GOOGLE_TRANSLATE") {
+    if (message.type === (MSG.GOOGLE_TRANSLATE || "QT_GOOGLE_TRANSLATE")) {
         (async () => {
             const url =
                 "https://translate.googleapis.com/translate_a/single" +
@@ -1016,7 +1017,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
     }
 
-    if (message.type === "QT_SUBSCRIPTION_REFRESH_PROFILE") {
+    if (message.type === (MSG.SUBSCRIPTION_REFRESH_PROFILE || "QT_SUBSCRIPTION_REFRESH_PROFILE")) {
         (async () => {
             if (
                 typeof self.SubscriptionService === "undefined" ||
@@ -1031,7 +1032,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
     }
 
-    if (message.type === "QT_ELEVENLABS_SYNTHESIZE") {
+    if (message.type === (MSG.ELEVENLABS_SYNTHESIZE || "QT_ELEVENLABS_SYNTHESIZE")) {
         (async () => {
             if (
                 typeof self.SubscriptionService === "undefined" ||
@@ -1065,7 +1066,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
     }
 
-    if (message.type === "QT_ELEVENLABS_VOICES") {
+    if (message.type === (MSG.ELEVENLABS_VOICES || "QT_ELEVENLABS_VOICES")) {
         (async () => {
             if (
                 typeof self.SubscriptionService === "undefined" ||

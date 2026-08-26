@@ -18,16 +18,9 @@
     let providerError = null;
 
     function cleanText(text) {
-        if (typeof SharedUtils !== "undefined" && SharedUtils.cleanTextForTTS) {
-            return SharedUtils.cleanTextForTTS(text);
-        }
-        return String(text ?? "")
-            .replace(/<[^>]*>/g, " ")
-            .replace(/[♪♫♬♩]/g, " ")
-            .replace(/\[[^\]]*\]/g, " ")
-            .replace(/[<>#~*_^|\\/@$%&=+]/g, " ")
-            .replace(/\s{2,}/g, " ")
-            .trim();
+        return typeof SharedUtils !== "undefined" && SharedUtils.cleanTextForTTS
+            ? SharedUtils.cleanTextForTTS(text)
+            : String(text ?? "").trim();
     }
 
     function getSafetyTimeout(text, rate = 1) {

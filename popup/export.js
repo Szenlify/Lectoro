@@ -1,3 +1,7 @@
+const { csvCell } = typeof SharedUtils !== "undefined"
+    ? SharedUtils
+    : { csvCell: (s) => String(s ?? "") };
+
 // ── Google TTS URL helper ─────────────────────────────────────────
 function googleTtsUrl(text, lang) {
     return `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${encodeURIComponent(lang)}&q=${encodeURIComponent(text)}`;
