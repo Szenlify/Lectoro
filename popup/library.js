@@ -37,7 +37,7 @@ function renderLibraryGrid() {
     if (!grid) return;
 
     if (!libraryItemsLoaded) {
-        grid.innerHTML = `<div class="library-empty"><div class="library-empty-icon">⏳</div><div class="library-empty-title">Wczytywanie…</div></div>`;
+        grid.innerHTML = `<div class="library-empty"><div class="library-empty-icon">⏳</div><div class="library-empty-title">Loading…</div></div>`;
         loadLibraryItems().then(() => renderLibraryGrid());
         return;
     }
@@ -48,8 +48,8 @@ function renderLibraryGrid() {
         grid.innerHTML = `
         <div class="library-empty">
             <div class="library-empty-icon">🎬</div>
-            <div class="library-empty-title">Brak pozycji w bibliotece</div>
-            <div class="library-empty-sub">Biblioteka jest obecnie pusta.</div>
+            <div class="library-empty-title">No items in library</div>
+            <div class="library-empty-sub">Library is currently empty.</div>
         </div>`;
         return;
     }
@@ -76,7 +76,7 @@ function renderLibraryGrid() {
             <div class="library-card-info">
                 <div class="library-card-title">${escapeHtml(item.title)}</div>
             </div>
-            <div class="library-poster-overlay"><span>▶ Oglądaj</span></div>
+            <div class="library-poster-overlay"><span>▶ Watch</span></div>
         </div>`;
         })
         .join("");

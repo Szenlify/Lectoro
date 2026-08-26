@@ -113,7 +113,7 @@ const FirebaseSync = (() => {
             );
             return JSON.parse(json);
         } catch (error) {
-            console.warn("[Lectoro] Nie udało się odczytać claims z tokenu:", error);
+            console.warn("[Lectoro] Failed to read claims from token:", error);
             return {};
         }
     }
@@ -190,7 +190,7 @@ const FirebaseSync = (() => {
     async function signIn() {
         if (!isConfigured()) {
             throw new Error(
-                "Firebase nie skonfigurowany. Uzupełnij firebase-config.js",
+                "Firebase is not configured. Please fill in firebase-config.js",
             );
         }
 

@@ -151,7 +151,7 @@ const SubscriptionService = (() => {
             body: JSON.stringify({ action: "subscription" }),
         });
         const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || `Błąd profilu (${response.status})`);
+        if (!response.ok) throw new Error(data.error || `Profile error (${response.status})`);
 
         const authoritativePlan = Config.normalizePlan(data.profile?.plan || claimedPlan);
 
@@ -203,7 +203,7 @@ const SubscriptionService = (() => {
 
     async function synthesizeElevenLabs(text, voiceId, context = "") {
         if (context !== "review") {
-            throw new Error("ElevenLabs jest dostępny wyłącznie w powtórkach.");
+            throw new Error("ElevenLabs is only available during reviews.");
         }
         const localValidation = await checkElevenLabs(text);
         Config.assertAllowed(localValidation);
@@ -238,7 +238,7 @@ const SubscriptionService = (() => {
                             });
                             return resolve(blob);
                         }
-                        reject(new Error("Brak danych audio z usługi ElevenLabs."));
+                        reject(new Error("No audio data received from ElevenLabs."));
                     },
                 );
             });
@@ -246,7 +246,7 @@ const SubscriptionService = (() => {
 
         const token = await getToken();
         if (!token) {
-            throw new Error("Zaloguj się, aby korzystać z ElevenLabs.");
+            throw new Error("Sign in to use ElevenLabs.");
         }
         const response = await fetch(PROXY_URL, {
             method: "POST",
@@ -266,7 +266,7 @@ const SubscriptionService = (() => {
             if (data.profile) await setCachedProfile(data.profile);
             if (data.limit) throw new Config.SubscriptionLimitError(data.limit);
             const error = new Error(
-                data.error || `ElevenLabs jest niedostępny (${response.status})`,
+                data.error || `ElevenLabs is unavailable (${response.status})`,
             );
             error.code = data.code || "ELEVENLABS_REQUEST_FAILED";
             throw error;
@@ -290,7 +290,7 @@ const SubscriptionService = (() => {
             showUpgradePrompt({
                 feature: "elevenLabs",
                 code: Config.LIMIT_ERROR_CODES.ELEVENLABS_MONTHLY_LIMIT_REACHED,
-                message: `Wykorzystano miesięczny limit ${limits.charactersPerMonth} znaków ElevenLabs. Do odnowienia używany będzie głos systemowy.`,
+                message: `Monthly limit of ${limits.charactersPerMonth} ElevenLabs characters reached. System voice will be used until renewal.`,
             });
         }
         return response.blob();
@@ -298,7 +298,7 @@ const SubscriptionService = (() => {
 
     async function getElevenLabsVoices(context = "") {
         if (context !== "review") {
-            throw new Error("Głosy ElevenLabs są dostępne wyłącznie w powtórkach.");
+            throw new Error("ElevenLabs voices are only available during reviews.");
         }
         const profile = await effectiveProfile(false);
         if (!Config.getPlanLimits(profile.plan).elevenLabs.enabled) {
@@ -323,7 +323,7 @@ const SubscriptionService = (() => {
         }
 
         const token = await getToken();
-        if (!token) throw new Error("Zaloguj się, aby pobrać głosy ElevenLabs.");
+        if (!token) throw new Error("Sign in to fetch ElevenLabs voices.");
         const response = await fetch(PROXY_URL, {
             method: "POST",
             headers: {
@@ -333,7 +333,7 @@ const SubscriptionService = (() => {
             body: JSON.stringify({ action: "elevenLabsVoices", context }),
         });
         const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || `Błąd głosów (${response.status})`);
+        if (!response.ok) throw new Error(data.error || `Voice error (${response.status})`);
         const allowedOrder = ["roger", "sarah", "charlie"];
         const rawVoices = data.voices || [];
         const filtered = rawVoices
@@ -366,7 +366,7 @@ const SubscriptionService = (() => {
 
     async function billingRequest(functionName, body = {}) {
         const token = await getToken(true);
-        if (!token) throw new Error("Zaloguj się, aby zarządzać płatnością.");
+        if (!token) throw new Error("Sign in to manage billing.");
         const response = await fetch(`${BILLING_FUNCTIONS_URL}/${functionName}`, {
             method: "POST",
             headers: {
@@ -379,11 +379,11 @@ const SubscriptionService = (() => {
         // When a subscription already exists, the backend intentionally sends
         // the user to Stripe Portal instead of allowing a duplicate purchase.
         if (!response.ok && !(response.status === 409 && data.url)) {
-            throw new Error(data.error || `Błąd płatności (${response.status})`);
+            throw new Error(data.error || `Billing error (${response.status})`);
         }
-        if (!data.url) throw new Error("Stripe nie zwrócił adresu płatności.");
+        if (!data.url) throw new Error("Stripe did not return a checkout URL.");
         const url = new URL(data.url);
-        if (url.protocol !== "https:") throw new Error("Nieprawidłowy adres Stripe.");
+        if (url.protocol !== "https:") throw new Error("Invalid Stripe URL.");
         await chrome.tabs.create({ url: url.href });
         return {
             opened: true,
@@ -439,11 +439,11 @@ const SubscriptionService = (() => {
         toast.innerHTML = `
             <div class="__qt_ai_limit_orb">✦</div>
             <div class="__qt_ai_limit_copy">
-                <strong>${isElevenLabs ? "Limit ElevenLabs wykorzystany" : "Limit planu został osiągnięty"}</strong>
-                <span>${String(validation?.message || "Ulepsz plan, aby kontynuować.")}</span>
+                <strong>${isElevenLabs ? "ElevenLabs limit reached" : "Plan limit reached"}</strong>
+                <span>${String(validation?.message || "Upgrade your plan to continue.")}</span>
             </div>
-            <button type="button" class="__qt_ai_upgrade_link">Zobacz plany</button>
-            <button type="button" class="__qt_ai_limit_close" aria-label="Zamknij">×</button>`;
+            <button type="button" class="__qt_ai_upgrade_link">View plans</button>
+            <button type="button" class="__qt_ai_limit_close" aria-label="Close">×</button>`;
         document.documentElement.appendChild(toast);
         toast.querySelector(".__qt_ai_upgrade_link")?.addEventListener("click", () => {
             toast.remove();

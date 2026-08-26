@@ -2,9 +2,9 @@
 /**
  * Lectoro AI – Chrome Web Store Distribution Package Builder
  *
- * Tworzy czyste, zoptymalizowane archiwum ZIP gotowe do wgrania do Chrome Web Store Developer Dashboard.
- * Automatycznie usuwa pole "key" w paczce ZIP (zachowując je w lokalnym manifest.json do testów).
- * Wyklucza pliki deweloperskie, testy, backend functions/, node_modules, notatki Markdown i katalogi robocze.
+ * Creates a clean, optimized ZIP archive ready for upload to Chrome Web Store Developer Dashboard.
+ * Automatically removes the "key" field in the ZIP package (retaining it in local manifest.json for testing).
+ * Excludes developer files, tests, backend functions/, node_modules, Markdown docs, and temporary folders.
  */
 
 const fs = require("fs");
@@ -17,7 +17,7 @@ const STAGING_DIR = path.join(DIST_DIR, "staging");
 const MANIFEST_PATH = path.join(ROOT_DIR, "manifest.json");
 
 if (!fs.existsSync(MANIFEST_PATH)) {
-    console.error("❌ Błąd: Brak pliku manifest.json w głównym katalogu projektu.");
+    console.error("❌ Error: Missing manifest.json in project root.");
     process.exit(1);
 }
 
@@ -35,9 +35,9 @@ if (fs.existsSync(zipPath)) {
     fs.unlinkSync(zipPath);
 }
 
-console.log(`📦 Budowanie paczki produkcyjnej dla Lectoro AI v${version}...`);
+console.log(`📦 Building production package for Lectoro AI v${version}...`);
 
-// Pliki i foldery wchodzące w skład rozszerzenia
+// Files and folders included in extension build
 const INCLUDED_ENTRIES = [
     "manifest.json",
     "background.js",
@@ -62,13 +62,13 @@ const INCLUDED_ENTRIES = [
     "firebase/firebase-sync.js",
 ];
 
-// Kopiowanie do katalogu tymczasowego
+// Copy to staging directory
 for (const entry of INCLUDED_ENTRIES) {
     const srcPath = path.join(ROOT_DIR, entry);
     const destPath = path.join(STAGING_DIR, entry);
 
     if (!fs.existsSync(srcPath)) {
-        console.error(`❌ Błąd: Wymagany element '${entry}' nie istnieje w projekcie.`);
+        console.error(`❌ Error: Required entry '${entry}' does not exist in project.`);
         process.exit(1);
     }
 
@@ -92,7 +92,7 @@ for (const entry of INCLUDED_ENTRIES) {
     }
 }
 
-// Oczyszczenie manifest.json ze statycznego pola "key" w paczce produkcyjnej
+// Clean manifest.json from development "key" field in production package
 const stagingManifestPath = path.join(STAGING_DIR, "manifest.json");
 const stagingManifest = JSON.parse(fs.readFileSync(stagingManifestPath, "utf8"));
 if (stagingManifest.key) {
@@ -102,10 +102,10 @@ if (stagingManifest.key) {
         JSON.stringify(stagingManifest, null, 4),
         "utf8",
     );
-    console.log("🧹 Usunięto pole 'key' ze staging manifest.json (CWS compliant).");
+    console.log("🧹 Removed 'key' field from staging manifest.json (CWS compliant).");
 }
 
-// Pakowanie zawartości katalogu staging do archiwum ZIP
+// Pack staging contents into ZIP archive
 try {
     let packed = false;
     if (process.platform === "win32") {
@@ -140,9 +140,9 @@ try {
     fs.rmSync(STAGING_DIR, { recursive: true, force: true });
     const stats = fs.statSync(zipPath);
     const sizeKb = (stats.size / 1024).toFixed(1);
-    console.log(`✅ Sukces! Utworzono archiwum: dist/${zipName} (${sizeKb} KB)`);
-    console.log(`🚀 Paczka jest gotowa do wgrania w Chrome Web Store Developer Dashboard.`);
+    console.log(`✅ Success! Created archive: dist/${zipName} (${sizeKb} KB)`);
+    console.log(`🚀 Package is ready for upload to Chrome Web Store Developer Dashboard.`);
 } catch (err) {
-    console.error("❌ Błąd podczas tworzenia pliku ZIP:", err.message);
+    console.error("❌ Error while creating ZIP archive:", err.message);
     process.exit(1);
 }

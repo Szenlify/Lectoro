@@ -1,14 +1,14 @@
 /**
- * Lectoro – Gemini API via Secure Proxy
+ * Lectoro – Secure Gemini Proxy (Client-Side)
  *
- * Zamiast wywoływać Gemini bezpośrednio (co wymaga klucza API po stronie klienta),
- * wszystkie zapytania AI trafiają przez Firebase Cloud Function "geminiProxy".
+ * Instead of calling Gemini directly (which requires client-side API keys),
+ * all AI requests route through the secure Cloud Run / Cloud Functions proxy.
  *
- * Klucz Gemini API jest bezpiecznie przechowywany WYŁĄCZNIE na serwerze.
+ * The Gemini API key is securely stored ONLY on the server.
  *
- * Użycie:
+ * Usage:
  *   const result = await GeminiProxy.request(prompt, { temperature: 0.8, maxOutputTokens: 300 });
- *   // result.text – surowy tekst odpowiedzi
+ *   // result.text – raw response text
  *   // result.usage – { plan, used, limit, remaining }
  */
 const GeminiProxy = (() => {
@@ -134,7 +134,7 @@ const GeminiProxy = (() => {
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) {
-            throw new Error(data?.error || `Błąd pobierania limitu AI (${response.status})`);
+            throw new Error(data?.error || `Failed to fetch AI limit (${response.status})`);
         }
         if (data.profile && typeof SubscriptionService !== "undefined") {
             await SubscriptionService.setCachedProfile(data.profile);
@@ -153,7 +153,7 @@ const GeminiProxy = (() => {
                 : null;
         if (validation ? !validation.allowed : usage?.limit > 0 && usage.used >= usage.limit) {
             const error = new Error(
-                `Przekroczono limit AI (${usage.limit} zapytań/mc dla planu ${(usage.plan || "free").toUpperCase()}). Ulepsz plan aby kontynuować.`,
+                `Monthly AI limit reached (${usage.limit} requests/mo for plan ${(usage.plan || "free").toUpperCase()}). Upgrade your plan to continue.`,
             );
             error.code = "AI_LIMIT_REACHED";
             error.validation = validation;
@@ -166,7 +166,7 @@ const GeminiProxy = (() => {
     function isLimitError(error) {
         return (
             error?.code === "AI_LIMIT_REACHED" ||
-            /limit AI|brak kredytów|kredyty zostały/i.test(error?.message || "")
+            /limit AI|ai limit|credits used|credit limit/i.test(error?.message || "")
         );
     }
 
@@ -196,7 +196,7 @@ const GeminiProxy = (() => {
             SubscriptionService.showUpgradePrompt({
                 feature: "ai",
                 plan: usage?.plan,
-                message: `W tym miesiącu użyto ${Number(usage?.used || usage?.limit || 0)} z ${Number(usage?.limit || 0)} kredytów.`,
+                message: `This month ${Number(usage?.used || usage?.limit || 0)} of ${Number(usage?.limit || 0)} credits have been used.`,
             });
             return;
         }
@@ -212,11 +212,11 @@ const GeminiProxy = (() => {
         toast.innerHTML = `
             <div class="__qt_ai_limit_orb">✦</div>
             <div class="__qt_ai_limit_copy">
-                <strong>Wykorzystano kredyty AI</strong>
-                <span>W tym miesiącu użyto ${Number(usage?.used || usage?.limit || 0)} z ${Number(usage?.limit || 0)} kredytów.</span>
+                <strong>AI Credits used up</strong>
+                <span>This month ${Number(usage?.used || usage?.limit || 0)} of ${Number(usage?.limit || 0)} credits have been used.</span>
             </div>
-            <button type="button" class="__qt_ai_upgrade_link">Zobacz plany</button>
-            <button type="button" class="__qt_ai_limit_close" aria-label="Zamknij">×</button>
+            <button type="button" class="__qt_ai_upgrade_link">View plans</button>
+            <button type="button" class="__qt_ai_limit_close" aria-label="Close">×</button>
             <div class="__qt_ai_limit_timer"></div>`;
         document.documentElement.appendChild(toast);
         toast.querySelector(".__qt_ai_upgrade_link")?.addEventListener("click", () => {
@@ -256,7 +256,7 @@ const GeminiProxy = (() => {
                 button.setAttribute("aria-disabled", String(reached));
                 button.classList.toggle("ai-credits-empty", reached);
                 if (reached) {
-                    button.title = "Brak kredytów AI — kliknij, aby zobaczyć plany";
+                    button.title = "AI limit reached — click to view plans";
                 } else {
                     button.title = button.dataset.aiOriginalTitle;
                 }
@@ -264,8 +264,8 @@ const GeminiProxy = (() => {
     }
 
     /**
-     * Pobiera ważny Firebase ID token z FirebaseSync.
-     * Zwraca null jeśli użytkownik nie jest zalogowany.
+     * Retrieves a valid Firebase ID token from FirebaseSync.
+     * Returns null if user is not signed in.
      */
     async function getToken(forceRefresh = false) {
         if (
@@ -282,15 +282,15 @@ const GeminiProxy = (() => {
     }
 
     /**
-     * Wysyła prompt do Gemini przez bezpieczne proxy.
+     * Sends prompt to Gemini via secure proxy.
      *
-     * @param {string} prompt - Treść promptu
+     * @param {string} prompt - Prompt content
      * @param {object} [opts]
-     * @param {number} [opts.temperature=0.8] - Temperatura (0–2)
-     * @param {number} [opts.maxOutputTokens=500] - Max tokenów wyjściowych
-     * @param {boolean} [opts.cache=true] - Czy korzystać z pamięci podręcznej odpowiedzi AI
+     * @param {number} [opts.temperature=0.8] - Temperature (0–2)
+     * @param {number} [opts.maxOutputTokens=500] - Max output tokens
+     * @param {boolean} [opts.cache=true] - Whether to use AI response cache
      * @returns {Promise<{text: string, usage: object, cached?: boolean}>}
-     * @throws {Error} jeśli użytkownik niezalogowany, limit przekroczony lub błąd serwera
+     * @throws {Error} if user not signed in, limit reached, or server error
      */
     async function request(prompt, { temperature = 0.8, maxOutputTokens = 500, cache = true } = {}) {
         const cacheKey = getAiCacheKey(prompt, temperature, maxOutputTokens);
@@ -317,12 +317,12 @@ const GeminiProxy = (() => {
                             return reject(
                                 new Error(
                                     chrome.runtime.lastError.message ||
-                                        "Błąd komunikacji z rozszerzeniem.",
+                                        "Extension communication error.",
                                 ),
                             );
                         }
                         if (!response) {
-                            return reject(new Error("Brak odpowiedzi od usługi AI."));
+                            return reject(new Error("No response from AI service."));
                         }
                         if (response.error) {
                             const err = new Error(response.error);
@@ -349,7 +349,7 @@ const GeminiProxy = (() => {
 
         if (!token) {
             throw new Error(
-                "Zaloguj się, aby korzystać z funkcji AI."
+                "Sign in to use AI features."
             );
         }
 
@@ -381,7 +381,7 @@ const GeminiProxy = (() => {
         const data = await res.json().catch(() => ({}));
 
         if (!res.ok) {
-            const msg = data?.error || `Błąd serwera AI (${res.status})`;
+            const msg = data?.error || `AI server error (${res.status})`;
 
             if (res.status === 429) {
                 const plan = data?.plan || "free";
@@ -393,7 +393,7 @@ const GeminiProxy = (() => {
                     remaining: 0,
                 });
                 const error = new Error(
-                    `Przekroczono limit AI (${limit} zapytań/mc dla planu ${plan.toUpperCase()}). Ulepsz plan aby kontynuować.`
+                    `Monthly AI limit reached (${limit} requests/mo for plan ${plan.toUpperCase()}). Upgrade your plan to continue.`
                 );
                 error.code = "AI_LIMIT_REACHED";
                 showUpgradePrompt({ plan, used: Number(data?.used || limit || 0), limit: Number(data?.limit || 0) });
@@ -402,7 +402,7 @@ const GeminiProxy = (() => {
             if (previousUsage) await setCachedUsage(previousUsage);
             if (res.status === 401) {
                 throw new Error(
-                    "Sesja wygasła. Zaloguj się ponownie."
+                    "Session expired. Please sign in again."
                 );
             }
 
@@ -429,18 +429,17 @@ const GeminiProxy = (() => {
     }
 
     /**
-     * Pomocnik: wysyła prompt i parsuje odpowiedź jako JSON.
-     * Odpowiednik geminiRequest() z core.js.
+     * Helper: sends prompt and parses response as JSON.
      *
      * @param {string} prompt
      * @param {object} [opts]
-     * @returns {Promise<object>} - Sparsowany obiekt JSON z odpowiedzi
+     * @returns {Promise<object>} - Parsed JSON object from response
      */
     async function requestJSON(prompt, opts = {}) {
         const { text } = await request(prompt, opts);
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (!jsonMatch) {
-            throw new Error("Gemini: brak odpowiedzi JSON");
+            throw new Error("Gemini: missing JSON response");
         }
         return JSON.parse(jsonMatch[0]);
     }
@@ -649,7 +648,7 @@ const GeminiProxy = (() => {
         }
     }
 
-    // Eksport
+    // Export
     return {
         endpoint: () => PROXY_URL,
         request,
@@ -673,7 +672,7 @@ const GeminiProxy = (() => {
     };
 })();
 
-// Udostępnij globalnie (content scripts + popup + background)
+// Expose globally (content scripts + popup + background)
 if (typeof window !== "undefined") {
     window.GeminiProxy = GeminiProxy;
     GeminiProxy.applyLocalLimitToUI();

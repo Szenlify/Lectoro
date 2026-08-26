@@ -57,7 +57,7 @@ function loadPopupScript(src) {
         const script = document.createElement("script");
         script.src = src;
         script.onload = resolve;
-        script.onerror = () => reject(new Error(`Nie udało się załadować ${src}.`));
+        script.onerror = () => reject(new Error(`Failed to load ${src}.`));
         document.body.appendChild(script);
     });
     loadedPopupScripts.set(src, promise);
@@ -72,11 +72,11 @@ async function ensureTabLoaded(tabName) {
     const promise = (async () => {
         const template = document.getElementById(`tab-${tabName}-template`);
         if (!(template instanceof HTMLTemplateElement)) {
-            throw new Error(`Brak szablonu zakładki: ${tabName}.`);
+            throw new Error(`Missing tab template: ${tabName}.`);
         }
         template.replaceWith(template.content.cloneNode(true));
         const content = document.getElementById(`tab-${tabName}`);
-        if (!content) throw new Error(`Nie udało się zamontować zakładki: ${tabName}.`);
+        if (!content) throw new Error(`Failed to mount tab: ${tabName}.`);
 
         if (tabName === "words") {
             wordListEl = document.getElementById("wordList");
@@ -122,7 +122,7 @@ async function switchTab(tabName) {
         await ensureTabLoaded(tabName);
     } catch (error) {
         tabLoadPromises.delete(tabName);
-        console.error("[Lectoro] Ładowanie zakładki:", error);
+        console.error("[Lectoro] Tab loading error:", error);
         return;
     } finally {
         selectedButton?.classList.remove("is-loading");
@@ -152,7 +152,7 @@ function updateInitialReviewBadge(words = []) {
     const badge = dueCount > 0
         ? `<span class="tab-badge">${dueCount > 999 ? "999+" : dueCount}</span>`
         : "";
-    tab.innerHTML = `<span class="tab-icon">🧠</span><span class="tab-label">Powtórki</span>${badge}`;
+    tab.innerHTML = `<span class="tab-icon">🧠</span><span class="tab-label">Review</span>${badge}`;
 }
 
 whenPopupReady((state) => {
@@ -212,8 +212,8 @@ function autoSpeakReviewCard(w, answerVisible = false) {
         cacheNotBefore: Number(w.ttsCacheInvalidatedAt || 0),
     };
 
-    // Zawsze oryginalny tekst (srcLang) używa wybranego głosu lektora (np. ElevenLabs);
-    // Tłumaczenie (tgtLang) ZAWSZE czyta darmowy głos systemowy.
+    // Original text (srcLang) uses chosen voice (e.g. ElevenLabs);
+    // Translation (tgtLang) uses system voice.
     const isSpeakingOriginal = !answerVisible ? !isReverse : isReverse;
     const speakWord = isSpeakingOriginal ? w.original : w.translated;
     const speakSentence = isSpeakingOriginal
@@ -234,8 +234,8 @@ function autoSpeakReviewCard(w, answerVisible = false) {
 // ── Keyboard shortcuts for review — flashcard-style controls ──────
 //   ↑ / W   → read word + sentence aloud (current side)
 //   ↓ / S   → flip the card in place to reveal the answer
-//   ← / A   → "Nie znam" (Again) — works from either side, front or back
-//   → / D   → "Znam" (Good)      — works from either side, front or back
+//   ← / A   → "Don't know" (Again) — works from either side, front or back
+//   → / D   → "Know" (Good)        — works from either side, front or back
 //   Enter   → fetch a fresh, on-demand standard AI translation
 document.addEventListener("keydown", (e) => {
     const reviewTab = document.getElementById("tab-review");

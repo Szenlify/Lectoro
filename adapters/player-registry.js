@@ -730,8 +730,8 @@
                 if (typeof QT !== "undefined" && QT.createHint) {
                     QT.createHint("").show(
                         direction < 0
-                            ? "Brak wcześniejszego zdania w napisach"
-                            : "Brak następnego zdania w napisach",
+                            ? "No previous subtitle in timeline"
+                            : "No next subtitle in timeline",
                         1800,
                     );
                 }
@@ -761,7 +761,7 @@
             console.warn("[Lectoro] Netflix subtitle navigation failed:", error);
             if (typeof QT !== "undefined" && QT.createHint) {
                 QT.createHint("").show(
-                    "Nie udało się załadować osi napisów Netflixa",
+                    "Could not load Netflix subtitle timeline",
                     2200,
                 );
             }

@@ -111,8 +111,8 @@
             used: safeUsed,
             requested: safeRequested,
             message: allowed
-                ? "Funkcja AI jest dostępna."
-                : `Wykorzystano miesięczny limit AI (${limit}) dla planu ${normalizedPlan.toUpperCase()}.`,
+                ? "AI feature is available."
+                : `Monthly AI limit (${limit}) reached for plan ${normalizedPlan.toUpperCase()}.`,
         });
     }
 
@@ -131,8 +131,8 @@
             used,
             requested,
             message: allowed
-                ? "Możesz zapisać fiszkę."
-                : `Osiągnięto limit ${limit} zapisanych fiszek dla planu ${normalizedPlan.toUpperCase()}.`,
+                ? "You can save a flashcard."
+                : `Saved card limit (${limit}) reached for plan ${normalizedPlan.toUpperCase()}.`,
         });
     }
 
@@ -151,7 +151,7 @@
                 limit: 0,
                 used,
                 requested,
-                message: "ElevenLabs nie jest dostępny w planie FREE. Ulepsz plan, aby włączyć tę funkcję.",
+                message: "ElevenLabs is not included in the FREE plan. Upgrade your plan to enable this feature.",
             });
         }
         if (requested > limits.maxCharactersPerRequest) {
@@ -163,7 +163,7 @@
                 limit: limits.maxCharactersPerRequest,
                 used: 0,
                 requested,
-                message: `Tekst ma ${requested} znaków. Limit jednego żądania ElevenLabs w planie ${normalizedPlan.toUpperCase()} wynosi ${limits.maxCharactersPerRequest}.`,
+                message: `Text has ${requested} characters. Max characters per ElevenLabs request in plan ${normalizedPlan.toUpperCase()} is ${limits.maxCharactersPerRequest}.`,
             });
         }
 
@@ -177,8 +177,8 @@
             used,
             requested,
             message: allowed
-                ? "Synteza ElevenLabs jest dostępna."
-                : `Przekroczono miesięczny limit ${limits.charactersPerMonth} znaków ElevenLabs dla planu ${normalizedPlan.toUpperCase()}.`,
+                ? "ElevenLabs synthesis is available."
+                : `Monthly ElevenLabs character limit (${limits.charactersPerMonth}) reached for plan ${normalizedPlan.toUpperCase()}.`,
         });
     }
 

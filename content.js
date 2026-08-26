@@ -75,14 +75,14 @@
         translateBtn.type = "button";
         translateBtn.className = `${PREFIX}tb-btn ${PREFIX}tb-translate`;
         translateBtn.innerHTML = SVG.TRANSLATE;
-        translateBtn.title = "Przetłumacz";
+        translateBtn.title = "Translate";
         translateBtn.addEventListener("click", onIconClick);
 
         const readBtn = document.createElement("button");
         readBtn.type = "button";
         readBtn.className = `${PREFIX}tb-btn ${PREFIX}tb-read`;
         readBtn.innerHTML = SVG.READ;
-        readBtn.title = "Czytaj na głos";
+        readBtn.title = "Read aloud";
         readBtn.setAttribute("aria-pressed", "false");
         readBtn.addEventListener("click", onReadClick);
 
@@ -90,7 +90,7 @@
         aiBtn.type = "button";
         aiBtn.className = `${PREFIX}tb-btn ${PREFIX}tb-ai`;
         aiBtn.innerHTML = SVG.AI;
-        aiBtn.title = "Tłumacz AI";
+        aiBtn.title = "AI Translate";
         aiBtn.addEventListener("click", onAITranslateClick);
 
         iconEl.appendChild(translateBtn);
@@ -268,30 +268,30 @@
                 `data-sentence="" data-sentence-translated=""`;
 
             const html = `
-                <div class="${PREFIX}header"><span>AI Tłumaczenie</span></div>
+                <div class="${PREFIX}header"><span>AI Translation</span></div>
                 <div class="${PREFIX}body">
                     <div class="${PREFIX}row">
                         <span class="${PREFIX}label">${srcLang.toUpperCase()}</span>
                         <span class="${PREFIX}text ${PREFIX}original">${escapeHtml(text)}</span>
-                        <button class="${PREFIX}speak" data-text="${escapeAttr(text)}" data-lang="${escapeAttr(srcLang)}" title="Odczytaj oryginał">${SVG.SPEAKER}</button>
+                        <button class="${PREFIX}speak" data-text="${escapeAttr(text)}" data-lang="${escapeAttr(srcLang)}" title="Play original">${SVG.SPEAKER}</button>
                     </div>
                     <div class="${PREFIX}row" style="margin-top:8px;">
                         <span class="${PREFIX}label">${langTag(targetLang)}</span>
                         <span class="${PREFIX}text ${PREFIX}translated">${escapeHtml(translation)}</span>
-                        <button class="${PREFIX}speak" data-text="${escapeAttr(translation)}" data-lang="${escapeAttr(targetLang)}" title="Odczytaj tłumaczenie">${SVG.SPEAKER}</button>
+                        <button class="${PREFIX}speak" data-text="${escapeAttr(translation)}" data-lang="${escapeAttr(targetLang)}" title="Play translation">${SVG.SPEAKER}</button>
                     </div>
                     <div class="${PREFIX}ai-result" style="margin-top:10px; display:block;">
-                        <div class="${PREFIX}ai-label">Wyjaśnienie</div>
+                        <div class="${PREFIX}ai-label">Explanation</div>
                         <div class="${PREFIX}ai-text">${escapeHtml(explanation)}</div>
-                        <button class="${PREFIX}speak" data-text="${escapeAttr(explanation)}" data-lang="${escapeAttr(targetLang)}" title="Odczytaj wyjaśnienie" style="margin-top:6px;">${SVG.SPEAKER}</button>
+                        <button class="${PREFIX}speak" data-text="${escapeAttr(explanation)}" data-lang="${escapeAttr(targetLang)}" title="Play explanation" style="margin-top:6px;">${SVG.SPEAKER}</button>
                     </div>
                     <div class="${PREFIX}ai-result" id="${PREFIX}ai-result" style="display:none;"></div>
                 </div>
                 <div class="${PREFIX}save-footer">
-                    <button class="${PREFIX}save-word-btn ${PREFIX}save-footer-btn" ${saveDataAttrs} title="Zapisz słowo z tłumaczeniem wygenerowanym przez AI do powtórek">
-                        ${SVG.SAVE} <span>Słowo</span>
+                    <button class="${PREFIX}save-word-btn ${PREFIX}save-footer-btn" ${saveDataAttrs} title="Save word with AI translation for review">
+                        ${SVG.SAVE} <span>Word</span>
                     </button>
-                    <button class="${PREFIX}save-ai-btn ${PREFIX}save-footer-btn" ${saveDataAttrs} title="Zapisz z mądrym zdaniem AI (Gemini)">
+                    <button class="${PREFIX}save-ai-btn ${PREFIX}save-footer-btn" ${saveDataAttrs} title="Save with smart AI sentence (Gemini)">
                         ${SVG.SAVE_AI} <span>AI</span>
                     </button>
                 </div>`;
@@ -511,7 +511,7 @@
             if (rb) {
                 rb.classList.remove("reading");
                 rb.setAttribute("aria-pressed", "false");
-                rb.title = "Czytaj na głos";
+                rb.title = "Read aloud";
             }
         }
         if (hideToolbar) hideIcon();

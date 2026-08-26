@@ -157,7 +157,7 @@ async function flushPendingChanges() {
 
     syncInFlight = (async () => {
         const context = await getFirebaseContext();
-        if (!context) throw new Error("Zaloguj się, aby zsynchronizować dane.");
+        if (!context) throw new Error("Sign in to sync data.");
 
         const data = await chrome.storage.local.get({
             [PENDING_CHANGES_KEY]: {},
@@ -294,12 +294,12 @@ async function fullSync({ pull = true } = {}) {
     if (!pull) return flushResult;
 
     const context = await getFirebaseContext();
-    if (!context) throw new Error("Zaloguj się, aby zsynchronizować dane.");
+    if (!context) throw new Error("Sign in to sync data.");
     const remoteWords = await FirebaseSync.pullWords(
         context.user.uid,
         context.token,
     );
-    if (!remoteWords) throw new Error("Nie udało się pobrać danych z Firebase.");
+    if (!remoteWords) throw new Error("Failed to fetch data from Firebase.");
 
     const localData = await chrome.storage.local.get({ savedWords: [] });
     const localWords = localData.savedWords || [];
@@ -515,7 +515,7 @@ async function readResponseBytes(response) {
     if (!response.body?.getReader) {
         const buffer = await response.arrayBuffer();
         if (buffer.byteLength > MAX_CONTEXT_IMAGE_BYTES) {
-            throw new Error("Obraz jest zbyt duży.");
+            throw new Error("Image is too large.");
         }
         return new Uint8Array(buffer);
     }
@@ -529,7 +529,7 @@ async function readResponseBytes(response) {
         size += value.byteLength;
         if (size > MAX_CONTEXT_IMAGE_BYTES) {
             await reader.cancel();
-            throw new Error("Obraz jest zbyt duży.");
+            throw new Error("Image is too large.");
         }
         chunks.push(value);
     }
@@ -546,7 +546,7 @@ async function readResponseBytes(response) {
 async function fetchContextImageDataUrl(rawUrl) {
     const url = new URL(rawUrl);
     if (url.protocol !== "http:" && url.protocol !== "https:") {
-        throw new Error("Nieobsługiwany adres obrazu.");
+        throw new Error("Unsupported image URL.");
     }
 
     const response = await fetch(url.href, {
@@ -559,12 +559,12 @@ async function fetchContextImageDataUrl(rawUrl) {
 
     const declaredSize = Number(response.headers.get("content-length")) || 0;
     if (declaredSize > MAX_CONTEXT_IMAGE_BYTES) {
-        throw new Error("Obraz jest zbyt duży.");
+        throw new Error("Image is too large.");
     }
 
     const bytes = await readResponseBytes(response);
     if (!bytes || bytes.length === 0) {
-        throw new Error("Pobrany obraz jest pusty.");
+        throw new Error("Fetched image is empty.");
     }
 
     let contentType = (response.headers.get("content-type") || "")
@@ -628,7 +628,7 @@ async function downloadNetflixTimedText(rawUrl) {
         url.protocol !== "https:" ||
         !isAllowedNetflixMediaHost(url.hostname)
     ) {
-        throw new Error("Nieobsługiwany adres napisów Netflixa.");
+        throw new Error("Unsupported Netflix subtitle URL.");
     }
 
     const response = await fetch(url.href, {
@@ -642,16 +642,16 @@ async function downloadNetflixTimedText(rawUrl) {
         finalUrl.protocol !== "https:" ||
         !isAllowedNetflixMediaHost(finalUrl.hostname)
     ) {
-        throw new Error("Niedozwolone przekierowanie napisów Netflixa.");
+        throw new Error("Disallowed Netflix subtitle redirect.");
     }
 
     const declaredSize = Number(response.headers.get("content-length")) || 0;
     if (declaredSize > MAX_NETFLIX_TIMED_TEXT_BYTES) {
-        throw new Error("Plik napisów Netflixa jest zbyt duży.");
+        throw new Error("Netflix subtitle file is too large.");
     }
     const buffer = await response.arrayBuffer();
     if (buffer.byteLength > MAX_NETFLIX_TIMED_TEXT_BYTES) {
-        throw new Error("Plik napisów Netflixa jest zbyt duży.");
+        throw new Error("Netflix subtitle file is too large.");
     }
 
     const result = {
@@ -754,7 +754,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             !/^https:\/\/www\.netflix\.com\//i.test(sender.tab.url) ||
             !/^\d+$/.test(String(message.movieId || ""))
         ) {
-            sendResponse({ error: "Żądanie nie pochodzi z karty Netflixa." });
+            sendResponse({ error: "Request is not from a Netflix tab." });
             return false;
         }
         fetchNetflixTimedText(message.url)
@@ -776,7 +776,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             !Number.isInteger(sender.frameId) ||
             sender.frameId === 0
         ) {
-            sendResponse({ error: "Brak docelowej ramki wideo." });
+            sendResponse({ error: "Missing target video frame." });
             return false;
         }
 
@@ -858,7 +858,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === (MSG.FIREBASE_DELETE_ACCOUNT || "QT_FIREBASE_DELETE_ACCOUNT")) {
         (async () => {
             const token = await getSingleFlightToken(true);
-            if (!token) throw new Error("Brak aktywnej sesji.");
+            if (!token) throw new Error("No active session.");
 
             const endpoint = typeof GeminiProxy !== "undefined" && typeof GeminiProxy.endpoint === "function"
                 ? GeminiProxy.endpoint()
@@ -875,7 +875,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
             if (!res.ok) {
                 const details = await res.json().catch(() => ({}));
-                throw new Error(details.error || `Błąd usuwania konta (${res.status})`);
+                throw new Error(details.error || `Account deletion error (${res.status})`);
             }
 
             await clearLocalUserDataAfterSignOut();
@@ -928,7 +928,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === (MSG.GEMINI_REQUEST || "QT_GEMINI_REQUEST")) {
         (async () => {
             if (typeof GeminiProxy === "undefined") {
-                throw new Error("GeminiProxy niedostępny w procesie tła.");
+                throw new Error("GeminiProxy unavailable in background process.");
             }
             return await GeminiProxy.request(message.prompt, message.opts);
         })()
@@ -946,7 +946,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === (MSG.GEMINI_REFRESH_USAGE || "QT_GEMINI_REFRESH_USAGE")) {
         (async () => {
             if (typeof GeminiProxy === "undefined") {
-                throw new Error("GeminiProxy niedostępny w procesie tła.");
+                throw new Error("GeminiProxy unavailable in background process.");
             }
             return await GeminiProxy.refreshUsage(!!message.force);
         })()
@@ -958,7 +958,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === (MSG.GEMINI_UPLOAD_CARD_IMAGE || "QT_GEMINI_UPLOAD_CARD_IMAGE")) {
         (async () => {
             if (typeof GeminiProxy === "undefined") {
-                throw new Error("GeminiProxy niedostępny w procesie tła.");
+                throw new Error("GeminiProxy unavailable in background process.");
             }
             return await GeminiProxy.uploadCardImage(
                 message.wordId,
@@ -974,7 +974,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === (MSG.GEMINI_DELETE_CARD_IMAGES || "QT_GEMINI_DELETE_CARD_IMAGES")) {
         (async () => {
             if (typeof GeminiProxy === "undefined") {
-                throw new Error("GeminiProxy niedostępny w procesie tła.");
+                throw new Error("GeminiProxy unavailable in background process.");
             }
             return await GeminiProxy.deleteCardImage(message.wordIds);
         })()
@@ -986,7 +986,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === (MSG.GEMINI_DELETE_ALL_USER_IMAGES || "QT_GEMINI_DELETE_ALL_USER_IMAGES")) {
         (async () => {
             if (typeof GeminiProxy === "undefined") {
-                throw new Error("GeminiProxy niedostępny w procesie tła.");
+                throw new Error("GeminiProxy unavailable in background process.");
             }
             return await GeminiProxy.deleteAllUserImages();
         })()
@@ -1023,7 +1023,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 typeof self.SubscriptionService === "undefined" ||
                 typeof self.SubscriptionService.refreshProfile !== "function"
             ) {
-                throw new Error("SubscriptionService niedostępny w procesie tła.");
+                throw new Error("SubscriptionService unavailable in background process.");
             }
             return await self.SubscriptionService.refreshProfile(!!message.force);
         })()
@@ -1038,7 +1038,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 typeof self.SubscriptionService === "undefined" ||
                 typeof self.SubscriptionService.synthesizeElevenLabs !== "function"
             ) {
-                throw new Error("SubscriptionService niedostępny w procesie tła.");
+                throw new Error("SubscriptionService unavailable in background process.");
             }
             const blob = await self.SubscriptionService.synthesizeElevenLabs(
                 message.text,
@@ -1072,7 +1072,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 typeof self.SubscriptionService === "undefined" ||
                 typeof self.SubscriptionService.getElevenLabsVoices !== "function"
             ) {
-                throw new Error("SubscriptionService niedostępny w procesie tła.");
+                throw new Error("SubscriptionService unavailable in background process.");
             }
             return await self.SubscriptionService.getElevenLabsVoices(message.context || "review");
         })()

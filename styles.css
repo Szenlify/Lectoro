@@ -1368,7 +1368,7 @@ video::cue {
     font-weight: 500;
 }
 
-/* Zastąp PREFIX odpowiednią nazwą klasy w CSS */
+/* Key hint badge */
 .lectoro-key-hint {
     margin-left: 6px;
     padding: 1px 5px;

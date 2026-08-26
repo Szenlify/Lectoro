@@ -78,7 +78,7 @@
 
         const toast = document.createElement("div");
         toast.id = toastId;
-        toast.innerHTML = `<span style="margin-right:6px">🧠</span> ${count === 1 ? "Pojawiła się powtórka!" : `Pojawiły się ${count} powtórki!`}`;
+        toast.innerHTML = `<span style="margin-right:6px">🧠</span> ${count === 1 ? "Review due!" : `${count} reviews due!`}`;
         document.body.appendChild(toast);
 
         requestAnimationFrame(() => {
@@ -719,7 +719,7 @@
                     <span class="${P}label">${langTag(srcLang)}</span>
                     <span class="${P}text ${P}original">${escapeHtml(original)}</span>
                     <span class="${P}word-actions">
-                        <button class="${P}speak" data-text="${escapeAttr(original)}" data-lang="${escapeAttr(srcLang)}" title="Odczytaj oryginał">${SVG.SPEAKER || "🔊"}</button>
+                        <button class="${P}speak" data-text="${escapeAttr(original)}" data-lang="${escapeAttr(srcLang)}" title="Play original">${SVG.SPEAKER || "🔊"}</button>
                         <button class="${P}img-search" data-word="${escapeAttr(original)}" title="Google Images">${SVG.IMAGE_SEARCH || "🔍"}</button>
                     </span>
                 </div>
@@ -727,16 +727,16 @@
                     <span class="${P}label">${langTag(targetLang)}</span>
                     <span class="${P}text ${P}translated">${escapeHtml(translated)}</span>
                     <span class="${P}word-actions">
-                        <button class="${P}speak" data-text="${escapeAttr(translated)}" data-lang="${escapeAttr(targetLang)}" title="Odczytaj tłumaczenie">${SVG.SPEAKER || "🔊"}</button>
+                        <button class="${P}speak" data-text="${escapeAttr(translated)}" data-lang="${escapeAttr(targetLang)}" title="Play translation">${SVG.SPEAKER || "🔊"}</button>
                     </span>
                 </div>
             </div>
             <div class="${P}ai-result" id="${P}ai-result" style="display:none;"></div>
             <div class="${P}save-footer">
-                <button class="${P}save-word-btn ${P}save-footer-btn" ${dataAttrs} title="Zapisz słowo">
-                    ${SVG.SAVE || "💾"} <span>Zapisz</span>
+                <button class="${P}save-word-btn ${P}save-footer-btn" ${dataAttrs} title="Save word">
+                    ${SVG.SAVE || "💾"} <span>Save</span>
                 </button>
-                <button class="${P}save-ai-btn ${P}save-footer-btn" ${dataAttrs} title="Generuj zdanie AI (Gemini)">
+                <button class="${P}save-ai-btn ${P}save-footer-btn" ${dataAttrs} title="Generate AI sentence (Gemini)">
                     ${SVG.SAVE_AI || "✨"} <span>AI</span>
                 </button>
             </div>`;
@@ -858,10 +858,10 @@
                 try {
                     const entry = await buildSaveEntry(saveWordBtn);
                     await QT.saveWord(entry);
-                    saveWordBtn.innerHTML = `${SVG.SAVE_CHECK || "✓"} <span>Zapisano!</span>`;
+                    saveWordBtn.innerHTML = `${SVG.SAVE_CHECK || "✓"} <span>Saved!</span>`;
                     saveWordBtn.classList.add("saved");
                 } catch (error) {
-                    saveWordBtn.innerHTML = `${SVG.SAVE || "💾"} <span>Limit planu</span>`;
+                    saveWordBtn.innerHTML = `${SVG.SAVE || "💾"} <span>Plan limit</span>`;
                     saveWordBtn.title = error.message;
                 }
             });
@@ -875,7 +875,7 @@
                 if (saveAiBtn.classList.contains("saved") || saveAiBtn.classList.contains("loading")) return;
 
                 saveAiBtn.classList.add("loading");
-                saveAiBtn.innerHTML = `<span class="${PREFIX}spinner-small"></span> <span>Generuję…</span>`;
+                saveAiBtn.innerHTML = `<span class="${PREFIX}spinner-small"></span> <span>Generating…</span>`;
                 const screenshotPromise = captureContextScreenshot();
                 const aiResultEl = tooltipEl.querySelector(`#${PREFIX}ai-result`);
                 const clean = typeof cleanCardText === "function" ? cleanCardText : (s) => String(s || "").trim();
@@ -894,7 +894,7 @@
                     if (aiResultEl) {
                         aiResultEl.style.display = "block";
                         aiResultEl.innerHTML = `
-                            <div class="${PREFIX}ai-label">✨ AI zdanie:</div>
+                            <div class="${PREFIX}ai-label">✨ AI sentence:</div>
                             <div class="${PREFIX}ai-text">${escapeHtml(cleanedSentence)}</div>
                             <div class="${PREFIX}ai-translation">${escapeHtml(cleanedTranslation)}</div>`;
                     }
@@ -906,7 +906,7 @@
                     entry.sentenceTranslated = cleanedTranslation;
                     await QT.saveWord(entry);
 
-                    saveAiBtn.innerHTML = `${SVG.SAVE_AI_CHECK || "✓"} <span>Zapisano!</span>`;
+                    saveAiBtn.innerHTML = `${SVG.SAVE_AI_CHECK || "✓"} <span>Saved!</span>`;
                     saveAiBtn.classList.remove("loading");
                     saveAiBtn.classList.add("saved");
                 } catch (err) {
@@ -916,7 +916,7 @@
                         typeof GeminiProxy !== "undefined" && GeminiProxy.isLimitError?.(err);
                     saveAiBtn.innerHTML = limitReached
                         ? `${SVG.SAVE_AI || "✨"} <span>AI</span>`
-                        : `${SVG.SAVE_AI || "✨"} <span style="color:#f87171;">Błąd</span>`;
+                        : `${SVG.SAVE_AI || "✨"} <span style="color:#f87171;">Error</span>`;
 
                     if (aiResultEl) {
                         aiResultEl.style.display = limitReached ? "none" : "block";

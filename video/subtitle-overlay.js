@@ -781,7 +781,7 @@
 
             saveBtn.classList.add("saving");
             saveBtn.disabled = true;
-            saveBtn.innerHTML = `${SVG.SAVE_SENTENCE} <span>Zapisywanie…</span><kbd class="${PREFIX}key-hint">Z</kbd>`;
+            saveBtn.innerHTML = `${SVG.SAVE_SENTENCE} <span>Saving…</span><kbd class="${PREFIX}key-hint">Z</kbd>`;
 
             try {
                 const screenshot = await getPlayerRegistry()?.captureVideoReviewScreenshot(
@@ -808,13 +808,13 @@
                     timestamp: Date.now(),
                     downloaded: false,
                 });
-                saveBtn.innerHTML = `${SVG.SAVE_SENTENCE_CHECK} <span>Zapisano!</span>`;
+                saveBtn.innerHTML = `${SVG.SAVE_SENTENCE_CHECK} <span>Saved!</span>`;
                 saveBtn.classList.remove("saving");
                 saveBtn.classList.add("saved");
             } catch (error) {
                 saveBtn.disabled = false;
                 saveBtn.classList.remove("saving");
-                saveBtn.innerHTML = `${SVG.SAVE_SENTENCE} <span>Nie udało się zapisać</span><kbd class="${PREFIX}key-hint">Z</kbd>`;
+                saveBtn.innerHTML = `${SVG.SAVE_SENTENCE} <span>Could not save</span><kbd class="${PREFIX}key-hint">Z</kbd>`;
                 saveBtn.title = error.message;
             }
         });
@@ -852,7 +852,7 @@
             event.preventDefault();
             event.stopPropagation();
             speakBtn.classList.add("speaking");
-            speakBtn.setAttribute("aria-label", "Odtwarzanie tłumaczenia i wyjaśnienia");
+            speakBtn.setAttribute("aria-label", "Playing translation and explanation");
             try {
                 await QT.speak(speakBtn.dataset.text || "", speakBtn.dataset.lang || "pl");
             } catch (_) {
@@ -860,7 +860,7 @@
             } finally {
                 if (speakBtn.isConnected) {
                     speakBtn.classList.remove("speaking");
-                    speakBtn.setAttribute("aria-label", "Odtwórz tłumaczenie i wyjaśnienie");
+                    speakBtn.setAttribute("aria-label", "Play translation and explanation");
                 }
             }
         });
@@ -912,24 +912,24 @@
                 </div>
                 <div class="${PREFIX}body">
                     <div class="${PREFIX}row">
-                        <span class="${PREFIX}label" title="Język źródłowy: ${QT.escapeAttr(languageName(sourceLang))}">${QT.escapeHtml(sourceTag)}</span>
+                        <span class="${PREFIX}label" title="Source language: ${QT.escapeAttr(languageName(sourceLang))}">${QT.escapeHtml(sourceTag)}</span>
                         <span class="${PREFIX}text ${PREFIX}original">${QT.escapeHtml(text)}</span>
                     </div>
                     <div class="${PREFIX}row">
-                        <span class="${PREFIX}label" title="Język tłumaczenia: ${QT.escapeAttr(languageName(targetLang))}">${QT.escapeHtml(targetTag)}</span>
+                        <span class="${PREFIX}label" title="Translation language: ${QT.escapeAttr(languageName(targetLang))}">${QT.escapeHtml(targetTag)}</span>
                         <span class="${PREFIX}text ${PREFIX}translated">${QT.escapeHtml(translation)}</span>
                         <span class="${PREFIX}word-actions">
-                            <button class="${PREFIX}speak" data-text="${QT.escapeAttr(aiSpeechText)}" data-lang="${QT.escapeAttr(targetLang)}" title="Odtwórz tłumaczenie i wyjaśnienie" aria-label="Odtwórz tłumaczenie i wyjaśnienie">${SVG.SPEAKER}</button>
+                            <button class="${PREFIX}speak" data-text="${QT.escapeAttr(aiSpeechText)}" data-lang="${QT.escapeAttr(targetLang)}" title="Play translation and explanation" aria-label="Play translation and explanation">${SVG.SPEAKER}</button>
                         </span>
                     </div>
                     <div class="${PREFIX}ai-result">
-                        <div class="${PREFIX}ai-label">✨ Wyjaśnienie AI:</div>
+                        <div class="${PREFIX}ai-label">✨ AI Explanation:</div>
                         <div class="${PREFIX}ai-text">${QT.escapeHtml(explanation)}</div>
                     </div>
                 </div>
                 <div class="${PREFIX}save-footer">
-                    <button class="${PREFIX}ai-explain-save-btn ${PREFIX}save-footer-btn" title="Zapisz zdanie do powtórek">
-                        ${SVG.SAVE || "💾"} <span>Zapisz</span>
+                    <button class="${PREFIX}ai-explain-save-btn ${PREFIX}save-footer-btn" title="Save sentence for review">
+                        ${SVG.SAVE || "💾"} <span>Save</span>
                     </button>
                 </div>`;
             applyAiExplanation(html, aiLayout);
@@ -970,7 +970,7 @@
                 "position:fixed; top:40px; right:40px; background:rgba(0,0,0,0.8); color:#fff; padding:10px 16px; border-radius:8px; font-family:sans-serif; font-size:16px; font-weight:bold; z-index:2147483647; opacity:0; transition:opacity 0.2s ease; pointer-events:none;";
             document.body.appendChild(speedOverlayEl);
         }
-        speedOverlayEl.textContent = `Prędkość: ${speed.toFixed(2)}x`;
+        speedOverlayEl.textContent = `Speed: ${speed.toFixed(2)}x`;
         speedOverlayEl.style.opacity = "1";
         clearTimeout(speedOverlayTimer);
         speedOverlayTimer = setTimeout(
@@ -1351,7 +1351,7 @@
     function showSubLoading(layout = null) {
         const overlay = createOverlay(layout);
         overlay.dataset.state = "loading";
-        overlay.setAttribute("aria-label", "Tłumaczenie zdania w toku");
+        overlay.setAttribute("aria-label", "Translating sentence...");
         overlay.innerHTML = `<span class="${PREFIX}translation-spinner" aria-hidden="true"></span>`;
         positionOverlay(layout);
     }
@@ -1359,7 +1359,7 @@
     function revealOverlayContent(
         content,
         layout = translationAnchorLayout,
-        ariaLabel = "Gotowe",
+        ariaLabel = "Ready",
     ) {
         const overlay = translationOverlay || createOverlay(layout);
 
@@ -1408,20 +1408,20 @@
             <div class="${PREFIX}body">
                 ${originalText ? `
                 <div class="${PREFIX}row">
-                    <span class="${PREFIX}label" title="Język źródłowy">${QT.escapeHtml(sourceTag)}</span>
+                    <span class="${PREFIX}label" title="Source language">${QT.escapeHtml(sourceTag)}</span>
                     <span class="${PREFIX}text ${PREFIX}original">${QT.escapeHtml(originalText)}</span>
                 </div>` : ""}
                 <div class="${PREFIX}row">
-                    <span class="${PREFIX}label" title="Język tłumaczenia">${QT.escapeHtml(targetTag)}</span>
+                    <span class="${PREFIX}label" title="Translation language">${QT.escapeHtml(targetTag)}</span>
                     <span class="${PREFIX}text ${PREFIX}translated">${QT.escapeHtml(sentence)}</span>
                     <span class="${PREFIX}word-actions">
-                        <button class="${PREFIX}speak" data-text="${QT.escapeAttr(sentence)}" data-lang="${QT.escapeAttr(tgtLang || "pl")}" title="Odtwórz tłumaczenie">${SVG.SPEAKER}</button>
+                        <button class="${PREFIX}speak" data-text="${QT.escapeAttr(sentence)}" data-lang="${QT.escapeAttr(tgtLang || "pl")}" title="Play translation">${SVG.SPEAKER}</button>
                     </span>
                 </div>
             </div>
             <div class="${PREFIX}save-footer">
-                <button class="${PREFIX}ai-explain-save-btn ${PREFIX}save-footer-btn" title="Zapisz zdanie do powtórek">
-                    ${SVG.SAVE || "💾"} <span>Zapisz</span>
+                <button class="${PREFIX}ai-explain-save-btn ${PREFIX}save-footer-btn" title="Save sentence for review">
+                    ${SVG.SAVE || "💾"} <span>Save</span>
                 </button>
             </div>`;
 
@@ -1446,7 +1446,7 @@
         copy.className = `${PREFIX}translation-copy ${PREFIX}ai-explain-copy`;
         copy.setAttribute("dir", "auto");
         copy.innerHTML = html;
-        revealOverlayContent(copy, layout, "Analiza zdania");
+        revealOverlayContent(copy, layout, "Sentence analysis");
     }
 
     async function doSentenceTranslation(video, sourceText = null, options = {}) {
@@ -1531,7 +1531,7 @@
         if (!saveToastEl) {
             saveToastEl = document.createElement("div");
             saveToastEl.id = "__qt_save_toast";
-            saveToastEl.title = "Kliknij, aby zamknąć i wznowić odtwarzanie";
+            saveToastEl.title = "Click to close and resume playback";
             saveToastEl.addEventListener("click", dismissSaveToastNow);
             parent.appendChild(saveToastEl);
         } else if (saveToastEl.parentElement !== parent) {
@@ -1560,11 +1560,11 @@
 
         if (state === "saving") {
             iconHtml = `<div class="__qt_spinner"></div>`;
-            title = "Zapisywanie zdania…";
+            title = "Saving sentence…";
             bodyHtml = `<div class="__qt_save_toast_text">${QT.escapeHtml(text)}</div>`;
         } else if (state === "success") {
             iconHtml = `<div class="__qt_check_pop">${SVG.SAVE_SENTENCE_CHECK}</div>`;
-            title = "✔ Zapisano do powtórek";
+            title = "✔ Saved for review";
             bodyHtml = `
                 <div class="__qt_save_toast_text">${QT.escapeHtml(text)}</div>
                 ${translated && translated !== text
@@ -1575,7 +1575,7 @@
             if (thumb) thumbHtml = `<img class="__qt_save_toast_thumb" src="${thumb}" alt="" />`;
         } else {
             iconHtml = `<div class="__qt_error_mark">!</div>`;
-            title = "⚠ Nie udało się zapisać";
+            title = "⚠ Could not save";
             bodyHtml = `<div class="__qt_save_toast_text">${QT.escapeHtml(text)}</div>`;
         }
 
@@ -1612,7 +1612,7 @@
         const registry = getPlayerRegistry();
         const text = activeText || registry?.getCurrentText();
         if (!text) {
-            QT.createHint("__qt_yt-sub-hint").show("Brak napisów do zapisania", 2000);
+            QT.createHint("__qt_yt-sub-hint").show("No subtitles to save", 2000);
             return;
         }
 
@@ -1669,7 +1669,7 @@
             console.error("[Lectoro] saveCurrentSentence error:", err);
             const duration = 2200;
             showSaveToast("error", {
-                text: "Nie udało się zapisać zdania",
+                text: "Could not save sentence",
                 duration,
             });
             saveResumeTimer = setTimeout(resumeAfterSave, duration);

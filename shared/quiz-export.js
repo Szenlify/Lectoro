@@ -142,18 +142,13 @@
     };
 
     function getI18n(langCode) {
-        const code = (langCode || "pl").toLowerCase();
+        const code = (langCode || "en").toLowerCase();
         return QUIZ_I18N[code] || QUIZ_I18N.en;
     }
 
     function getExamTitle(srcLang, tgtLang) {
-        const tgt = (tgtLang || "pl").toLowerCase();
         const src = (srcLang || "en").toLowerCase();
         const srcNameEn = getLangName(src);
-        if (tgt === "pl") {
-            const gen = QUIZ_LANG_ADJ_PL[src] || srcNameEn;
-            return `Sprawdzian z języka ${gen}`;
-        }
         return `${srcNameEn} Vocabulary Exam`;
     }
 
@@ -257,7 +252,7 @@
         });
 
         if (typeof GeminiProxy === "undefined") {
-            throw new Error("GeminiProxy niedostępny – sprawdź konfigurację rozszerzenia.");
+            throw new Error("GeminiProxy is unavailable – check extension configuration.");
         }
 
         const { text } = await GeminiProxy.request(prompt, {
@@ -266,7 +261,7 @@
         });
 
         const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error("Gemini: niepoprawna odpowiedź JSON.");
+        if (!jsonMatch) throw new Error("Gemini: invalid JSON response.");
 
         const knownWords = new Set(
             words
@@ -1663,9 +1658,9 @@
     }
 
     // ── 5. High-Level Export Orchestrator ──────────────────────────────
-    async function runExport({ words, scope = "5", source = "recent", mode = "interactive", targetLang = "pl" }) {
+    async function runExport({ words, scope = "5", source = "recent", mode = "interactive", targetLang = "en" }) {
         if (!words || !words.length) {
-            throw new Error("Brak słów do wygenerowania quizu.");
+            throw new Error("No words available to generate quiz.");
         }
 
         const sorted = [...words].sort(

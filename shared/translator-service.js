@@ -161,7 +161,7 @@
     ) {
         if (typeof GeminiProxy === "undefined") {
             throw new Error(
-                "GeminiProxy jest niedostępny – upewnij się, że moduły Firebase są załadowane.",
+                "GeminiProxy is unavailable – ensure Firebase modules are loaded.",
             );
         }
         return GeminiProxy.requestJSON(prompt, {
@@ -175,7 +175,7 @@
      */
     async function generateSentence(word, translated, srcLang, tgtLang) {
         if (typeof AIPrompts === "undefined") {
-            throw new Error("AIPrompts jest niedostępny.");
+            throw new Error("AIPrompts is unavailable.");
         }
         const prompt = AIPrompts.sentenceExample(
             word,
@@ -198,7 +198,7 @@
      */
     async function explainSentence(sentence, targetLang) {
         if (typeof AIPrompts === "undefined") {
-            throw new Error("AIPrompts jest niedostępny.");
+            throw new Error("AIPrompts is unavailable.");
         }
         const prompt = AIPrompts.explainSentence(sentence, targetLang);
         const parsed = await geminiRequest(prompt, {
@@ -222,7 +222,7 @@
      */
     async function movieTranslate(text, targetLang) {
         if (typeof AIPrompts === "undefined") {
-            throw new Error("AIPrompts jest niedostępny.");
+            throw new Error("AIPrompts is unavailable.");
         }
         const prompt = AIPrompts.movieTranslate(text, targetLang);
         const parsed = await geminiRequest(prompt, {

@@ -100,10 +100,10 @@ function updateDirBtnLabel() {
     const { srcTag, tgtTag } = getActiveReviewLangs();
     if (reviewDirection === "normal") {
         btn.innerHTML = `${srcTag} <span class="dir-arrow">→</span> ${tgtTag}`;
-        btn.title = `Zmień kierunek powtórek (${srcTag} → ${tgtTag})`;
+        btn.title = `Change review direction (${srcTag} → ${tgtTag})`;
     } else {
         btn.innerHTML = `${tgtTag} <span class="dir-arrow">→</span> ${srcTag}`;
-        btn.title = `Zmień kierunek powtórek (${tgtTag} → ${srcTag})`;
+        btn.title = `Change review direction (${tgtTag} → ${srcTag})`;
     }
 }
 
@@ -130,7 +130,7 @@ async function reportReviewVoiceFailure(error) {
     // before limits/provider state, so cached recordings remain playable and
     // only an uncached phrase falls back to the system voice.
     setReviewVoiceStatus(
-        `${error?.message || "ElevenLabs jest niedostępny."} Używam głosu systemowego.`,
+        `${error?.message || "ElevenLabs is unavailable."} Using system voice.`,
         "error",
     );
 }
@@ -189,10 +189,10 @@ function syncReviewVoiceButton() {
     badge.textContent = usingElevenLabs ? "EL" : "AI";
     label.textContent = usingElevenLabs
         ? voice?.name || "ElevenLabs"
-        : "Głos";
+        : "Voice";
     btn.title = usingElevenLabs
-        ? `ElevenLabs: ${voice?.name || "wybrany głos"}`
-        : "Wybierz głos powtórek";
+        ? `ElevenLabs: ${voice?.name || "selected voice"}`
+        : "Choose review voice";
 }
 
 function renderFreeVoiceTeaser() {
@@ -201,14 +201,14 @@ function renderFreeVoiceTeaser() {
     if (content.querySelector(".review-voice-teaser")) return;
     content.innerHTML = `
         <div class="review-voice-teaser">
-            <div class="review-voice-teaser-title"><span>Naturalne głosy AI</span><span>🔒</span></div>
-            <p>Usłysz różne akcenty i wybierz lektora do swoich powtórek.</p>
+            <div class="review-voice-teaser-title"><span>Natural AI voices</span><span>🔒</span></div>
+            <p>Listen to authentic accents and choose a voice for your reviews.</p>
             <div class="review-voice-chips" aria-hidden="true">
                 <span class="review-voice-chip">Roger</span>
                 <span class="review-voice-chip">Sarah</span>
                 <span class="review-voice-chip">Charlie</span>
             </div>
-            <button type="button" class="review-voice-upgrade" id="reviewVoiceUpgrade">Odblokuj głosy ElevenLabs</button>
+            <button type="button" class="review-voice-upgrade" id="reviewVoiceUpgrade">Unlock ElevenLabs voices</button>
         </div>`;
     content
         .querySelector("#reviewVoiceUpgrade")
@@ -295,7 +295,7 @@ function renderElevenLabsVoiceSelect() {
             });
             syncElevenLabsVoiceActiveState();
             syncReviewVoiceButton();
-            setReviewVoiceStatus(`✓ Wybrano głos: ${voice.name}`, "ok");
+            setReviewVoiceStatus(`✓ Voice selected: ${voice.name}`, "ok");
         });
 
         list.appendChild(item);
@@ -325,21 +325,21 @@ function filterReviewAllowedVoices(voices) {
 async function loadReviewElevenLabsVoices() {
     if (reviewVoicesLoading || reviewElVoices.length) return;
     reviewVoicesLoading = true;
-    setReviewVoiceStatus("Ładowanie głosów…");
+    setReviewVoiceStatus("Loading voices…");
     try {
         const rawVoices = await SubscriptionService.getElevenLabsVoices("review");
         reviewElVoices = filterReviewAllowedVoices(rawVoices);
         renderElevenLabsVoiceSelect();
         setReviewVoiceStatus(
             reviewElVoices.length
-                ? `${reviewElVoices.length} dostępnych głosów`
-                : "Brak dostępnych głosów.",
+                ? `${reviewElVoices.length} voices available`
+                : "No voices available.",
             reviewElVoices.length ? "" : "error",
         );
         syncReviewVoiceButton();
     } catch (error) {
         setReviewVoiceStatus(
-            error.message || "Nie udało się pobrać głosów.",
+            error.message || "Failed to fetch voices.",
             "error",
         );
     } finally {
@@ -353,7 +353,7 @@ async function updateReviewVoiceUI() {
     } catch (error) {
         reviewVoiceProfile = null;
         setReviewVoiceStatus(
-            error.message || "Nie udało się sprawdzić planu.",
+            error.message || "Failed to check plan.",
             "error",
         );
     }
@@ -425,7 +425,7 @@ document
         });
         syncElevenLabsVoiceActiveState();
         syncReviewVoiceButton();
-        setReviewVoiceStatus("✓ Używasz głosu systemowego.", "ok");
+        setReviewVoiceStatus("✓ Using system voice.", "ok");
     });
 
 document.addEventListener("click", (event) => {
@@ -445,7 +445,7 @@ document.addEventListener("keydown", (event) => {
 
 // ── Delete review words & queue management ────────────────────────
 async function deleteReviewWord(w) {
-    if (!confirm(`Usunąć "${w.original}" z bazy danych?`)) return;
+    if (!confirm(`Delete "${w.original}" from database?`)) return;
     if (typeof stopPopupSpeak === "function") stopPopupSpeak();
     try {
         if (typeof SharedWordRepository !== "undefined") {
@@ -458,7 +458,7 @@ async function deleteReviewWord(w) {
             await chrome.storage.local.set({ savedWords: words });
         }
     } catch (err) {
-        console.error("[Lectoro] Nie udało się usunąć słowa:", err);
+        console.error("[Lectoro] Failed to delete word:", err);
     }
     // Remove from current queue and continue
     reviewQueue.splice(reviewIndex, 1);
@@ -471,7 +471,7 @@ async function deleteReviewWord(w) {
 }
 
 async function deleteAllReviews() {
-    if (!confirm("Usunąć WSZYSTKIE słowa w kolejce powtórek?")) return;
+    if (!confirm("Delete ALL words in the review queue?")) return;
     if (typeof stopPopupSpeak === "function") stopPopupSpeak();
     try {
         if (typeof SharedWordRepository !== "undefined") {
@@ -487,7 +487,7 @@ async function deleteAllReviews() {
             await chrome.storage.local.set({ savedWords: remaining });
         }
     } catch (err) {
-        console.error("[Lectoro] Nie udało się usunąć słów powtórek:", err);
+        console.error("[Lectoro] Failed to delete review words:", err);
     }
     reviewQueue = [];
     reviewIndex = 0;
@@ -573,7 +573,7 @@ function updateReviewTabBadge(count) {
         count > 0
             ? `<span class="tab-badge">${count > 999 ? "999+" : count}</span>`
             : "";
-    tab.innerHTML = `<span class="tab-icon">🧠</span><span class="tab-label">Powtórki</span>${badge}`;
+    tab.innerHTML = `<span class="tab-icon">🧠</span><span class="tab-label">Review</span>${badge}`;
 }
 
 // ── On first Review-tab open → refresh badge count ───────────────
@@ -610,8 +610,8 @@ function renderReview() {
         card.innerHTML = `
             <div class="review-empty">
                 <div class="review-empty-icon">✅</div>
-                <div class="review-empty-text">Brak słów do powtórki!</div>
-                <div class="review-empty-sub">Dodaj nowe słowa lub wróć później.</div>
+                <div class="review-empty-text">No cards to review!</div>
+                <div class="review-empty-sub">Add new words or come back later.</div>
             </div>`;
         updateReviewTabBadge(0);
         return;
@@ -632,8 +632,8 @@ function renderReview() {
         card.innerHTML = `
             <div class="review-done">
                 <div class="review-done-icon">🎉</div>
-                <div class="review-done-text">Gratulacje!</div>
-                <div class="review-done-sub">Wykonałeś wszystkie ${reviewTotalDue} powtórek na teraz!</div>
+                <div class="review-done-text">Congratulations!</div>
+                <div class="review-done-sub">You completed all ${reviewTotalDue} reviews for now!</div>
             </div>`;
         updateReviewTabBadge(0);
         return;
@@ -656,8 +656,8 @@ function reviewCardMetaHtml(sideLabel) {
     return `
         <div class="review-card-meta">
             <span class="review-side-badge">${sideLabel}</span>
-            <span class="review-keyboard-cue" title="Możesz oceniać kartę klawiaturą">
-                <span>Klawiatura</span><kbd>←</kbd><kbd>→</kbd>
+            <span class="review-keyboard-cue" title="You can rate this card with keyboard">
+                <span>Keyboard</span><kbd>←</kbd><kbd>→</kbd>
             </span>
         </div>`;
 }
@@ -670,36 +670,36 @@ function reviewControlsHtml(sr, answerShown) {
     return `
         <button class="review-flip-btn" type="button">
             <span class="review-flip-keys"><kbd>↓</kbd><kbd>S</kbd></span>
-            <span>${answerShown ? "Pokaż pytanie" : "Pokaż odpowiedź"}</span>
+            <span>${answerShown ? "Show question" : "Show answer"}</span>
         </button>
         <div class="review-controls">
             <div class="review-rating">
-                <div class="review-rating-label">Znałeś odpowiedź?</div>
+                <div class="review-rating-label">Did you know the answer?</div>
                 <div class="review-rating-buttons review-rating-buttons-2">
-                    <button class="review-rate-btn rate-no" data-grade="1" type="button" title="Nie znam (← lub A)">
+                    <button class="review-rate-btn rate-no" data-grade="1" type="button" title="Don't know (← or A)">
                         <span class="rate-key-pair"><kbd>←</kbd><kbd>A</kbd></span>
                         <span class="rate-copy">
-                            <span class="rate-label">Nie znam</span>
+                            <span class="rate-label">Don't know</span>
                             <span class="review-next-info">${labels[0]}</span>
                         </span>
                     </button>
-                    <button class="review-rate-btn rate-yes" data-grade="2" type="button" title="Znam (→ lub D)">
+                    <button class="review-rate-btn rate-yes" data-grade="2" type="button" title="Know (→ or D)">
                         <span class="rate-key-pair"><kbd>→</kbd><kbd>D</kbd></span>
                         <span class="rate-copy">
-                            <span class="rate-label">Znam</span>
+                            <span class="rate-label">Know</span>
                             <span class="review-next-info">${labels[1]}</span>
                         </span>
                     </button>
                 </div>
             </div>
-            <div class="review-shortcuts" aria-label="Skróty klawiszowe powtórki">
-                <span><span class="shortcut-keys"><kbd>↑</kbd><kbd>W</kbd></span> czytaj</span>
-                <span><span class="shortcut-keys"><kbd>↓</kbd><kbd>S</kbd></span> odwróć</span>
-                ${originalSideShown ? '<span><span class="shortcut-keys"><kbd>Enter</kbd></span> tłumacz i wyjaśnij AI</span>' : ""}
+            <div class="review-shortcuts" aria-label="Review keyboard shortcuts">
+                <span><span class="shortcut-keys"><kbd>↑</kbd><kbd>W</kbd></span> speak</span>
+                <span><span class="shortcut-keys"><kbd>↓</kbd><kbd>S</kbd></span> flip</span>
+                ${originalSideShown ? '<span><span class="shortcut-keys"><kbd>Enter</kbd></span> AI explain & translate</span>' : ""}
             </div>
             <div class="review-actions-row">
-                <button class="review-edit-btn" type="button"><span aria-hidden="true">✏️</span> Edytuj</button>
-                <button class="review-delete-btn" type="button"><span aria-hidden="true">🗑</span> Usuń</button>
+                <button class="review-edit-btn" type="button"><span aria-hidden="true">✏️</span> Edit</button>
+                <button class="review-delete-btn" type="button"><span aria-hidden="true">🗑</span> Delete</button>
             </div>
         </div>`;
 }
@@ -978,7 +978,7 @@ async function aiTranslateReviewCard() {
     const panel = ensureReviewAiPanel("reviewAiTranslate");
     if (!panel) return;
     state.status = "loading";
-    panel.innerHTML = `<div class="review-ai-translate-loading"><span class="review-ai-loader-label">✨ Analizuje…</span></div>`;
+    panel.innerHTML = `<div class="review-ai-translate-loading"><span class="review-ai-loader-label">✨ Analyzing…</span></div>`;
     panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
     try {
@@ -989,10 +989,10 @@ async function aiTranslateReviewCard() {
             tgtL,
         );
 
-        // Bezpieczne proxy – klucz Gemini API jest TYLKO na serwerze Firebase.
+        // Secure proxy – Gemini API key is ONLY on server.
         if (typeof GeminiProxy === "undefined") {
             state.status = "idle";
-            panel.innerHTML = `<div class="review-ai-translate-error">GeminiProxy niedostępny.</div>`;
+            panel.innerHTML = `<div class="review-ai-translate-error">GeminiProxy unavailable.</div>`;
             return;
         }
         let parsed;
@@ -1044,7 +1044,7 @@ async function aiTranslateReviewCard() {
         state.status = "idle";
         if (reviewQueue[reviewIndex] !== w) return;
         if (!document.body.contains(panel)) return;
-        panel.innerHTML = `<div class="review-ai-translate-error">Błąd AI: ${escapeHtml(err.message)}</div>`;
+        panel.innerHTML = `<div class="review-ai-translate-error">AI Error: ${escapeHtml(err.message)}</div>`;
     }
 }
 
@@ -1084,7 +1084,7 @@ function renderReviewTranslationResult(panel, result) {
     if (result.explanation) {
         explanationHtml = `
             <div class="review-ai-explanation">
-                <div class="review-ai-explanation-label">✨ Wyjaśnienie AI:</div>
+                <div class="review-ai-explanation-label">✨ AI Explanation:</div>
                 <div class="review-ai-explanation-text">${escapeHtml(result.explanation)}</div>
             </div>`;
     }
@@ -1107,7 +1107,7 @@ function renderReviewTranslationResult(panel, result) {
                 <span class="review-ai-actions">
                     ${
                         speakText
-                            ? `<button class="review-speak-btn review-speak-sm" data-text="${escapeAttr(speakText)}" data-lang="${escapeAttr(result.targetLang)}" data-force-browser-tts="true" data-use-configured-rate="true" title="Odczytaj tłumaczenie i wyjaśnienie">${SPEAK_SVG}</button>`
+                            ? `<button class="review-speak-btn review-speak-sm" data-text="${escapeAttr(speakText)}" data-lang="${escapeAttr(result.targetLang)}" data-force-browser-tts="true" data-use-configured-rate="true" title="Read translation and explanation">${SPEAK_SVG}</button>`
                             : ""
                     }
                 </span>
@@ -1134,7 +1134,7 @@ function restoreReviewAiPanels(w) {
     } else if (state.translation.status === "loading") {
         const panel = ensureReviewAiPanel("reviewAiTranslate");
         if (panel) {
-            panel.innerHTML = `<div class="review-ai-translate-loading"><span class="review-ai-spinner"></span>Tłumaczę (AI)…</div>`;
+            panel.innerHTML = `<div class="review-ai-translate-loading"><span class="review-ai-spinner"></span>Translating (AI)…</div>`;
         }
     }
 }
@@ -1165,7 +1165,7 @@ function renderAnswer(w) {
                     <span class="review-word ${aWordClass}">${escapeHtml(aWord)}</span>
                     <button class="review-speak-btn" data-text="${escapeAttr(
                         buildReviewSpeakText(aWord, aSentence),
-                    )}" data-lang="${escapeAttr(aLang)}" ${forceBrowserAttr} ${cacheAttrs} title="Odczytaj">${SPEAK_SVG}</button>
+                    )}" data-lang="${escapeAttr(aLang)}" ${forceBrowserAttr} ${cacheAttrs} title="Listen">${SPEAK_SVG}</button>
                 </div>
                 ${
                     aSentence
@@ -1226,17 +1226,17 @@ function showReviewEditForm(w, returnToAnswer = reviewAnswerShown) {
     const card = document.getElementById("reviewCard");
     card.innerHTML = `
         <div class="review-edit-form">
-            <label>Oryginał</label>
+            <label>Original</label>
             <input type="text" id="editOriginal" value="${escapeAttr(w.original)}">
-            <label>Tłumaczenie</label>
+            <label>Translation</label>
             <input type="text" id="editTranslated" value="${escapeAttr(w.translated)}">
-            <label>Zdanie (oryginał)</label>
+            <label>Context sentence (original)</label>
             <input type="text" id="editSentence" value="${escapeAttr(w.sentence || "")}">
-            <label>Zdanie (tłumaczenie)</label>
+            <label>Context sentence (translation)</label>
             <input type="text" id="editSentenceTr" value="${escapeAttr(w.sentenceTranslated || "")}">
             <div class="review-edit-actions">
-                <button class="review-edit-cancel" id="editCancel">Anuluj</button>
-                <button class="review-edit-save" id="editSave">💾 Zapisz</button>
+                <button class="review-edit-cancel" id="editCancel">Cancel</button>
+                <button class="review-edit-save" id="editSave">💾 Save</button>
             </div>
         </div>`;
 
@@ -1299,7 +1299,7 @@ function showReviewEditForm(w, returnToAnswer = reviewAnswerShown) {
                     onDone();
                 })
                 .catch((err) => {
-                    console.error("[Lectoro] Nie udało się zapisać edycji powtórki:", err);
+                    console.error("[Lectoro] Failed to save review edits:", err);
                     onDone();
                 });
         } else {
@@ -1329,13 +1329,13 @@ function showReviewEditForm(w, returnToAnswer = reviewAnswerShown) {
 
 // ── Rate word & update storage ────────────────────────────────────
 async function rateWord(grade) {
-    // Zatrzymaj odtwarzanie głosu
+    // Stop voice playback
     stopPopupSpeak();
 
     const w = reviewQueue[reviewIndex];
     if (!w) return;
 
-    // Upewnij się, że karta ma dane SRS
+    // Ensure card has SRS metadata
     ensureSR(w);
 
     // Aktualizujemy SRS na podstawie odpowiedzi:
@@ -1359,7 +1359,7 @@ async function rateWord(grade) {
             }
         }
     } catch (err) {
-        console.error("[Lectoro] Nie udało się zapisać powtórki:", err);
+        console.error("[Lectoro] Failed to save review:", err);
     } finally {
         _reviewSaving = false;
         reviewIndex++;

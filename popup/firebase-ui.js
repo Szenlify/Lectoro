@@ -58,7 +58,7 @@ async function renderSyncUI() {
     if (typeof FirebaseSync === "undefined" || !FirebaseSync.isConfigured()) {
         container.innerHTML = `
             <div style="font-size:11px; color:var(--text-ghost); padding:4px 0; line-height:1.6;">
-                Skonfiguruj Firebase w <code style="font-size:10px; background:var(--glass-strong); padding:2px 5px; border-radius:4px;">firebase-config.js</code>, aby synchronizować słowa między urządzeniami.
+                Configure Firebase in <code style="font-size:10px; background:var(--glass-strong); padding:2px 5px; border-radius:4px;">firebase-config.js</code> to sync words across devices.
             </div>`;
         return;
     }
@@ -74,10 +74,10 @@ async function renderSyncUI() {
         if (renderRevision !== firebaseUiRenderRevision) return;
         container.innerHTML = `
             <div class="sync-status sync-status-error">
-                Nie udało się odczytać stanu synchronizacji: ${escapeSyncHtml(error.message)}
+                Failed to read sync state: ${escapeSyncHtml(error.message)}
             </div>
             <button id="firebaseSyncRetry" class="sync-btn sync-primary" style="width:100%;">
-                Spróbuj ponownie
+                Retry
             </button>`;
         document.getElementById("firebaseSyncRetry")?.addEventListener("click", renderSyncUI);
         return;
@@ -92,10 +92,10 @@ async function renderSyncUI() {
             : "";
         container.innerHTML = `
             <div style="font-size:12px; color:var(--text-muted); margin-bottom:12px; line-height:1.5;">
-                Dane i ustawienia pozostają lokalne, dopóki nie uruchomisz synchronizacji Firebase.
+                Data and settings remain local until you sign in with Firebase.
             </div>
             <button id="firebaseSignIn" class="sync-btn sync-primary" style="width:100%;" ${signingIn ? "disabled" : ""}>
-                ${signingIn ? "⏳ Logowanie..." : "🔑 Zaloguj się przez Google"}
+                ${signingIn ? "⏳ Signing in..." : "🔑 Sign in with Google"}
             </button>
             ${signedOutStatusHtml}`;
         document.getElementById("firebaseSignIn")?.addEventListener("click", async () => {
@@ -107,10 +107,10 @@ async function renderSyncUI() {
                 await sendBackgroundMessage({ type: "QT_FIREBASE_SIGN_IN" });
                 firebaseUiAction = null;
                 refreshViewsAfterSync();
-                showFirebaseFeedback("success", "Zalogowano i zsynchronizowano dane.");
+                showFirebaseFeedback("success", "Signed in and data synced.");
             } catch (error) {
                 firebaseUiAction = null;
-                showFirebaseFeedback("error", error.message || "Błąd logowania", 0);
+                showFirebaseFeedback("error", error.message || "Sign in error", 0);
             }
         });
         return;
@@ -118,22 +118,22 @@ async function renderSyncUI() {
 
     const lastSyncText = typeof SharedUtils !== "undefined" && SharedUtils.formatTime
         ? SharedUtils.formatTime(data.lastFirebaseSync)
-        : (data.lastFirebaseSync ? new Date(data.lastFirebaseSync).toLocaleTimeString("pl-PL") : "nigdy");
+        : (data.lastFirebaseSync ? new Date(data.lastFirebaseSync).toLocaleTimeString("en-US") : "never");
     const pendingCount = Object.keys(data.pendingFirebaseChanges || {}).length;
     const syncing = firebaseUiAction === "sync" || firebaseUiAction === "sign-in";
     const signingOut = firebaseUiAction === "sign-out";
     const deletingAccount = firebaseUiAction === "delete-account";
     const syncButtonText = syncing
-        ? "⏳ Synchronizuję..."
+        ? "⏳ Syncing..."
         : firebaseUiFeedback?.type === "success"
-          ? "✓ Gotowe!"
+          ? "✓ Done!"
           : firebaseUiFeedback?.type === "error"
-            ? "↻ Spróbuj ponownie"
-            : "🔄 Synchronizuj";
+            ? "↻ Retry"
+            : "🔄 Sync";
     const statusHtml = firebaseUiFeedback
         ? `<div class="sync-status sync-status-${firebaseUiFeedback.type}">${escapeSyncHtml(firebaseUiFeedback.message)}</div>`
         : data.lastFirebaseSyncError
-          ? `<div class="sync-status sync-status-error">Ostatni błąd: ${escapeSyncHtml(data.lastFirebaseSyncError)}</div>`
+          ? `<div class="sync-status sync-status-error">Last error: ${escapeSyncHtml(data.lastFirebaseSyncError)}</div>`
           : "";
 
     container.innerHTML = `
@@ -142,20 +142,20 @@ async function renderSyncUI() {
             <span style="font-size:12px; color:var(--text-secondary); font-weight:500;">${escapeSyncHtml(user.email)}</span>
         </div>
         <div style="font-size:10px; color:var(--text-ghost); margin-bottom:10px;">
-            Ostatnia synchronizacja: ${lastSyncText}
+            Last synced: ${lastSyncText}
         </div>
         <div class="sync-actions">
             <span class="sync-button-wrap">
                 <button id="firebaseSyncNow" class="sync-btn sync-primary" ${syncing || signingOut || deletingAccount ? "disabled" : ""}>${syncButtonText}</button>
                 <span class="sync-pending-dot${pendingCount ? " visible" : ""}"
-                      title="${pendingCount} niezsynchronizowanych zmian"
-                      aria-label="Niezsynchronizowane zmiany"></span>
+                      title="${pendingCount} unsynced changes"
+                      aria-label="Unsynced changes"></span>
             </span>
             <button id="firebaseSignOut" class="sync-btn" ${firebaseUiAction ? "disabled" : ""}>
-                ${signingOut ? "⏳ Wylogowuję..." : "Wyloguj"}
+                ${signingOut ? "⏳ Signing out..." : "Sign out"}
             </button>
-            <button id="firebaseDeleteAccount" class="sync-btn sync-danger" ${firebaseUiAction ? "disabled" : ""} title="Bezpowrotnie usuń konto i wszystkie dane w chmurze">
-                ${deletingAccount ? "⏳ Usuwam..." : "Usuń konto"}
+            <button id="firebaseDeleteAccount" class="sync-btn sync-danger" ${firebaseUiAction ? "disabled" : ""} title="Permanently delete account and all cloud data">
+                ${deletingAccount ? "⏳ Deleting..." : "Delete account"}
             </button>
         </div>
         ${statusHtml}`;
@@ -173,12 +173,12 @@ async function renderSyncUI() {
             const sent = Number(result.sent || 0);
             const pulled = Number(result.pulled || 0);
             const message = sent || pulled
-                ? `Gotowe — wysłano ${sent}, pobrano ${pulled}.`
-                : "Wszystkie dane są już zsynchronizowane.";
+                ? `Done — uploaded ${sent}, downloaded ${pulled}.`
+                : "All data is already in sync.";
             showFirebaseFeedback("success", message);
         } catch (error) {
             firebaseUiAction = null;
-            showFirebaseFeedback("error", error.message || "Synchronizacja nie powiodła się.", 0);
+            showFirebaseFeedback("error", error.message || "Sync failed.", 0);
         }
     });
 
@@ -194,14 +194,14 @@ async function renderSyncUI() {
             renderSyncUI();
         } catch (error) {
             firebaseUiAction = null;
-            showFirebaseFeedback("error", error.message || "Nie udało się wylogować.", 0);
+            showFirebaseFeedback("error", error.message || "Failed to sign out.", 0);
         }
     });
 
     document.getElementById("firebaseDeleteAccount")?.addEventListener("click", async () => {
         if (firebaseUiAction) return;
         const confirmed = confirm(
-            "Czy na pewno chcesz bezpowrotnie usunąć swoje konto Lectoro oraz wszystkie zsynchronizowane słówka i zrzuty ekranu w chmurze?\n\nTej operacji nie można cofnąć."
+            "Are you sure you want to permanently delete your Lectoro account and all synced words and screenshots in the cloud?\n\nThis action cannot be undone."
         );
         if (!confirmed) return;
 
@@ -214,10 +214,10 @@ async function renderSyncUI() {
             firebaseUiAction = null;
             renderSyncUI();
             refreshViewsAfterSync();
-            showFirebaseFeedback("success", "Konto i dane w chmurze zostały bezpowrotnie usunięte.");
+            showFirebaseFeedback("success", "Account and cloud data have been permanently deleted.");
         } catch (error) {
             firebaseUiAction = null;
-            showFirebaseFeedback("error", error.message || "Nie udało się usunąć konta.", 0);
+            showFirebaseFeedback("error", error.message || "Failed to delete account.", 0);
         }
     });
 }

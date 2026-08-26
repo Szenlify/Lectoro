@@ -160,16 +160,16 @@
             return `${baseCdn}/audio/${safeVoiceId}/${hash}.mp3`;
         },
 
-        /** Format timestamp into localized Polish date */
+        /** Format timestamp into localized date */
         formatDate(timestamp, options = { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" }) {
             if (!timestamp) return "";
-            return new Date(timestamp).toLocaleDateString("pl-PL", options);
+            return new Date(timestamp).toLocaleDateString("en-US", options);
         },
 
-        /** Format timestamp into localized Polish time */
+        /** Format timestamp into localized time */
         formatTime(timestamp, options = { hour: "2-digit", minute: "2-digit" }) {
-            if (!timestamp) return "nigdy";
-            return new Date(timestamp).toLocaleTimeString("pl-PL", options);
+            if (!timestamp) return "never";
+            return new Date(timestamp).toLocaleTimeString("en-US", options);
         },
 
         /** Format next monthly quota renewal date (supports Stripe timestamp in seconds/ms or YYYY-MM) */
@@ -200,7 +200,7 @@
                 renewalDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
             }
 
-            return new Intl.DateTimeFormat("pl-PL", {
+            return new Intl.DateTimeFormat("en-US", {
                 day: "numeric",
                 month: "long",
                 year: "numeric",

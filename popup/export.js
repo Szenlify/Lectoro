@@ -116,7 +116,7 @@ function crc32(data) {
 document.getElementById("exportAnki").addEventListener("click", async () => {
     const btn = document.getElementById("exportAnki");
     const origText = btn.textContent;
-    btn.textContent = "⏳ Przygotowuję…";
+    btn.textContent = "⏳ Preparing…";
     btn.disabled = true;
 
     try {
@@ -135,7 +135,7 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
 
         for (let i = 0; i < words.length; i++) {
             const w = words[i];
-            btn.textContent = `⏳ Pobieram (${i + 1}/${words.length})…`;
+            btn.textContent = `⏳ Downloading (${i + 1}/${words.length})…`;
 
             // Build Cloze text: sentence with the word as {{c1::word::translation}}
             // Priority: AI sentence > original sentence > word only
@@ -267,7 +267,7 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
         files.push({ name: `anki-cloze-${dt}.txt`, data: txtData });
 
         // Build and download ZIP
-        btn.textContent = "⏳ Pakuję ZIP…";
+        btn.textContent = "⏳ Packing ZIP…";
         const zipData = buildZip(files);
         const blob = new Blob([zipData], { type: "application/zip" });
         const url = URL.createObjectURL(blob);
@@ -283,7 +283,7 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
         markAsDownloaded(words, data.savedWords);
     } catch (err) {
         console.error("Anki export error:", err);
-        alert("Błąd eksportu: " + err.message);
+        alert("Export error: " + err.message);
     } finally {
         btn.textContent = origText;
         btn.disabled = false;
@@ -299,10 +299,10 @@ document.getElementById("exportCsv").addEventListener("click", () => {
         // BOM for Excel UTF-8
         const BOM = "\uFEFF";
         const header =
-            "Oryginał;Tłumaczenie;Zdanie;Tłumaczenie zdania;Zdanie AI;Tłumaczenie AI;Język źr.;Język doc.;Data;Link do grafiki";
+            "Original;Translation;Sentence;Sentence Translation;AI Sentence;AI Sentence Translation;Source Lang;Target Lang;Date;Image URL";
         const rows = words.map((w) => {
             const date = w.timestamp
-                ? new Date(w.timestamp).toLocaleDateString("pl-PL")
+                ? new Date(w.timestamp).toLocaleDateString("en-US")
                 : "";
             const screenshotUrl = w.screenshot
                 ? (typeof SharedUtils !== "undefined" && typeof SharedUtils.resolveImageUrl === "function"
@@ -355,7 +355,7 @@ async function ensureQuizExportLoaded() {
         };
         script.onerror = (err) => {
             quizScriptLoadingPromise = null;
-            reject(new Error("Nie udało się załadować modułu generatora quizów."));
+            reject(new Error("Failed to load quiz generator module."));
         };
         document.body.appendChild(script);
     });
@@ -414,7 +414,7 @@ async function updateQuizQuotaUI() {
         if (state.isFree) {
             badge.style.display = "inline-block";
             badge.textContent = `${state.freeUsed}/${state.freeLimit}`;
-            badge.title = `Darmowe quizy: wykorzystano ${state.freeUsed} z ${state.freeLimit}`;
+            badge.title = `Free quizzes: used ${state.freeUsed} of ${state.freeLimit}`;
             badge.classList.toggle("is-limit", state.freeUsed >= state.freeLimit);
         } else {
             // For paid plans, the limit badge is not shown normally
@@ -446,12 +446,12 @@ if (exportQuizBtn) {
                 if (typeof GeminiProxy !== "undefined" && typeof GeminiProxy.showUpgradePrompt === "function") {
                     GeminiProxy.showUpgradePrompt({
                         reason: "free_quiz_limit",
-                        message: "Wykorzystałeś limit 3 darmowych quizów. Przejdź na plan Basic lub Pro, aby generować do 10 quizów na godzinę!",
+                        message: "You have reached the limit of 3 free quizzes. Upgrade to Basic or Pro to generate up to 10 quizzes per hour!",
                     });
                 } else if (typeof SubscriptionService !== "undefined" && typeof SubscriptionService.openPlans === "function") {
                     SubscriptionService.openPlans();
                 } else {
-                    alert("Wykorzystałeś limit 3 darmowych quizów. Przejdź na wyższy plan, aby generować quizy bez ograniczeń!");
+                    alert("You have reached the limit of 3 free quizzes. Upgrade to a paid plan to generate unlimited quizzes!");
                 }
                 return;
             }
@@ -459,7 +459,7 @@ if (exportQuizBtn) {
             if (quotaState.paidUsed >= quotaState.paidLimit) {
                 const oldestTs = Math.min(...quotaState.paidHistory);
                 const waitMins = Math.max(1, Math.ceil((ONE_HOUR_MS - (Date.now() - oldestTs)) / 60000));
-                alert(`Osiągnięto limit ${quotaState.paidLimit} quizów na godzinę. Spróbuj ponownie za ${waitMins} min.`);
+                alert(`Hourly limit of ${quotaState.paidLimit} quizzes reached. Try again in ${waitMins} min.`);
                 return;
             }
         }
@@ -476,7 +476,7 @@ if (exportQuizBtn) {
         const allWords = data.savedWords || [];
         const words = filterWords(allWords);
         if (words.length === 0) {
-            alert("Brak słów do wygenerowania quizu.");
+            alert("No words available to generate quiz.");
             return;
         }
 
@@ -496,7 +496,7 @@ if (exportQuizBtn) {
         try {
             const QuizEngine = await ensureQuizExportLoaded();
             if (!QuizEngine) {
-                throw new Error("Moduł QuizExport nie został zainicjalizowany.");
+                throw new Error("QuizExport module was not initialized.");
             }
             const result = await QuizEngine.runExport({
                 words,
@@ -523,13 +523,13 @@ if (exportQuizBtn) {
         } catch (err) {
             console.error("Quiz export error:", err);
             if (!GeminiProxy?.isLimitError?.(err)) {
-                alert("Błąd generowania quizu: " + (err.message || err));
+                alert("Quiz generation error: " + (err.message || err));
             }
         } finally {
             exportQuizBtn.disabled = false;
             exportQuizBtn.classList.remove("loading");
             if (labelEl) {
-                labelEl.textContent = "✨ Quiz AI";
+                labelEl.textContent = "✨ AI Quiz";
             } else {
                 exportQuizBtn.innerHTML = origText;
             }
@@ -541,7 +541,7 @@ if (exportQuizBtn) {
 
 // ── Clear visible words ───────────────────────────────────────────
 document.getElementById("clearAll").addEventListener("click", async () => {
-    if (!confirm("Usunąć widoczne słowa?")) return;
+    if (!confirm("Delete visible words?")) return;
     const words = typeof SharedWordRepository !== "undefined"
         ? await SharedWordRepository.getStoredWords()
         : (await chrome.storage.local.get({ savedWords: [] })).savedWords || [];
@@ -581,7 +581,7 @@ async function markAsDownloaded(exportedWords, allWords) {
             await chrome.storage.local.set({ savedWords: updated });
         }
     } catch (err) {
-        console.error("[Lectoro] Nie udało się oznaczyć pobranych słów:", err);
+        console.error("[Lectoro] Failed to mark downloaded words:", err);
     }
     loadWords();
 }

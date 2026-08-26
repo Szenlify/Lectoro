@@ -5,16 +5,16 @@
 const MINS_IN_DAY = 1440;
 const MS_IN_DAY = 86400000;
 
-/** Fixed graduation ladder for consecutive "Znam" answers, in days */
+/** Fixed graduation ladder for consecutive "Good" answers, in days */
 const LEARNING_STEPS = [
-    10 / MINS_IN_DAY, // 0. 10 minut (Pierwsza poprawna odpowiedź)
-    2 / 24, // 1. 2 godziny
-    10 / 24, // 2. 10h
-    1, // 3. 24h / 1 dzień
-    3, // 4. 3 dni
-    7, // 5. 7 dni
-    14, // 6. 14 dni
-    30, // 7. 30 dni – potem tryb utrzymania
+    10 / MINS_IN_DAY, // 0. 10 minutes (First correct answer)
+    2 / 24, // 1. 2 hours
+    10 / 24, // 2. 10 hours
+    1, // 3. 24h / 1 day
+    3, // 4. 3 days
+    7, // 5. 7 days
+    14, // 6. 14 days
+    30, // 7. 30 days – then maintenance mode
 ];
 
 const SRS = {
@@ -29,23 +29,22 @@ const SRS = {
 
     update(sr, grade) {
         let { interval = 0, step = 0, easeFactor = 2.5 } = sr;
-        const isFail = grade === 1; // 1 = "Nie znam"
+        const isFail = grade === 1; // 1 = "Again"
 
         if (isFail) {
-            easeFactor = Math.max(1.3, easeFactor - 0.2); // Kara do ease factor
+            easeFactor = Math.max(1.3, easeFactor - 0.2); // Ease factor penalty
 
             if (step === 0) {
-                interval = 1 / MINS_IN_DAY; // 1 minuta (jeśli nie znam za pierwszym razem)
+                interval = 1 / MINS_IN_DAY; // 1 minute (if failed on first step)
             } else {
-                step = Math.max(0, step - 2); // Degradacja o 2 stopnie w dół
-                // Jeśli cofnęliśmy się do fazy nauki, bierzemy krok. Jeśli jesteśmy dalej w trybie utrzymania, cofamy mnożnik dwukrotnie.
+                step = Math.max(0, step - 2); // Demote by 2 steps
                 interval =
                     step < LEARNING_STEPS.length
                         ? LEARNING_STEPS[step]
                         : interval / Math.pow(easeFactor, 2);
             }
         } else {
-            // Znam -> Bierzemy krok z tablicy lub mnożymy (tryb utrzymania)
+            // Good -> Take step from ladder or multiply (maintenance mode)
             interval =
                 step < LEARNING_STEPS.length
                     ? LEARNING_STEPS[step]
@@ -67,22 +66,22 @@ const SRS = {
         return SRS.formatInterval(SRS.update(sr, grade).interval);
     },
 
-    /** Uniwersalna funkcja formatująca interwał do przyjaznej etykiety (DRY) */
+    /** Format interval to a human-readable label */
     formatInterval(days) {
         const mins = Math.round(days * MINS_IN_DAY);
-        if (mins < 60) return `${mins} min`;
+        if (mins < 60) return mins === 1 ? "1 min" : `${mins} mins`;
 
         const h = Math.round(mins / 60);
-        if (h < 24) return h === 1 ? "1 godz." : `${h} godz.`;
+        if (h < 24) return h === 1 ? "1 hr" : `${h} hrs`;
 
         const d = Math.round(days);
-        if (d < 7) return d === 1 ? "1 dzień" : `${d} dni`;
+        if (d < 7) return d === 1 ? "1 day" : `${d} days`;
 
         const w = Math.round(days / 7);
-        if (d < 30) return w === 1 ? "1 tydz." : `${w} tyg.`;
+        if (d < 30) return w === 1 ? "1 wk" : `${w} wks`;
 
         const m = Math.round(days / 30);
-        return m === 1 ? "1 mies." : `${m} mies.`;
+        return m === 1 ? "1 mo" : `${m} mos`;
     },
 
     /** Ensure a word has SR metadata, migrating the old step-based format if present */

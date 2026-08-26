@@ -59,7 +59,7 @@
 
             if (modeBadge) {
                 modeBadge.textContent =
-                    data.latestQuizMode === "print" ? "Do druku" : "Interaktywny";
+                    data.latestQuizMode === "print" ? "Printable" : "Interactive";
             }
 
             document.title = cachedTitle + " — Lectoro AI";

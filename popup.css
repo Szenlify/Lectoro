@@ -34,32 +34,23 @@
 }
 
 
-/* Dedykowana stylizacja dla przeglądarek WebKit (Chrome, Edge, Safari) */
+/* WebKit scrollbar styling (Chrome, Edge, Safari) */
 ::-webkit-scrollbar {
     width: 6px;
-    /* Szerokość pionowego paska */
     height: 6px;
-    /* Wysokość poziomego paska */
 }
-
 
 ::-webkit-scrollbar-track {
     background: transparent;
-    /* Przezroczyste tło toru */
 }
-
 
 ::-webkit-scrollbar-thumb {
     background: #1a1a1a;
-    /* Czarny / ciemnoszary uchwyt */
     border-radius: 3px;
-    /* Zaokrąglone krawędzie */
 }
-
 
 ::-webkit-scrollbar-thumb:hover {
     background: #426b64;
-    /* Lekkie rozjaśnienie po najechaniu */
 }
 
 html {
