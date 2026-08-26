@@ -902,6 +902,10 @@ async function aiTranslateReviewCard() {
     if (state.status === "loading") return;
     if (state.status === "done") {
         restoreReviewAiPanels(w);
+        const panel = document.getElementById("reviewAiTranslate");
+        if (panel) {
+            panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
         const res = state.result;
         if (res) {
             const speakText = [res.wordTr, res.sentTr, res.explanation]
@@ -921,7 +925,8 @@ async function aiTranslateReviewCard() {
     const panel = ensureReviewAiPanel("reviewAiTranslate");
     if (!panel) return;
     state.status = "loading";
-    panel.innerHTML = `<div class="review-ai-translate-loading"><span class="review-ai-spinner"></span>Tłumaczę (AI)…</div>`;
+    panel.innerHTML = `<div class="review-ai-translate-loading"><span class="review-ai-loader-label">✨ Analizuje…</span></div>`;
+    panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
     try {
         const prompt = AIPrompts.standardTranslate(
@@ -967,6 +972,7 @@ async function aiTranslateReviewCard() {
         if (!document.body.contains(panel)) return;
 
         renderReviewTranslationResult(panel, state.result);
+        panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
         // AI-generated text always uses the free system/browser voice.
         const speakText = [wordTr, sentTr, explanation]

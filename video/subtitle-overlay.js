@@ -673,7 +673,7 @@
         overlay.classList.add(`${PREFIX}ai-explain-overlay`);
         overlay.dataset.state = "ai-loading";
         overlay.setAttribute("aria-label", "Analiza zdania w toku");
-        overlay.innerHTML = `<div class="${PREFIX}ai-loader-container"><span class="${PREFIX}spinner" style="width:14px;height:14px;border-width:2px;flex-shrink:0;"></span><span class="${PREFIX}ai-loader-label">Analizuje…</span></div>`;
+        overlay.innerHTML = `<span class="${PREFIX}ai-loader-label">✨ Analizuje…</span>`;
         positionOverlay(layout);
     }
 
