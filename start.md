@@ -8,6 +8,8 @@
 - STRIPE_SECRET_KEY
 - R2_SECRET_ACCESS_KEY
 
+functions/.env - TEŻ TRZEBA ZMIENIĆ!
+
 ## .env w functions do zmiany
 
 - STRIPE_BASIC_PRICE_ID=price_1U45bvPWye8UyAN8xKC8ista
