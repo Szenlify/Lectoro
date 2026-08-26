@@ -42,6 +42,12 @@
         }
 
         return text
+            .replace(/\[[^\]]*\]/g, " ") // Strip [Music], [Muzyka], [Applause], [Śmiech], etc.
+            .replace(/[♪♫♬♩♭♮♯]/g, " ") // Strip musical notes
+            .replace(
+                /\((?:music|applause|laughter|screaming|coughing|sighs|footsteps|sound|snorts|groans|chuckles|giggles|cheering|whispering|gasping|singing|sobbing|crying|instrumental|upbeat music|dramatic music|soft music|ambient sound|muzyka|śmiech|brawa|oklaski)[^)]*\)/gi,
+                " ",
+            )
             .replace(/\{[^}]+\}/g, "") // Remove ASS/SSA style tags
             .replace(/(?:^|\s)(?:>>+|<<+|»+|«+|››+)(?:\s|$)/g, " ") // Strip speaker change markers >>, >>>, <<, », «
             .replace(/^[>»›<«\s—–-]+/, "") // Strip leading markers/arrows

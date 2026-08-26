@@ -128,6 +128,10 @@ test("cleanCardText strips subtitle artifacts, music tags, speaker markers, chev
     const SharedUtils = require("../shared/utils");
     const cases = [
         ["[music] >> If you going then I will go.", "If you going then I will go"],
+        ["[Muzyka]", ""],
+        ["[Śmiech]", ""],
+        ["[Brawa]", ""],
+        ["[Oklaski] Cześć wszystkim!", "Cześć wszystkim!"],
         ["♪ Never gonna give you up ♪", "Never gonna give you up"],
         [">> (music playing) >> Hey guys, welcome back!", "Hey guys, welcome back!"],
         ["[Applause] - Wait, is that true?", "Wait, is that true?"],
@@ -147,6 +151,14 @@ test("cleanCardText strips subtitle artifacts, music tags, speaker markers, chev
     for (const [input, expected] of cases) {
         assert.equal(SharedUtils.cleanCardText(input), expected);
         assert.equal(SharedUtils.cleanTextForTTS(input), expected);
+    }
+
+    require("../shared/subtitle-service");
+    const SubtitleService = global.SharedSubtitleService || global.LectoroSubtitleService;
+    if (SubtitleService?.cleanCueText) {
+        assert.equal(SubtitleService.cleanCueText("[Muzyka]"), "");
+        assert.equal(SubtitleService.cleanCueText("[Music] Hello!"), "Hello!");
+        assert.equal(SubtitleService.cleanCueText(">> [Śmiech] Dobry wieczór"), "Dobry wieczór");
     }
 });
 

@@ -67,7 +67,7 @@
     let wasPlayingBeforeSave = false;
 
     const SIMPLE_WORDS = new Set([
-        "an","oh","uh","ah","a", "and", "are", "as", "at", "be", "but", "by", "can", "can't", "could",
+        "an", "oh", "uh", "ah", "a", "and", "are", "as", "at", "be", "but", "by", "can", "can't", "could",
         "did", "do", "does", "for", "from", "had", "has", "have", "he", "her",
         "here", "his", "if", "in", "into", "is", "it", "its", "me", "my", "not",
         "of", "on", "or", "our", "she", "should", "so", "some", "that", "the",
@@ -197,33 +197,6 @@
         return { layer: customSubLayerEl, box: customSubBoxEl };
     }
 
-    function fitCustomSubtitleLines(availableWidth, baseFontSize) {
-        if (!customSubLayerEl || !customSubBoxEl || activeLines.length === 0) {
-            return;
-        }
-        const lineElements = Array.from(
-            customSubBoxEl.querySelectorAll(`.${PREFIX}custom-sub-line`),
-        );
-        if (lineElements.length === 0) return;
-
-        const allowedWidth = Math.max(180, availableWidth * 0.92);
-        const widestLine = Math.max(
-            ...lineElements.map((line) =>
-                Math.max(line.scrollWidth, line.getBoundingClientRect().width),
-            ),
-        );
-        if (!Number.isFinite(widestLine) || widestLine <= allowedWidth) return;
-
-        const fittedFontSize = Math.max(
-            16,
-            Math.floor(baseFontSize * (allowedWidth / widestLine)),
-        );
-        customSubLayerEl.style.setProperty(
-            "--lectoro-sub-font-size",
-            `${fittedFontSize}px`,
-        );
-    }
-
     function isYouTubePage() {
         return /(^|\.)youtube\.com$/i.test(window.location.hostname) || getPlayerRegistry()?.type === "youtube";
     }
@@ -246,7 +219,7 @@
 
             if (trackedVideo !== video) {
                 if (videoResizeObserver && trackedVideo) {
-                    try { videoResizeObserver.unobserve(trackedVideo); } catch (_) {}
+                    try { videoResizeObserver.unobserve(trackedVideo); } catch (_) { }
                 }
                 trackedVideo = video;
                 if (typeof ResizeObserver !== "undefined") {
@@ -292,10 +265,9 @@
             layer.style.pointerEvents = "none";
             layer.style.overflow = "hidden";
 
-            // Proportional font sizing: small video = smaller font, large video = larger font
-            const fontSizePx = Math.max(16, Math.min(54, Math.round(actualWidth * 0.027 + 2)));
+            // Proportional uniform font sizing across all video platforms
+            const fontSizePx = Math.max(20, Math.min(54, Math.round(actualWidth * 0.026 + 4)));
             layer.style.setProperty("--lectoro-sub-font-size", `${fontSizePx}px`);
-            fitCustomSubtitleLines(actualWidth, fontSizePx);
 
             // Bottom offset inside video player
             const isNetflix = isNetflixPage();
@@ -316,8 +288,12 @@
             lines = [];
         }
 
+        const clean = (typeof SharedUtils !== "undefined" && typeof SharedUtils.cleanCardText === "function")
+            ? (t) => SharedUtils.cleanCardText(t)
+            : (t) => String(t || "").replace(/\[[^\]]*\]/g, " ").replace(/[♪♫♬♩♭♮♯]/g, " ").replace(/\s+/g, " ").trim();
+
         const rawCleanLines = (Array.isArray(lines) ? lines : [lines])
-            .map((l) => (typeof l === "string" ? l.trim() : ""))
+            .map((l) => (typeof l === "string" ? clean(l) : ""))
             .filter(Boolean);
 
         if (rawCleanLines.length === 0) {
@@ -1098,7 +1074,7 @@
         if (!opts.skipSpeech && translatedFullText?.trim()) {
             QT.speak(translatedFullText, targetLang, {
                 isCancelled: () => modeRevision !== subtitleModeRevision,
-            }).catch(() => {});
+            }).catch(() => { });
         }
 
         const translatableSpans = wordSpans.filter((span) =>
@@ -1310,9 +1286,9 @@
         const placeBelow = aboveTop < edgeGap;
         const top = placeBelow
             ? Math.min(
-                  rect.bottom + bubbleGap,
-                  viewportHeight - bubbleHeight - edgeGap,
-              )
+                rect.bottom + bubbleGap,
+                viewportHeight - bubbleHeight - edgeGap,
+            )
             : aboveTop;
         const arrowInset = Math.min(24, bubbleWidth / 2);
         const arrowX = Math.max(
@@ -1449,7 +1425,7 @@
         } else {
             try {
                 window.speechSynthesis?.cancel();
-            } catch (_) {}
+            } catch (_) { }
         }
     }
 
@@ -1525,10 +1501,9 @@
             title = "✔ Zapisano do powtórek";
             bodyHtml = `
                 <div class="__qt_save_toast_text">${QT.escapeHtml(text)}</div>
-                ${
-                    translated && translated !== text
-                        ? `<div class="__qt_save_toast_sub">${QT.escapeHtml(translated)}</div>`
-                        : ""
+                ${translated && translated !== text
+                    ? `<div class="__qt_save_toast_sub">${QT.escapeHtml(translated)}</div>`
+                    : ""
                 }
             `;
             if (thumb) thumbHtml = `<img class="__qt_save_toast_thumb" src="${thumb}" alt="" />`;

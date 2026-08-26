@@ -674,8 +674,8 @@ video::cue {
     align-items: center !important;
     justify-content: center !important;
     text-align: center !important;
-    width: max-content !important;
-    max-width: 94% !important;
+    width: auto !important;
+    max-width: 84% !important;
     min-width: 0 !important;
     flex: 0 0 auto !important;
     margin-bottom: var(--lectoro-sub-bottom, 68px) !important;
@@ -691,17 +691,18 @@ video::cue {
 }
 
 #__qt_custom_subtitles_layer .__qt_custom-sub-line {
-    display: inline-block !important;
-    width: max-content !important;
-    max-width: none !important;
-    margin: 2.5px 0 !important;
+    display: block !important;
+    width: auto !important;
+    max-width: 100% !important;
+    margin: 3px auto !important;
+    padding: 0 4px !important;
     color: #ffffff !important;
     font-family: "Netflix Sans Variable", "Netflix Sans", "Helvetica Neue", "Segoe UI", Roboto, Arial, sans-serif !important;
-    font-size: var(--lectoro-sub-font-size, 25px) !important;
+    font-size: var(--lectoro-sub-font-size, 26px) !important;
     font-style: normal !important;
     font-weight: 600 !important;
     font-variant: normal !important;
-    line-height: 1.35 !important;
+    line-height: 1.38 !important;
     letter-spacing: 0.015em !important;
     word-spacing: normal !important;
     text-align: center !important;
@@ -718,34 +719,11 @@ video::cue {
         0px -0.07em 0 #000,
         0px 0.07em 0 #000,
         0px 0.15em 0.35em rgba(0, 0, 0, 0.9) !important;
-    white-space: nowrap !important;
+    white-space: normal !important;
     word-break: normal !important;
-    overflow-wrap: normal !important;
+    overflow-wrap: break-word !important;
+    text-wrap: balance !important;
     hyphens: none !important;
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   Platform-Specific Subtitle Font Sizes (Dynamic Variable Driven)
-   ═══════════════════════════════════════════════════════════════ */
-
-#__qt_custom_subtitles_layer[data-platform="youtube"] .__qt_custom-sub-line,
-body[data-lectoro-platform="youtube"] #__qt_custom_subtitles_layer .__qt_custom-sub-line {
-    font-size: var(--lectoro-sub-font-size, 25px) !important;
-}
-
-#__qt_custom_subtitles_layer[data-platform="netflix"] .__qt_custom-sub-line,
-body[data-lectoro-platform="netflix"] #__qt_custom_subtitles_layer .__qt_custom-sub-line {
-    font-size: var(--lectoro-sub-font-size, 31px) !important;
-}
-
-#__qt_custom_subtitles_layer[data-platform="videojs"] .__qt_custom-sub-line,
-body[data-lectoro-platform="videojs"] #__qt_custom_subtitles_layer .__qt_custom-sub-line {
-    font-size: var(--lectoro-sub-font-size, 29px) !important;
-}
-
-#__qt_custom_subtitles_layer[data-platform="ted"] .__qt_custom-sub-line,
-body[data-lectoro-platform="ted"] #__qt_custom_subtitles_layer .__qt_custom-sub-line {
-    font-size: var(--lectoro-sub-font-size, 27px) !important;
 }
 
 #__qt_custom_subtitles_layer .__qt_sub-word {
