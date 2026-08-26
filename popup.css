@@ -29,6 +29,37 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    scrollbar-width: thin;
+    scrollbar-color: #334b47 transparent;
+}
+
+
+/* Dedykowana stylizacja dla przeglądarek WebKit (Chrome, Edge, Safari) */
+::-webkit-scrollbar {
+    width: 6px;
+    /* Szerokość pionowego paska */
+    height: 6px;
+    /* Wysokość poziomego paska */
+}
+
+
+::-webkit-scrollbar-track {
+    background: transparent;
+    /* Przezroczyste tło toru */
+}
+
+
+::-webkit-scrollbar-thumb {
+    background: #1a1a1a;
+    /* Czarny / ciemnoszary uchwyt */
+    border-radius: 3px;
+    /* Zaokrąglone krawędzie */
+}
+
+
+::-webkit-scrollbar-thumb:hover {
+    background: #426b64;
+    /* Lekkie rozjaśnienie po najechaniu */
 }
 
 html {
@@ -1135,6 +1166,7 @@ body::before {
     0% {
         transform: translateX(-100%);
     }
+
     100% {
         transform: translateX(100%);
     }
@@ -2536,14 +2568,12 @@ body::before {
     font: 600 13px/1.2 "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     letter-spacing: 0.03em;
     color: transparent;
-    background: linear-gradient(
-        90deg,
-        #a855f7 0%,
-        #4ecdc4 25%,
-        #ffffff 50%,
-        #4ecdc4 75%,
-        #a855f7 100%
-    );
+    background: linear-gradient(90deg,
+            #a855f7 0%,
+            #4ecdc4 25%,
+            #ffffff 50%,
+            #4ecdc4 75%,
+            #a855f7 100%);
     background-size: 200% 100%;
     -webkit-background-clip: text;
     background-clip: text;
@@ -2555,6 +2585,7 @@ body::before {
     0% {
         background-position: 0% 50%;
     }
+
     100% {
         background-position: 200% 50%;
     }
