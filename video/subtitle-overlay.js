@@ -429,7 +429,7 @@
         subCloseTimer = setTimeout(() => {
             subCloseTimer = null;
             const tooltip = QT.getTooltipEl();
-            if (tooltip?.matches(":hover")) return;
+            if (tooltip?.matches(":hover") || tooltip?.contains(document.activeElement)) return;
             if (subClickLocked) return;
             const { x, y } = (typeof QT !== "undefined" && QT.getMousePos)
                 ? QT.getMousePos()
@@ -437,7 +437,64 @@
             const wordUnderMouse = QT.findWordAtPoint(x, y, PREFIX + "sub-word");
             if (wordUnderMouse) return;
             closeSubTooltip();
-        }, 350);
+        }, 450);
+    }
+
+    async function triggerWordHover(wordSpan) {
+        if (!wordSpan || !wordSpan.isConnected) return;
+        if (subClickLocked) return;
+
+        if (lastHoveredSubWord && lastHoveredSubWord !== wordSpan) {
+            lastHoveredSubWord.classList.remove(`${PREFIX}word-hover`);
+        }
+        lastHoveredSubWord = wordSpan;
+        wordSpan.classList.add(`${PREFIX}word-hover`);
+
+        const registry = getPlayerRegistry();
+        const video = registry?.getVideo();
+        if (!isSubHovering) {
+            subWasPlaying = video ? !video.paused : false;
+        }
+
+        isSubHovering = true;
+        subTooltipAnchor = wordSpan;
+
+        if (video && !video.paused) {
+            registry?.pauseVideo(video);
+        }
+
+        const text = wordSpan.textContent.trim();
+        if (!text) return;
+
+        const rect = wordSpan.getBoundingClientRect();
+        const subtitleTooltipPlacement = "top";
+
+        QT.showLoading(rect, subtitleTooltipPlacement);
+        ensureSubtitleUiTracking();
+
+        try {
+            const targetLang = await QT.getTargetLang();
+            const res = await subCache.get(text, targetLang);
+            if (!isSubHovering || lastHoveredSubWord !== wordSpan) return;
+
+            const html = QT.buildTooltipHtml({
+                srcLang: res.detectedLang,
+                targetLang,
+                original: text,
+                translated: res.translated,
+            });
+
+            QT.showTooltip(html, rect, subtitleTooltipPlacement);
+            QT.attachTooltipHandlers();
+        } catch (err) {
+            if (isSubHovering && lastHoveredSubWord === wordSpan) {
+                QT.showTooltip(
+                    `<div class="${PREFIX}error">⚠ ${QT.escapeHtml(err.message)}</div>`,
+                    rect,
+                    subtitleTooltipPlacement,
+                );
+            }
+        }
     }
 
     document.addEventListener(
@@ -461,7 +518,9 @@
             if (subClickLocked) return;
 
             const tooltip = QT.getTooltipEl();
-            if (tooltip && tooltip.contains(e.target)) {
+            const isInsideTooltip = tooltip && (tooltip.contains(e.target) || tooltip.matches(":hover"));
+
+            if (isInsideTooltip) {
                 clearTimeout(subHoverTimer);
                 clearTimeout(subCloseTimer);
                 subHoverTimer = null;
@@ -473,69 +532,47 @@
                 ? null
                 : QT.findWordAtPoint(e.clientX, e.clientY, PREFIX + "sub-word");
 
+            // Safe bridge zone: if tooltip is open and user is moving towards it (e.g. crossing upper lines)
+            if (
+                wordSpan &&
+                isSubHovering &&
+                subTooltipAnchor &&
+                wordSpan !== subTooltipAnchor &&
+                tooltip?.classList.contains("visible")
+            ) {
+                const tooltipRect = tooltip.getBoundingClientRect();
+                const anchorRect = subTooltipAnchor.getBoundingClientRect();
+                const minX = Math.min(tooltipRect.left, anchorRect.left) - 40;
+                const maxX = Math.max(tooltipRect.right, anchorRect.right) + 40;
+                const minY = Math.min(tooltipRect.top, anchorRect.top) - 15;
+                const maxY = Math.max(tooltipRect.bottom, anchorRect.bottom) + 15;
+
+                const inBridgeZone = (e.clientX >= minX && e.clientX <= maxX && e.clientY >= minY && e.clientY <= maxY);
+                if (inBridgeZone) {
+                    clearTimeout(subCloseTimer);
+                    subCloseTimer = null;
+                    if (subHoverTimer) return; // Keep dwelling
+                    subHoverTimer = setTimeout(() => {
+                        subHoverTimer = null;
+                        triggerWordHover(wordSpan);
+                    }, 260);
+                    return;
+                }
+            }
+
             if (wordSpan && wordSpan !== lastHoveredSubWord) {
                 clearTimeout(subCloseTimer);
                 subCloseTimer = null;
-                if (lastHoveredSubWord) {
-                    lastHoveredSubWord.classList.remove(`${PREFIX}word-hover`);
-                }
-                lastHoveredSubWord = wordSpan;
-                wordSpan.classList.add(`${PREFIX}word-hover`);
-
                 clearTimeout(subHoverTimer);
-                const video = registry.getVideo();
-                if (!isSubHovering) {
-                    subWasPlaying = video ? !video.paused : false;
-                }
 
-                isSubHovering = true;
-                subTooltipAnchor = wordSpan;
-
-                if (video && !video.paused) {
-                    registry?.pauseVideo(video);
-                }
-
-                subHoverTimer = setTimeout(async () => {
-                    if (lastHoveredSubWord !== wordSpan) return;
-                    const text = wordSpan.textContent.trim();
-                    if (!text) return;
-
-                    const rect = wordSpan.getBoundingClientRect();
-                    const subtitleTooltipPlacement = "top";
-
-                    QT.showLoading(rect, subtitleTooltipPlacement);
-                    ensureSubtitleUiTracking();
-
-                    try {
-                        const targetLang = await QT.getTargetLang();
-                        const res = await subCache.get(text, targetLang);
-                        if (!isSubHovering || lastHoveredSubWord !== wordSpan) return;
-
-                        const html = QT.buildTooltipHtml({
-                            srcLang: res.detectedLang,
-                            targetLang,
-                            original: text,
-                            translated: res.translated,
-                        });
-
-                        QT.showTooltip(html, rect, subtitleTooltipPlacement);
-                        QT.attachTooltipHandlers();
-                    } catch (err) {
-                        if (isSubHovering && lastHoveredSubWord === wordSpan) {
-                            QT.showTooltip(
-                                `<div class="${PREFIX}error">⚠ ${QT.escapeHtml(err.message)}</div>`,
-                                rect,
-                                subtitleTooltipPlacement,
-                            );
-                        }
-                    }
-                }, 0);
+                const hoverDelay = isSubHovering ? 200 : 130;
+                subHoverTimer = setTimeout(() => {
+                    subHoverTimer = null;
+                    triggerWordHover(wordSpan);
+                }, hoverDelay);
             } else if (!wordSpan) {
                 clearTimeout(subHoverTimer);
-                if (lastHoveredSubWord) {
-                    lastHoveredSubWord.classList.remove(`${PREFIX}word-hover`);
-                    lastHoveredSubWord = null;
-                }
+                subHoverTimer = null;
                 if (isSubHovering) scheduleCloseSubTooltip();
             } else {
                 clearTimeout(subCloseTimer);
