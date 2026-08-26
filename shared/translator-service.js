@@ -94,10 +94,41 @@
         return data.targetLang || "pl";
     }
 
+    function isContentScriptEnvironment() {
+        return (
+            typeof window !== "undefined" &&
+            window.location?.protocol !== "chrome-extension:" &&
+            typeof chrome !== "undefined" &&
+            typeof chrome.runtime?.sendMessage === "function"
+        );
+    }
+
     /**
      * Google Translate (client=gtx, no API key needed).
      */
     async function googleTranslate(text, targetLang = "pl") {
+        if (isContentScriptEnvironment()) {
+            try {
+                const response = await new Promise((resolve, reject) => {
+                    chrome.runtime.sendMessage(
+                        { type: "QT_GOOGLE_TRANSLATE", text, targetLang },
+                        (res) => {
+                            if (chrome.runtime.lastError) {
+                                return reject(new Error(chrome.runtime.lastError.message));
+                            }
+                            if (res?.error) {
+                                return reject(new Error(res.error));
+                            }
+                            resolve(res?.result);
+                        },
+                    );
+                });
+                if (response) return response;
+            } catch (_) {
+                // Fallback to direct fetch if sendMessage is unavailable
+            }
+        }
+
         const url =
             "https://translate.googleapis.com/translate_a/single" +
             "?client=gtx&sl=auto&tl=" +

@@ -107,10 +107,36 @@ if (stagingManifest.key) {
 
 // Pakowanie zawartości katalogu staging do archiwum ZIP
 try {
-    execSync(`zip -q -r "${zipPath}" . -x "*.DS_Store" "*__MACOSX*"`, {
-        cwd: STAGING_DIR,
-        stdio: "inherit",
-    });
+    let packed = false;
+    if (process.platform === "win32") {
+        try {
+            // Windows PowerShell Compress-Archive
+            const psScript = `Compress-Archive -Path (Get-ChildItem -Path '${STAGING_DIR}' | Select-Object -ExpandProperty FullName) -DestinationPath '${zipPath}' -Force`;
+            execSync(`powershell.exe -NoProfile -NonInteractive -Command "${psScript}"`, {
+                cwd: STAGING_DIR,
+                stdio: "pipe",
+            });
+            packed = true;
+        } catch (_) {
+            try {
+                // Windows tar fallback
+                execSync(`tar -a -c -f "${zipPath}" *`, {
+                    cwd: STAGING_DIR,
+                    stdio: "pipe",
+                });
+                packed = true;
+            } catch (_) {}
+        }
+    }
+
+    if (!packed) {
+        // Unix zip command
+        execSync(`zip -q -r "${zipPath}" . -x "*.DS_Store" "*__MACOSX*"`, {
+            cwd: STAGING_DIR,
+            stdio: "inherit",
+        });
+    }
+
     fs.rmSync(STAGING_DIR, { recursive: true, force: true });
     const stats = fs.statSync(zipPath);
     const sizeKb = (stats.size / 1024).toFixed(1);

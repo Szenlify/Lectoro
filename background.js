@@ -923,6 +923,162 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             .catch((error) => sendResponse({ error: error.message }));
         return true;
     }
+
+    if (message.type === "QT_GEMINI_REQUEST") {
+        (async () => {
+            if (typeof GeminiProxy === "undefined") {
+                throw new Error("GeminiProxy niedostępny w procesie tła.");
+            }
+            return await GeminiProxy.request(message.prompt, message.opts);
+        })()
+            .then((result) => sendResponse({ ok: true, result }))
+            .catch((error) =>
+                sendResponse({
+                    error: error?.message || String(error),
+                    code: error?.code,
+                    validation: error?.validation,
+                }),
+            );
+        return true;
+    }
+
+    if (message.type === "QT_GEMINI_REFRESH_USAGE") {
+        (async () => {
+            if (typeof GeminiProxy === "undefined") {
+                throw new Error("GeminiProxy niedostępny w procesie tła.");
+            }
+            return await GeminiProxy.refreshUsage(!!message.force);
+        })()
+            .then((usage) => sendResponse({ ok: true, usage }))
+            .catch((error) => sendResponse({ error: error?.message || String(error) }));
+        return true;
+    }
+
+    if (message.type === "QT_GEMINI_UPLOAD_CARD_IMAGE") {
+        (async () => {
+            if (typeof GeminiProxy === "undefined") {
+                throw new Error("GeminiProxy niedostępny w procesie tła.");
+            }
+            return await GeminiProxy.uploadCardImage(
+                message.wordId,
+                message.imageBase64,
+                message.contentType,
+            );
+        })()
+            .then((result) => sendResponse({ ok: true, result }))
+            .catch((error) => sendResponse({ error: error?.message || String(error) }));
+        return true;
+    }
+
+    if (message.type === "QT_GEMINI_DELETE_CARD_IMAGES") {
+        (async () => {
+            if (typeof GeminiProxy === "undefined") {
+                throw new Error("GeminiProxy niedostępny w procesie tła.");
+            }
+            return await GeminiProxy.deleteCardImage(message.wordIds);
+        })()
+            .then((ok) => sendResponse({ ok: !!ok }))
+            .catch((error) => sendResponse({ error: error?.message || String(error) }));
+        return true;
+    }
+
+    if (message.type === "QT_GEMINI_DELETE_ALL_USER_IMAGES") {
+        (async () => {
+            if (typeof GeminiProxy === "undefined") {
+                throw new Error("GeminiProxy niedostępny w procesie tła.");
+            }
+            return await GeminiProxy.deleteAllUserImages();
+        })()
+            .then((deletedCount) => sendResponse({ ok: true, deletedCount }))
+            .catch((error) => sendResponse({ error: error?.message || String(error) }));
+        return true;
+    }
+
+    if (message.type === "QT_GOOGLE_TRANSLATE") {
+        (async () => {
+            const url =
+                "https://translate.googleapis.com/translate_a/single" +
+                "?client=gtx&sl=auto&tl=" +
+                encodeURIComponent(message.targetLang || "pl") +
+                "&dt=t&q=" +
+                encodeURIComponent(message.text || "");
+
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+
+            const translated = data[0].map((s) => s[0]).join("");
+            const detectedLang = data[2] || "auto";
+            return { translated, detectedLang };
+        })()
+            .then((result) => sendResponse({ ok: true, result }))
+            .catch((error) => sendResponse({ error: error?.message || String(error) }));
+        return true;
+    }
+
+    if (message.type === "QT_SUBSCRIPTION_REFRESH_PROFILE") {
+        (async () => {
+            if (
+                typeof self.SubscriptionService === "undefined" ||
+                typeof self.SubscriptionService.refreshProfile !== "function"
+            ) {
+                throw new Error("SubscriptionService niedostępny w procesie tła.");
+            }
+            return await self.SubscriptionService.refreshProfile(!!message.force);
+        })()
+            .then((profile) => sendResponse({ ok: true, profile }))
+            .catch((error) => sendResponse({ error: error?.message || String(error) }));
+        return true;
+    }
+
+    if (message.type === "QT_ELEVENLABS_SYNTHESIZE") {
+        (async () => {
+            if (
+                typeof self.SubscriptionService === "undefined" ||
+                typeof self.SubscriptionService.synthesizeElevenLabs !== "function"
+            ) {
+                throw new Error("SubscriptionService niedostępny w procesie tła.");
+            }
+            const blob = await self.SubscriptionService.synthesizeElevenLabs(
+                message.text,
+                message.voiceId,
+                message.context || "review",
+            );
+            const arrayBuffer = await blob.arrayBuffer();
+            const bytes = new Uint8Array(arrayBuffer);
+            let binary = "";
+            for (let i = 0; i < bytes.byteLength; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return {
+                base64: btoa(binary),
+                mimeType: blob.type || "audio/mpeg",
+            };
+        })()
+            .then((result) => sendResponse({ ok: true, ...result }))
+            .catch((error) =>
+                sendResponse({
+                    error: error?.message || String(error),
+                    code: error?.code,
+                }),
+            );
+        return true;
+    }
+
+    if (message.type === "QT_ELEVENLABS_VOICES") {
+        (async () => {
+            if (
+                typeof self.SubscriptionService === "undefined" ||
+                typeof self.SubscriptionService.getElevenLabsVoices !== "function"
+            ) {
+                throw new Error("SubscriptionService niedostępny w procesie tła.");
+            }
+            return await self.SubscriptionService.getElevenLabsVoices(message.context || "review");
+        })()
+            .then((voices) => sendResponse({ ok: true, voices }))
+            .catch((error) => sendResponse({ error: error?.message || String(error) }));
+        return true;
+    }
 });
 
 updateBadge();

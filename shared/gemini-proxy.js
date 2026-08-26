@@ -80,6 +80,15 @@ const GeminiProxy = (() => {
         return normalized;
     }
 
+    function isContentScriptEnvironment() {
+        return (
+            typeof window !== "undefined" &&
+            window.location?.protocol !== "chrome-extension:" &&
+            typeof chrome !== "undefined" &&
+            typeof chrome.runtime?.sendMessage === "function"
+        );
+    }
+
     /** Fetch once at initialization/month change or after 1h; later checks are local. */
     async function refreshUsage(force = false) {
         const user = await FirebaseSync.getUser();
@@ -94,6 +103,23 @@ const GeminiProxy = (() => {
             Date.now() - Number(cached?.updatedAt || 0) < CACHE_TTL_MS
         ) {
             return cached;
+        }
+
+        if (isContentScriptEnvironment()) {
+            return new Promise((resolve, reject) => {
+                chrome.runtime.sendMessage(
+                    { type: "QT_GEMINI_REFRESH_USAGE", force },
+                    (response) => {
+                        if (chrome.runtime.lastError) {
+                            return resolve(cached || null);
+                        }
+                        if (response?.error) {
+                            return reject(new Error(response.error));
+                        }
+                        resolve(response?.usage || null);
+                    },
+                );
+            });
         }
 
         const token = await getToken(force);
@@ -278,6 +304,47 @@ const GeminiProxy = (() => {
             };
         }
 
+        if (isContentScriptEnvironment()) {
+            return new Promise((resolve, reject) => {
+                chrome.runtime.sendMessage(
+                    {
+                        type: "QT_GEMINI_REQUEST",
+                        prompt,
+                        opts: { temperature, maxOutputTokens, cache },
+                    },
+                    (response) => {
+                        if (chrome.runtime.lastError) {
+                            return reject(
+                                new Error(
+                                    chrome.runtime.lastError.message ||
+                                        "Błąd komunikacji z rozszerzeniem.",
+                                ),
+                            );
+                        }
+                        if (!response) {
+                            return reject(new Error("Brak odpowiedzi od usługi AI."));
+                        }
+                        if (response.error) {
+                            const err = new Error(response.error);
+                            if (response.code) err.code = response.code;
+                            if (response.validation) err.validation = response.validation;
+                            if (isLimitError(err)) {
+                                showUpgradePrompt(err.validation || response.usage || {});
+                            }
+                            return reject(err);
+                        }
+                        if (cache && response.result?.text) {
+                            aiResponseCache.set(cacheKey, { text: response.result.text });
+                            if (aiResponseCache.size > MAX_AI_CACHE_SIZE) {
+                                aiResponseCache.delete(aiResponseCache.keys().next().value);
+                            }
+                        }
+                        resolve(response.result);
+                    },
+                );
+            });
+        }
+
         const token = await getToken();
 
         if (!token) {
@@ -390,6 +457,26 @@ const GeminiProxy = (() => {
         if (!imageBase64 || typeof imageBase64 !== "string") {
             return null;
         }
+
+        if (isContentScriptEnvironment()) {
+            return new Promise((resolve) => {
+                chrome.runtime.sendMessage(
+                    {
+                        type: "QT_GEMINI_UPLOAD_CARD_IMAGE",
+                        wordId,
+                        imageBase64,
+                        contentType,
+                    },
+                    (response) => {
+                        if (chrome.runtime.lastError || !response || response.error) {
+                            return resolve(null);
+                        }
+                        resolve(response.result || null);
+                    },
+                );
+            });
+        }
+
         const effectiveWordId =
             wordId ||
             (typeof crypto !== "undefined" && crypto.randomUUID
@@ -474,6 +561,24 @@ const GeminiProxy = (() => {
      */
     async function deleteCardImage(wordIdOrIds) {
         if (!wordIdOrIds) return false;
+
+        if (isContentScriptEnvironment()) {
+            return new Promise((resolve) => {
+                chrome.runtime.sendMessage(
+                    {
+                        type: "QT_GEMINI_DELETE_CARD_IMAGES",
+                        wordIds: Array.isArray(wordIdOrIds) ? wordIdOrIds : [String(wordIdOrIds)],
+                    },
+                    (response) => {
+                        if (chrome.runtime.lastError || !response || response.error) {
+                            return resolve(false);
+                        }
+                        resolve(!!response.ok);
+                    },
+                );
+            });
+        }
+
         const token = await getToken();
         if (!token) return false;
 
@@ -509,6 +614,20 @@ const GeminiProxy = (() => {
      * @returns {Promise<number>} - Count of deleted images
      */
     async function deleteAllUserImages() {
+        if (isContentScriptEnvironment()) {
+            return new Promise((resolve) => {
+                chrome.runtime.sendMessage(
+                    { type: "QT_GEMINI_DELETE_ALL_USER_IMAGES" },
+                    (response) => {
+                        if (chrome.runtime.lastError || !response || response.error) {
+                            return resolve(0);
+                        }
+                        resolve(Number(response.deletedCount) || 0);
+                    },
+                );
+            });
+        }
+
         const token = await getToken();
         if (!token) return 0;
 
@@ -532,10 +651,12 @@ const GeminiProxy = (() => {
 
     // Eksport
     return {
+        endpoint: () => PROXY_URL,
         request,
         requestJSON,
         uploadCardImage,
         deleteCardImage,
+        deleteCardImages: deleteCardImage,
         deleteAllUserImages,
         refreshUsage,
         getCachedUsage,

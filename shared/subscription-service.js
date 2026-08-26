@@ -93,6 +93,15 @@ const SubscriptionService = (() => {
         return normalized;
     }
 
+    function isContentScriptEnvironment() {
+        return (
+            typeof window !== "undefined" &&
+            window.location?.protocol !== "chrome-extension:" &&
+            typeof chrome !== "undefined" &&
+            typeof chrome.runtime?.sendMessage === "function"
+        );
+    }
+
     async function getToken(forceRefresh = false) {
         if (typeof FirebaseSync === "undefined") return null;
         return FirebaseSync.getValidToken(forceRefresh).catch(() => null);
@@ -110,6 +119,23 @@ const SubscriptionService = (() => {
             Date.now() - Number(cached?.updatedAt || 0) < CACHE_TTL_MS;
         if (!force && cacheIsFresh) {
             return cached;
+        }
+
+        if (isContentScriptEnvironment()) {
+            return new Promise((resolve, reject) => {
+                chrome.runtime.sendMessage(
+                    { type: "QT_SUBSCRIPTION_REFRESH_PROFILE", force },
+                    (response) => {
+                        if (chrome.runtime.lastError) {
+                            return resolve(cached || freeProfile(user?.uid));
+                        }
+                        if (response?.error) {
+                            return reject(new Error(response.error));
+                        }
+                        resolve(response?.profile || freeProfile(user?.uid));
+                    },
+                );
+            });
         }
 
         const tokenResult = await FirebaseSync.getIdTokenResult(force).catch(() => null);
@@ -181,6 +207,43 @@ const SubscriptionService = (() => {
         }
         const localValidation = await checkElevenLabs(text);
         Config.assertAllowed(localValidation);
+
+        if (isContentScriptEnvironment()) {
+            return new Promise((resolve, reject) => {
+                chrome.runtime.sendMessage(
+                    {
+                        type: "QT_ELEVENLABS_SYNTHESIZE",
+                        text,
+                        voiceId,
+                        context,
+                    },
+                    (response) => {
+                        if (chrome.runtime.lastError) {
+                            return reject(new Error(chrome.runtime.lastError.message));
+                        }
+                        if (response?.error) {
+                            const err = new Error(response.error);
+                            if (response.code) err.code = response.code;
+                            return reject(err);
+                        }
+                        if (response?.base64) {
+                            const byteChars = atob(response.base64);
+                            const byteNumbers = new Array(byteChars.length);
+                            for (let i = 0; i < byteChars.length; i++) {
+                                byteNumbers[i] = byteChars.charCodeAt(i);
+                            }
+                            const byteArray = new Uint8Array(byteNumbers);
+                            const blob = new Blob([byteArray], {
+                                type: response.mimeType || "audio/mpeg",
+                            });
+                            return resolve(blob);
+                        }
+                        reject(new Error("Brak danych audio z usługi ElevenLabs."));
+                    },
+                );
+            });
+        }
+
         const token = await getToken();
         if (!token) {
             throw new Error("Zaloguj się, aby korzystać z ElevenLabs.");
@@ -241,6 +304,24 @@ const SubscriptionService = (() => {
         if (!Config.getPlanLimits(profile.plan).elevenLabs.enabled) {
             Config.assertAllowed(Config.checkElevenLabsLimit({ plan: profile.plan, text: "a" }));
         }
+
+        if (isContentScriptEnvironment()) {
+            return new Promise((resolve, reject) => {
+                chrome.runtime.sendMessage(
+                    { type: "QT_ELEVENLABS_VOICES", context },
+                    (response) => {
+                        if (chrome.runtime.lastError) {
+                            return reject(new Error(chrome.runtime.lastError.message));
+                        }
+                        if (response?.error) {
+                            return reject(new Error(response.error));
+                        }
+                        resolve(response?.voices || []);
+                    },
+                );
+            });
+        }
+
         const token = await getToken();
         if (!token) throw new Error("Zaloguj się, aby pobrać głosy ElevenLabs.");
         const response = await fetch(PROXY_URL, {

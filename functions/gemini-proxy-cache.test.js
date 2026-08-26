@@ -527,3 +527,137 @@ test("SharedUtils.getR2AudioUrl builds deterministic CDN URL", async () => {
     );
 });
 
+test("GeminiProxy delegates to chrome.runtime.sendMessage in content script environment", async (t) => {
+    const sentMessages = [];
+    global.window = {
+        location: { protocol: "https:" },
+    };
+    global.chrome = {
+        runtime: {
+            sendMessage: (msg, callback) => {
+                sentMessages.push(msg);
+                if (msg.type === "QT_GEMINI_REQUEST") {
+                    callback({ ok: true, result: { text: '{"sentence":"Test sentence.","translation":"Zdanie testowe."}', usage: {} } });
+                } else if (msg.type === "QT_GEMINI_REFRESH_USAGE") {
+                    callback({ ok: true, usage: { plan: "free", used: 1, limit: 10 } });
+                }
+            },
+        },
+        storage: {
+            local: {
+                get: async (def) => def,
+                set: async () => {},
+            },
+            onChanged: {
+                addListener: () => {},
+            },
+        },
+    };
+    global.FirebaseSync = {
+        getUser: async () => ({ uid: "cs-user" }),
+    };
+
+    t.after(() => {
+        delete global.window;
+        delete global.chrome;
+        delete global.FirebaseSync;
+        delete require.cache[require.resolve("../shared/gemini-proxy")];
+    });
+
+    delete require.cache[require.resolve("../shared/gemini-proxy")];
+    const GeminiProxy = require("../shared/gemini-proxy");
+
+    const res = await GeminiProxy.request("Generate sentence", { cache: false });
+    assert.ok(res.text.includes("Test sentence"));
+    assert.equal(sentMessages.length, 1);
+    assert.equal(sentMessages[0].type, "QT_GEMINI_REQUEST");
+    assert.equal(sentMessages[0].prompt, "Generate sentence");
+
+    const usage = await GeminiProxy.refreshUsage(true);
+    assert.equal(usage.plan, "free");
+    assert.equal(sentMessages.length, 2);
+    assert.equal(sentMessages[1].type, "QT_GEMINI_REFRESH_USAGE");
+});
+
+test("SubscriptionService delegates to chrome.runtime.sendMessage in content script environment", async (t) => {
+    const sentMessages = [];
+    global.SubscriptionConfig = SubscriptionConfig;
+    global.window = {
+        location: { protocol: "https:" },
+    };
+    global.chrome = {
+        runtime: {
+            sendMessage: (msg, callback) => {
+                sentMessages.push(msg);
+                if (msg.type === "QT_SUBSCRIPTION_REFRESH_PROFILE") {
+                    callback({ ok: true, profile: { uid: "sub-user", plan: "pro", usage: { ai: { month: "2026-08", used: 0 }, elevenLabsCharacters: { month: "2026-08", used: 0 } } } });
+                }
+            },
+        },
+        storage: {
+            local: {
+                get: async (def) => def,
+                set: async () => {},
+            },
+        },
+    };
+    global.FirebaseSync = {
+        getUser: async () => ({ uid: "sub-user" }),
+    };
+
+    t.after(() => {
+        delete global.SubscriptionConfig;
+        delete global.window;
+        delete global.chrome;
+        delete global.FirebaseSync;
+        delete require.cache[require.resolve("../shared/subscription-service")];
+    });
+
+    delete require.cache[require.resolve("../shared/subscription-service")];
+    const SubscriptionService = require("../shared/subscription-service");
+
+    const profile = await SubscriptionService.refreshProfile(true);
+    assert.equal(profile.plan, "pro");
+    assert.equal(sentMessages.length, 1);
+    assert.equal(sentMessages[0].type, "QT_SUBSCRIPTION_REFRESH_PROFILE");
+});
+
+test("SharedTranslatorService delegates googleTranslate to chrome.runtime.sendMessage in content scripts", async (t) => {
+    const sentMessages = [];
+    global.window = {
+        location: { protocol: "https:" },
+    };
+    global.chrome = {
+        runtime: {
+            sendMessage: (msg, callback) => {
+                sentMessages.push(msg);
+                if (msg.type === "QT_GOOGLE_TRANSLATE") {
+                    callback({ ok: true, result: { translated: "Witaj świecie", detectedLang: "en" } });
+                }
+            },
+        },
+        storage: {
+            local: {
+                get: async (def) => def,
+                set: async () => {},
+            },
+        },
+    };
+
+    t.after(() => {
+        delete global.window;
+        delete global.chrome;
+        delete require.cache[require.resolve("../shared/translator-service")];
+    });
+
+    delete require.cache[require.resolve("../shared/translator-service")];
+    const TranslatorService = require("../shared/translator-service");
+
+    const res = await TranslatorService.translate("Hello world", "pl");
+    assert.equal(res.translated, "Witaj świecie");
+    assert.equal(sentMessages.length, 1);
+    assert.equal(sentMessages[0].type, "QT_GOOGLE_TRANSLATE");
+    assert.equal(sentMessages[0].text, "Hello world");
+});
+
+
