@@ -614,7 +614,6 @@
             return;
         }
 
-        const sentence = activeText || registry?.getCurrentText() || text;
         const rect = wordSpan.getBoundingClientRect();
         const subtitleTooltipPlacement = "top";
         QT.showLoading(rect, subtitleTooltipPlacement);
@@ -628,12 +627,6 @@
                     ? wordRes.detectedLang
                     : "auto";
 
-            const showFullLine = sentence && sentence !== text;
-            let fullTranslated = null;
-            if (showFullLine) {
-                fullTranslated = (await subCache.get(sentence, targetLang)).translated;
-            }
-
             if (!isSubHovering || lastHoveredSubWord !== wordSpan) return;
 
             const html = QT.buildTooltipHtml({
@@ -641,9 +634,6 @@
                 targetLang,
                 original: text,
                 translated: wordRes.translated,
-                fullLine: showFullLine ? sentence : null,
-                fullTranslated,
-                speakFullLine: true,
             });
             QT.showTooltip(html, rect, subtitleTooltipPlacement);
             QT.attachTooltipHandlers();

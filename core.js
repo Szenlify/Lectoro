@@ -706,37 +706,9 @@
         targetLang,
         original,
         translated,
-        fullLine = null,
-        fullTranslated = null,
-        speakFullLine = false,
     }) {
         const P = PREFIX;
-        const cleanFullLine = fullLine ? cleanCardText(fullLine) : "";
-        const cleanFullTranslated = fullTranslated ? cleanCardText(fullTranslated) : "";
-
-        let fullLineHtml = "";
-        if (fullLine && fullTranslated && cleanFullLine) {
-            const speakOrig = speakFullLine
-                ? `<button class="${P}speak" data-text="${escapeAttr(cleanFullLine)}" data-lang="${escapeAttr(srcLang)}" title="Odczytaj zdanie">${SVG.SPEAKER || "🔊"}</button>`
-                : "";
-            const speakTrans = speakFullLine
-                ? `<button class="${P}speak" data-text="${escapeAttr(cleanFullTranslated)}" data-lang="${escapeAttr(targetLang)}" title="Odczytaj tłumaczenie zdania">${SVG.SPEAKER || "🔊"}</button>`
-                : "";
-
-            fullLineHtml = `
-                <div class="${P}row" style="margin-top:6px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.1);">
-                    <span class="${P}label">ALL</span>
-                    <span class="${P}text ${P}original" style="font-size:12px;">${escapeHtml(cleanFullLine)}</span>
-                    ${speakOrig}
-                </div>
-                <div class="${P}row">
-                    <span class="${P}label"></span>
-                    <span class="${P}text ${P}translated" style="font-size:12px;">${escapeHtml(cleanFullTranslated)}</span>
-                    ${speakTrans}
-                </div>`;
-        }
-
-        const dataAttrs = `data-src="${escapeAttr(original)}" data-translated="${escapeAttr(translated)}" data-src-lang="${escapeAttr(srcLang)}" data-tgt-lang="${escapeAttr(targetLang)}" data-sentence="${escapeAttr(cleanFullLine)}" data-sentence-translated="${escapeAttr(cleanFullTranslated)}"`;
+        const dataAttrs = `data-src="${escapeAttr(original)}" data-translated="${escapeAttr(translated)}" data-src-lang="${escapeAttr(srcLang)}" data-tgt-lang="${escapeAttr(targetLang)}"`;
 
         return `
             <div class="${P}header">
@@ -758,17 +730,13 @@
                         <button class="${P}speak" data-text="${escapeAttr(translated)}" data-lang="${escapeAttr(targetLang)}" title="Odczytaj tłumaczenie">${SVG.SPEAKER || "🔊"}</button>
                     </span>
                 </div>
-                ${fullLineHtml}
             </div>
             <div class="${P}ai-result" id="${P}ai-result" style="display:none;"></div>
             <div class="${P}save-footer">
-                <button class="${P}save-word-btn ${P}save-footer-btn" ${dataAttrs} title="Zapisz samo słowo">
-                    ${SVG.SAVE || "💾"} <span>Słowo</span>
+                <button class="${P}save-word-btn ${P}save-footer-btn" ${dataAttrs} title="Zapisz słowo">
+                    ${SVG.SAVE || "💾"} <span>Zapisz</span>
                 </button>
-                <button class="${P}save-sentence-footer-btn ${P}save-footer-btn" ${dataAttrs} title="Zapisz z aktualnym zdaniem" ${!cleanFullLine ? 'disabled style="opacity:0.35;cursor:default;"' : ""}>
-                    ${SVG.SAVE_SENTENCE || "📄"} <span>Zdanie</span>
-                </button>
-                <button class="${P}save-ai-btn ${P}save-footer-btn" ${dataAttrs} title="Zapisz z mądrym zdaniem AI (Gemini)">
+                <button class="${P}save-ai-btn ${P}save-footer-btn" ${dataAttrs} title="Generuj zdanie AI (Gemini)">
                     ${SVG.SAVE_AI || "✨"} <span>AI</span>
                 </button>
             </div>`;
@@ -895,26 +863,6 @@
                 } catch (error) {
                     saveWordBtn.innerHTML = `${SVG.SAVE || "💾"} <span>Limit planu</span>`;
                     saveWordBtn.title = error.message;
-                }
-            });
-        }
-
-        // Save Sentence
-        const saveSentenceBtn = tooltipEl.querySelector(`.${PREFIX}save-sentence-footer-btn`);
-        if (saveSentenceBtn && !saveSentenceBtn.disabled) {
-            saveSentenceBtn.addEventListener("click", async (ev) => {
-                ev.stopPropagation();
-                const clean = typeof cleanCardText === "function" ? cleanCardText : (s) => String(s || "").trim();
-                try {
-                    const entry = await buildSaveEntry(saveSentenceBtn);
-                    entry.sentence = clean(saveSentenceBtn.dataset.sentence || "");
-                    entry.sentenceTranslated = clean(saveSentenceBtn.dataset.sentenceTranslated || "");
-                    await QT.saveWord(entry);
-                    saveSentenceBtn.innerHTML = `${SVG.SAVE_SENTENCE_CHECK || "✓"} <span>Zapisano!</span>`;
-                    saveSentenceBtn.classList.add("saved");
-                } catch (error) {
-                    saveSentenceBtn.innerHTML = `${SVG.SAVE_SENTENCE || "📄"} <span>Limit planu</span>`;
-                    saveSentenceBtn.title = error.message;
                 }
             });
         }
