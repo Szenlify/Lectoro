@@ -1139,19 +1139,13 @@ video::cue {
     box-sizing: border-box !important;
 }
 
-#__qt_sentence_translation .__qt_ai-loader-label {
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    font:
-        600 13.5px/1.2 "Inter",
-        -apple-system,
-        "Segoe UI",
-        Roboto,
-        sans-serif !important;
-    letter-spacing: 0.03em !important;
-    text-align: center !important;
-    margin: 0 auto !important;
+.ai-loader-label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font: 600 13px/1.2 "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    letter-spacing: 0.03em;
+    color: transparent;
     background: linear-gradient(
         90deg,
         #a855f7 0%,
@@ -1159,16 +1153,15 @@ video::cue {
         #ffffff 50%,
         #4ecdc4 75%,
         #a855f7 100%
-    ) !important;
-    background-size: 200% 100% !important;
-    -webkit-background-clip: text !important;
-    background-clip: text !important;
-    -webkit-text-fill-color: transparent !important;
-    color: transparent !important;
-    animation: __qt_ai_shimmer 1.8s linear infinite !important;
+    );
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: qtAiShimmer 1.8s linear infinite;
 }
 
-@keyframes __qt_ai_shimmer {
+@keyframes qtAiShimmer {
     0% {
         background-position: 0% 50%;
     }

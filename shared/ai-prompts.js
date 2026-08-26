@@ -104,20 +104,38 @@ Language: ${tgtName} (${targetLang})`;
    * Used by popup.js (aiTranslateReviewCard) for the flashcard "Enter"
    * shortcut in the Review tab.
    */
-  standardTranslate(word, sentence, srcLang = "en", tgtLang = "pl") {
+standardTranslate(word, sentence, srcLang = "en", tgtLang = "pl") {
     const srcName = AIPrompts.getLangName(srcLang);
     const tgtName = AIPrompts.getLangName(tgtLang);
     const context = sentence ? `\nContext sentence: "${sentence}"` : "";
 
-    return `Translate "${word}" (${srcName}) to ${tgtName}.${context}
-Instructions for language learner review:
-1. "word_translation": Most accurate and natural ${tgtName} translation of "${word}" (matching the context if provided).
-2. "sentence_translation": Natural, fluent ${tgtName} translation of the context sentence if provided, otherwise "".
-3. "explanation": Concise, spot-on 1-sentence note in ${tgtName} explaining the nuance, part of speech, typical collocation, or usage tip.
+    return `You are an expert language teacher helping a learner understand the word "${word}" in ${srcName}.
 
-Respond ONLY with JSON:
-{"word_translation": "...", "sentence_translation": "...", "explanation": "..."}`;
-  },
+Your task is to explain the word clearly and naturally for a language learner.
+
+IMPORTANT RULES:
+1. "word_translation" must be the most accurate and natural ${tgtName} translation of "${word}".
+2. ALWAYS use the context sentence to determine the correct meaning when context is provided.
+3. If "${word}" has multiple meanings, choose only the meaning that best fits the context.
+4. "sentence_translation" must be a natural, fluent ${tgtName} translation of the context sentence, not a literal translation.
+5. "explanation" MUST be written entirely in ${tgtName}.
+6. "explanation" must be exactly ONE short, useful sentence.
+7. Whenever you mention the original ${srcName} word or phrase in "explanation", ALWAYS put it in double quotation marks.
+8. Keep the original word or phrase itself in ${srcName}; everything else in "explanation" must be in ${tgtName}.
+9. Explain only the most useful point for a learner: meaning in context, usage, part of speech, collocation, phrasal verb, tone, or important nuance.
+10. Do not give long dictionary definitions or unnecessary alternative meanings.
+11. Do not invent context or information that is not supported by the input.
+12. Be concise and practical, like a teacher giving a quick explanation.
+
+Word: "${word}"${context}
+
+Respond ONLY with valid JSON:
+{
+  "word_translation": "...",
+  "sentence_translation": "...",
+  "explanation": "..."
+}`;
+},
 
   /**
    * Used by popup (QuizExport) to build a multi-section vocabulary exam.
