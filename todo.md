@@ -1,10 +1,11 @@
 [TODO]
 wyslano 2 pobrano 2 w synchronizacji
 
-ograniczone tlumaczenia na godzine
+ograniczone tlumaczenia napisow w filmach na godzine czyli masz 30 zapytan na godzine / znakow
 
 1. Anki dopracowanie aby dobrze wygladaly ze zdjeciami oraz dzwiękiem (sprawdz jak obecnie wygladaja)
-2. 
+2. Quizy dopracowac
+
 
 Oferuj Plan Roczny z góry:
 Użytkownik płaci od razu $59.99 (ok. 240 PLN). Jeden taki zakup daje Ci natychmiastowy zastrzyk gotówki równy 7-8 miesiącom pojedynczego abonamentu!
@@ -23,20 +24,6 @@ firebase login
 firebase.cmd functions:secrets:set ELEVENLABS_API_KEY
 
 
-## Wciel się w rolę doświadczonego Software Architekta i Senior Developera. Twoim zadaniem jest przeprowadzenie dogłębnego audytu (Code Review) kodu projektu. Zależy mi na maksymalnym uporządkowaniu architektury.
-
-Przeanalizuj kod pod kątem trzech głównych obszarów:
-
-1. Eliminacja Martwego Kodu (Dead Code)
-   Zidentyfikuj i wypisz wszystkie nieużywane zmienne, funkcje, komponenty, klasy, Upewnij się, że ich usunięcie nie popsuje działania aplikacji.
-
-2. Wykrywanie Duplikacji (Zasada DRY - Don't Repeat Yourself)
-   Znajdź fragmenty kodu, które są skopiowane lub realizują dokładnie tę samą logikę w minimalnie różny sposób w wielu miejscach. Zwróć uwagę nie tylko na identyczne linie, ale też na powtarzające się wzorce (np. identyczne wywołania API, powtarzająca się logika walidacji czy transformacji danych).
-
-3. Centralizacja Logiki (Single Source of Truth)
-   Zaproponuj plan refaktoryzacji, który przeniesie rozproszoną logikę do jednego, spójnego miejsca. Inne pliki powinny jedynie importować gotowe metody/funkcje, stając się "głupimi" konsumentami logiki biznesowej. Zastanów się, czy logikę lepiej wydzielić do klasycznych funkcji pomocniczych (utils), dedykowanych serwisów (services)
-
-
 Jesteś ekspertem od Chrome Extensions, Manifest V3 oraz zasad Chrome Web Store.
 
 Przeanalizuj całe repozytorium tej wtyczki Chrome:
@@ -48,5 +35,9 @@ Celem jest przygotowanie projektu do publikacji w Chrome Web Store.
 Nie przepisuj całego projektu i nie wykonuj zmian w ciemno.
 
 Najpierw dokładnie przeanalizuj kod i wskaż konkretne problemy.
+
+
+Nie przepisuj całego projektu i nie wykonuj zmian w ciemno.
+pamietaj o zasadzie (Zasada DRY - Don't Repeat Yourself) oraz Centralizacja Logiki (Single Source of Truth)
 
 
