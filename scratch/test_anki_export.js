@@ -6,8 +6,11 @@ assert(typeof SharedTtsService.getAudioBlob === "function", "getAudioBlob must b
 
 // Test that getAudioBlob with allowSynthesis: false returns null or google-tts fallback (does not throw or call ElevenLabs proxy)
 (async () => {
-    const res = await SharedTtsService.getAudioBlob("hello", "en", { allowSynthesis: false });
-    // In Node test environment, fallback returns null or blob, but crucially does not attempt unauthenticated ElevenLabs synthesis
+    // With allowFallback: false, should return null if not in cache/R2
+    const miss = await SharedTtsService.getAudioBlob("nonexistent_rare_word_xyz_123", "en", { allowSynthesis: false, allowFallback: false });
+    assert.strictEqual(miss, null, "Should return null when allowFallback is false and not in cache");
+
+    const res = await SharedTtsService.getAudioBlob("hello", "en", { allowSynthesis: false, allowFallback: true });
     assert(res === null || res?.provider === "google-tts" || res?.provider === "elevenlabs");
 })();
 

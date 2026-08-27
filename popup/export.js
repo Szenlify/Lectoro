@@ -3,14 +3,16 @@ const { csvCell } = typeof SharedUtils !== "undefined"
     : { csvCell: (s) => String(s ?? "") };
 
 // ── Unified Audio Fetcher (SSOT with ElevenLabs, R2 CDN & AudioCache) ──
-async function fetchAudioBlob(text, lang) {
+async function fetchAudioBlob(text, lang, { allowFallback = true } = {}) {
     if (typeof SharedTtsService !== "undefined" && typeof SharedTtsService.getAudioBlob === "function") {
         const res = await SharedTtsService.getAudioBlob(text, lang, {
             context: "review",
             allowSynthesis: false, // Do not trigger fresh ElevenLabs synthesis on export; fallback to system voice if missing from R2 CDN
+            allowFallback,
         });
         if (res?.blob) return res;
     }
+    if (!allowFallback) return null;
     // Direct network fallback if SharedTtsService is unavailable
     try {
         const baseLang = encodeURIComponent((lang || "en").split("-")[0]);
@@ -302,7 +304,7 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
             }
 
             // Wrap Front Side in modern centered Lectoro card container with cloze styling
-            const frontCardHtml = `<style>.lectoro-anki-card .cloze { color: #38bdf8 !important; font-weight: 700; text-decoration: none; border-bottom: 2px solid #38bdf8; padding-bottom: 1px; }</style><div class="lectoro-anki-card" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 16px auto; padding: 26px 28px; background: linear-gradient(180deg, #0f172a 0%, #090d16 100%); border: 1px solid rgba(56, 189, 248, 0.22); border-radius: 20px; box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05); color: #f8fafc; text-align: center;"><div style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 18px;"><span style="background: rgba(56, 189, 248, 0.12); color: #38bdf8; font-weight: 700; font-size: 11px; padding: 4px 12px; border-radius: 20px; letter-spacing: 0.08em; border: 1px solid rgba(56, 189, 248, 0.25); text-transform: uppercase;">${srcLangTag} → ${tgtLangTag}</span><span style="background: rgba(255, 255, 255, 0.06); color: #94a3b8; font-size: 11px; font-weight: 600; padding: 4px 12px; border-radius: 20px; letter-spacing: 0.08em; border: 1px solid rgba(255, 255, 255, 0.08);">LECTORO ✦</span></div>${sentencePromptTop}<div style="font-size: 20px; line-height: 1.65; color: #f8fafc; font-weight: 500; text-align: center; max-width: 500px; margin: 0 auto;">${clozeSentenceHtml}</div></div>`;
+            const frontCardHtml = `<style>.lectoro-anki-card .cloze { color: #38bdf8 !important; font-weight: 700; text-decoration: none; border-bottom: 2px solid #38bdf8; padding-bottom: 1px; }</style><div class="lectoro-anki-card" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 16px auto; padding: 26px 28px; background: linear-gradient(180deg, #0f172a 0%, #090d16 100%); border: 1px solid rgba(56, 189, 248, 0.22); border-radius: 20px; box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05); color: #f8fafc; text-align: center;"><div style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 18px;"><span style="background: rgba(255, 255, 255, 0.06); color: #94a3b8; font-size: 11px; font-weight: 600; padding: 4px 12px; border-radius: 20px; letter-spacing: 0.08em; border: 1px solid rgba(255, 255, 255, 0.08);">LectoroAI.com</span></div>${sentencePromptTop}<div style="font-size: 20px; line-height: 1.65; color: #f8fafc; font-weight: 500; text-align: center; max-width: 500px; margin: 0 auto;">${clozeSentenceHtml}</div></div>`;
 
             // Build Extra (Back side details)
             const extraParts = [];
@@ -359,11 +361,45 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
                 }
             }
 
-            // 5. Audio: prefer full sentence (AI or context), fallback to word
+            // 5. Audio: priority search for ElevenLabs recording in R2 CDN / AudioCache
             let audioFile = null;
             let audioDataUri = null;
-            const audioText = w.aiSentence || w.sentence || w.original;
-            const slug = (audioText || "audio")
+            const ttsLang = w.srcLang || "en";
+
+            // Candidate texts in priority order:
+            // 1) Original subtitle sentence from video (w.sentence)
+            // 2) Original saved word/sentence (w.original)
+            // 3) Combined word + sentence (e.g. from review session)
+            // 4) AI example sentence (w.aiSentence)
+            const textCandidates = [
+                w.sentence,
+                w.original,
+                (w.sentence && w.original && w.sentence !== w.original) ? `${w.original}. ${w.sentence}` : null,
+                w.aiSentence,
+            ].filter((t) => t && typeof t === "string" && t.trim().length > 0);
+
+            let audioRes = null;
+            let usedAudioText = "";
+
+            // Probe candidate texts in R2 CDN and AudioCache for authentic ElevenLabs audio
+            for (const candText of textCandidates) {
+                const res = await fetchAudioBlob(candText, ttsLang, { allowFallback: false });
+                if (res?.blob && res.provider === "elevenlabs") {
+                    audioRes = res;
+                    usedAudioText = candText;
+                    break;
+                }
+            }
+
+            // If no ElevenLabs recording exists in R2 or cache, fallback to Google TTS
+            if (!audioRes) {
+                usedAudioText = w.sentence || w.original || w.aiSentence || "";
+                if (usedAudioText) {
+                    audioRes = await fetchAudioBlob(usedAudioText, ttsLang, { allowFallback: true });
+                }
+            }
+
+            const slug = (usedAudioText || "audio")
                 .normalize("NFD")
                 .replace(/[\u0300-\u036f]/g, "")
                 .toLowerCase()
@@ -371,10 +407,6 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
                 .replace(/^_|_$/g, "")
                 .substring(0, 30) || "audio";
             const candidateAudioFile = `lectoro_${slug}_${ts}.mp3`;
-
-            // Fetch TTS audio via SSOT (AudioCache -> R2 -> Fallback)
-            const ttsLang = w.srcLang || "en";
-            const audioRes = await fetchAudioBlob(audioText, ttsLang);
             if (audioRes?.blob && audioRes.blob.size > 0) {
                 audioFile = candidateAudioFile;
                 const audioBuffer = await audioRes.blob.arrayBuffer();

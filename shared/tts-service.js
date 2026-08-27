@@ -282,67 +282,120 @@
             context = "review",
             cacheNotBefore = 0,
             allowSynthesis = false,
+            allowFallback = true,
         } = {},
     ) {
         const cleaned = cleanText(text);
         if (!cleaned) return null;
 
         const settings = await getTtsSettings();
-        const targetVoiceId = voiceId || settings.elVoiceId;
+        const preferredVoiceId = voiceId || settings.elVoiceId || "";
 
-        const useElevenLabs =
-            !forceBrowser &&
-            settings.ttsMode === "elevenlabs" &&
-            !!targetVoiceId &&
-            targetVoiceId !== "random" &&
-            typeof SubscriptionService !== "undefined" &&
-            typeof AudioCache !== "undefined";
-
-        if (useElevenLabs) {
+        // ── STEP 1: Local IndexedDB AudioCache (always checked for cached ElevenLabs audio) ──
+        if (typeof AudioCache !== "undefined" && !forceBrowser) {
             try {
-                const cacheKey = `${cleaned}|${targetVoiceId}`;
-
-                // Step 1: Local IndexedDB AudioCache
-                let blob = await AudioCache.get(cacheKey, { notBefore: cacheNotBefore });
-                if (blob) {
-                    return { blob, provider: "elevenlabs", cached: true, voiceId: targetVoiceId };
+                if (preferredVoiceId) {
+                    const blob = await AudioCache.get(`${cleaned}|${preferredVoiceId}`, { notBefore: cacheNotBefore });
+                    if (blob && blob.size > 0) {
+                        return { blob, provider: "elevenlabs", cached: true, voiceId: preferredVoiceId };
+                    }
                 }
+                if (typeof AudioCache.findByText === "function") {
+                    const cachedMatch = await AudioCache.findByText(cleaned, { notBefore: cacheNotBefore });
+                    if (cachedMatch?.blob && cachedMatch.blob.size > 0) {
+                        return { blob: cachedMatch.blob, provider: "elevenlabs", cached: true, voiceId: cachedMatch.voiceId || preferredVoiceId };
+                    }
+                }
+            } catch (cacheErr) {
+                console.warn("[Lectoro TTS] AudioCache lookup warning:", cacheErr.message || cacheErr);
+            }
+        }
 
-                // Step 2: Deterministic Cloudflare R2 CDN URL
-                if (
-                    typeof SharedUtils !== "undefined" &&
-                    typeof SharedUtils.getR2AudioUrl === "function"
-                ) {
-                    const r2Url = await SharedUtils.getR2AudioUrl(targetVoiceId, cleaned);
+        // ── STEP 2: Cloudflare R2 CDN (Static public cache, zero token cost) ──
+        if (
+            !forceBrowser &&
+            typeof SharedUtils !== "undefined" &&
+            typeof SharedUtils.getR2AudioUrl === "function"
+        ) {
+            // Probe candidate voice IDs in priority order
+            const candidateVoiceIds = [
+                preferredVoiceId,
+                settings.elVoiceId,
+                "CwhRBWXzGAHq8TQ4Fs17", // Roger
+                "EXAVITQu4vr4xnSDxMaL", // Sarah
+                "IKne3meq5aSn9XLyUdCD", // Charlie
+                "21m00Tcm4TlvDq8ikWAM", // Rachel
+                "default",
+                "roger",
+                "sarah",
+                "charlie",
+            ].filter((v, idx, arr) => v && typeof v === "string" && arr.indexOf(v) === idx);
+
+            for (const candVoice of candidateVoiceIds) {
+                try {
+                    const r2Url = await SharedUtils.getR2AudioUrl(candVoice, cleaned);
                     if (r2Url) {
-                        try {
-                            const r2Res = await fetch(r2Url);
-                            if (r2Res.ok) {
-                                blob = await r2Res.blob();
-                                await AudioCache.set(cacheKey, blob);
-                                return { blob, provider: "elevenlabs", cached: true, voiceId: targetVoiceId };
+                        const r2Res = await fetch(r2Url);
+                        if (r2Res.ok) {
+                            const blob = await r2Res.blob();
+                            if (blob && blob.size > 0) {
+                                if (typeof AudioCache !== "undefined" && typeof AudioCache.set === "function") {
+                                    AudioCache.set(`${cleaned}|${candVoice}`, blob).catch(() => {});
+                                }
+                                return { blob, provider: "elevenlabs", cached: true, voiceId: candVoice };
                             }
-                        } catch (r2Err) {
-                            console.warn("[Lectoro TTS] Direct R2 CDN fetch warning:", r2Err.message || r2Err);
                         }
                     }
+                } catch {
+                    // Silently try next candidate
                 }
+            }
 
-                // Step 3: ElevenLabs Proxy Synthesis (Cache Miss) - executed only when allowSynthesis is true
-                if (allowSynthesis && !providerError) {
-                    const validation = await SubscriptionService.checkElevenLabs(cleaned);
-                    if (typeof SubscriptionConfig !== "undefined") {
-                        SubscriptionConfig.assertAllowed(validation);
+            // Also probe flat audio/{hash}.mp3 if voice-scoped paths were not found
+            try {
+                const hash = await SharedUtils.computeTextHash(cleaned);
+                const flatUrl = `https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev/audio/${hash}.mp3`;
+                const flatRes = await fetch(flatUrl);
+                if (flatRes.ok) {
+                    const blob = await flatRes.blob();
+                    if (blob && blob.size > 0) {
+                        if (typeof AudioCache !== "undefined" && typeof AudioCache.set === "function") {
+                            AudioCache.set(`${cleaned}|default`, blob).catch(() => {});
+                        }
+                        return { blob, provider: "elevenlabs", cached: true, voiceId: "default" };
                     }
-                    blob = await SubscriptionService.synthesizeElevenLabs(
-                        cleaned,
-                        targetVoiceId,
-                        context || "review",
-                    );
-                    if (blob) {
-                        await AudioCache.set(cacheKey, blob);
-                        return { blob, provider: "elevenlabs", cached: false, voiceId: targetVoiceId };
+                }
+            } catch {
+                // Silently continue
+            }
+        }
+
+        // ── STEP 3: ElevenLabs Proxy Synthesis (Live API) - executed ONLY when allowSynthesis is true ──
+        const canSynthesize =
+            allowSynthesis &&
+            !forceBrowser &&
+            settings.ttsMode === "elevenlabs" &&
+            !!preferredVoiceId &&
+            preferredVoiceId !== "random" &&
+            typeof SubscriptionService !== "undefined" &&
+            !providerError;
+
+        if (canSynthesize) {
+            try {
+                const validation = await SubscriptionService.checkElevenLabs(cleaned);
+                if (typeof SubscriptionConfig !== "undefined") {
+                    SubscriptionConfig.assertAllowed(validation);
+                }
+                const blob = await SubscriptionService.synthesizeElevenLabs(
+                    cleaned,
+                    preferredVoiceId,
+                    context || "review",
+                );
+                if (blob && blob.size > 0) {
+                    if (typeof AudioCache !== "undefined" && typeof AudioCache.set === "function") {
+                        await AudioCache.set(`${cleaned}|${preferredVoiceId}`, blob);
                     }
+                    return { blob, provider: "elevenlabs", cached: false, voiceId: preferredVoiceId };
                 }
             } catch (err) {
                 console.warn("[Lectoro TTS] ElevenLabs getAudioBlob fallback:", err.message || err);
@@ -352,10 +405,12 @@
             }
         }
 
-        // Fallback: Web TTS audio blob
-        const fallbackBlob = await fetchFallbackAudioBlob(cleaned, lang);
-        if (fallbackBlob) {
-            return { blob: fallbackBlob, provider: "google-tts", cached: false };
+        // ── STEP 4: Fallback to Google / Web TTS audio blob ──
+        if (allowFallback) {
+            const fallbackBlob = await fetchFallbackAudioBlob(cleaned, lang);
+            if (fallbackBlob && fallbackBlob.size > 0) {
+                return { blob: fallbackBlob, provider: "google-tts", cached: false };
+            }
         }
 
         return null;
