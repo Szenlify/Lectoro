@@ -4,6 +4,7 @@ kiedy ogladan video a nastepnie cofne zeby przesluchac je podownie to ma inny st
 
 1. Anki dopracowanie aby dobrze wygladaly ze zdjeciami oraz dzwiękiem (sprawdz jak obecnie wygladaja)
 2. Quizy dopracowac
+3. Npisy lepszy UI/UX tlumaczen "S"
 
 
 Oferuj Plan Roczny z góry:
