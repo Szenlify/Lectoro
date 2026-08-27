@@ -3,6 +3,9 @@ wyslano 2 pobrano 2 w synchronizacji
 
 ograniczone tlumaczenia na godzine
 
+1. Anki dopracowanie aby dobrze wygladaly ze zdjeciami oraz dzwiękiem (sprawdz jak obecnie wygladaja)
+2. 
+
 Oferuj Plan Roczny z góry:
 Użytkownik płaci od razu $59.99 (ok. 240 PLN). Jeden taki zakup daje Ci natychmiastowy zastrzyk gotówki równy 7-8 miesiącom pojedynczego abonamentu!
 Wykorzystaj e-mail marketing:
@@ -15,11 +18,6 @@ functions/
 scratch/
 todo.md
 stripe.md
-
-
-2. zrob w kazdym jezyku aby był text UI nagłowki wszystkie w zaleznosci jaki zalezny jest język a jako defaul jest angielski [na pozniej jako ostatnie]
-
-2. popraw prompty AI bo teraz tlumacza czesto bez sensu lub nie w tym jezyku
 
 firebase login
 firebase.cmd functions:secrets:set ELEVENLABS_API_KEY
