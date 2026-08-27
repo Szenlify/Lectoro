@@ -661,4 +661,103 @@ test("SharedTranslatorService delegates googleTranslate to chrome.runtime.sendMe
     assert.equal(sentMessages[0].text, "Hello world");
 });
 
+test("SubscriptionConfig.checkSubtitleLimit enforces 15k limit on free plan and unlimited on paid plans", () => {
+    const SubscriptionConfig = require("./subscription-config");
+
+    // Free plan: 15,000 characters
+    const allowedFree = SubscriptionConfig.checkSubtitleLimit({
+        plan: "free",
+        usedCharacters: 14000,
+        requestedCharacters: 500,
+    });
+    assert.equal(allowedFree.allowed, true);
+    assert.equal(allowedFree.remaining, 1000);
+
+    const blockedFree = SubscriptionConfig.checkSubtitleLimit({
+        plan: "free",
+        usedCharacters: 14800,
+        requestedCharacters: 300,
+    });
+    assert.equal(blockedFree.allowed, false);
+    assert.equal(blockedFree.code, SubscriptionConfig.LIMIT_ERROR_CODES.SUBTITLES_HOURLY_LIMIT_REACHED);
+    assert.equal(blockedFree.upgradeRequired, true);
+
+    // Basic and Pro plans: Unlimited
+    const basicCheck = SubscriptionConfig.checkSubtitleLimit({
+        plan: "basic",
+        usedCharacters: 500000,
+        requestedCharacters: 1000,
+    });
+    assert.equal(basicCheck.allowed, true);
+    assert.equal(basicCheck.remaining, Infinity);
+
+    const proCheck = SubscriptionConfig.checkSubtitleLimit({
+        plan: "pro",
+        usedCharacters: 1000000,
+        requestedCharacters: 2000,
+    });
+    assert.equal(proCheck.allowed, true);
+    assert.equal(proCheck.remaining, Infinity);
+});
+
+test("SubscriptionService local subtitle quota tracking respects 15,000 characters/hour", async (t) => {
+    delete require.cache[require.resolve("./subscription-config")];
+    delete require.cache[require.resolve("../shared/subscription-config")];
+    delete require.cache[require.resolve("../shared/subscription-service")];
+
+    const SubscriptionConfig = require("../shared/subscription-config");
+    global.SubscriptionConfig = SubscriptionConfig;
+
+    const mockStorage = {
+        subscriptionProfileCache: {
+            plan: "free",
+        },
+        lectoro_subtitle_hourly_usage: {
+            windowStart: Date.now(),
+            used: 14950,
+        },
+    };
+
+    global.chrome = {
+        storage: {
+            local: {
+                get: async (keys) => {
+                    const res = {};
+                    for (const [k, def] of Object.entries(keys)) {
+                        res[k] = mockStorage[k] !== undefined ? mockStorage[k] : def;
+                    }
+                    return res;
+                },
+                set: async (items) => {
+                    Object.assign(mockStorage, items);
+                },
+            },
+        },
+    };
+
+    t.after(() => {
+        delete global.SubscriptionConfig;
+        delete global.chrome;
+        delete require.cache[require.resolve("../shared/subscription-service")];
+    });
+
+    const SubscriptionService = require("../shared/subscription-service");
+
+    // 14950 used + 30 chars requested => allowed (total 14980 <= 15000)
+    const status1 = await SubscriptionService.consumeSubtitleQuota(30);
+    assert.equal(status1.allowed, true);
+    assert.equal(status1.used, 14980);
+    assert.equal(status1.remaining, 20);
+
+    // 14980 used + 50 chars requested => exceeds 15000 limit, blocked!
+    const status2 = await SubscriptionService.consumeSubtitleQuota(50);
+    assert.equal(status2.allowed, false);
+    assert.equal(status2.code, "SUBTITLES_HOURLY_LIMIT_REACHED");
+    assert.equal(status2.remaining, 20);
+
+    // Storage is not corrupted with failed requested chars
+    assert.equal(mockStorage.lectoro_subtitle_hourly_usage.used, 14980);
+});
+
+
 

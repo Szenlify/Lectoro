@@ -10,6 +10,10 @@
     const subCache = typeof QT !== "undefined" && QT.createTranslateCache
         ? QT.createTranslateCache(300)
         : new Map();
+    const sentenceSubCache = typeof QT !== "undefined" && QT.createTranslateCache
+        ? QT.createTranslateCache(150)
+        : new Map();
+    let quotaCountdownTimer = null;
 
     const SVG = typeof QT !== "undefined" && QT.SVG ? QT.SVG : {
         SPEAKER: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`,
@@ -1163,6 +1167,7 @@
         const translation = await (opts.translationTask ||
             createSubtitleTranslationTask(fullText, modeRevision));
         if (!translation || modeRevision !== subtitleModeRevision) return;
+        if (translation.limitReached) return;
         const { targetLang, translatedText: translatedFullText } = translation;
         if (!opts.skipSpeech && translatedFullText?.trim()) {
             QT.speak(translatedFullText, targetLang, {
@@ -1253,16 +1258,61 @@
         };
     }
 
-    async function createSubtitleTranslationTask(text, modeRevision) {
+    async function createSubtitleTranslationTask(text, modeRevision, layout = null) {
         const targetLang = await QT.getTargetLang();
         if (modeRevision !== subtitleModeRevision) return null;
+
+        const cleanText = String(text || "").trim();
+        if (!cleanText) return null;
+
+        // 1. Rewind Cache: avoid re-charging user quota if seeking backwards
+        if (sentenceSubCache && sentenceSubCache.has(cleanText, targetLang)) {
+            try {
+                const cached = await sentenceSubCache.get(cleanText, targetLang);
+                if (cached && modeRevision === subtitleModeRevision) {
+                    return {
+                        targetLang,
+                        translatedText: cached.translated || cleanText,
+                        detectedLang: cached.detectedLang || "en",
+                    };
+                }
+            } catch (_) {}
+        }
+
+        // 2. Check local quota before translation
+        const subService = typeof SubscriptionService !== "undefined" ? SubscriptionService : null;
+        if (subService && typeof subService.consumeSubtitleQuota === "function") {
+            const quota = await subService.consumeSubtitleQuota(cleanText.length);
+            if (!quota.allowed) {
+                if (modeRevision !== subtitleModeRevision) return null;
+                showSubtitleLimitOverlay(quota, layout);
+                return {
+                    limitReached: true,
+                    targetLang,
+                    translatedText: cleanText,
+                    detectedLang: "en",
+                };
+            }
+        }
+
         try {
-            const { translated, detectedLang } = await QT.translate(text, targetLang);
+            const { translated, detectedLang } = await QT.translate(cleanText, targetLang);
             if (modeRevision !== subtitleModeRevision) return null;
-            return { targetLang, translatedText: translated || text, detectedLang: detectedLang || "en" };
+            const res = {
+                targetLang,
+                translatedText: translated || cleanText,
+                detectedLang: detectedLang || "en",
+            };
+            if (sentenceSubCache && translated) {
+                sentenceSubCache.set(cleanText, targetLang, {
+                    translated,
+                    detectedLang: res.detectedLang,
+                });
+            }
+            return res;
         } catch (_) {
             if (modeRevision !== subtitleModeRevision) return null;
-            return { targetLang, translatedText: text, detectedLang: "en" };
+            return { targetLang, translatedText: cleanText, detectedLang: "en" };
         }
     }
 
@@ -1503,6 +1553,69 @@
         revealOverlayContent(copy, layout, "Sentence analysis");
     }
 
+    function showSubtitleLimitOverlay(quota, layout = translationAnchorLayout) {
+        clearTimeout(quotaCountdownTimer);
+        const resetAt = quota?.resetAt || (Date.now() + (quota?.resetInMs || 3600000));
+
+        function formatRemaining(ms) {
+            const totalSec = Math.max(0, Math.ceil(ms / 1000));
+            const mins = Math.floor(totalSec / 60);
+            const secs = totalSec % 60;
+            return `${mins}m ${secs < 10 ? "0" : ""}${secs}s`;
+        }
+
+        const initialRemaining = formatRemaining(resetAt - Date.now());
+
+        const html = `
+            <div class="${PREFIX}header">
+                <span>🔒 Limit darmowych napisów</span>
+            </div>
+            <div class="${PREFIX}body">
+                <div style="padding: 8px 4px; font-size: 13px; line-height: 1.5; color: #f1f5f9;">
+                    Wykorzystano darmowy limit <strong>15 000 znaków / godzinę</strong>.<br>
+                    <span style="color: #94a3b8; font-size: 12px;">Nowa pula darmowych napisów za: <strong style="color: #38bdf8;" class="${PREFIX}countdown-text">${initialRemaining}</strong></span>
+                </div>
+            </div>
+            <div class="${PREFIX}save-footer" style="display: flex; gap: 8px; justify-content: flex-end; padding-top: 8px;">
+                <button type="button" class="${PREFIX}ai-explain-save-btn ${PREFIX}save-footer-btn ${PREFIX}trial-cta-btn" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border: none; font-weight: 600; cursor: pointer; padding: 6px 14px; border-radius: 6px;">
+                    Wypróbuj 3 dni za darmo →
+                </button>
+            </div>`;
+
+        const effectiveLayout = layout || translationAnchorLayout || captureSubtitleLayout();
+        const overlay = translationOverlay || createOverlay(effectiveLayout);
+        overlay.classList.add(`${PREFIX}ai-explain-overlay`);
+        overlay.setAttribute("role", "dialog");
+        overlay.setAttribute("aria-live", "off");
+        const copy = document.createElement("div");
+        copy.className = `${PREFIX}translation-copy ${PREFIX}ai-explain-copy`;
+        copy.setAttribute("dir", "auto");
+        copy.innerHTML = html;
+        revealOverlayContent(copy, effectiveLayout, "Limit napisów");
+
+        const ctaBtn = copy.querySelector(`.${PREFIX}trial-cta-btn`);
+        ctaBtn?.addEventListener("click", () => {
+            if (typeof SubscriptionService !== "undefined") {
+                SubscriptionService.startCheckout("basic").catch(() => {
+                    SubscriptionService.openPlans();
+                });
+            }
+        });
+
+        const countdownEl = copy.querySelector(`.${PREFIX}countdown-text`);
+        function tick() {
+            const rem = resetAt - Date.now();
+            if (rem <= 0) {
+                if (countdownEl) countdownEl.textContent = "odnowiono!";
+                return;
+            }
+            if (countdownEl) countdownEl.textContent = formatRemaining(rem);
+            quotaCountdownTimer = setTimeout(tick, 1000);
+        }
+        quotaCountdownTimer = setTimeout(tick, 1000);
+        eTranslateActive = true;
+    }
+
     async function doSentenceTranslation(video, sourceText = null, options = {}) {
         const modeRevision = options.revision ?? subtitleModeRevision;
         if (modeRevision !== subtitleModeRevision) return;
@@ -1518,8 +1631,9 @@
         const layout = options.layout || captureSubtitleLayout();
         showSubLoading(layout);
         const translation = await (options.translationTask ||
-            createSubtitleTranslationTask(text, modeRevision));
+            createSubtitleTranslationTask(text, modeRevision, layout));
         if (!translation || modeRevision !== subtitleModeRevision) return;
+        if (translation.limitReached) return;
         applyTranslation(translation.translatedText, layout, text, translation.detectedLang, translation.targetLang);
         if (options.speakTranslated) {
             await QT.speak(translation.translatedText, translation.targetLang, {
@@ -1529,6 +1643,8 @@
     }
 
     function restoreOriginal() {
+        clearTimeout(quotaCountdownTimer);
+        quotaCountdownTimer = null;
         subtitleModeRevision += 1;
         subtitleModeStarting = false;
         removeOverlay();

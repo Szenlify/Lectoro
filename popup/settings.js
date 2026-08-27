@@ -187,6 +187,10 @@ function renderSubscriptionPlans(subscription, signedIn = true) {
                 <div class="subscription-plan-features">
                     <span>
     <i aria-hidden="true">✓</i>
+    <b>${Number.isFinite(limits.subtitles?.charactersPerHour) ? `${limits.subtitles.charactersPerHour.toLocaleString("en-US")} chars/h` : "Unlimited"}</b> translate
+</span>
+                    <span>
+    <i aria-hidden="true">✓</i>
     <b>${limits.ai.usesPerMonth.toLocaleString("en-US")}</b>
     ${planId === SubscriptionConfig.SUBSCRIPTION_PLANS.FREE ? "AI uses" : "AI uses / mo"}
 </span>

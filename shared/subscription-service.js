@@ -4,6 +4,8 @@ const SubscriptionService = (() => {
 
     const PROFILE_KEY = "subscriptionProfileCache";
     const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour TTL to minimize Firestore reads
+    const SUBTITLE_HOURLY_USAGE_KEY = "lectoro_subtitle_hourly_usage";
+    const SUBTITLE_WINDOW_MS = 60 * 60 * 1000; // 1 hour local sliding window
     const PROXY_URL = "https://geminiproxy-gyagzflbra-ew.a.run.app";
     const BILLING_FUNCTIONS_URL =
         "https://europe-west1-extension-eng.cloudfunctions.net";
@@ -469,6 +471,93 @@ const SubscriptionService = (() => {
         }
     }
 
+    async function getSubtitleHourlyRecord() {
+        if (typeof chrome === "undefined" || !chrome?.storage?.local) {
+            return { windowStart: Date.now(), used: 0 };
+        }
+        const data = await chrome.storage.local.get({ [SUBTITLE_HOURLY_USAGE_KEY]: null });
+        const now = Date.now();
+        const stored = data[SUBTITLE_HOURLY_USAGE_KEY];
+        if (
+            !stored ||
+            typeof stored.windowStart !== "number" ||
+            typeof stored.used !== "number" ||
+            now - stored.windowStart >= SUBTITLE_WINDOW_MS ||
+            now < stored.windowStart
+        ) {
+            const fresh = { windowStart: now, used: 0 };
+            await chrome.storage.local.set({ [SUBTITLE_HOURLY_USAGE_KEY]: fresh }).catch(() => {});
+            return fresh;
+        }
+        return stored;
+    }
+
+    async function getSubtitleQuotaStatus(requestedCharacters = 0) {
+        const profile = await getCachedProfile();
+        const plan = Config.normalizePlan(profile?.plan);
+        const limits = Config.getPlanLimits(plan);
+        const limit = limits.subtitles?.charactersPerHour ?? 15000;
+        const isUnlimited = !Number.isFinite(limit);
+
+        if (isUnlimited) {
+            return {
+                allowed: true,
+                code: null,
+                feature: "subtitles",
+                plan,
+                limit: Infinity,
+                used: 0,
+                requested: requestedCharacters,
+                remaining: Infinity,
+                upgradeRequired: false,
+                resetInMs: 0,
+                resetAt: 0,
+                message: "Subtitle translation is unlimited.",
+            };
+        }
+
+        const record = await getSubtitleHourlyRecord();
+        const validation = Config.checkSubtitleLimit({
+            plan,
+            usedCharacters: record.used,
+            requestedCharacters,
+        });
+
+        const now = Date.now();
+        const elapsed = now - record.windowStart;
+        const resetInMs = Math.max(0, SUBTITLE_WINDOW_MS - elapsed);
+        const resetAt = record.windowStart + SUBTITLE_WINDOW_MS;
+
+        return {
+            ...validation,
+            resetInMs,
+            resetAt,
+        };
+    }
+
+    async function consumeSubtitleQuota(requestedCharacters = 0) {
+        const status = await getSubtitleQuotaStatus(requestedCharacters);
+        if (!status.allowed) {
+            return status;
+        }
+        if (!Number.isFinite(status.limit)) {
+            return status;
+        }
+        if (typeof chrome !== "undefined" && chrome?.storage?.local && requestedCharacters > 0) {
+            const record = await getSubtitleHourlyRecord();
+            const newUsed = record.used + requestedCharacters;
+            await chrome.storage.local.set({
+                [SUBTITLE_HOURLY_USAGE_KEY]: {
+                    windowStart: record.windowStart,
+                    used: newUsed,
+                },
+            }).catch(() => {});
+            status.used = newUsed;
+            status.remaining = Math.max(0, status.limit - newUsed);
+        }
+        return status;
+    }
+
     return {
         refreshProfile,
         getCachedProfile,
@@ -485,6 +574,8 @@ const SubscriptionService = (() => {
         showUpgradePrompt,
         openPlans,
         applyPlanToUI,
+        getSubtitleQuotaStatus,
+        consumeSubtitleQuota,
     };
 })();
 

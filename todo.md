@@ -3,6 +3,8 @@ wyslano 2 pobrano 2 w synchronizacji
 
 ograniczone tlumaczenia napisow w filmach tylko plan free reszta bardzo wysokie limity na godzine czyli na godzine / 20000 znakow zapisuj to tylko lokalnie nie lacz tego z baza danych ani planami. 
 
+kiedy ogladan video a nastepnie cofne zeby przesluchac je podownie to ma inny styl jak wczesniej np na netflixie napisy byly jedno pod drugim po przewinieciu napisy sa w jednym rzedzie, popraw napisy aby zawsze byly w jednym stylu najlepiej orginalnie jedno pod drugim
+
 1. Anki dopracowanie aby dobrze wygladaly ze zdjeciami oraz dzwiękiem (sprawdz jak obecnie wygladaja)
 2. Quizy dopracowac
 

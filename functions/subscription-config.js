@@ -31,6 +31,9 @@
                 maxCharactersPerRequest: 0,
                 charactersPerMonth: 0,
             }),
+            subtitles: Object.freeze({
+                charactersPerHour: 15000,
+            }),
         }),
         [SUBSCRIPTION_PLANS.BASIC]: Object.freeze({
             displayName: "BASIC",
@@ -42,6 +45,9 @@
                 enabled: true,
                 maxCharactersPerRequest: 500,
                 charactersPerMonth: 20000,
+            }),
+            subtitles: Object.freeze({
+                charactersPerHour: Infinity,
             }),
         }),
         [SUBSCRIPTION_PLANS.PRO]: Object.freeze({
@@ -55,6 +61,9 @@
                 maxCharactersPerRequest: 1000,
                 charactersPerMonth: 120000,
             }),
+            subtitles: Object.freeze({
+                charactersPerHour: Infinity,
+            }),
         }),
     });
 
@@ -64,6 +73,7 @@
         ELEVENLABS_NOT_INCLUDED: "ELEVENLABS_NOT_INCLUDED",
         ELEVENLABS_REQUEST_TOO_LONG: "ELEVENLABS_REQUEST_TOO_LONG",
         ELEVENLABS_MONTHLY_LIMIT_REACHED: "ELEVENLABS_MONTHLY_LIMIT_REACHED",
+        SUBTITLES_HOURLY_LIMIT_REACHED: "SUBTITLES_HOURLY_LIMIT_REACHED",
     });
 
     function normalizePlan(plan) {
@@ -182,6 +192,28 @@
         });
     }
 
+    function checkSubtitleLimit({ plan, usedCharacters = 0, requestedCharacters = 0 }) {
+        const normalizedPlan = normalizePlan(plan);
+        const limit = getPlanLimits(normalizedPlan).subtitles?.charactersPerHour ?? 15000;
+        const isUnlimited = !Number.isFinite(limit);
+        const safeUsed = Math.max(0, Number(usedCharacters) || 0);
+        const safeRequested = Math.max(0, Number(requestedCharacters) || 0);
+        const allowed = isUnlimited || (safeUsed + safeRequested <= limit);
+        return result({
+            allowed,
+            code: allowed ? null : LIMIT_ERROR_CODES.SUBTITLES_HOURLY_LIMIT_REACHED,
+            feature: "subtitles",
+            plan: normalizedPlan,
+            limit,
+            used: safeUsed,
+            requested: safeRequested,
+            remaining: isUnlimited ? Infinity : Math.max(0, limit - safeUsed),
+            message: allowed
+                ? "Tłumaczenie napisów jest dostępne."
+                : `Przekroczono godzinny limit (${limit.toLocaleString("pl-PL")} znaków) tłumaczenia napisów dla planu ${normalizedPlan.toUpperCase()}.`,
+        });
+    }
+
     class SubscriptionLimitError extends Error {
         constructor(validation) {
             super(validation.message);
@@ -211,6 +243,7 @@
         checkAiLimit,
         checkSrsLimit,
         checkElevenLabsLimit,
+        checkSubtitleLimit,
         assertAllowed,
     });
 });
