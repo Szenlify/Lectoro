@@ -3,6 +3,8 @@
 2. Quizy dopracowac
 3. Npisy lepszy UI/UX tlumaczen "S"
 
+prompty ai przed i po
+
 
 Oferuj Plan Roczny z góry:
 Użytkownik płaci od razu $59.99 (ok. 240 PLN). Jeden taki zakup daje Ci natychmiastowy zastrzyk gotówki równy 7-8 miesiącom pojedynczego abonamentu!
