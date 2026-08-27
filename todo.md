@@ -1,7 +1,5 @@
 [TODO]
 
-kiedy ogladan video a nastepnie cofne zeby przesluchac je podownie to ma inny styl jak wczesniej np na netflixie napisy byly jedno pod drugim po przewinieciu napisy sa w jednym rzedzie, popraw napisy aby zawsze byly w jednym stylu najlepiej orginalnie jedno pod drugim
-
 1. Anki dopracowanie aby dobrze wygladaly ze zdjeciami oraz dzwiękiem (sprawdz jak obecnie wygladaja)
 2. Quizy dopracowac
 3. Npisy lepszy UI/UX tlumaczen "S"
