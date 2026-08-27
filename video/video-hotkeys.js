@@ -92,7 +92,7 @@
                 }
                 currentRate = Math.round(currentRate * 100) / 100;
                 video.playbackRate = currentRate;
-                overlay?.showSpeedOverlay(currentRate);
+                overlay?.showSpeedOverlay(currentRate, video);
                 return;
             }
 

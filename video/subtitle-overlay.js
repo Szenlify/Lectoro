@@ -15,6 +15,7 @@
         SPEAKER: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`,
         SAVE_SENTENCE: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`,
         SAVE_SENTENCE_CHECK: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#4ecdc4" stroke="#4ecdc4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`,
+        SPEED: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>`,
     };
 
     // ── Universal Custom Subtitle Renderer State ─────────────────
@@ -963,20 +964,73 @@
     }
 
 
-    function showSpeedOverlay(speed) {
+    function getSpeedOverlayParent(video) {
+        if (document.fullscreenElement) return document.fullscreenElement;
+        if (document.webkitFullscreenElement) return document.webkitFullscreenElement;
+
+        const targetVideo = video || getPlayerRegistry()?.getVideo();
+        const playerEl = findPlayerContainer(targetVideo);
+        if (playerEl && playerEl !== document.body && playerEl !== document.documentElement) {
+            const rect = playerEl.getBoundingClientRect?.();
+            if (rect && rect.height > 40 && rect.width > 40) {
+                return playerEl;
+            }
+        }
+
+        return (typeof QT !== "undefined" && typeof QT.getOverlayParent === "function")
+            ? QT.getOverlayParent()
+            : document.body;
+    }
+
+    function getSpeedOverlayEl(video) {
+        const parent = getSpeedOverlayParent(video);
+        const overlayId = (globalThis.LectoroConstants?.UI_IDS?.SPEED_OVERLAY) || `${PREFIX}speed-overlay`;
+
         if (!speedOverlayEl) {
             speedOverlayEl = document.createElement("div");
-            speedOverlayEl.style.cssText =
-                "position:fixed; top:40px; right:40px; background:rgba(0,0,0,0.8); color:#fff; padding:10px 16px; border-radius:8px; font-family:sans-serif; font-size:16px; font-weight:bold; z-index:2147483647; opacity:0; transition:opacity 0.2s ease; pointer-events:none;";
-            document.body.appendChild(speedOverlayEl);
+            speedOverlayEl.id = overlayId;
+            parent.appendChild(speedOverlayEl);
+        } else if (speedOverlayEl.parentElement !== parent) {
+            parent.appendChild(speedOverlayEl);
         }
-        speedOverlayEl.textContent = `Speed: ${speed.toFixed(2)}x`;
-        speedOverlayEl.style.opacity = "1";
+
+        const isFixed = parent === document.body || parent === document.documentElement;
+        speedOverlayEl.classList.toggle(`${PREFIX}speed-fixed`, isFixed);
+
+        if (!isFixed) {
+            const computedPos = window.getComputedStyle(parent).position;
+            if (computedPos === "static") {
+                parent.style.position = "relative";
+            }
+        }
+
+        return speedOverlayEl;
+    }
+
+    function showSpeedOverlay(speed, video) {
+        const el = getSpeedOverlayEl(video);
+        const formattedSpeed = `${Number(speed).toFixed(2)}x`;
+
+        let valSpan = el.querySelector(`.${PREFIX}speed-value`);
+        if (!valSpan) {
+            const speedIcon = (typeof SVG !== "undefined" && SVG.SPEED) ||
+                (globalThis.LectoroConstants?.SVG_ICONS?.SPEED) || "";
+            el.innerHTML = `
+                ${speedIcon ? `<span class="${PREFIX}speed-icon">${speedIcon}</span>` : ""}
+                <span class="${PREFIX}speed-value">${formattedSpeed}</span>
+            `;
+        } else {
+            valSpan.textContent = formattedSpeed;
+        }
+
         clearTimeout(speedOverlayTimer);
-        speedOverlayTimer = setTimeout(
-            () => (speedOverlayEl.style.opacity = "0"),
-            2000,
-        );
+        el.classList.remove("bump");
+        void el.offsetWidth;
+        el.classList.add("visible", "bump");
+
+        speedOverlayTimer = setTimeout(() => {
+            el.classList.remove("visible", "bump");
+        }, 1400);
     }
 
     // ── Word Cloud & Sentence Overlay ──────────────────────────────

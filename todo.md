@@ -1,7 +1,7 @@
 [TODO]
 wyslano 2 pobrano 2 w synchronizacji
 
-ograniczone tlumaczenia napisow w filmach na godzine czyli masz 30 zapytan na godzine / znakow
+ograniczone tlumaczenia napisow w filmach tylko plan free reszta bardzo wysokie limity na godzine czyli na godzine / 20000 znakow zapisuj to tylko lokalnie nie lacz tego z baza danych ani planami. 
 
 1. Anki dopracowanie aby dobrze wygladaly ze zdjeciami oraz dzwiękiem (sprawdz jak obecnie wygladaja)
 2. Quizy dopracowac
@@ -22,6 +22,10 @@ stripe.md
 
 firebase login
 firebase.cmd functions:secrets:set ELEVENLABS_API_KEY
+
+
+
+
 
 
 Jesteś ekspertem od Chrome Extensions, Manifest V3 oraz zasad Chrome Web Store.
