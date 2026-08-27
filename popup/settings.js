@@ -29,7 +29,8 @@ const wordCloudModeToggle = document.getElementById("wordCloudMode");
 function syncSubtitleModeUI() {
     whenPopupReady((data) => {
         if (subtitleTTSToggle) subtitleTTSToggle.checked = !!data.subtitleTTS;
-        if (wordCloudModeToggle) wordCloudModeToggle.checked = !!data.wordCloudMode;
+        if (wordCloudModeToggle)
+            wordCloudModeToggle.checked = !!data.wordCloudMode;
     });
 }
 
@@ -147,7 +148,7 @@ function renderSubscriptionPlans(subscription, signedIn = true) {
                       }).format(limits.priceMonthly.amount);
             const tts = limits.elevenLabs.enabled
                 ? `${limits.elevenLabs.charactersPerMonth.toLocaleString("en-US")} ElevenLabs characters`
-                : "System voice";
+                : "Basic voice";
             let action =
                 '<span class="subscription-plan-current">Current plan</span>';
             if (!isCurrent) {
@@ -175,20 +176,24 @@ function renderSubscriptionPlans(subscription, signedIn = true) {
                         isCurrent && isTrialing
                             ? '<span class="subscription-plan-badge is-trialing">Trial</span>'
                             : isCurrent
-                            ? '<span class="subscription-plan-badge is-active">Active</span>'
-                            : isRecommended
-                              ? '<span class="subscription-plan-badge">Popular</span>'
-                              : ""
+                              ? '<span class="subscription-plan-badge is-active">Active</span>'
+                              : isRecommended
+                                ? '<span class="subscription-plan-badge">Popular</span>'
+                                : ""
                     }
                 </div>
                 ${hasTrialOffer ? `<div class="subscription-plan-trial-kicker">3 days free</div>` : ""}
                 <div class="subscription-plan-price"><b>${price}</b><span>${limits.priceMonthly.amount === 0 ? "forever" : "/ month"}</span></div>
                 <div class="subscription-plan-features">
-                    <span><i aria-hidden="true">✓</i><b>${limits.ai.usesPerMonth.toLocaleString("en-US")}</b> AI uses / mo</span>
+                    <span>
+    <i aria-hidden="true">✓</i>
+    <b>${limits.ai.usesPerMonth.toLocaleString("en-US")}</b>
+    ${planId === SubscriptionConfig.SUBSCRIPTION_PLANS.FREE ? "AI uses" : "AI uses / mo"}
+</span>
                     <span><i aria-hidden="true">✓</i><b>${limits.srs.maxSavedCards.toLocaleString("en-US")}</b> SRS flashcards</span>
                     ${
                         limits.elevenLabs.enabled
-                            ? '<span><i aria-hidden="true">✓</i><b>Natural AI voices</b></span>'
+                            ? '<span><i aria-hidden="true">✓</i><b>Natural voices</b></span>'
                             : ""
                     }
                     ${
@@ -261,7 +266,8 @@ function renderElevenLabsUsage(subscription) {
 }
 
 function formatNextUsageRenewalDate(month) {
-    return typeof SharedUtils !== "undefined" && SharedUtils.formatNextUsageRenewalDate
+    return typeof SharedUtils !== "undefined" &&
+        SharedUtils.formatNextUsageRenewalDate
         ? SharedUtils.formatNextUsageRenewalDate(month)
         : "";
 }
@@ -343,7 +349,8 @@ async function refreshAiUsageUI() {
                     usage?.month ||
                     subscription?.usage?.ai?.month ||
                     null;
-                renewalDate.textContent = formatNextUsageRenewalDate(renewalTimestamp);
+                renewalDate.textContent =
+                    formatNextUsageRenewalDate(renewalTimestamp);
             } else {
                 renewalDate.textContent = "";
             }
@@ -407,7 +414,9 @@ async function refreshAiUsageUI() {
         if (labelEl) {
             labelEl.textContent = limitReached ? "✦ Out of AI" : "✨ AI Quiz";
         } else {
-            quizButton.textContent = limitReached ? "✦ Out of AI" : "✨ AI Quiz";
+            quizButton.textContent = limitReached
+                ? "✦ Out of AI"
+                : "✨ AI Quiz";
         }
         quizButton.title = limitReached
             ? "Monthly AI limit reached — view available plans"
@@ -447,7 +456,9 @@ document
         isBillingBusy = true;
         const originalButtonContent = button.innerHTML;
 
-        const allButtons = grid ? grid.querySelectorAll("[data-billing-action]") : [];
+        const allButtons = grid
+            ? grid.querySelectorAll("[data-billing-action]")
+            : [];
         allButtons.forEach((item) => {
             item.disabled = true;
         });
@@ -469,14 +480,19 @@ document
                     ? await FirebaseSync.getUser().catch(() => null)
                     : null;
 
-            if (!user && (action === "checkout" || action === "sign-in-and-checkout")) {
+            if (
+                !user &&
+                (action === "checkout" || action === "sign-in-and-checkout")
+            ) {
                 if (status) {
                     status.className = "stripe-billing-status is-loading";
                     status.innerHTML =
                         '<span class="stripe-spinner" aria-hidden="true"></span><span>Signing in with Google...</span>';
                 }
                 if (typeof sendBackgroundMessage === "function") {
-                    await sendBackgroundMessage({ type: "QT_FIREBASE_SIGN_IN" });
+                    await sendBackgroundMessage({
+                        type: "QT_FIREBASE_SIGN_IN",
+                    });
                     user = await FirebaseSync.getUser().catch(() => null);
                 }
                 if (!user) {
@@ -502,8 +518,7 @@ document
         } catch (error) {
             if (status) {
                 status.className = "stripe-billing-status is-error";
-                status.textContent =
-                    error.message || "Failed to open Stripe.";
+                status.textContent = error.message || "Failed to open Stripe.";
             }
         } finally {
             isBillingBusy = false;
@@ -512,9 +527,11 @@ document
             button.removeAttribute("aria-busy");
             if (grid) {
                 grid.removeAttribute("aria-busy");
-                grid.querySelectorAll("[data-billing-action]").forEach((item) => {
-                    item.disabled = false;
-                });
+                grid.querySelectorAll("[data-billing-action]").forEach(
+                    (item) => {
+                        item.disabled = false;
+                    },
+                );
             }
             await refreshAiUsageUI();
         }
