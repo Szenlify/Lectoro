@@ -30,7 +30,7 @@
     }
 
     async function getTtsSettings() {
-        if (!chrome?.storage?.local) {
+        if (typeof chrome === "undefined" || !chrome?.storage?.local) {
             return {
                 ttsMode: "browser",
                 speechVoice: "",
@@ -213,80 +213,29 @@
         if (useElevenLabs) {
             try {
                 const targetVoiceId = settings.elVoiceId;
+                const audioResult = await getAudioBlob(cleaned, lang, {
+                    forceBrowser: false,
+                    voiceId: targetVoiceId,
+                    context: "review",
+                    cacheNotBefore,
+                    allowSynthesis: true,
+                });
 
-                if (isCancelled?.() || currentToken !== globalSpeechToken) {
-                    return { type: "none", obj: null };
-                }
-
-                const cacheKey = `${cleaned}|${targetVoiceId}`;
-                // Step 1 (Local Cache): Check IndexedDB (LectoroAudioDB)
-                let blob = await AudioCache.get(cacheKey, { notBefore: cacheNotBefore });
-
-                if (!blob) {
-                    // Step 2 (Global R2 Cache): Check deterministic public CDN URL directly
-                    let r2Url = null;
-                    if (
-                        typeof SharedUtils !== "undefined" &&
-                        typeof SharedUtils.getR2AudioUrl === "function"
-                    ) {
-                        r2Url = await SharedUtils.getR2AudioUrl(targetVoiceId, cleaned);
+                if (audioResult?.blob && audioResult.provider === "elevenlabs") {
+                    if (isCancelled?.() || currentToken !== globalSpeechToken) {
+                        return { type: "none", obj: null };
                     }
-
-                    if (r2Url) {
-                        try {
-                            const r2Res = await fetch(r2Url);
-                            if (r2Res.ok) {
-                                blob = await r2Res.blob();
-                                // Cache in local IndexedDB for future instant playback
-                                await AudioCache.set(cacheKey, blob);
-                            }
-                        } catch (r2Err) {
-                            console.warn(
-                                "[Lectoro TTS] Direct R2 CDN fetch warning:",
-                                r2Err.message || r2Err,
-                            );
-                        }
-                    }
-
-                    // Step 3 (ElevenLabs Synthesis - Cache MISS):
-                    // Synthesize via proxy only if neither local DB nor R2 CDN had the audio
-                    if (!blob) {
-                        if (providerError) {
-                            const err = new Error(providerError.message);
-                            err.code = providerError.code;
-                            throw err;
-                        }
-                        const validation =
-                            await SubscriptionService.checkElevenLabs(cleaned);
-                        if (typeof SubscriptionConfig !== "undefined") {
-                            SubscriptionConfig.assertAllowed(validation);
-                        }
-                        blob = await SubscriptionService.synthesizeElevenLabs(
-                            cleaned,
-                            targetVoiceId,
-                            "review",
-                        );
-                        await AudioCache.set(cacheKey, blob);
-                    }
+                    const url = URL.createObjectURL(audioResult.blob);
+                    const audio = new Audio(url);
+                    audio.volume = settings.ttsVolume;
+                    activeAudio = audio;
+                    audio.addEventListener("ended", () => URL.revokeObjectURL(url), { once: true });
+                    audio.addEventListener("error", () => URL.revokeObjectURL(url), { once: true });
+                    await audio.play();
+                    return { type: "audio", obj: audio };
                 }
-
-                if (isCancelled?.() || currentToken !== globalSpeechToken) {
-                    return { type: "none", obj: null };
-                }
-
-                const url = URL.createObjectURL(blob);
-                const audio = new Audio(url);
-                audio.volume = settings.ttsVolume;
-                activeAudio = audio;
-                audio.addEventListener("ended", () => URL.revokeObjectURL(url), { once: true });
-                audio.addEventListener("error", () => URL.revokeObjectURL(url), { once: true });
-                await audio.play();
-                return { type: "audio", obj: audio };
             } catch (err) {
-                console.warn("[Lectoro TTS] ElevenLabs fallback to browser voice:", err.message || err);
-                if (["ELEVENLABS_PROVIDER_DISABLED", "ELEVENLABS_PROVIDER_QUOTA"].includes(err?.code)) {
-                    providerError = { code: err.code, message: err.message };
-                }
+                console.warn("[Lectoro TTS] ElevenLabs playback fallback:", err.message || err);
             }
         }
 
@@ -299,6 +248,117 @@
         });
 
         return { type: "utter", obj: utter };
+    }
+
+    /** Helper URL for web TTS fallback (Google TTS audio endpoint) */
+    function googleTtsUrl(text, lang) {
+        const tl = encodeURIComponent((lang || "en").split("-")[0]);
+        const q = encodeURIComponent(text);
+        return `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${tl}&q=${q}`;
+    }
+
+    async function fetchFallbackAudioBlob(text, lang) {
+        try {
+            const url = googleTtsUrl(text, lang);
+            const res = await fetch(url);
+            if (!res.ok) return null;
+            return await res.blob();
+        } catch {
+            return null;
+        }
+    }
+
+    /**
+     * Universal audio blob getter respecting user settings, IndexedDB AudioCache,
+     * Cloudflare R2 CDN, and ElevenLabs neural synthesis with automatic fallback.
+     * Single Source of Truth for audio downloads (e.g. Anki export).
+     */
+    async function getAudioBlob(
+        text,
+        lang = "en",
+        {
+            forceBrowser = false,
+            voiceId = null,
+            context = "review",
+            cacheNotBefore = 0,
+            allowSynthesis = false,
+        } = {},
+    ) {
+        const cleaned = cleanText(text);
+        if (!cleaned) return null;
+
+        const settings = await getTtsSettings();
+        const targetVoiceId = voiceId || settings.elVoiceId;
+
+        const useElevenLabs =
+            !forceBrowser &&
+            settings.ttsMode === "elevenlabs" &&
+            !!targetVoiceId &&
+            targetVoiceId !== "random" &&
+            typeof SubscriptionService !== "undefined" &&
+            typeof AudioCache !== "undefined";
+
+        if (useElevenLabs) {
+            try {
+                const cacheKey = `${cleaned}|${targetVoiceId}`;
+
+                // Step 1: Local IndexedDB AudioCache
+                let blob = await AudioCache.get(cacheKey, { notBefore: cacheNotBefore });
+                if (blob) {
+                    return { blob, provider: "elevenlabs", cached: true, voiceId: targetVoiceId };
+                }
+
+                // Step 2: Deterministic Cloudflare R2 CDN URL
+                if (
+                    typeof SharedUtils !== "undefined" &&
+                    typeof SharedUtils.getR2AudioUrl === "function"
+                ) {
+                    const r2Url = await SharedUtils.getR2AudioUrl(targetVoiceId, cleaned);
+                    if (r2Url) {
+                        try {
+                            const r2Res = await fetch(r2Url);
+                            if (r2Res.ok) {
+                                blob = await r2Res.blob();
+                                await AudioCache.set(cacheKey, blob);
+                                return { blob, provider: "elevenlabs", cached: true, voiceId: targetVoiceId };
+                            }
+                        } catch (r2Err) {
+                            console.warn("[Lectoro TTS] Direct R2 CDN fetch warning:", r2Err.message || r2Err);
+                        }
+                    }
+                }
+
+                // Step 3: ElevenLabs Proxy Synthesis (Cache Miss) - executed only when allowSynthesis is true
+                if (allowSynthesis && !providerError) {
+                    const validation = await SubscriptionService.checkElevenLabs(cleaned);
+                    if (typeof SubscriptionConfig !== "undefined") {
+                        SubscriptionConfig.assertAllowed(validation);
+                    }
+                    blob = await SubscriptionService.synthesizeElevenLabs(
+                        cleaned,
+                        targetVoiceId,
+                        context || "review",
+                    );
+                    if (blob) {
+                        await AudioCache.set(cacheKey, blob);
+                        return { blob, provider: "elevenlabs", cached: false, voiceId: targetVoiceId };
+                    }
+                }
+            } catch (err) {
+                console.warn("[Lectoro TTS] ElevenLabs getAudioBlob fallback:", err.message || err);
+                if (["ELEVENLABS_PROVIDER_DISABLED", "ELEVENLABS_PROVIDER_QUOTA"].includes(err?.code)) {
+                    providerError = { code: err.code, message: err.message };
+                }
+            }
+        }
+
+        // Fallback: Web TTS audio blob
+        const fallbackBlob = await fetchFallbackAudioBlob(cleaned, lang);
+        if (fallbackBlob) {
+            return { blob: fallbackBlob, provider: "google-tts", cached: false };
+        }
+
+        return null;
     }
 
     // Pre-warm browser voices in background immediately on script evaluation
@@ -317,5 +377,6 @@
         getTtsSettings,
         cleanText,
         getSafetyTimeout,
+        getAudioBlob,
     });
 });

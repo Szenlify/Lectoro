@@ -1,6 +1,6 @@
 [TODO]
 
-1. Anki dopracowanie aby dobrze wygladaly ze zdjeciami oraz dzwiękiem (sprawdz jak obecnie wygladaja)
+1. [DONE] Anki dopracowanie aby dobrze wygladaly ze zdjeciami oraz dzwiękiem (nowoczesny szablon kart, bezpieczne skalowanie zdjec 16:9, dzwiek ElevenLabs z AudioCache/R2/Proxy + instrukcja importu)
 2. Quizy dopracowac
 3. Npisy lepszy UI/UX tlumaczen "S"
 
