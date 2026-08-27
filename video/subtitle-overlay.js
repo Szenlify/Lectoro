@@ -565,7 +565,7 @@
                 subCloseTimer = null;
                 clearTimeout(subHoverTimer);
 
-                const hoverDelay = isSubHovering ? 200 : 130;
+                const hoverDelay = isSubHovering ? 200 : 0;
                 subHoverTimer = setTimeout(() => {
                     subHoverTimer = null;
                     triggerWordHover(wordSpan);
