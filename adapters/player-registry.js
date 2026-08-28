@@ -51,28 +51,115 @@
         }
     }
 
-    function getNativeCueText(video) {
-        if (!video?.textTracks) return "";
-        const showing = [];
-        const hidden = [];
+    function parseCueLineNumber(cue) {
+        if (!cue) return null;
+        const line = cue.line;
+        if (typeof line === "number" && Number.isFinite(line)) {
+            return line;
+        }
+        if (typeof line === "string") {
+            const parsed = parseFloat(line);
+            if (Number.isFinite(parsed)) return parsed;
+        }
+        return null;
+    }
+
+    function compareCues(a, b) {
+        if (!a || !b) return 0;
+
+        // 1. Primary: Vertical row order (top-to-bottom)
+        const lineA = parseCueLineNumber(a);
+        const lineB = parseCueLineNumber(b);
+
+        if (lineA !== null && lineB !== null && lineA !== lineB) {
+            // Both positive (e.g. row 13 vs row 14) or both negative (e.g. line -2 vs line -1):
+            // Smaller number is always higher up on screen! (-2 is above -1, 13 is above 14)
+            if ((lineA >= 0 && lineB >= 0) || (lineA < 0 && lineB < 0)) {
+                return lineA - lineB;
+            }
+            // Mixed signs: positive is indexed from top, negative from bottom
+            return lineB < 0 ? -1 : 1;
+        }
+
+        // 2. Secondary: Chronological order (earlier spoken line first)
+        const startA = Number.isFinite(a.startTime) ? a.startTime : null;
+        const startB = Number.isFinite(b.startTime) ? b.startTime : null;
+        if (startA !== null && startB !== null && Math.abs(startA - startB) > 0.05) {
+            return startA - startB;
+        }
+
+        // 3. Horizontal position (left-to-right for same line)
+        const posA = Number.isFinite(a.position) ? a.position : null;
+        const posB = Number.isFinite(b.position) ? b.position : null;
+        if (posA !== null && posB !== null && posA !== posB) {
+            return posA - posB;
+        }
+
+        return 0;
+    }
+
+    function getNativeCueLines(video) {
+        if (!video?.textTracks) return [];
+        let showingCues = [];
+        let hiddenCues = [];
 
         for (let i = 0; i < video.textTracks.length; i += 1) {
             const track = video.textTracks[i];
             if (
                 !["subtitles", "captions"].includes(track.kind) ||
                 track.mode === "disabled" ||
-                !track.activeCues
+                !track.activeCues ||
+                track.activeCues.length === 0
             ) {
                 continue;
             }
-            const texts = Array.from(track.activeCues)
-                .map(cueText)
-                .filter(Boolean);
-            if (texts.length === 0) continue;
-            (track.mode === "showing" ? showing : hidden).push(...texts);
+
+            const rawCues = Array.from(track.activeCues);
+            if (rawCues.length === 0) continue;
+
+            if (track.mode === "showing") {
+                showingCues.push(...rawCues);
+            } else {
+                hiddenCues.push(...rawCues);
+            }
         }
 
-        return Array.from(new Set(showing.length > 0 ? showing : hidden)).join(" ");
+        // Prefer showing track; if none is showing, check hidden tracks
+        const targetCues = showingCues.length > 0 ? showingCues : hiddenCues;
+        if (targetCues.length === 0) return [];
+
+        // Sort cues properly by vertical position (line) and chronological order (startTime)
+        targetCues.sort(compareCues);
+
+        const lines = [];
+        for (const cue of targetCues) {
+            const text = cueText(cue);
+            if (!text) continue;
+            // A single cue may contain \n line breaks
+            const subLines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+            for (const subLine of subLines) {
+                if (subLine && !lines.includes(subLine)) {
+                    lines.push(subLine);
+                }
+            }
+        }
+
+        // Final heuristic for live TV / roll-up captions: if 2 lines were extracted without clear vertical ordering,
+        // check if line 0 terminates a sentence with punctuation while line 1 begins or continues a sentence.
+        if (lines.length === 2) {
+            const endsWithPunct = /[.!?]["']?$/.test(lines[0]);
+            const nextEndsWithPunct = /[.!?]["']?$/.test(lines[1]);
+            if (endsWithPunct && !nextEndsWithPunct) {
+                lines.reverse();
+            }
+        }
+
+        return lines;
+    }
+
+    function getNativeCueText(video) {
+        const lines = getNativeCueLines(video);
+        return lines.length > 0 ? lines.join(" ") : "";
     }
 
     function hasEnabledNativeCaptionTrack(video) {
@@ -314,10 +401,7 @@
             }
         }
         if (!hasIndexedLines && lines.length === 0 && session.video?.textTracks) {
-            const native = getNativeCueText(session.video);
-            if (native) {
-                lines = native.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-            }
+            lines = getNativeCueLines(session.video);
         }
         if (!hasIndexedLines && lines.length === 0) {
             const getAllCuesFn = captionAdapter?.getAllCues || (globalThis.LectoroTedAdapter?.isPage?.() ? globalThis.LectoroTedAdapter.getAllCues : null);
@@ -937,8 +1021,8 @@
                 const lines = globalThis.LectoroBaseAdapter?.extractCueLines?.(adapterElements) || [];
                 if (lines.length > 0) return lines;
             }
-            const nativeText = getNativeCueText(video);
-            if (nativeText) return [nativeText];
+            const nativeLines = getNativeCueLines(video);
+            if (nativeLines.length > 0) return nativeLines;
             return [];
         },
         getCurrentText() {

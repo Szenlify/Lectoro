@@ -53,7 +53,8 @@
                 " ",
             )
             .replace(/\{[^}]+\}/g, "") // Remove ASS/SSA style tags
-            .replace(/(?:^|\s)(?:>>+|<<+|»+|«+|››+)(?:\s|$)/g, " "); // Strip speaker change markers >>, >>>, <<, », «
+            .replace(/(?:^|\s)(?:>>+|<<+|»+|«+|››+)(?:\s|$)/g, " ") // Strip speaker change markers >>, >>>, <<, », «
+            .replace(/[—–―‒]+/g, " "); // Strip em-dash, en-dash, horizontal bar dashes
 
         if (preserveNewlines) {
             return text

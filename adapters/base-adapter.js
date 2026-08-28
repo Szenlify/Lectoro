@@ -122,6 +122,13 @@
                 }
             }
         }
+        if (lines.length === 2) {
+            const endsWithPunct = /[.!?]["']?$/.test(lines[0]);
+            const nextEndsWithPunct = /[.!?]["']?$/.test(lines[1]);
+            if (endsWithPunct && !nextEndsWithPunct) {
+                lines.reverse();
+            }
+        }
         return lines;
     }
 

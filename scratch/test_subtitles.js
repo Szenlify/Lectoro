@@ -106,6 +106,12 @@ assert.strictEqual(multiVttCues[0].lines[1], "Second row of subtitle");
 assert.strictEqual(multiVttCues[0].text, "First row of subtitle\nSecond row of subtitle");
 console.log("✓ Multi-line WebVTT parser passed.");
 
+// 1c. Em-dash and dash cleaning test
+assert.strictEqual(service.cleanCueText("— Hello world —"), "Hello world");
+assert.strictEqual(service.cleanCueText("Word — another word"), "Word another word");
+assert.strictEqual(service.cleanCueText("Line 1 —\n— Line 2", { preserveNewlines: true }), "Line 1\nLine 2");
+console.log("✓ Em-dash stripping passed.");
+
 // 2. SRT Parser test
 const sampleSrt = `1
 00:00:01,000 --> 00:00:04,000
@@ -200,5 +206,79 @@ assert.strictEqual(consolidated.length, 2, "3 short lines that fit should be con
 assert.strictEqual(consolidated[0], "Nie wiem, co masz");
 assert.strictEqual(consolidated[1], "na myśli, ale musimy już wracać.");
 console.log("✓ 3-to-2 subtitle line consolidation passed.");
+
+// 6. Native / Live TV cue ordering & reverse sentence resolution (Plex Live TV fix)
+function testNativeCueOrdering(cues) {
+    function parseCueLineNumber(cue) {
+        if (!cue) return null;
+        const line = cue.line;
+        if (typeof line === "number" && Number.isFinite(line)) return line;
+        if (typeof line === "string") {
+            const parsed = parseFloat(line);
+            if (Number.isFinite(parsed)) return parsed;
+        }
+        return null;
+    }
+
+    function compareCues(a, b) {
+        if (!a || !b) return 0;
+        const lineA = parseCueLineNumber(a);
+        const lineB = parseCueLineNumber(b);
+        if (lineA !== null && lineB !== null && lineA !== lineB) {
+            if ((lineA >= 0 && lineB >= 0) || (lineA < 0 && lineB < 0)) {
+                return lineA - lineB;
+            }
+            return lineB < 0 ? -1 : 1;
+        }
+        const startA = Number.isFinite(a.startTime) ? a.startTime : null;
+        const startB = Number.isFinite(b.startTime) ? b.startTime : null;
+        if (startA !== null && startB !== null && Math.abs(startA - startB) > 0.05) {
+            return startA - startB;
+        }
+        return 0;
+    }
+
+    const sorted = [...cues].sort(compareCues);
+    const lines = sorted.map(c => c.text.trim());
+    if (lines.length === 2) {
+        const endsWithPunct = /[.!?]["']?$/.test(lines[0]);
+        const nextEndsWithPunct = /[.!?]["']?$/.test(lines[1]);
+        if (endsWithPunct && !nextEndsWithPunct) {
+            lines.reverse();
+        }
+    }
+    return lines;
+}
+
+// Test A: Cues arriving in reverse stack order with CEA-608 row numbers (e.g. Row 15 then Row 14)
+const reversed608Cues = [
+    { text: "the Ritual of Renewal, instead.", startTime: 12.0, line: 15 },
+    { text: "I decided to try", startTime: 10.0, line: 14 }
+];
+const orderedA = testNativeCueOrdering(reversed608Cues);
+assert.strictEqual(orderedA.length, 2);
+assert.strictEqual(orderedA[0], "I decided to try");
+assert.strictEqual(orderedA[1], "the Ritual of Renewal, instead.");
+assert.strictEqual(orderedA.join(" "), "I decided to try the Ritual of Renewal, instead.");
+
+// Test B: Cues arriving with negative line numbers (e.g. -1 is bottom, -2 is top)
+const reversedNegativeLineCues = [
+    { text: "the Ritual of Renewal, instead.", startTime: 12.0, line: -1 },
+    { text: "I decided to try", startTime: 10.0, line: -2 }
+];
+const orderedB = testNativeCueOrdering(reversedNegativeLineCues);
+assert.strictEqual(orderedB[0], "I decided to try");
+assert.strictEqual(orderedB[1], "the Ritual of Renewal, instead.");
+
+// Test C: Cues arriving with auto line numbers, resolved via sentence punctuation heuristic
+const reversedAutoCues = [
+    { text: "the Ritual of Renewal, instead.", startTime: 10.0, line: "auto" },
+    { text: "I decided to try", startTime: 10.0, line: "auto" }
+];
+const orderedC = testNativeCueOrdering(reversedAutoCues);
+assert.strictEqual(orderedC[0], "I decided to try");
+assert.strictEqual(orderedC[1], "the Ritual of Renewal, instead.");
+
+console.log("✓ Native / Live TV cue ordering & reverse sentence resolution passed.");
 
 console.log("\nALL TESTS PASSED SUCCESSFULLY! 🚀");
