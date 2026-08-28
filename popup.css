@@ -241,17 +241,17 @@ body::before {
 
 .settings label {
     display: block;
-    font-size: 10px;
+    font-size: 10.5px;
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 1.1px;
     font-weight: 600;
-    margin-bottom: 7px;
+    margin-bottom: 9px;
 }
 
 .settings select {
     width: 100%;
-    padding: 12px 16px;
+    padding: 13px 18px;
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-md);
     background: var(--glass);
@@ -288,15 +288,92 @@ body::before {
     color: #fff;
 }
 
+/* ── Section Dividers & Distinct Group Headers ── */
+.settings-section-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08) 15%, rgba(129, 140, 248, 0.35) 50%, rgba(255, 255, 255, 0.08) 85%, transparent);
+    margin: 30px 0 22px;
+    border: none;
+}
+
+.settings-section {
+    margin-bottom: 26px;
+}
+
+.section-header-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 16px;
+    padding: 2px 2px 8px 2px;
+}
+
+.section-title-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #f1f5f9;
+    text-transform: uppercase;
+    letter-spacing: 0.9px;
+    line-height: 1.3;
+}
+
+.section-title-icon {
+    font-size: 15px;
+    line-height: 1;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
+}
+
+.section-subtitle-desc {
+    font-size: 10.5px;
+    color: var(--text-muted);
+    line-height: 1.45;
+    margin-top: 2px;
+}
+
+.section-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.section-tag-sub {
+    background: rgba(129, 140, 248, 0.14);
+    color: #a5b4fc;
+    border: 1px solid rgba(129, 140, 248, 0.32);
+}
+
+.section-tag-audio {
+    background: rgba(110, 231, 183, 0.14);
+    color: #6ee7b7;
+    border: 1px solid rgba(110, 231, 183, 0.32);
+}
+
 .settings .setting-group {
-    margin-bottom: 18px;
+    margin-bottom: 22px;
 }
 
 .settings .glass-card {
     background: var(--glass);
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-lg);
-    padding: 16px 18px;
+    padding: 20px 22px;
     backdrop-filter: blur(var(--blur));
     -webkit-backdrop-filter: blur(var(--blur));
     box-shadow:
@@ -307,7 +384,7 @@ body::before {
 .slider-row {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 16px;
 }
 
 .settings input[type="range"] {

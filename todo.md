@@ -5,6 +5,8 @@
 4. sprawdzic jakos czy sie odnawia plan subskrypcji
 5. jesli wykorzystany trial nie pokazuj ze 3 dni za darmo
 6. jesli pobierze zle napisy lub ich nie ma to co zrobic bo czasami sa takie sytuacje ew czy moge pobierac zawsze napisy bez wlaczenia CC?
+7. sprawdz regulamin i polityke
+
 
 Oferuj Plan Roczny z góry:
 Użytkownik płaci od razu $59.99 (ok. 240 PLN). Jeden taki zakup daje Ci natychmiastowy zastrzyk gotówki równy 7-8 miesiącom pojedynczego abonamentu!
