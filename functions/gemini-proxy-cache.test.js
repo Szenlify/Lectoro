@@ -821,5 +821,78 @@ test("SubscriptionService local subtitle quota tracking respects 15,000 characte
     assert.equal(mockStorage.lectoro_subtitle_hourly_usage.used, 14980);
 });
 
+test("SubscriptionService export quota tracking enforces 3/month on FREE and resets on month rollover", async (t) => {
+    delete require.cache[require.resolve("./subscription-config")];
+    delete require.cache[require.resolve("../shared/subscription-config")];
+    delete require.cache[require.resolve("../shared/subscription-service")];
+
+    const SubscriptionConfig = require("../shared/subscription-config");
+    global.SubscriptionConfig = SubscriptionConfig;
+
+    const mockStorage = {
+        subscriptionProfileCache: {
+            plan: "free",
+        },
+        exportUsage: {
+            month: "2020-01", // Old month
+            anki: 3,
+            excel: 3,
+            quiz: 3,
+        },
+    };
+
+    global.chrome = {
+        storage: {
+            local: {
+                get: async (keys) => {
+                    const res = {};
+                    for (const [k, def] of Object.entries(keys)) {
+                        res[k] = mockStorage[k] !== undefined ? mockStorage[k] : def;
+                    }
+                    return res;
+                },
+                set: async (items) => {
+                    Object.assign(mockStorage, items);
+                },
+            },
+        },
+    };
+
+    t.after(() => {
+        delete global.SubscriptionConfig;
+        delete global.chrome;
+        delete require.cache[require.resolve("../shared/subscription-service")];
+    });
+
+    const SubscriptionService = require("../shared/subscription-service");
+
+    // Old month -> automatically resets to 0 for current month
+    const initialAnki = await SubscriptionService.getExportQuotaState("anki");
+    assert.equal(initialAnki.allowed, true);
+    assert.equal(initialAnki.used, 0);
+    assert.equal(initialAnki.limit, 3);
+    assert.equal(initialAnki.remaining, 3);
+
+    // Record 3 anki exports
+    await SubscriptionService.recordExport("anki");
+    await SubscriptionService.recordExport("anki");
+    const thirdAnki = await SubscriptionService.recordExport("anki");
+    assert.equal(thirdAnki.used, 3);
+    assert.equal(thirdAnki.remaining, 0);
+    assert.equal(thirdAnki.allowed, false);
+
+    // Excel is independent: still 0 used
+    const excelStatus = await SubscriptionService.getExportQuotaState("excel");
+    assert.equal(excelStatus.used, 0);
+    assert.equal(excelStatus.allowed, true);
+
+    // Pro plan: unlimited Anki and Excel exports
+    mockStorage.subscriptionProfileCache.plan = "pro";
+    const proAnki = await SubscriptionService.getExportQuotaState("anki");
+    assert.equal(proAnki.allowed, true);
+    assert.equal(proAnki.limit, Infinity);
+    assert.equal(proAnki.remaining, Infinity);
+});
+
 
 

@@ -6,6 +6,11 @@ const SubscriptionService = (() => {
     const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour TTL to minimize Firestore reads
     const SUBTITLE_HOURLY_USAGE_KEY = "lectoro_subtitle_hourly_usage";
     const SUBTITLE_WINDOW_MS = 60 * 60 * 1000; // 1 hour local sliding window
+    const EXPORT_USAGE_KEY = "exportUsage";
+    const QUIZ_FREE_COUNT_KEY = "quizGenerationsFreeCount";
+    const QUIZ_PAID_HISTORY_KEY = "quizGenerationsPaidHistory";
+    const QUIZ_PAID_WINDOW_MS = 60 * 60 * 1000;
+    const QUIZ_PAID_HOURLY_MAX = 10;
     const PROXY_URL = "https://geminiproxy-gyagzflbra-ew.a.run.app";
     const BILLING_FUNCTIONS_URL =
         "https://europe-west1-extension-eng.cloudfunctions.net";
@@ -110,8 +115,10 @@ const SubscriptionService = (() => {
     }
 
     async function refreshProfile(force = false) {
-        const user = await FirebaseSync.getUser().catch(() => null);
-        if (!user) return freeProfile();
+        const user = typeof FirebaseSync !== "undefined"
+            ? await FirebaseSync.getUser().catch(() => null)
+            : null;
+        if (!user) return (await getCachedProfile()) || freeProfile();
         const cached = await getCachedProfile();
         const current = currentMonth();
         const cacheIsFresh =
@@ -173,8 +180,10 @@ const SubscriptionService = (() => {
     }
 
     async function effectiveProfile(force = false) {
-        const user = await FirebaseSync.getUser().catch(() => null);
-        if (!user) return freeProfile();
+        const user = typeof FirebaseSync !== "undefined"
+            ? await FirebaseSync.getUser().catch(() => null)
+            : null;
+        if (!user) return (await getCachedProfile()) || freeProfile();
         const cached = await getCachedProfile();
         const cacheIsFresh =
             cached?.uid === user.uid &&
@@ -558,6 +567,104 @@ const SubscriptionService = (() => {
         return status;
     }
 
+    async function getExportUsageRecord() {
+        if (typeof chrome === "undefined" || !chrome?.storage?.local) {
+            return { month: currentMonth(), anki: 0, excel: 0, quiz: 0 };
+        }
+        const data = await chrome.storage.local.get({
+            [EXPORT_USAGE_KEY]: null,
+            [QUIZ_FREE_COUNT_KEY]: 0,
+        });
+        const current = currentMonth();
+        const stored = data[EXPORT_USAGE_KEY];
+        if (stored && stored.month === current) {
+            return {
+                month: current,
+                anki: Math.max(0, Number(stored.anki) || 0),
+                excel: Math.max(0, Number(stored.excel) || 0),
+                quiz: Math.max(0, Number(stored.quiz) || 0),
+            };
+        }
+        // Month changed or fresh usage:
+        // If stored is null and legacy quizGenerationsFreeCount exists, migrate it for the initial month
+        const initialQuiz = (!stored && data[QUIZ_FREE_COUNT_KEY])
+            ? Math.max(0, Number(data[QUIZ_FREE_COUNT_KEY]) || 0)
+            : 0;
+        const fresh = { month: current, anki: 0, excel: 0, quiz: initialQuiz };
+        await chrome.storage.local.set({ [EXPORT_USAGE_KEY]: fresh }).catch(() => {});
+        return fresh;
+    }
+
+    async function getExportQuotaState(type) {
+        const profile = await effectiveProfile(false);
+        const plan = Config.normalizePlan(profile.plan);
+        const isFree = plan === Config.SUBSCRIPTION_PLANS.FREE;
+        const normalizedType = String(type || "").trim().toLowerCase();
+        const typeKey = (normalizedType === "csv" || normalizedType === "excel") ? "excel" : normalizedType;
+
+        const record = await getExportUsageRecord();
+        const used = Math.max(0, Number(record[typeKey]) || 0);
+
+        let validation = Config.checkExportLimit({ plan, type: typeKey, used });
+
+        // Quiz in paid plans maintains an hourly limit
+        let paidHistory = [];
+        let paidUsed = 0;
+        let paidHourlyLimit = Infinity;
+        if (typeKey === "quiz" && !isFree) {
+            paidHourlyLimit = QUIZ_PAID_HOURLY_MAX;
+            if (typeof chrome !== "undefined" && chrome?.storage?.local) {
+                const data = await chrome.storage.local.get({ [QUIZ_PAID_HISTORY_KEY]: [] });
+                const now = Date.now();
+                const rawHistory = Array.isArray(data[QUIZ_PAID_HISTORY_KEY]) ? data[QUIZ_PAID_HISTORY_KEY] : [];
+                paidHistory = rawHistory.filter((ts) => typeof ts === "number" && now - ts < QUIZ_PAID_WINDOW_MS);
+                paidUsed = paidHistory.length;
+                if (paidUsed >= paidHourlyLimit) {
+                    validation = {
+                        ...validation,
+                        allowed: false,
+                        code: "QUIZ_HOURLY_LIMIT_REACHED",
+                        message: `Hourly limit of ${paidHourlyLimit} quizzes reached.`,
+                    };
+                }
+            }
+        }
+
+        return {
+            ...validation,
+            plan,
+            isFree,
+            type: typeKey,
+            used,
+            paidUsed,
+            paidHistory,
+            paidLimit: paidHourlyLimit,
+        };
+    }
+
+    async function recordExport(type) {
+        const quota = await getExportQuotaState(type);
+        const normalizedType = String(type || "").trim().toLowerCase();
+        const typeKey = (normalizedType === "csv" || normalizedType === "excel") ? "excel" : normalizedType;
+
+        if (typeof chrome !== "undefined" && chrome?.storage?.local) {
+            const record = await getExportUsageRecord();
+            const newCount = (Number(record[typeKey]) || 0) + 1;
+            const updated = { ...record, [typeKey]: newCount };
+            const updates = { [EXPORT_USAGE_KEY]: updated };
+
+            if (typeKey === "quiz") {
+                if (quota.isFree) {
+                    updates[QUIZ_FREE_COUNT_KEY] = newCount;
+                } else {
+                    updates[QUIZ_PAID_HISTORY_KEY] = [...(quota.paidHistory || []), Date.now()];
+                }
+            }
+            await chrome.storage.local.set(updates).catch(() => {});
+        }
+        return getExportQuotaState(type);
+    }
+
     return {
         refreshProfile,
         getCachedProfile,
@@ -576,6 +683,8 @@ const SubscriptionService = (() => {
         applyPlanToUI,
         getSubtitleQuotaStatus,
         consumeSubtitleQuota,
+        getExportQuotaState,
+        recordExport,
     };
 })();
 

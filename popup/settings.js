@@ -195,6 +195,7 @@ function renderSubscriptionPlans(subscription, signedIn = true) {
     ${planId === SubscriptionConfig.SUBSCRIPTION_PLANS.FREE ? "AI uses" : "AI uses / mo"}
 </span>
                     <span><i aria-hidden="true">✓</i><b>${limits.srs.maxSavedCards.toLocaleString("en-US")}</b> SRS flashcards</span>
+                    <span><i aria-hidden="true">✓</i><b>${planId === SubscriptionConfig.SUBSCRIPTION_PLANS.FREE ? "3/mo" : "Unlimited"}</b> Anki & Excel export</span>
                     ${
                         limits.elevenLabs.enabled
                             ? '<span><i aria-hidden="true">✓</i><b>Natural voices</b></span>'

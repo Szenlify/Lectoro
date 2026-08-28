@@ -110,6 +110,7 @@
         LATEST_QUIZ_MODE: "latestQuizMode",
         QUIZ_GENERATIONS_FREE_COUNT: "quizGenerationsFreeCount",
         QUIZ_GENERATIONS_PAID_HISTORY: "quizGenerationsPaidHistory",
+        EXPORT_USAGE: "exportUsage",
     });
 
     const SVG_ICONS = Object.freeze({

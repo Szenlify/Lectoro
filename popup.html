@@ -259,12 +259,16 @@
                         <!-- Right: Anki, Excel, Delete -->
                         <div class="export-compact-actions">
                             <button type="button" class="export-btn export-anki" id="exportAnki"
-                                title="Export to Anki deck (.txt)">
-                                📋 Anki
+                                title="Export to Anki deck (.zip)">
+                                <span class="export-btn-label">📋 Anki</span>
+                                <span class="quiz-free-badge export-free-badge" id="ankiFreeBadge" style="display:none;"
+                                    title="Free Anki exports">0/3</span>
                             </button>
                             <button type="button" class="export-btn export-csv" id="exportCsv"
                                 title="Export to Excel (.csv)">
-                                📊 Excel
+                                <span class="export-btn-label">📊 Excel</span>
+                                <span class="quiz-free-badge export-free-badge" id="excelFreeBadge" style="display:none;"
+                                    title="Free Excel exports">0/3</span>
                             </button>
                             <button type="button" class="export-btn export-clear" id="clearAll"
                                 title="Delete visible words">

@@ -34,6 +34,11 @@
             subtitles: Object.freeze({
                 charactersPerHour: 15000,
             }),
+            exports: Object.freeze({
+                ankiPerMonth: 3,
+                excelPerMonth: 3,
+                quizPerMonth: 3,
+            }),
         }),
         [SUBSCRIPTION_PLANS.BASIC]: Object.freeze({
             displayName: "BASIC",
@@ -48,6 +53,12 @@
             }),
             subtitles: Object.freeze({
                 charactersPerHour: Infinity,
+            }),
+            exports: Object.freeze({
+                ankiPerMonth: Infinity,
+                excelPerMonth: Infinity,
+                quizPerHour: 10,
+                quizPerMonth: Infinity,
             }),
         }),
         [SUBSCRIPTION_PLANS.PRO]: Object.freeze({
@@ -64,6 +75,12 @@
             subtitles: Object.freeze({
                 charactersPerHour: Infinity,
             }),
+            exports: Object.freeze({
+                ankiPerMonth: Infinity,
+                excelPerMonth: Infinity,
+                quizPerHour: 10,
+                quizPerMonth: Infinity,
+            }),
         }),
     });
 
@@ -74,6 +91,7 @@
         ELEVENLABS_REQUEST_TOO_LONG: "ELEVENLABS_REQUEST_TOO_LONG",
         ELEVENLABS_MONTHLY_LIMIT_REACHED: "ELEVENLABS_MONTHLY_LIMIT_REACHED",
         SUBTITLES_HOURLY_LIMIT_REACHED: "SUBTITLES_HOURLY_LIMIT_REACHED",
+        EXPORT_LIMIT_REACHED: "EXPORT_LIMIT_REACHED",
     });
 
     function normalizePlan(plan) {
@@ -214,6 +232,46 @@
         });
     }
 
+    function checkExportLimit({ plan, type, used = 0, requested = 1 }) {
+        const normalizedPlan = normalizePlan(plan);
+        const planExports = getPlanLimits(normalizedPlan).exports || {};
+        const normalizedType = String(type || "").trim().toLowerCase();
+        let limit = Infinity;
+        let featureName = "export";
+
+        if (normalizedType === "anki") {
+            limit = planExports.ankiPerMonth ?? Infinity;
+            featureName = "export_anki";
+        } else if (normalizedType === "excel" || normalizedType === "csv") {
+            limit = planExports.excelPerMonth ?? Infinity;
+            featureName = "export_excel";
+        } else if (normalizedType === "quiz") {
+            limit = planExports.quizPerMonth ?? Infinity;
+            featureName = "export_quiz";
+        }
+
+        const isUnlimited = !Number.isFinite(limit);
+        const safeUsed = Math.max(0, Number(used) || 0);
+        const safeRequested = Math.max(1, Number(requested) || 1);
+        const allowed = isUnlimited || (safeUsed + safeRequested <= limit);
+        const exportLabels = { anki: "Anki", excel: "Excel", csv: "Excel", quiz: "Quiz" };
+        const label = exportLabels[normalizedType] || "Export";
+
+        return result({
+            allowed,
+            code: allowed ? null : LIMIT_ERROR_CODES.EXPORT_LIMIT_REACHED,
+            feature: featureName,
+            plan: normalizedPlan,
+            limit,
+            used: safeUsed,
+            requested: safeRequested,
+            remaining: isUnlimited ? Infinity : Math.max(0, limit - safeUsed),
+            message: allowed
+                ? `${label} export is available.`
+                : `Monthly ${label} export limit (${limit}) reached for plan ${normalizedPlan.toUpperCase()}.`,
+        });
+    }
+
     class SubscriptionLimitError extends Error {
         constructor(validation) {
             super(validation.message);
@@ -244,6 +302,7 @@
         checkSrsLimit,
         checkElevenLabsLimit,
         checkSubtitleLimit,
+        checkExportLimit,
         assertAllowed,
     });
 });

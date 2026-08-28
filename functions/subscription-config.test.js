@@ -8,6 +8,7 @@ const {
     checkAiLimit,
     checkSrsLimit,
     checkElevenLabsLimit,
+    checkExportLimit,
 } = require("./subscription-config");
 
 test("central configuration matches the three product plans", () => {
@@ -174,4 +175,36 @@ test("formatNextUsageRenewalDate correctly formats Stripe timestamps and months"
     );
     assert.ok(SharedUtils.formatNextUsageRenewalDate(null));
     assert.ok(SharedUtils.formatNextUsageRenewalDate(""));
+});
+
+test("checkExportLimit enforces 3/month for FREE and unlimited for BASIC and PRO", () => {
+    for (const type of ["anki", "excel", "quiz"]) {
+        // Free plan: 0, 1, 2 used -> allowed
+        for (let used = 0; used < 3; used++) {
+            const res = checkExportLimit({ plan: "free", type, used });
+            assert.equal(res.allowed, true, `Free plan should allow export #${used + 1} for ${type}`);
+            assert.equal(res.limit, 3);
+            assert.equal(res.remaining, 3 - used);
+        }
+
+        // Free plan: 3 used -> blocked
+        const blocked = checkExportLimit({ plan: "free", type, used: 3 });
+        assert.equal(blocked.allowed, false, `Free plan should block export #4 for ${type}`);
+        assert.equal(blocked.code, "EXPORT_LIMIT_REACHED");
+        assert.equal(blocked.remaining, 0);
+
+        // Basic plan: Anki and Excel are unlimited
+        if (type !== "quiz") {
+            const basicRes = checkExportLimit({ plan: "basic", type, used: 100 });
+            assert.equal(basicRes.allowed, true, `Basic plan should allow unlimited ${type} exports`);
+            assert.equal(basicRes.limit, Infinity);
+            assert.equal(basicRes.remaining, Infinity);
+
+            // Pro plan: Anki and Excel are unlimited
+            const proRes = checkExportLimit({ plan: "pro", type, used: 500 });
+            assert.equal(proRes.allowed, true, `Pro plan should allow unlimited ${type} exports`);
+            assert.equal(proRes.limit, Infinity);
+            assert.equal(proRes.remaining, Infinity);
+        }
+    }
 });

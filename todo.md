@@ -1,8 +1,7 @@
 [TODO]
 
-2. Quizy dopracowac
+2. Quizy sprawdzic
 3. Npisy lepszy UI/UX tlumaczen "S"
-4. Anki, Exel Export tak jak Quiz export zrob 3 razy na miesiac 
 
 
 Oferuj Plan Roczny z góry:

@@ -224,11 +224,135 @@ function crc32(data) {
     return (crc ^ 0xffffffff) >>> 0;
 }
 
+// ── Unified Export Quota Management (SSOT with SubscriptionConfig & SubscriptionService) ──
+const ONE_HOUR_MS = 60 * 60 * 1000;
+const EXPORT_TYPES_CONFIG = [
+    { type: "anki", badgeId: "ankiFreeBadge", title: "Free Anki exports" },
+    { type: "excel", badgeId: "excelFreeBadge", title: "Free Excel exports" },
+    { type: "quiz", badgeId: "quizFreeBadge", title: "Free quizzes" },
+];
+
+async function getExportQuota(type) {
+    if (typeof SubscriptionService !== "undefined" && typeof SubscriptionService.getExportQuotaState === "function") {
+        return SubscriptionService.getExportQuotaState(type);
+    }
+    const currentMonth = (typeof SharedUtils !== "undefined" && SharedUtils.currentMonth)
+        ? SharedUtils.currentMonth()
+        : new Date().toISOString().slice(0, 7);
+    const data = await chrome.storage.local.get({
+        exportUsage: null,
+        quizGenerationsFreeCount: 0,
+    });
+    const usage = (data.exportUsage && data.exportUsage.month === currentMonth)
+        ? data.exportUsage
+        : { month: currentMonth, anki: 0, excel: 0, quiz: Number(data.quizGenerationsFreeCount) || 0 };
+    const used = Math.max(0, Number(usage[type]) || 0);
+    return {
+        plan: "free",
+        isFree: true,
+        type,
+        used,
+        limit: 3,
+        remaining: Math.max(0, 3 - used),
+        allowed: used < 3,
+    };
+}
+
+async function recordExportSuccess(type) {
+    if (typeof SubscriptionService !== "undefined" && typeof SubscriptionService.recordExport === "function") {
+        await SubscriptionService.recordExport(type);
+    } else {
+        const currentMonth = (typeof SharedUtils !== "undefined" && SharedUtils.currentMonth)
+            ? SharedUtils.currentMonth()
+            : new Date().toISOString().slice(0, 7);
+        const data = await chrome.storage.local.get({ exportUsage: null });
+        const usage = (data.exportUsage && data.exportUsage.month === currentMonth)
+            ? data.exportUsage
+            : { month: currentMonth, anki: 0, excel: 0, quiz: 0 };
+        usage[type] = (Number(usage[type]) || 0) + 1;
+        await chrome.storage.local.set({ exportUsage: usage });
+    }
+    await updateAllExportBadgesUI();
+}
+
+async function enforceExportQuota(type) {
+    const quotaState = await getExportQuota(type);
+    const typeLabels = { anki: "Anki", excel: "Excel", quiz: "Quiz" };
+    const label = typeLabels[type] || type;
+
+    if (quotaState.isFree) {
+        if (quotaState.used >= quotaState.limit) {
+            const message = `You have reached the monthly limit of ${quotaState.limit} free ${label} exports. Upgrade to Basic or Pro for unlimited exports!`;
+            if (typeof GeminiProxy !== "undefined" && typeof GeminiProxy.showUpgradePrompt === "function") {
+                GeminiProxy.showUpgradePrompt({
+                    reason: `free_${type}_limit`,
+                    feature: `export_${type}`,
+                    message,
+                });
+            } else if (typeof SubscriptionService !== "undefined" && typeof SubscriptionService.openPlans === "function") {
+                SubscriptionService.openPlans();
+            } else {
+                alert(message);
+            }
+            return false;
+        }
+    } else if (type === "quiz") {
+        if (quotaState.paidUsed >= quotaState.paidLimit) {
+            const oldestTs = Math.min(...(quotaState.paidHistory?.length ? quotaState.paidHistory : [Date.now()]));
+            const waitMins = Math.max(1, Math.ceil((ONE_HOUR_MS - (Date.now() - oldestTs)) / 60000));
+            alert(`Hourly limit of ${quotaState.paidLimit} quizzes reached. Try again in ${waitMins} min.`);
+            return false;
+        }
+    }
+    return true;
+}
+
+async function updateAllExportBadgesUI() {
+    try {
+        for (const item of EXPORT_TYPES_CONFIG) {
+            const badge = document.getElementById(item.badgeId);
+            if (!badge) continue;
+
+            const state = await getExportQuota(item.type);
+            if (state.isFree) {
+                badge.style.display = "inline-block";
+                badge.textContent = `${state.used}/${state.limit}`;
+                badge.title = `${item.title}: used ${state.used} of ${state.limit} this month`;
+                badge.classList.toggle("is-limit", state.used >= state.limit);
+            } else {
+                badge.style.display = "none";
+            }
+        }
+    } catch (e) {
+        console.error("Error updating export quotas UI:", e);
+    }
+}
+
+// Initial UI check and sync listener for all export quotas
+updateAllExportBadgesUI();
+if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.onChanged) {
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === "local" && (changes.exportUsage || changes.quizGenerationsFreeCount || changes.subscriptionProfileCache)) {
+            updateAllExportBadgesUI();
+        }
+    });
+}
+
 // ── Export: Anki Cloze with audio (.zip) ──────────────────────────
 document.getElementById("exportAnki").addEventListener("click", async () => {
     const btn = document.getElementById("exportAnki");
-    const origText = btn.textContent;
-    btn.textContent = "⏳ Preparing…";
+    const labelEl = btn.querySelector(".export-btn-label");
+    const origText = labelEl ? labelEl.textContent : btn.textContent;
+    const setBtnText = (txt) => {
+        if (labelEl) labelEl.textContent = txt;
+        else btn.textContent = txt;
+    };
+
+    if (!(await enforceExportQuota("anki"))) {
+        return;
+    }
+
+    setBtnText("⏳ Preparing…");
     btn.disabled = true;
 
     try {
@@ -237,7 +361,7 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
         );
         const words = filterWords(data.savedWords || []);
         if (words.length === 0) {
-            btn.textContent = origText;
+            setBtnText(origText);
             btn.disabled = false;
             return;
         }
@@ -247,7 +371,7 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
 
         for (let i = 0; i < words.length; i++) {
             const w = words[i];
-            btn.textContent = `⏳ Downloading (${i + 1}/${words.length})…`;
+            setBtnText(`⏳ Downloading (${i + 1}/${words.length})…`);
 
             const srcLangTag = escapeHtml((w.srcLang || "en").toUpperCase());
             const tgtLangTag = escapeHtml((w.tgtLang || "pl").toUpperCase());
@@ -500,7 +624,7 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
         });
 
         // Build and download ZIP
-        btn.textContent = "⏳ Packing ZIP…";
+        setBtnText("⏳ Packing ZIP…");
         const zipData = buildZip(files);
         const blob = new Blob([zipData], { type: "application/zip" });
         const url = URL.createObjectURL(blob);
@@ -512,60 +636,71 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
 
+        // Record successful export
+        await recordExportSuccess("anki");
+
         // Mark as downloaded
         markAsDownloaded(words, data.savedWords);
     } catch (err) {
         console.error("Anki export error:", err);
         alert("Export error: " + err.message);
     } finally {
-        btn.textContent = origText;
+        setBtnText(origText);
         btn.disabled = false;
     }
 });
 
 // ── Export: CSV (Excel) ───────────────────────────────────────────
-document.getElementById("exportCsv").addEventListener("click", () => {
-    chrome.storage.local.get({ savedWords: [] }, (data) => {
-        const words = filterWords(data.savedWords || []);
-        if (words.length === 0) return;
+document.getElementById("exportCsv").addEventListener("click", async () => {
+    if (!(await enforceExportQuota("excel"))) {
+        return;
+    }
 
-        // BOM for Excel UTF-8
-        const BOM = "\uFEFF";
-        const header =
-            "Original;Translation;Sentence;Sentence Translation;AI Sentence;AI Sentence Translation;Source Lang;Target Lang;Date;Image URL";
-        const rows = words.map((w) => {
-            const date = w.timestamp
-                ? new Date(w.timestamp).toLocaleDateString("en-US")
-                : "";
-            const screenshotUrl = w.screenshot
-                ? (typeof SharedUtils !== "undefined" && typeof SharedUtils.resolveImageUrl === "function"
-                    ? SharedUtils.resolveImageUrl(w.screenshot)
-                    : w.screenshot)
-                : "";
-            return [
-                csvCell(w.original),
-                csvCell(w.translated),
-                csvCell(w.sentence || ""),
-                csvCell(w.sentenceTranslated || ""),
-                csvCell(w.aiSentence || ""),
-                csvCell(w.aiSentenceTranslated || ""),
-                w.srcLang || "",
-                w.tgtLang || "",
-                date,
-                csvCell(screenshotUrl),
-            ].join(";");
-        });
-        const content = BOM + header + "\n" + rows.join("\n");
-        const dt = typeof dateTag === "function" ? dateTag() : (typeof SharedUtils !== "undefined" && SharedUtils.dateTag ? SharedUtils.dateTag() : new Date().toISOString().slice(0, 10));
-        downloadFile(
-            content,
-            `lectoro-export-${dt}.csv`,
-            "text/csv;charset=utf-8",
-        );
+    const data = await new Promise((r) =>
+        chrome.storage.local.get({ savedWords: [] }, r),
+    );
+    const words = filterWords(data.savedWords || []);
+    if (words.length === 0) return;
 
-        // Mark as downloaded
-        markAsDownloaded(words, data.savedWords);
+    // BOM for Excel UTF-8
+    const BOM = "\uFEFF";
+    const header =
+        "Original;Translation;Sentence;Sentence Translation;AI Sentence;AI Sentence Translation;Source Lang;Target Lang;Date;Image URL";
+    const rows = words.map((w) => {
+        const date = w.timestamp
+            ? new Date(w.timestamp).toLocaleDateString("en-US")
+            : "";
+        const screenshotUrl = w.screenshot
+            ? (typeof SharedUtils !== "undefined" && typeof SharedUtils.resolveImageUrl === "function"
+                ? SharedUtils.resolveImageUrl(w.screenshot)
+                : w.screenshot)
+            : "";
+        return [
+            csvCell(w.original),
+            csvCell(w.translated),
+            csvCell(w.sentence || ""),
+            csvCell(w.sentenceTranslated || ""),
+            csvCell(w.aiSentence || ""),
+            csvCell(w.aiSentenceTranslated || ""),
+            w.srcLang || "",
+            w.tgtLang || "",
+            date,
+            csvCell(screenshotUrl),
+        ].join(";");
     });
+    const content = BOM + header + "\n" + rows.join("\n");
+    const dt = typeof dateTag === "function" ? dateTag() : (typeof SharedUtils !== "undefined" && SharedUtils.dateTag ? SharedUtils.dateTag() : new Date().toISOString().slice(0, 10));
+    downloadFile(
+        content,
+        `lectoro-export-${dt}.csv`,
+        "text/csv;charset=utf-8",
+    );
+
+    // Record successful export
+    await recordExportSuccess("excel");
+
+    // Mark as downloaded
+    markAsDownloaded(words, data.savedWords);
 });
 
 // ── Export: AI-generated Quiz (Lazy Loaded) ───────────────────────
@@ -595,106 +730,17 @@ async function ensureQuizExportLoaded() {
     return quizScriptLoadingPromise;
 }
 
-const FREE_QUIZ_MAX = 3;
-const PAID_QUIZ_HOURLY_MAX = 10;
-const ONE_HOUR_MS = 60 * 60 * 1000;
-
-async function getQuizUserPlan() {
-    try {
-        if (typeof SubscriptionService !== "undefined" && typeof SubscriptionService.effectiveProfile === "function") {
-            const profile = await SubscriptionService.effectiveProfile(false).catch(() => null);
-            if (profile?.plan) return profile.plan.toLowerCase();
-        }
-        const data = await chrome.storage.local.get({ subscriptionProfileCache: null });
-        if (data.subscriptionProfileCache?.plan) {
-            return data.subscriptionProfileCache.plan.toLowerCase();
-        }
-    } catch (e) {}
-    return "free";
-}
-
-async function getQuizQuotaState() {
-    const plan = await getQuizUserPlan();
-    const isFree = plan === "free";
-    const data = await chrome.storage.local.get({
-        quizGenerationsFreeCount: 0,
-        quizGenerationsPaidHistory: [],
-    });
-
-    const freeUsed = Math.max(0, Number(data.quizGenerationsFreeCount) || 0);
-
-    const now = Date.now();
-    const rawHistory = Array.isArray(data.quizGenerationsPaidHistory) ? data.quizGenerationsPaidHistory : [];
-    const validHistory = rawHistory.filter((ts) => typeof ts === "number" && now - ts < ONE_HOUR_MS);
-
-    return {
-        plan,
-        isFree,
-        freeUsed,
-        freeLimit: FREE_QUIZ_MAX,
-        paidUsed: validHistory.length,
-        paidLimit: PAID_QUIZ_HOURLY_MAX,
-        paidHistory: validHistory,
-    };
-}
-
-async function updateQuizQuotaUI() {
-    const badge = document.getElementById("quizFreeBadge");
-    if (!badge) return;
-
-    try {
-        const state = await getQuizQuotaState();
-        if (state.isFree) {
-            badge.style.display = "inline-block";
-            badge.textContent = `${state.freeUsed}/${state.freeLimit}`;
-            badge.title = `Free quizzes: used ${state.freeUsed} of ${state.freeLimit}`;
-            badge.classList.toggle("is-limit", state.freeUsed >= state.freeLimit);
-        } else {
-            // For paid plans, the limit badge is not shown normally
-            badge.style.display = "none";
-        }
-    } catch (e) {
-        console.error("Error updating quiz quota UI:", e);
-    }
-}
-
-// Initial UI check and sync listener
-updateQuizQuotaUI();
-if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.onChanged) {
-    chrome.storage.onChanged.addListener((changes, area) => {
-        if (area === "local" && (changes.quizGenerationsFreeCount || changes.subscriptionProfileCache)) {
-            updateQuizQuotaUI();
-        }
-    });
-}
+// Backward compatibility aliases
+const getQuizQuotaState = () => getExportQuota("quiz");
+const updateQuizQuotaUI = updateAllExportBadgesUI;
 
 const exportQuizBtn = document.getElementById("exportQuiz");
 if (exportQuizBtn) {
     exportQuizBtn.addEventListener("click", async () => {
         const origText = exportQuizBtn.innerHTML;
 
-        const quotaState = await getQuizQuotaState();
-        if (quotaState.isFree) {
-            if (quotaState.freeUsed >= quotaState.freeLimit) {
-                if (typeof GeminiProxy !== "undefined" && typeof GeminiProxy.showUpgradePrompt === "function") {
-                    GeminiProxy.showUpgradePrompt({
-                        reason: "free_quiz_limit",
-                        message: "You have reached the limit of 3 free quizzes. Upgrade to Basic or Pro to generate up to 10 quizzes per hour!",
-                    });
-                } else if (typeof SubscriptionService !== "undefined" && typeof SubscriptionService.openPlans === "function") {
-                    SubscriptionService.openPlans();
-                } else {
-                    alert("You have reached the limit of 3 free quizzes. Upgrade to a paid plan to generate unlimited quizzes!");
-                }
-                return;
-            }
-        } else {
-            if (quotaState.paidUsed >= quotaState.paidLimit) {
-                const oldestTs = Math.min(...quotaState.paidHistory);
-                const waitMins = Math.max(1, Math.ceil((ONE_HOUR_MS - (Date.now() - oldestTs)) / 60000));
-                alert(`Hourly limit of ${quotaState.paidLimit} quizzes reached. Try again in ${waitMins} min.`);
-                return;
-            }
+        if (!(await enforceExportQuota("quiz"))) {
+            return;
         }
 
         const cachedUsage = await GeminiProxy?.getCachedUsage?.();
@@ -743,16 +789,7 @@ if (exportQuizBtn) {
             }
 
             // Successfully generated: update local quota
-            if (quotaState.isFree) {
-                await chrome.storage.local.set({
-                    quizGenerationsFreeCount: quotaState.freeUsed + 1,
-                });
-            } else {
-                await chrome.storage.local.set({
-                    quizGenerationsPaidHistory: [...quotaState.paidHistory, Date.now()],
-                });
-            }
-            await updateQuizQuotaUI();
+            await recordExportSuccess("quiz");
         } catch (err) {
             console.error("Quiz export error:", err);
             if (!GeminiProxy?.isLimitError?.(err)) {
@@ -767,7 +804,7 @@ if (exportQuizBtn) {
                 exportQuizBtn.innerHTML = origText;
             }
             if (typeof refreshAiUsageUI === "function") refreshAiUsageUI();
-            await updateQuizQuotaUI();
+            await updateAllExportBadgesUI();
         }
     });
 }

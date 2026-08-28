@@ -1066,6 +1066,8 @@ body::before {
     gap: 6px;
     font-family: inherit;
     white-space: nowrap;
+    position: relative;
+    overflow: visible;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
 }
@@ -1163,13 +1165,15 @@ body::before {
     }
 }
 
-.quiz-btn-label {
+.quiz-btn-label,
+.export-btn-label {
     display: inline-flex;
     align-items: center;
     gap: 4px;
 }
 
-.quiz-free-badge {
+.quiz-free-badge,
+.export-free-badge {
     position: absolute;
     top: -6px;
     right: -6px;
@@ -1188,7 +1192,8 @@ body::before {
     z-index: 5;
 }
 
-.quiz-free-badge.is-limit {
+.quiz-free-badge.is-limit,
+.export-free-badge.is-limit {
     background: #dc2626;
     color: #ffffff;
     border-color: #0f172a;
