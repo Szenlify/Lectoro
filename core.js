@@ -1195,13 +1195,13 @@
             typeof SharedTranslatorService !== "undefined"
                 ? SharedTranslatorService.generateSentence(w, t, s, tgt)
                 : Promise.reject(new Error("TranslatorService unavailable")),
-        geminiExplainSentence: (s, tgt) =>
+        geminiExplainSentence: (s, tgt, ctx = null) =>
             typeof SharedTranslatorService !== "undefined"
-                ? SharedTranslatorService.explainSentence(s, tgt)
+                ? SharedTranslatorService.explainSentence(s, tgt, ctx)
                 : Promise.reject(new Error("TranslatorService unavailable")),
-        geminiMovieTranslate: (t, tgt) =>
+        geminiMovieTranslate: (t, tgt, ctx = null) =>
             typeof SharedTranslatorService !== "undefined"
-                ? SharedTranslatorService.movieTranslate(t, tgt)
+                ? SharedTranslatorService.movieTranslate(t, tgt, ctx)
                 : Promise.reject(new Error("TranslatorService unavailable")),
         captureVideoScreenshot,
         captureContextScreenshot,

@@ -973,6 +973,32 @@
         onSubtitleChange(callback) {
             subtitleChangeCallback = callback;
         },
+        getSubtitleContext(video = null, activeText = "", options = {}) {
+            const targetVideo = video || this.getVideo();
+            const cues = this.getAllCues(targetVideo);
+            const subService =
+                globalThis.SharedSubtitleService ||
+                globalThis.LectoroSubtitleService;
+
+            if (
+                Array.isArray(cues) &&
+                cues.length > 0 &&
+                typeof subService?.getSurroundingContext === "function"
+            ) {
+                return subService.getSurroundingContext(
+                    cues,
+                    targetVideo,
+                    activeText,
+                    options,
+                );
+            }
+
+            return {
+                before: [],
+                current: String(activeText || "").trim(),
+                after: [],
+            };
+        },
         getAllCues,
         getCurrentCueIndex,
         getAdjacentCueTime,

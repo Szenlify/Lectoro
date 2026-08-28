@@ -551,6 +551,133 @@
         return currentCue.startTime;
     }
 
+    /**
+     * Extracts surrounding dialogue context (previous and subsequent subtitle cues)
+     * relative to the active video time or active text.
+     *
+     * @param {Array<{startTime: number, endTime: number, text: string}>} cues
+     * @param {number|HTMLVideoElement} videoOrTime
+     * @param {string} [activeText]
+     * @param {{ maxBefore?: number, maxAfter?: number }} [options]
+     * @returns {{ before: string[], current: string, after: string[] }}
+     */
+    function getSurroundingContext(
+        cues,
+        videoOrTime,
+        activeText = "",
+        { maxBefore = 2, maxAfter = 2 } = {},
+    ) {
+        if (!Array.isArray(cues) || cues.length === 0) {
+            return {
+                before: [],
+                current: String(activeText || "").trim(),
+                after: [],
+            };
+        }
+
+        const currentTime =
+            typeof videoOrTime === "number"
+                ? videoOrTime
+                : Number(videoOrTime?.currentTime ?? NaN);
+
+        const normalizedTarget = String(activeText || "")
+            .toLowerCase()
+            .replace(/\s+/g, " ")
+            .trim();
+
+        let currentIndex = -1;
+
+        // 1. If activeText is provided, check if any cue around currentTime matches it
+        if (normalizedTarget) {
+            if (Number.isFinite(currentTime)) {
+                let bestDistance = Infinity;
+                for (let i = 0; i < cues.length; i++) {
+                    const cue = cues[i];
+                    const cueNorm = String(cue?.text || "").toLowerCase().replace(/\s+/g, " ").trim();
+                    const matches =
+                        cueNorm === normalizedTarget ||
+                        cueNorm.includes(normalizedTarget) ||
+                        normalizedTarget.includes(cueNorm);
+                    if (matches) {
+                        const dist = Math.abs((cue.startTime ?? 0) - currentTime);
+                        if (dist < bestDistance) {
+                            bestDistance = dist;
+                            currentIndex = i;
+                        }
+                    }
+                }
+            }
+
+            // If not found near currentTime, search entire cues array
+            if (currentIndex < 0) {
+                for (let i = 0; i < cues.length; i++) {
+                    const cueNorm = String(cues[i]?.text || "").toLowerCase().replace(/\s+/g, " ").trim();
+                    if (
+                        cueNorm === normalizedTarget ||
+                        cueNorm.includes(normalizedTarget) ||
+                        normalizedTarget.includes(cueNorm)
+                    ) {
+                        currentIndex = i;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 2. If index not resolved by text, find cue active at currentTime
+        if (currentIndex < 0 && Number.isFinite(currentTime)) {
+            for (let i = 0; i < cues.length; i++) {
+                const cue = cues[i];
+                const start = (cue.startTime ?? 0) - 0.15;
+                const end = (Number.isFinite(cue.endTime) ? cue.endTime : cue.startTime + 4) + 0.25;
+                if (currentTime >= start && currentTime <= end) {
+                    currentIndex = i;
+                    break;
+                }
+            }
+            // If between cues, take the last cue that started before currentTime
+            if (currentIndex < 0) {
+                for (let i = cues.length - 1; i >= 0; i--) {
+                    if ((cues[i].startTime ?? 0) <= currentTime + 0.1) {
+                        currentIndex = i;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Fallback: if still not found, return activeText without surrounding cues
+        if (currentIndex < 0) {
+            return {
+                before: [],
+                current: String(activeText || "").trim(),
+                after: [],
+            };
+        }
+
+        const currentCueText = cues[currentIndex].text || String(activeText || "").trim();
+
+        // Extract before cues (preserving chronological order)
+        const startBefore = Math.max(0, currentIndex - maxBefore);
+        const beforeCues = cues
+            .slice(startBefore, currentIndex)
+            .map((c) => c.text?.trim())
+            .filter(Boolean);
+
+        // Extract after cues
+        const endAfter = Math.min(cues.length, currentIndex + 1 + maxAfter);
+        const afterCues = cues
+            .slice(currentIndex + 1, endAfter)
+            .map((c) => c.text?.trim())
+            .filter(Boolean);
+
+        return {
+            before: beforeCues,
+            current: currentCueText,
+            after: afterCues,
+        };
+    }
+
     const SubtitleService = Object.freeze({
         cleanCueText,
         parseWebVttTimestamp,
@@ -562,8 +689,12 @@
         parseSrt,
         parseTimedText,
         findAdjacentCueTime,
+        getSurroundingContext,
     });
 
     globalThis.SharedSubtitleService = SubtitleService;
     globalThis.LectoroSubtitleService = SubtitleService;
+    if (typeof module !== "undefined" && module.exports) {
+        module.exports = SubtitleService;
+    }
 })();

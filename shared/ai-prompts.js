@@ -40,19 +40,66 @@ Respond ONLY with JSON:
 {"sentence": "...", "translation": "..."}`;
   },
 
+  /** Helper to format surrounding movie dialogue context (before / after) */
+  formatSubtitleContext(context) {
+    if (!context || typeof context !== "object") return "";
+
+    const normalizeLines = (val) => {
+      if (!val) return [];
+      if (Array.isArray(val)) {
+        return val.map((s) => String(s || "").trim()).filter(Boolean);
+      }
+      if (typeof val === "string") {
+        const trimmed = val.trim();
+        return trimmed ? [trimmed] : [];
+      }
+      return [];
+    };
+
+    const before = normalizeLines(context.before);
+    const after = normalizeLines(context.after);
+
+    if (before.length === 0 && after.length === 0) return "";
+
+    const sections = ["\nSURROUNDING MOVIE DIALOGUE CONTEXT (Reference only - do NOT translate these):"];
+    if (before.length > 0) {
+      sections.push("Previous dialogue:");
+      for (const line of before) {
+        sections.push(`- "${line}"`);
+      }
+    }
+    if (after.length > 0) {
+      sections.push("Following dialogue:");
+      for (const line of after) {
+        sections.push(`- "${line}"`);
+      }
+    }
+
+    return sections.join("\n");
+  },
+
   /**
    * Used by core.js (geminiExplainSentence) when the user asks the
    * extension to explain/translate a subtitle sentence they didn't understand.
    */
-  explainSentence(sentence, targetLang) {
+  explainSentence(sentence, targetLang, context = null) {
     const tgtName = AIPrompts.getLangName(targetLang);
+    const contextBlock = AIPrompts.formatSubtitleContext(context);
+    const hasContext = !!contextBlock;
+
     return `Explain this video subtitle sentence in ${targetLang}:
 "${sentence}"
-
+${hasContext ? `${contextBlock}\n` : ""}
 Instructions for language learner assistance:
 1. "source_language": Detect the sentence language and return only its lowercase ISO 639-1 code (for example "en", "es", "de").
-2. "translation": Accurate, natural, context-aware translation in ${tgtName} (${targetLang}), preserving spoken conversational nuances.
-3. "explanation": Concise, high-value learning breakdown in ${tgtName} (1-2 short sentences). Explain idioms, phrasal verbs, key vocabulary, or grammatical nuances accurately and to the point.
+2. "translation": Accurate, natural, context-aware translation in ${tgtName} (${targetLang}), preserving spoken conversational nuances.${
+      hasContext
+        ? `\n   CRITICAL: Translate ONLY the target sentence ("${sentence}"). DO NOT translate the previous or following dialogue. Use the dialogue context strictly to resolve speaker gender, pronouns, tone, slang, and situational meaning.`
+        : ""
+    }
+3. "explanation": Concise, high-value learning breakdown in ${tgtName} (1-2 short sentences). Explain idioms, phrasal verbs, key vocabulary, or grammatical nuances accurately and to the point.${
+      hasContext ? " If the dialogue context clarifies an ambiguous phrase or tone, briefly mention it." : ""
+    }
 
 Respond ONLY with JSON:
 {"source_language": "en", "translation": "...", "explanation": "..."}`;
@@ -62,14 +109,16 @@ Respond ONLY with JSON:
    * Used by core.js (geminiMovieTranslate) for the "movie-style" subtitle
    * translation + short explanation shown in the tooltip.
    */
-  movieTranslate(text, targetLang) {
+  movieTranslate(text, targetLang, context = null) {
     const tgtName = AIPrompts.getLangName(targetLang);
+    const contextBlock = AIPrompts.formatSubtitleContext(context);
+    const hasContext = !!contextBlock;
 
     return `You are an expert language teacher analyzing a short, possibly incomplete fragment of dialogue from a movie or TV show.
-
+${hasContext ? `${contextBlock}\n` : ""}
 The text may be:
 - cut off mid-sentence,
-- missing previous or following context,
+- ${hasContext ? "clarified by the surrounding previous/following context," : "missing previous or following context,"}
 - informal, colloquial, idiomatic, slang-heavy, or grammatically incomplete,
 - difficult to understand literally.
 
@@ -77,7 +126,7 @@ Your job is to infer the most likely meaning from the available context and expl
 
 IMPORTANT RULES:
 1. Preserve the intended meaning of the original fragment, not its literal word-for-word meaning.
-2. If the fragment is incomplete, use the most likely surrounding context to interpret it, but NEVER invent words that are not present in the original text.
+2. ${hasContext ? `CRITICAL: Translate ONLY the target text ("${text}"). NEVER translate the surrounding dialogue context. Use surrounding dialogue purely as background reference to understand who is speaking, tone, and situation.` : "If the fragment is incomplete, use the most likely surrounding context to interpret it, but NEVER invent words that are not present in the original text."}
 3. Keep the explanation very short and highly informative.
 4. Focus only on the most important language point: idiom, phrasal verb, slang, unusual expression, grammar, tone, or meaning.
 5. Whenever you mention an original English word or phrase in the explanation, ALWAYS put it in double quotation marks, exactly as it appears in the original text.

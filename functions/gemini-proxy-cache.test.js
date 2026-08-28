@@ -458,6 +458,68 @@ test("AIPrompts generate concise token-saving prompts with JSON instructions", (
     assert.ok(standard.includes("Word: \"run\""));
 });
 
+test("AIPrompts formats surrounding subtitle context (before and after) and constrains translation to target sentence", () => {
+    const AIPrompts = require("../shared/ai-prompts");
+    const context = {
+        before: ["Did you see the suspect?", "Yes, he was tall."],
+        after: ["Where did he run?", "Toward the subway station."],
+    };
+
+    const explainWithContext = AIPrompts.explainSentence("He dropped this envelope.", "pl", context);
+    assert.ok(explainWithContext.includes("Explain this video subtitle sentence in pl:"));
+    assert.ok(explainWithContext.includes('"He dropped this envelope."'));
+    assert.ok(explainWithContext.includes("SURROUNDING MOVIE DIALOGUE CONTEXT"));
+    assert.ok(explainWithContext.includes("Previous dialogue:"));
+    assert.ok(explainWithContext.includes('- "Did you see the suspect?"'));
+    assert.ok(explainWithContext.includes('- "Yes, he was tall."'));
+    assert.ok(explainWithContext.includes("Following dialogue:"));
+    assert.ok(explainWithContext.includes('- "Where did he run?"'));
+    assert.ok(explainWithContext.includes('- "Toward the subway station."'));
+    assert.ok(explainWithContext.includes("Translate ONLY the target sentence"));
+    assert.ok(explainWithContext.includes("DO NOT translate the previous or following dialogue"));
+
+    const movieWithContext = AIPrompts.movieTranslate("He dropped this envelope.", "pl", context);
+    assert.ok(movieWithContext.includes('"He dropped this envelope."'));
+    assert.ok(movieWithContext.includes("SURROUNDING MOVIE DIALOGUE CONTEXT"));
+    assert.ok(movieWithContext.includes("Translate ONLY the target text"));
+    assert.ok(movieWithContext.includes("NEVER translate the surrounding dialogue context"));
+});
+
+test("SharedSubtitleService.getSurroundingContext extracts before and after cues accurately", () => {
+    const SubtitleService = require("../shared/subtitle-service");
+    const cues = [
+        { startTime: 1.0, endTime: 3.0, text: "Line 1: Hello everyone." },
+        { startTime: 3.5, endTime: 5.5, text: "Line 2: Welcome to the show." },
+        { startTime: 6.0, endTime: 8.0, text: "Line 3: Today we discuss AI." },
+        { startTime: 8.5, endTime: 11.0, text: "Line 4: It changes everything." },
+        { startTime: 11.5, endTime: 14.0, text: "Line 5: Thanks for watching." },
+    ];
+
+    // Search at time 7.0 (during Line 3)
+    const ctx = SubtitleService.getSurroundingContext(cues, 7.0, "Today we discuss AI", { maxBefore: 2, maxAfter: 2 });
+    assert.equal(ctx.current, "Line 3: Today we discuss AI.");
+    assert.deepEqual(ctx.before, ["Line 1: Hello everyone.", "Line 2: Welcome to the show."]);
+    assert.deepEqual(ctx.after, ["Line 4: It changes everything.", "Line 5: Thanks for watching."]);
+
+    // Boundary: first cue
+    const firstCtx = SubtitleService.getSurroundingContext(cues, 1.5, "Line 1: Hello everyone.", { maxBefore: 2, maxAfter: 2 });
+    assert.deepEqual(firstCtx.before, []);
+    assert.equal(firstCtx.current, "Line 1: Hello everyone.");
+    assert.deepEqual(firstCtx.after, ["Line 2: Welcome to the show.", "Line 3: Today we discuss AI."]);
+
+    // Boundary: last cue
+    const lastCtx = SubtitleService.getSurroundingContext(cues, 12.0, "Line 5: Thanks for watching.", { maxBefore: 2, maxAfter: 2 });
+    assert.deepEqual(lastCtx.before, ["Line 3: Today we discuss AI.", "Line 4: It changes everything."]);
+    assert.equal(lastCtx.current, "Line 5: Thanks for watching.");
+    assert.deepEqual(lastCtx.after, []);
+
+    // Empty cues fallback
+    const emptyCtx = SubtitleService.getSurroundingContext([], 5.0, "Fallback text");
+    assert.deepEqual(emptyCtx.before, []);
+    assert.equal(emptyCtx.current, "Fallback text");
+    assert.deepEqual(emptyCtx.after, []);
+});
+
 test("SharedUtils.resolveImageUrl resolves relative R2 paths and preserves URLs/data URIs", () => {
     const SharedUtils = require("../shared/utils");
     assert.equal(

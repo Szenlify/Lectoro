@@ -31,6 +31,7 @@
     let trackedVideo = null;
     let videoResizeObserver = null;
     let layoutRafId = null;
+    const recentSubtitlesHistory = [];
 
     // ── Interaction State ─────────────────────────────────────────
     let subHoverTimer = null;
@@ -336,6 +337,16 @@
 
         activeLines = displayLines;
         activeText = newText;
+        if (
+            newText &&
+            (!recentSubtitlesHistory.length ||
+                recentSubtitlesHistory[recentSubtitlesHistory.length - 1] !== newText)
+        ) {
+            recentSubtitlesHistory.push(newText);
+            if (recentSubtitlesHistory.length > 10) {
+                recentSubtitlesHistory.shift();
+            }
+        }
         activeWordSpans = [];
         box.innerHTML = "";
 
@@ -871,6 +882,35 @@
         });
     }
 
+    function getActiveSubtitleContext(video = null, currentText = "") {
+        const targetVideo = video || getPlayerRegistry()?.getVideo();
+        const targetText = String(
+            currentText || activeText || getPlayerRegistry()?.getCurrentText() || "",
+        ).trim();
+        const registry = getPlayerRegistry();
+
+        let context = { before: [], current: targetText, after: [] };
+
+        if (typeof registry?.getSubtitleContext === "function") {
+            context = registry.getSubtitleContext(targetVideo, targetText, {
+                maxBefore: 2,
+                maxAfter: 2,
+            });
+        }
+
+        if (
+            (!context.before || context.before.length === 0) &&
+            recentSubtitlesHistory.length > 0
+        ) {
+            const hist = recentSubtitlesHistory.filter((t) => t && t !== targetText);
+            if (hist.length > 0) {
+                context.before = hist.slice(-2);
+            }
+        }
+
+        return context;
+    }
+
     async function handleAIExplain(video) {
         const registry = getPlayerRegistry();
         const text = activeText || registry?.getCurrentText();
@@ -898,7 +938,8 @@
         showAiShimmer(aiLayout);
         try {
             const targetLang = await QT.getTargetLang();
-            const res = await QT.geminiExplainSentence(text, targetLang);
+            const context = getActiveSubtitleContext(video, text);
+            const res = await QT.geminiExplainSentence(text, targetLang, context);
             if (!aiTooltipActive) return;
 
             const sourceLang = await detectSourceLanguage(text, targetLang, res);
@@ -1853,6 +1894,7 @@
         getCustomSubtitleElements: () => activeWordSpans,
         getActiveLines: () => activeLines,
         getActiveText: () => activeText,
+        getActiveSubtitleContext,
         makeSubtitlesInteractive,
         closeSubTooltip,
         handleAIExplain,

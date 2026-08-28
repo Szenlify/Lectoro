@@ -196,14 +196,14 @@
     /**
      * AI Deep Sentence explanation.
      */
-    async function explainSentence(sentence, targetLang) {
+    async function explainSentence(sentence, targetLang, context = null) {
         if (typeof AIPrompts === "undefined") {
             throw new Error("AIPrompts is unavailable.");
         }
-        const prompt = AIPrompts.explainSentence(sentence, targetLang);
+        const prompt = AIPrompts.explainSentence(sentence, targetLang, context);
         const parsed = await geminiRequest(prompt, {
             temperature: 0.7,
-            maxOutputTokens: 250,
+            maxOutputTokens: 350,
         });
         return {
             detectedLang:
@@ -220,14 +220,14 @@
     /**
      * AI Movie dialogue translation with contextual explanation.
      */
-    async function movieTranslate(text, targetLang) {
+    async function movieTranslate(text, targetLang, context = null) {
         if (typeof AIPrompts === "undefined") {
             throw new Error("AIPrompts is unavailable.");
         }
-        const prompt = AIPrompts.movieTranslate(text, targetLang);
+        const prompt = AIPrompts.movieTranslate(text, targetLang, context);
         const parsed = await geminiRequest(prompt, {
             temperature: 0.8,
-            maxOutputTokens: 260,
+            maxOutputTokens: 350,
         });
         return {
             translation: parsed.translation || "",
