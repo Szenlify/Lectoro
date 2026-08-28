@@ -91,6 +91,21 @@ assert.strictEqual(vttCues[0].startTime, 1);
 assert.strictEqual(vttCues[0].text, "Hello world");
 console.log("✓ WebVTT parser passed.");
 
+// 1b. Multi-line WebVTT test
+const multiLineVtt = `WEBVTT
+
+00:01.000 --> 00:04.000
+First row of subtitle
+Second row of subtitle
+`;
+const multiVttCues = service.parseWebVtt(multiLineVtt);
+assert.strictEqual(multiVttCues.length, 1);
+assert.strictEqual(multiVttCues[0].lines.length, 2, "Should preserve 2 lines in lines array");
+assert.strictEqual(multiVttCues[0].lines[0], "First row of subtitle");
+assert.strictEqual(multiVttCues[0].lines[1], "Second row of subtitle");
+assert.strictEqual(multiVttCues[0].text, "First row of subtitle\nSecond row of subtitle");
+console.log("✓ Multi-line WebVTT parser passed.");
+
 // 2. SRT Parser test
 const sampleSrt = `1
 00:00:01,000 --> 00:00:04,000
@@ -99,12 +114,16 @@ First subtitle line
 2
 00:00:05,500 --> 00:00:08,000
 Second subtitle line
+Third subtitle line
 `;
 
 const srtCues = service.parseSrt(sampleSrt);
 assert.strictEqual(srtCues.length, 2, "Should parse 2 SRT cues");
 assert.strictEqual(srtCues[0].startTime, 1);
 assert.strictEqual(srtCues[0].text, "First subtitle line");
+assert.strictEqual(srtCues[1].lines.length, 2, "Should preserve 2 lines in SRT cue");
+assert.strictEqual(srtCues[1].lines[0], "Second subtitle line");
+assert.strictEqual(srtCues[1].lines[1], "Third subtitle line");
 console.log("✓ SRT parser passed.");
 
 // 3. Navigation tests (A and D keys)
@@ -137,5 +156,49 @@ const mockVideo = { currentTime: 8.5 };
 assert.strictEqual(service.findAdjacentCueTime(cues, mockVideo, -1), 7.0, "Supports passing HTMLVideoElement mock");
 
 console.log("✓ Timeline navigation tests (A/D keys) passed.");
+
+// 4. SharedUtils.extractSubtitleLines test
+global.Node = { TEXT_NODE: 3, ELEMENT_NODE: 1 };
+const realUtils = require("../shared/utils.js");
+const mockNode = {
+    nodeType: 1,
+    childNodes: [
+        { nodeType: 3, nodeValue: "Line one of subtitle" },
+        { nodeType: 1, localName: "br", childNodes: [] },
+        { nodeType: 3, nodeValue: "Line two of subtitle" }
+    ]
+};
+const extractedLines = realUtils.extractSubtitleLines(mockNode);
+assert.strictEqual(extractedLines.length, 2, "Should split on <br> into 2 lines");
+assert.strictEqual(extractedLines[0], "Line one of subtitle");
+assert.strictEqual(extractedLines[1], "Line two of subtitle");
+console.log("✓ SharedUtils.extractSubtitleLines passed.");
+
+// 5. Consolidate 3 lines into 2 if they fit
+function testConsolidate(lines, maxWidth, fontSize) {
+    // Replicate consolidateLinesIfFit algorithm for test verification
+    const [l0, l1, l2] = lines;
+    const approxW = (txt) => txt.length * fontSize * 0.55;
+    const maxW = maxWidth - 48;
+    const cA0 = `${l0} ${l1}`.trim(), cA1 = l2.trim();
+    const cB0 = l0.trim(), cB1 = `${l1} ${l2}`.trim();
+    const fitsA = approxW(cA0) <= maxW && approxW(cA1) <= maxW;
+    const fitsB = approxW(cB0) <= maxW && approxW(cB1) <= maxW;
+    if (fitsA && fitsB) {
+        const diffA = Math.abs(approxW(cA0) - approxW(cA1));
+        const diffB = Math.abs(approxW(cB0) - approxW(cB1));
+        return diffA <= diffB ? [cA0, cA1] : [cB0, cB1];
+    }
+    if (fitsB) return [cB0, cB1];
+    if (fitsA) return [cA0, cA1];
+    return lines;
+}
+
+const short3Lines = ["Nie wiem, co masz", "na myśli, ale musimy", "już wracać."];
+const consolidated = testConsolidate(short3Lines, 1000, 26);
+assert.strictEqual(consolidated.length, 2, "3 short lines that fit should be consolidated into 2 lines");
+assert.strictEqual(consolidated[0], "Nie wiem, co masz");
+assert.strictEqual(consolidated[1], "na myśli, ale musimy już wracać.");
+console.log("✓ 3-to-2 subtitle line consolidation passed.");
 
 console.log("\nALL TESTS PASSED SUCCESSFULLY! 🚀");

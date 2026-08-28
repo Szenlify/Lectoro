@@ -25,6 +25,8 @@
     // ── Universal Custom Subtitle Renderer State ─────────────────
     let customSubLayerEl = null;
     let customSubBoxEl = null;
+    let currentSubPosition = (typeof LectoroConstants !== "undefined" && LectoroConstants.DEFAULT_SUBTITLE_SETTINGS?.POSITION) ?? 14;
+    let currentSubBgOpacity = (typeof LectoroConstants !== "undefined" && LectoroConstants.DEFAULT_SUBTITLE_SETTINGS?.BG_OPACITY) ?? 0;
     let activeLines = [];
     let activeText = "";
     let activeWordSpans = [];
@@ -149,6 +151,22 @@
         return video.parentElement || document.body;
     }
 
+    function applySubtitleStyles(layer) {
+        if (!layer) return;
+        const opacity = (typeof currentSubBgOpacity === "number" && !isNaN(currentSubBgOpacity))
+            ? Math.max(0, Math.min(100, currentSubBgOpacity))
+            : 0;
+
+        if (opacity <= 0) {
+            layer.style.setProperty("--lectoro-sub-bg-color", "transparent");
+            layer.style.setProperty("--lectoro-sub-bg-padding", "0 4px");
+        } else {
+            const alpha = (opacity / 100).toFixed(2);
+            layer.style.setProperty("--lectoro-sub-bg-color", `rgba(0, 0, 0, ${alpha})`);
+            layer.style.setProperty("--lectoro-sub-bg-padding", "3px 8px");
+        }
+    }
+
     function ensureCustomSubtitlesLayer() {
         const video = getPlayerRegistry()?.getVideo();
         const playerEl = findPlayerContainer(video);
@@ -160,6 +178,7 @@
             customSubLayerEl.id = `${PREFIX}custom_subtitles_layer`;
             customSubLayerEl.classList.add(`${PREFIX}custom-subtitles-layer`);
             customSubLayerEl.setAttribute("data-platform", platform);
+            applySubtitleStyles(customSubLayerEl);
             if (!customSubBoxEl) {
                 customSubBoxEl = document.createElement("div");
                 customSubBoxEl.style.setProperty(
@@ -186,6 +205,7 @@
         customSubLayerEl.id = `${PREFIX}custom_subtitles_layer`;
         customSubLayerEl.className = `${PREFIX}custom-subtitles-layer`;
         customSubLayerEl.setAttribute("data-platform", platform);
+        applySubtitleStyles(customSubLayerEl);
 
         customSubBoxEl = document.createElement("div");
         customSubBoxEl.className = `${PREFIX}custom-subtitles-box`;
@@ -275,15 +295,106 @@
             const fontSizePx = Math.max(20, Math.min(54, Math.round(actualWidth * 0.026 + 4)));
             layer.style.setProperty("--lectoro-sub-font-size", `${fontSizePx}px`);
 
+            applySubtitleStyles(layer);
+
             // Bottom offset inside video player
             const isNetflix = isNetflixPage();
-            const baseBottomPx = isNetflix
-                ? Math.max(76, Math.round(actualHeight * 0.13))
-                : Math.max(18, Math.round(actualHeight * 0.138));
+            const posPercent = (typeof currentSubPosition === "number" && !isNaN(currentSubPosition))
+                ? Math.max(0, Math.min(100, currentSubPosition))
+                : 14;
+
+            const boxHeight = box.offsetHeight || 60;
+            const maxBottomPx = Math.max(0, actualHeight - boxHeight - 12);
+            let baseBottomPx;
+
+            if (posPercent === 0) {
+                baseBottomPx = 0;
+            } else if (posPercent === 14) {
+                baseBottomPx = isNetflix
+                    ? Math.max(76, Math.round(actualHeight * 0.13))
+                    : Math.max(18, Math.round(actualHeight * 0.138));
+            } else {
+                baseBottomPx = Math.min(maxBottomPx, Math.max(0, Math.round(actualHeight * (posPercent / 100))));
+            }
 
             layer.style.setProperty("--lectoro-sub-bottom", `${baseBottomPx}px`);
             box.style.marginBottom = `${baseBottomPx}px`;
         });
+    }
+
+    let measureCanvas = null;
+    let measureCtx = null;
+
+    function measureTextWidth(text, fontSizePx) {
+        if (!text) return 0;
+        try {
+            if (!measureCanvas && typeof document !== "undefined") {
+                measureCanvas = document.createElement("canvas");
+                measureCtx = measureCanvas.getContext("2d");
+            }
+            if (measureCtx) {
+                measureCtx.font = `600 ${fontSizePx}px "Netflix Sans Variable", "Netflix Sans", "Helvetica Neue", "Segoe UI", Roboto, sans-serif`;
+                return measureCtx.measureText(text).width;
+            }
+        } catch (_) {}
+        return text.length * fontSizePx * 0.55;
+    }
+
+    /**
+     * Consolidates 3-line subtitles into 2 lines if they can comfortably fit
+     * within the available subtitle box width without overflowing/wrapping.
+     */
+    function consolidateLinesIfFit(lines, maxAvailableWidth, fontSizePx) {
+        if (!Array.isArray(lines) || lines.length !== 3) {
+            return lines;
+        }
+
+        // Available width for text inside line container with safety margin
+        const maxWidth = Math.max(200, maxAvailableWidth - 48);
+
+        const [l0, l1, l2] = lines;
+
+        const comboA_line0 = `${l0} ${l1}`.trim();
+        const comboA_line1 = l2.trim();
+
+        const comboB_line0 = l0.trim();
+        const comboB_line1 = `${l1} ${l2}`.trim();
+
+        const wA0 = measureTextWidth(comboA_line0, fontSizePx);
+        const wA1 = measureTextWidth(comboA_line1, fontSizePx);
+
+        const wB0 = measureTextWidth(comboB_line0, fontSizePx);
+        const wB1 = measureTextWidth(comboB_line1, fontSizePx);
+
+        const fitsA = wA0 <= maxWidth && wA1 <= maxWidth;
+        const fitsB = wB0 <= maxWidth && wB1 <= maxWidth;
+
+        // Check if l1 or l2 starts with a dialogue speaker dash (e.g. "- Yes", "— No", "– Sure")
+        const isL1SpeakerChange = /^[-–—]\s*\S/.test(l1);
+        const isL2SpeakerChange = /^[-–—]\s*\S/.test(l2);
+
+        if (fitsA && fitsB) {
+            if (isL1SpeakerChange) {
+                return [comboB_line0, comboB_line1];
+            }
+            if (isL2SpeakerChange) {
+                return [comboA_line0, comboA_line1];
+            }
+            // Choose the combination with more balanced line widths
+            const diffA = Math.abs(wA0 - wA1);
+            const diffB = Math.abs(wB0 - wB1);
+            return diffA <= diffB ? [comboA_line0, comboA_line1] : [comboB_line0, comboB_line1];
+        }
+
+        if (fitsB && !isL2SpeakerChange) {
+            return [comboB_line0, comboB_line1];
+        }
+
+        if (fitsA && !isL1SpeakerChange) {
+            return [comboA_line0, comboA_line1];
+        }
+
+        return lines;
     }
 
     function renderCustomSubtitles(lines = []) {
@@ -316,23 +427,34 @@
         }
 
         let displayLines = rawCleanLines;
+        if (displayLines.length === 3) {
+            const playerEl = findPlayerContainer(video);
+            const actualWidth = playerEl?.offsetWidth || window.innerWidth || 1280;
+            const fontSizePx = Math.max(20, Math.min(54, Math.round(actualWidth * 0.026 + 4)));
+            const maxBoxWidth = actualWidth * 0.92;
+            displayLines = consolidateLinesIfFit(displayLines, maxBoxWidth, fontSizePx);
+        }
         const newText = displayLines.join(" ").replace(/\s+/g, " ").trim();
 
-        // Netflix may rebuild the same cue first as one DOM line and then as
-        // two lines (or the reverse). Preserve the first accepted layout for
-        // as long as the normalized cue text itself has not changed.
-        if (isNetflixPage() && newText === activeText && activeLines.length > 0) {
-            displayLines = activeLines;
-            if (box.children.length === activeLines.length) {
-                syncCustomSubtitlePosition();
-                return;
+        if (newText === activeText && activeLines.length > 0) {
+            if (displayLines.length === activeLines.length) {
+                // Layout and text are identical: avoid unnecessary DOM re-rendering / flicker
+                if (box.children.length === activeLines.length) {
+                    syncCustomSubtitlePosition();
+                    return;
+                }
+            } else if (displayLines.length < activeLines.length && isNetflixPage()) {
+                // If a temporary partial DOM mutation arrives with fewer lines, preserve
+                // the richer multi-line layout already rendered for this exact text.
+                displayLines = activeLines;
+                if (box.children.length === activeLines.length) {
+                    syncCustomSubtitlePosition();
+                    return;
+                }
             }
-        } else if (
-            newText === activeText &&
-            box.children.length === displayLines.length
-        ) {
-            syncCustomSubtitlePosition();
-            return;
+            // If displayLines.length > activeLines.length, an upgraded multi-line
+            // layout arrived (e.g. multi-line DOM replacing a 1-line seek fallback).
+            // Proceed and render the richer displayLines!
         }
 
         activeLines = displayLines;
@@ -397,6 +519,44 @@
     document.addEventListener("fullscreenchange", () => setTimeout(syncCustomSubtitlePosition, 50));
     document.addEventListener("webkitfullscreenchange", () => setTimeout(syncCustomSubtitlePosition, 50));
 
+    // Subtitle visual preferences from storage (Single Source of Truth)
+    const subPosKey = (typeof LectoroConstants !== "undefined" && LectoroConstants.STORAGE_KEYS?.SUBTITLE_POSITION) || "subtitlePosition";
+    const subBgKey = (typeof LectoroConstants !== "undefined" && LectoroConstants.STORAGE_KEYS?.SUBTITLE_BG_OPACITY) || "subtitleBgOpacity";
+
+    if (typeof chrome !== "undefined" && chrome.storage?.local) {
+        chrome.storage.local.get({ [subPosKey]: 14, [subBgKey]: 0 }, (data) => {
+            if (data && typeof data[subPosKey] === "number") {
+                currentSubPosition = data[subPosKey];
+            }
+            if (data && typeof data[subBgKey] === "number") {
+                currentSubBgOpacity = data[subBgKey];
+            }
+            if (customSubLayerEl) {
+                applySubtitleStyles(customSubLayerEl);
+                syncCustomSubtitlePosition();
+            }
+        });
+
+        chrome.storage.onChanged.addListener((changes, area) => {
+            if (area !== "local") return;
+            let shouldSync = false;
+            if (changes[subPosKey] && typeof changes[subPosKey].newValue === "number") {
+                currentSubPosition = changes[subPosKey].newValue;
+                shouldSync = true;
+            }
+            if (changes[subBgKey] && typeof changes[subBgKey].newValue === "number") {
+                currentSubBgOpacity = changes[subBgKey].newValue;
+                if (customSubLayerEl) {
+                    applySubtitleStyles(customSubLayerEl);
+                }
+                shouldSync = true;
+            }
+            if (shouldSync) {
+                syncCustomSubtitlePosition();
+            }
+        });
+    }
+
     // Connect to PlayerRegistry subtitle changes (Single Source of Truth)
     if (globalThis.LectoroPlayerRegistry) {
         globalThis.LectoroPlayerRegistry.onSubtitleChange((payload) => {
@@ -406,7 +566,8 @@
             } else if (payload && Array.isArray(payload.lines)) {
                 renderCustomSubtitles(payload.lines);
             } else if (payload && typeof payload.fullText === "string") {
-                renderCustomSubtitles(payload.fullText ? [payload.fullText] : []);
+                const lines = payload.fullText ? payload.fullText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean) : [];
+                renderCustomSubtitles(lines);
             }
         });
     }

@@ -7,6 +7,24 @@ whenPopupReady((data) => {
         volumeRange.value = data.ttsVolume;
         volumeValue.textContent = Math.round(data.ttsVolume * 100) + "%";
     }
+    const defaultSubPos = typeof LectoroConstants !== "undefined"
+        ? LectoroConstants.DEFAULT_SUBTITLE_SETTINGS?.POSITION ?? 14
+        : 14;
+    const defaultSubBg = typeof LectoroConstants !== "undefined"
+        ? LectoroConstants.DEFAULT_SUBTITLE_SETTINGS?.BG_OPACITY ?? 0
+        : 0;
+
+    const subPos = data.subtitlePosition !== undefined ? data.subtitlePosition : defaultSubPos;
+    if (subPositionRange) {
+        subPositionRange.value = subPos;
+        if (subPositionValue) subPositionValue.textContent = `${subPos}%`;
+    }
+
+    const subBg = data.subtitleBgOpacity !== undefined ? data.subtitleBgOpacity : defaultSubBg;
+    if (subBgRange) {
+        subBgRange.value = subBg;
+        if (subBgValue) subBgValue.textContent = `${subBg}%`;
+    }
     let voice = data.speechVoice || "";
     if (voice === "random") {
         voice = "";
@@ -108,6 +126,40 @@ if (volumeRange) {
         );
     });
 }
+
+// ── Subtitle position & background sliders (DRY) ──────────────────
+function bindPercentageSlider(rangeEl, valueEl, storageKey, fallback = 0) {
+    if (!rangeEl) return;
+    let saveTimeout = null;
+    const save = () => {
+        const parsed = parseInt(rangeEl.value, 10);
+        const val = isNaN(parsed) ? fallback : Math.max(0, Math.min(100, parsed));
+        if (typeof popupState === "object" && popupState !== null) {
+            popupState[storageKey] = val;
+        }
+        chrome.storage.local.set({ [storageKey]: val }, flashSaved);
+    };
+
+    rangeEl.addEventListener("input", () => {
+        if (valueEl) valueEl.textContent = `${rangeEl.value}%`;
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(save, 150);
+    });
+    rangeEl.addEventListener("change", () => {
+        clearTimeout(saveTimeout);
+        save();
+    });
+}
+
+const subPosStorageKey = typeof LectoroConstants !== "undefined" && LectoroConstants.STORAGE_KEYS?.SUBTITLE_POSITION
+    ? LectoroConstants.STORAGE_KEYS.SUBTITLE_POSITION
+    : "subtitlePosition";
+const subBgStorageKey = typeof LectoroConstants !== "undefined" && LectoroConstants.STORAGE_KEYS?.SUBTITLE_BG_OPACITY
+    ? LectoroConstants.STORAGE_KEYS.SUBTITLE_BG_OPACITY
+    : "subtitleBgOpacity";
+
+bindPercentageSlider(subPositionRange, subPositionValue, subPosStorageKey, 14);
+bindPercentageSlider(subBgRange, subBgValue, subBgStorageKey, 0);
 
 // ── Subscription & AI Usage ──────────────────────────────────────
 function renderSubscriptionPlans(subscription, signedIn = true) {
@@ -612,16 +664,27 @@ document.addEventListener("visibilitychange", () => {
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
-    if (
-        area === "local" &&
-        !isBillingBusy &&
-        (changes.aiUsageCache ||
-            changes.firebaseAuth ||
-            changes.subscriptionProfileCache)
-    ) {
-        clearTimeout(_refreshAiUsageTimeout);
-        _refreshAiUsageTimeout = setTimeout(() => {
-            void refreshSubscriptionUi();
-        }, 50);
+    if (area === "local") {
+        if (changes[subPosStorageKey] && subPositionRange && document.activeElement !== subPositionRange) {
+            const val = changes[subPosStorageKey].newValue ?? 14;
+            subPositionRange.value = val;
+            if (subPositionValue) subPositionValue.textContent = `${val}%`;
+        }
+        if (changes[subBgStorageKey] && subBgRange && document.activeElement !== subBgRange) {
+            const val = changes[subBgStorageKey].newValue ?? 0;
+            subBgRange.value = val;
+            if (subBgValue) subBgValue.textContent = `${val}%`;
+        }
+        if (
+            !isBillingBusy &&
+            (changes.aiUsageCache ||
+                changes.firebaseAuth ||
+                changes.subscriptionProfileCache)
+        ) {
+            clearTimeout(_refreshAiUsageTimeout);
+            _refreshAiUsageTimeout = setTimeout(() => {
+                void refreshSubscriptionUi();
+            }, 50);
+        }
     }
 });

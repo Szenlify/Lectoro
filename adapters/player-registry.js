@@ -315,7 +315,9 @@
         }
         if (!hasIndexedLines && lines.length === 0 && session.video?.textTracks) {
             const native = getNativeCueText(session.video);
-            if (native) lines = [native];
+            if (native) {
+                lines = native.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+            }
         }
         if (!hasIndexedLines && lines.length === 0) {
             const getAllCuesFn = captionAdapter?.getAllCues || (globalThis.LectoroTedAdapter?.isPage?.() ? globalThis.LectoroTedAdapter.getAllCues : null);
@@ -324,7 +326,13 @@
                 if (Array.isArray(all) && all.length > 0) {
                     const now = session.video.currentTime;
                     const match = all.find((c) => now >= c.startTime && now <= c.endTime);
-                    if (match?.text) lines = [match.text];
+                    if (match) {
+                        if (Array.isArray(match.lines) && match.lines.length > 0) {
+                            lines = match.lines;
+                        } else if (match.text) {
+                            lines = match.text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+                        }
+                    }
                 }
             }
         }

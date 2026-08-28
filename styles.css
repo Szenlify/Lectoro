@@ -675,7 +675,7 @@ video::cue {
     justify-content: center !important;
     text-align: center !important;
     width: auto !important;
-    max-width: 84% !important;
+    max-width: 92% !important;
     min-width: 0 !important;
     flex: 0 0 auto !important;
     margin-bottom: var(--lectoro-sub-bottom, 68px) !important;
@@ -695,7 +695,11 @@ video::cue {
     width: auto !important;
     max-width: 100% !important;
     margin: 3px auto !important;
-    padding: 0 4px !important;
+    padding: var(--lectoro-sub-bg-padding, 0 4px) !important;
+    border-radius: 4px !important;
+    background-color: var(--lectoro-sub-bg-color, transparent) !important;
+    box-decoration-break: clone !important;
+    -webkit-box-decoration-break: clone !important;
     color: #ffffff !important;
     font-family: "Netflix Sans Variable", "Netflix Sans", "Helvetica Neue", "Segoe UI", Roboto, Arial, sans-serif !important;
     font-size: var(--lectoro-sub-font-size, 26px) !important;

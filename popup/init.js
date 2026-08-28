@@ -16,6 +16,8 @@ const POPUP_INIT_KEYS = Object.freeze({
     pendingFirebaseChanges: {},
     aiUsageCache: null,
     subscriptionProfileCache: null,
+    subtitlePosition: (typeof LectoroConstants !== "undefined" && LectoroConstants.DEFAULT_SUBTITLE_SETTINGS?.POSITION) ?? 14,
+    subtitleBgOpacity: (typeof LectoroConstants !== "undefined" && LectoroConstants.DEFAULT_SUBTITLE_SETTINGS?.BG_OPACITY) ?? 0,
 });
 
 let popupState = { ...POPUP_INIT_KEYS };
@@ -136,12 +138,16 @@ document.querySelectorAll(".tab").forEach((tab) => {
     });
 });
 
-// ── Voice & rate elements ─────────────────────────────────────────
+// ── Voice, rate & subtitle elements ──────────────────────────────
 const voiceSelect = document.getElementById("voiceSelect");
 const rateRange = document.getElementById("rateRange");
 const rateValue = document.getElementById("rateValue");
 const volumeRange = document.getElementById("volumeRange");
 const volumeValue = document.getElementById("volumeValue");
+const subPositionRange = document.getElementById("subPositionRange");
+const subPositionValue = document.getElementById("subPositionValue");
+const subBgRange = document.getElementById("subBgRange");
+const subBgValue = document.getElementById("subBgValue");
 
 // ── Review badge from the initial storage batch (without loading the tab) ──
 function updateInitialReviewBadge(words = []) {

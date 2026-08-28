@@ -6,7 +6,7 @@
 (() => {
     "use strict";
 
-    function cleanCueText(rawText) {
+    function cleanCueText(rawText, { preserveNewlines = false } = {}) {
         if (!rawText) return "";
         let text = String(rawText);
 
@@ -21,27 +21,31 @@
                 // Quick check if contains HTML/XML tags
                 if (text.includes("<") && text.includes(">")) {
                     const cleanHtml = text
-                        .replace(/<br\s*\/?>/gi, " ")
-                        .replace(/\n+/g, " ");
+                        .replace(/<br\s*\/?>/gi, preserveNewlines ? "\n" : " ")
+                        .replace(preserveNewlines ? /[^\S\r\n]+/g : /\s+/g, " ");
                     const doc = new DOMParser().parseFromString(cleanHtml, "text/html");
                     if (
                         typeof SharedUtils !== "undefined" &&
                         typeof SharedUtils.extractSubtitleText === "function"
                     ) {
-                        text = SharedUtils.extractSubtitleText(doc.body);
+                        text = SharedUtils.extractSubtitleText(doc.body, { preserveNewlines });
                     } else {
                         text = doc.body.textContent || "";
                     }
                 }
             } catch (_) {
                 // Fallback tag stripper
-                text = text.replace(/<[^>]+>/g, " ");
+                text = text
+                    .replace(/<br\s*\/?>/gi, preserveNewlines ? "\n" : " ")
+                    .replace(/<[^>]+>/g, " ");
             }
         } else {
-            text = text.replace(/<[^>]+>/g, " ");
+            text = text
+                .replace(/<br\s*\/?>/gi, preserveNewlines ? "\n" : " ")
+                .replace(/<[^>]+>/g, " ");
         }
 
-        return text
+        text = text
             .replace(/\[[^\]]*\]/g, " ") // Strip [Music], [Muzyka], [Applause], [Śmiech], etc.
             .replace(/[♪♫♬♩♭♮♯]/g, " ") // Strip musical notes
             .replace(
@@ -49,10 +53,28 @@
                 " ",
             )
             .replace(/\{[^}]+\}/g, "") // Remove ASS/SSA style tags
-            .replace(/(?:^|\s)(?:>>+|<<+|»+|«+|››+)(?:\s|$)/g, " ") // Strip speaker change markers >>, >>>, <<, », «
+            .replace(/(?:^|\s)(?:>>+|<<+|»+|«+|››+)(?:\s|$)/g, " "); // Strip speaker change markers >>, >>>, <<, », «
+
+        if (preserveNewlines) {
+            return text
+                .split(/\r?\n/)
+                .map((line) =>
+                    line
+                        .replace(/^[>»›<«\s—–-]+/, "") // Strip leading markers/arrows
+                        .replace(/(?:^|\s)[>»›](?=\s)/g, " ") // Strip isolated single > markers
+                        .replace(/-{2,}/g, " ")
+                        .replace(/[^\S\r\n]+/g, " ")
+                        .trim(),
+                )
+                .filter(Boolean)
+                .join("\n");
+        }
+
+        return text
             .replace(/^[>»›<«\s—–-]+/, "") // Strip leading markers/arrows
             .replace(/(?:^|\s)[>»›](?=\s)/g, " ") // Strip isolated single > markers
             .replace(/\s+/g, " ")
+            .replace(/-{2,}/g, " ")
             .trim();
     }
 
@@ -134,6 +156,9 @@
         const merged = [];
         for (const cue of sorted) {
             const trimmedText = cue.text.trim();
+            const cueLines = Array.isArray(cue.lines) && cue.lines.length > 0
+                ? cue.lines
+                : trimmedText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
             const previous = merged[merged.length - 1];
 
             // If start times are within 50ms, merge into single multi-line/phrase cue
@@ -142,7 +167,8 @@
                 Math.abs(previous.startTime - cue.startTime) < 0.05
             ) {
                 if (!previous.text.includes(trimmedText)) {
-                    previous.text += " " + trimmedText;
+                    previous.text += "\n" + trimmedText;
+                    previous.lines = previous.text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
                 }
                 previous.endTime = Math.max(
                     previous.endTime || 0,
@@ -155,6 +181,7 @@
                 startTime: Math.round(cue.startTime * 1000) / 1000,
                 endTime: Number.isFinite(cue.endTime) ? Math.round(cue.endTime * 1000) / 1000 : null,
                 text: trimmedText,
+                lines: cueLines,
             });
         }
 
@@ -208,11 +235,12 @@
 
             const startTime = parseWebVttTimestamp(match[1]);
             const endTime = parseWebVttTimestamp(match[2]);
-            const rawBody = lines.slice(timingIndex + 1).join(" ");
-            const cueText = cleanCueText(rawBody);
+            const rawBody = lines.slice(timingIndex + 1).join("\n");
+            const cueText = cleanCueText(rawBody, { preserveNewlines: true });
+            const cueLines = cueText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
 
             if (startTime === null || !cueText) continue;
-            cues.push({ startTime, endTime, text: cueText });
+            cues.push({ startTime, endTime, text: cueText, lines: cueLines });
         }
 
         return finalizeCues(cues);
@@ -267,15 +295,17 @@
                 for (const lineBreak of Array.from(
                     textClone.getElementsByTagNameNS("*", "br"),
                 )) {
-                    lineBreak.replaceWith(xml.createTextNode(" "));
+                    lineBreak.replaceWith(xml.createTextNode("\n"));
                 }
 
                 const cueText = cleanCueText(
                     textClone.textContent || textClone.innerHTML || "",
+                    { preserveNewlines: true },
                 );
+                const cueLines = cueText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
 
                 if (!Number.isFinite(startTime) || !cueText) continue;
-                cues.push({ startTime, endTime, text: cueText });
+                cues.push({ startTime, endTime, text: cueText, lines: cueLines });
             }
 
             // YouTube XML transcript fallback (<text start=".." dur="..">)
@@ -288,9 +318,10 @@
                 const startTime = Number(startAttr);
                 const duration = Number(node.getAttribute("dur") || 3);
                 const endTime = Number.isFinite(duration) ? startTime + duration : startTime + 3;
-                const cueText = cleanCueText(node.textContent || "");
+                const cueText = cleanCueText(node.textContent || "", { preserveNewlines: true });
+                const cueLines = cueText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
                 if (Number.isFinite(startTime) && cueText) {
-                    cues.push({ startTime, endTime, text: cueText });
+                    cues.push({ startTime, endTime, text: cueText, lines: cueLines });
                 }
             }
 
@@ -430,10 +461,12 @@
 
             const startTime = parseWebVttTimestamp(match[1]);
             const endTime = parseWebVttTimestamp(match[2]);
-            const cueText = cleanCueText(lines.slice(timingIndex + 1).join(" "));
+            const rawBody = lines.slice(timingIndex + 1).join("\n");
+            const cueText = cleanCueText(rawBody, { preserveNewlines: true });
+            const cueLines = cueText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
 
             if (startTime === null || !cueText) continue;
-            cues.push({ startTime, endTime, text: cueText });
+            cues.push({ startTime, endTime, text: cueText, lines: cueLines });
         }
 
         return finalizeCues(cues);

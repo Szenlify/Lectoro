@@ -272,8 +272,9 @@
         /**
          * Universal robust DOM text walker for subtitle cues.
          * Handles <br> tags, text nodes, and preserves word boundary spacing.
+         * Optional preserveNewlines keeps line breaks as \n.
          */
-        extractSubtitleText(node) {
+        extractSubtitleText(node, { preserveNewlines = false } = {}) {
             if (!node) return "";
             const parts = [];
 
@@ -288,7 +289,7 @@
 
                 const tagName = current.localName?.toLowerCase();
                 if (tagName === "br") {
-                    parts.push(" ");
+                    parts.push(preserveNewlines ? "\n" : " ");
                     return;
                 }
 
@@ -319,7 +320,24 @@
             }
 
             walk(node);
+            if (preserveNewlines) {
+                return parts
+                    .join("")
+                    .split(/\r?\n/)
+                    .map((line) => line.replace(/[^\S\r\n]+/g, " ").trim())
+                    .filter(Boolean)
+                    .join("\n");
+            }
             return parts.join("").replace(/\s+/g, " ").trim();
+        },
+
+        /**
+         * Universal robust extractor for multi-line subtitle cues.
+         * Returns an array of clean line strings preserving natural breaks.
+         */
+        extractSubtitleLines(node) {
+            const text = this.extractSubtitleText(node, { preserveNewlines: true });
+            return text ? text.split("\n").filter(Boolean) : [];
         },
 
         /**

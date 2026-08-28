@@ -100,19 +100,26 @@
         const lines = [];
         for (const el of elements) {
             if (!el || isOwnUI(el) || isLectoroElement(el)) continue;
-            let text = "";
-            if (typeof SharedUtils !== "undefined" && SharedUtils.extractSubtitleText) {
-                text = SharedUtils.extractSubtitleText(el);
+            let elLines = [];
+            if (typeof SharedUtils !== "undefined" && typeof SharedUtils.extractSubtitleLines === "function") {
+                elLines = SharedUtils.extractSubtitleLines(el);
+            } else if (typeof SharedUtils !== "undefined" && typeof SharedUtils.extractSubtitleText === "function") {
+                const text = SharedUtils.extractSubtitleText(el, { preserveNewlines: true });
+                elLines = text ? text.split(/\r?\n/).filter(Boolean) : [];
             } else {
-                text = (el.textContent || "").replace(/\s+/g, " ").trim();
+                const text = (el.innerText || el.textContent || "").trim();
+                elLines = text ? text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean) : [];
             }
-            if (typeof SharedSubtitleService !== "undefined" && SharedSubtitleService.cleanCueText) {
-                text = SharedSubtitleService.cleanCueText(text);
-            } else {
-                text = text.replace(/(?:^|\s)(?:>>+|<<+|»+|«+)(?:\s|$)/g, " ").replace(/^[>»›<«\s—–-]+/, "").trim();
-            }
-            if (text && !lines.includes(text)) {
-                lines.push(text);
+
+            for (let lineText of elLines) {
+                if (typeof SharedSubtitleService !== "undefined" && SharedSubtitleService.cleanCueText) {
+                    lineText = SharedSubtitleService.cleanCueText(lineText);
+                } else {
+                    lineText = lineText.replace(/(?:^|\s)(?:>>+|<<+|»+|«+)(?:\s|$)/g, " ").replace(/^[>»›<«\s—–-]+/, "").trim();
+                }
+                if (lineText && !lines.includes(lineText)) {
+                    lines.push(lineText);
+                }
             }
         }
         return lines;

@@ -97,6 +97,8 @@
         EL_VOICE_ID: "elVoiceId",
         SUBTITLE_TTS: "subtitleTTS",
         WORD_CLOUD_MODE: "wordCloudMode",
+        SUBTITLE_POSITION: "subtitlePosition",
+        SUBTITLE_BG_OPACITY: "subtitleBgOpacity",
         REVIEW_DIRECTION: "reviewDirection",
         FIREBASE_AUTH: "firebaseAuth",
         LAST_FIREBASE_SYNC: "lastFirebaseSync",
@@ -111,6 +113,11 @@
         QUIZ_GENERATIONS_FREE_COUNT: "quizGenerationsFreeCount",
         QUIZ_GENERATIONS_PAID_HISTORY: "quizGenerationsPaidHistory",
         EXPORT_USAGE: "exportUsage",
+    });
+
+    const DEFAULT_SUBTITLE_SETTINGS = Object.freeze({
+        POSITION: 14,
+        BG_OPACITY: 0,
     });
 
     const SVG_ICONS = Object.freeze({
@@ -189,6 +196,7 @@
         EVENT_NAMES,
         MESSAGE_TYPES,
         STORAGE_KEYS,
+        DEFAULT_SUBTITLE_SETTINGS,
         SVG_ICONS,
         SUPPORTED_LANGUAGES,
         LANG_NAMES,

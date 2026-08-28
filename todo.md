@@ -2,7 +2,8 @@
 
 2. Quizy sprawdzic
 3. Npisy lepszy UI/UX tlumaczen "S"
-
+4. sprawdzic jakos czy sie odnawia plan subskrypcji
+5. jesli wykorzystany trial nie pokazuj ze 3 dni za darmo
 
 Oferuj Plan Roczny z góry:
 Użytkownik płaci od razu $59.99 (ok. 240 PLN). Jeden taki zakup daje Ci natychmiastowy zastrzyk gotówki równy 7-8 miesiącom pojedynczego abonamentu!

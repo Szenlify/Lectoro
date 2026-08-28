@@ -539,7 +539,14 @@
 
         if (!Number.isFinite(lookupTime)) return [];
         const cue = findIndexedCueAt(lookupTime);
-        return cue?.text ? [cue.text] : [];
+        if (!cue) return [];
+        if (Array.isArray(cue.lines) && cue.lines.length > 0) {
+            return cue.lines;
+        }
+        if (cue.text) {
+            return cue.text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+        }
+        return [];
     }
 
     function getCurrentSubtitleText(video = null) {

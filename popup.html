@@ -201,9 +201,27 @@
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Subtitle Styles (non-Reels) removed per refactor request -->
+                <div class="setting-group">
+                    <label for="subPositionRange">Subtitle vertical position</label>
+                    <div class="glass-card">
+                        <div class="slider-row">
+                            <input type="range" id="subPositionRange" min="0" max="100" step="1" value="14">
+                            <span class="slider-value" id="subPositionValue">14%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <label for="subBgRange">Subtitle background</label>
+                    <div class="glass-card">
+                        <div class="slider-row">
+                            <input type="range" id="subBgRange" min="0" max="100" step="5" value="0">
+                            <span class="slider-value" id="subBgValue">0%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <div class="saved-msg" id="saved">✓ Saved</div>
         </div>
@@ -267,8 +285,8 @@
                             <button type="button" class="export-btn export-csv" id="exportCsv"
                                 title="Export to Excel (.csv)">
                                 <span class="export-btn-label">📊 Excel</span>
-                                <span class="quiz-free-badge export-free-badge" id="excelFreeBadge" style="display:none;"
-                                    title="Free Excel exports">0/3</span>
+                                <span class="quiz-free-badge export-free-badge" id="excelFreeBadge"
+                                    style="display:none;" title="Free Excel exports">0/3</span>
                             </button>
                             <button type="button" class="export-btn export-clear" id="clearAll"
                                 title="Delete visible words">
