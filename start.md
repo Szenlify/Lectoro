@@ -25,6 +25,15 @@ functions/.env - TEŻ TRZEBA ZMIENIĆ!
 po zmianie - R2_PUBLIC_URL=https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev
 musisz zmienic w calym projekcie bo sa dynamiczne URL audio i images
 
+Small Promo Tile (Mały kafelek promocyjny):
+Format: 440 x 280 px (PNG lub JPEG) – obowiązkowy.
+Zrzuty ekranu (Screenshots):
+Format: 1280 x 800 px lub 640 x 400 px – minimum 1 zrzut jest obowiązkowy (rekomendowane 4–5 zrzutów pokazujących: napisy dwujęzyczne na wideo, tooltip tłumaczenia na zwykłej stronie, zakładkę powtórek SRS, widok quizu).
+Marquee Promo Tile (opcjonalny, ale zalecany):
+Format: 1400 x 560 px (wymagany, jeśli wtyczka ma być wyróżniona na stronie głównej CWS).
+
+Disclaimer: YouTube™ is a trademark of Google LLC. Netflix® is a registered trademark of Netflix, Inc. Lectoro AI is an independent project and has no affiliation with Google LLC or Netflix, Inc.
+
 
 4. Gotowe uzasadnienia uprawnień do wklejenia w panelu Chrome Web Store (Privacy Practices)
 W panelu dewelopera Google zażąda wyjaśnienia (Permission Justification) w języku angielskim dla każdego zadeklarowanego uprawnienia:

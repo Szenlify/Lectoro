@@ -791,6 +791,8 @@
                     : (text, lang, opts) => QT.speak(text, lang, opts);
 
                 speakFn(btn.dataset.text, btn.dataset.lang, {
+                    sourceLang: btn.dataset.sourceLang,
+                    originalText: btn.dataset.originalText,
                     isCancelled: () => token !== tooltipSpeechToken,
                 })
                     .then((result) => {

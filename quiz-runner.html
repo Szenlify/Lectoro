@@ -7,6 +7,8 @@
 <body>
     <script>
         function handleMessage(event) {
+            // Strict sender validation: accept quiz payloads only from embedding parent window
+            if (event.source !== window.parent) return;
             if (event.data && event.data.action === "LOAD_QUIZ" && typeof event.data.html === "string") {
                 document.open();
                 document.write(event.data.html);

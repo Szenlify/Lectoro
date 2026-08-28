@@ -110,17 +110,26 @@ try {
     let packed = false;
     if (process.platform === "win32") {
         try {
-            // Windows PowerShell Compress-Archive
-            const psScript = `Compress-Archive -Path (Get-ChildItem -Path '${STAGING_DIR}' | Select-Object -ExpandProperty FullName) -DestinationPath '${zipPath}' -Force`;
-            execSync(`powershell.exe -NoProfile -NonInteractive -Command "${psScript}"`, {
+            // Windows tar (preferred: produces standard forward slashes '/' in ZIP paths)
+            execSync(`tar -a -c -f "${zipPath}" *`, {
                 cwd: STAGING_DIR,
                 stdio: "pipe",
             });
             packed = true;
         } catch (_) {
             try {
-                // Windows tar fallback
-                execSync(`tar -a -c -f "${zipPath}" *`, {
+                // Fallback: PowerShell using .NET ZipArchive with forward slash normalization
+                const psScript = [
+                    "Add-Type -AssemblyName System.IO.Compression.FileSystem;",
+                    `$staging = (Get-Item -LiteralPath '${STAGING_DIR.replace(/'/g, "''")}').FullName;`,
+                    `$zip = [System.IO.Compression.ZipFile]::Open('${zipPath.replace(/'/g, "''")}', [System.IO.Compression.ZipArchiveMode]::Create);`,
+                    "Get-ChildItem -LiteralPath $staging -Recurse -File | ForEach-Object {",
+                    "    $rel = $_.FullName.Substring($staging.Length + 1).Replace([char]92, [char]47);",
+                    "    [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $_.FullName, $rel);",
+                    "};",
+                    "$zip.Dispose();"
+                ].join(" ");
+                execSync(`powershell.exe -NoProfile -NonInteractive -Command "${psScript}"`, {
                     cwd: STAGING_DIR,
                     stdio: "pipe",
                 });
@@ -138,6 +147,19 @@ try {
     }
 
     fs.rmSync(STAGING_DIR, { recursive: true, force: true });
+
+    // Validate archive entries for Chrome Web Store path compliance
+    try {
+        const listCmd = process.platform === "win32" ? `tar -t -f "${zipPath}"` : `unzip -Z1 "${zipPath}"`;
+        const entries = execSync(listCmd, { stdio: "pipe" }).toString().split(/\r?\n/).filter(Boolean);
+        const invalidBackslashes = entries.filter((e) => e.includes("\\"));
+        if (invalidBackslashes.length > 0) {
+            console.warn(`⚠️ Warning: Found ${invalidBackslashes.length} entries with backslash separators.`);
+        } else {
+            console.log("🔍 Verified ZIP paths: 100% standard forward slashes '/' (CWS compliant).");
+        }
+    } catch (_) {}
+
     const stats = fs.statSync(zipPath);
     const sizeKb = (stats.size / 1024).toFixed(1);
     console.log(`✅ Success! Created archive: dist/${zipName} (${sizeKb} KB)`);

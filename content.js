@@ -283,7 +283,7 @@
                     <div class="${PREFIX}ai-result" style="margin-top:10px; display:block;">
                         <div class="${PREFIX}ai-label">Explanation</div>
                         <div class="${PREFIX}ai-text">${escapeHtml(explanation)}</div>
-                        <button class="${PREFIX}speak" data-text="${escapeAttr(explanation)}" data-lang="${escapeAttr(targetLang)}" title="Play explanation" style="margin-top:6px;">${SVG.SPEAKER}</button>
+                        <button class="${PREFIX}speak" data-text="${escapeAttr(explanation)}" data-lang="${escapeAttr(targetLang)}" data-source-lang="${escapeAttr(srcLang)}" data-original-text="${escapeAttr(text)}" title="Play explanation" style="margin-top:6px;">${SVG.SPEAKER}</button>
                     </div>
                     <div class="${PREFIX}ai-result" id="${PREFIX}ai-result" style="display:none;"></div>
                 </div>
@@ -298,6 +298,8 @@
             showTooltip(html, rect, "top", anchorEl);
             attachTooltipHandlers();
             await QT.speak(explanation, targetLang, {
+                sourceLang: srcLang,
+                originalText: text,
                 isCancelled: () => revision !== selectionRevision,
             });
         } catch (err) {

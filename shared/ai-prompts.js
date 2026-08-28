@@ -196,30 +196,32 @@ Respond ONLY with valid JSON:
       ? opts.chosenTypes.join(", ")
       : "multiple_choice, fill_blank, matching, translation, correct_form, odd_one_out";
 
-    return `Create a high-quality pedagogical vocabulary test for language learners.
-Language tested: ${srcName}
-Instruction language: ${tgtName}
+    return `Create a high-value pedagogical vocabulary quiz for a language learner.
+Language tested (questions/options/answers): ${srcName}
+Instruction language (instructions/hints/prompts): ${tgtName}
 Sections to include: ${chosen}
 Nonce: ${opts.nonce || "default"}
 
-Rules for language learning effectiveness:
-1. All instructions, hints, and explanations MUST be in ${tgtName}.
-2. Target words, options, and test sentences MUST be in ${srcName}.
-3. Sentences must be natural, practical, and authentic everyday situations (CEFR A2-B2).
-4. multiple_choice: 4 plausible options of the same part of speech, exactly 1 correct answer.
-5. fill_blank: Natural context sentence with "___", short and precise hint in ${tgtName}, answer in ${srcName}.
-6. matching: 5-8 clear, direct pairs (a=${srcName}, b=${tgtName}).
-7. translation: Practical everyday conversational phrase (2-6 words) in ${tgtName} with answer in ${srcName}.
-8. true_false: Clear, educational statement in ${tgtName} about word meaning or usage, answer boolean.
-9. correct_form: Natural sentence with "___ (lemma)", 3-4 inflected forms in options, answer is correct form.
-10. odd_one_out: 4 options in ${srcName} (3 sharing a clear semantic/grammatical category, 1 outlier answer).
+Strict pedagogical and token-efficiency rules:
+1. Prompt & schema are in English for token efficiency. Output MUST strictly separate languages:
+   - All student instructions, hints, and translation prompts MUST be written in ${tgtName}.
+   - All test sentences, options, target words, and expected answers MUST be written in ${srcName}.
+2. Use the provided Vocabulary List and its context sentences to create authentic, practical questions (CEFR A2-B2).
+3. Include ONLY the requested sections. Generate 2 to 4 high-value questions per section:
+   - "multiple_choice": Natural context sentence or definition in question. 4 plausible options in ${srcName} of the same part of speech. Exactly 1 correct answer.
+   - "fill_blank": Authentic sentence with "___" where the target word fits naturally. Short, helpful hint in ${tgtName}. Answer in ${srcName}.
+   - "matching": 4-6 distinct pairs (a = word in ${srcName}, b = accurate meaning in ${tgtName}).
+   - "translation": Natural conversational phrase or chunk in ${tgtName} (3-7 words), answer in ${srcName}.
+   - "true_false": Clear statement in ${tgtName} testing word meaning, usage, or collocation. Answer is boolean (true/false).
+   - "correct_form": Sentence with "___ (lemma)" in ${srcName}, 3-4 grammatically inflected forms in options, answer is the correct form.
+   - "odd_one_out": 4 words in ${srcName} (3 sharing a clear semantic or thematic category, 1 outlier as answer).
 
 Vocabulary List:
 ${opts.wordList}
 
-Respond ONLY with JSON (no markdown outside JSON):
+Respond ONLY with valid, raw JSON (no markdown formatting, no \`\`\`json blocks):
 {
-  "title": "Lectoro AI Quiz ${tgtName}",
+  "title": "${srcName} Vocabulary Quiz",
   "sections": [
     {
       "type": "multiple_choice",

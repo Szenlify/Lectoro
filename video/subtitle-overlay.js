@@ -870,7 +870,10 @@
             speakBtn.classList.add("speaking");
             speakBtn.setAttribute("aria-label", "Playing translation and explanation");
             try {
-                await QT.speak(speakBtn.dataset.text || "", speakBtn.dataset.lang || "pl");
+                await QT.speak(speakBtn.dataset.text || "", speakBtn.dataset.lang || "pl", {
+                    sourceLang: speakBtn.dataset.sourceLang,
+                    originalText: speakBtn.dataset.originalText,
+                });
             } catch (_) {
                 // The panel stays interactive even when browser TTS is unavailable.
             } finally {
@@ -965,7 +968,7 @@
                         <span class="${PREFIX}label" title="Translation language: ${QT.escapeAttr(languageName(targetLang))}">${QT.escapeHtml(targetTag)}</span>
                         <span class="${PREFIX}text ${PREFIX}translated">${QT.escapeHtml(translation)}</span>
                         <span class="${PREFIX}word-actions">
-                            <button class="${PREFIX}speak" data-text="${QT.escapeAttr(aiSpeechText)}" data-lang="${QT.escapeAttr(targetLang)}" title="Play translation and explanation" aria-label="Play translation and explanation">${SVG.SPEAKER}</button>
+                            <button class="${PREFIX}speak" data-text="${QT.escapeAttr(aiSpeechText)}" data-lang="${QT.escapeAttr(targetLang)}" data-source-lang="${QT.escapeAttr(sourceLang)}" data-original-text="${QT.escapeAttr(text)}" title="Play translation and explanation" aria-label="Play translation and explanation">${SVG.SPEAKER}</button>
                         </span>
                     </div>
                     <div class="${PREFIX}ai-result">
@@ -990,6 +993,8 @@
 
             if (aiTooltipActive) {
                 await QT.speak(aiSpeechText, targetLang, {
+                    sourceLang,
+                    originalText: text,
                     isCancelled: () => !aiTooltipActive,
                 });
             }
@@ -1560,7 +1565,7 @@
                     <span class="${PREFIX}label" title="Translation language">${QT.escapeHtml(targetTag)}</span>
                     <span class="${PREFIX}text ${PREFIX}translated">${QT.escapeHtml(sentence)}</span>
                     <span class="${PREFIX}word-actions">
-                        <button class="${PREFIX}speak" data-text="${QT.escapeAttr(sentence)}" data-lang="${QT.escapeAttr(tgtLang || "pl")}" title="Play translation">${SVG.SPEAKER}</button>
+                        <button class="${PREFIX}speak" data-text="${QT.escapeAttr(sentence)}" data-lang="${QT.escapeAttr(tgtLang || "pl")}" data-source-lang="${QT.escapeAttr(srcLang || "")}" data-original-text="${QT.escapeAttr(originalText || "")}" title="Play translation">${SVG.SPEAKER}</button>
                     </span>
                 </div>
             </div>

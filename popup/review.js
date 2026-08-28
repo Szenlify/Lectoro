@@ -969,6 +969,8 @@ async function aiTranslateReviewCard() {
                 popupSpeak(speakText, res.targetLang || tgtL, {
                     forceBrowser: true,
                     useConfiguredRate: true,
+                    sourceLang: w.srcLang || "en",
+                    originalText: w.original || "",
                 }).catch(() => {});
             }
         }
@@ -1036,6 +1038,8 @@ async function aiTranslateReviewCard() {
             popupSpeak(speakText, tgtL, {
                 forceBrowser: true,
                 useConfiguredRate: true,
+                sourceLang: w.srcLang || "en",
+                originalText: w.original || "",
             }).catch((ttsErr) => {
                 console.warn("[Lectoro] AI Review TTS error:", ttsErr);
             });
@@ -1107,7 +1111,7 @@ function renderReviewTranslationResult(panel, result) {
                 <span class="review-ai-actions">
                     ${
                         speakText
-                            ? `<button class="review-speak-btn review-speak-sm" data-text="${escapeAttr(speakText)}" data-lang="${escapeAttr(result.targetLang)}" data-force-browser-tts="true" data-use-configured-rate="true" title="Read translation and explanation">${SPEAK_SVG}</button>`
+                            ? `<button class="review-speak-btn review-speak-sm" data-text="${escapeAttr(speakText)}" data-lang="${escapeAttr(result.targetLang)}" data-source-lang="${escapeAttr(result.srcLang || 'en')}" data-original-text="${escapeAttr(result.wordTr || '')}" data-force-browser-tts="true" data-use-configured-rate="true" title="Read translation and explanation">${SPEAK_SVG}</button>`
                             : ""
                     }
                 </span>

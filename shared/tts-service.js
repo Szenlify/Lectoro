@@ -16,11 +16,144 @@
     let activeAudio = null;
     let globalSpeechToken = 0;
     let providerError = null;
+    let activeUtterances = [];
 
     function cleanText(text) {
         return typeof SharedUtils !== "undefined" && SharedUtils.cleanTextForTTS
             ? SharedUtils.cleanTextForTTS(text)
             : String(text ?? "").trim();
+    }
+
+    /**
+     * Parse text into language-tagged speech segments so foreign quotes,
+     * idioms, and inserts inside explanations are read by their authentic native voice.
+     *
+     * Example:
+     *   Base Lang: "pl" (Polish)
+     *   Source Lang: "en" (English)
+     *   Text: 'Zwrot "All right, I'll just go by myself" wyraża akceptację...'
+     *   Result:
+     *     [
+     *       { text: "Zwrot", lang: "pl" },
+     *       { text: "All right, I'll just go by myself", lang: "en" },
+     *       { text: "wyraża akceptację...", lang: "pl" }
+     *     ]
+     */
+    function parseSpeechSegments(text, baseLang = "en", { sourceLang = null, originalText = null } = {}) {
+        const raw = String(text ?? "").trim();
+        if (!raw) return [];
+
+        const baseCode = (baseLang || "en").split(/[-_]/)[0].toLowerCase();
+        let srcCode = (sourceLang || "").split(/[-_]/)[0].toLowerCase();
+
+        // If sourceLang was not explicitly passed, infer from originalText if available
+        if (!srcCode && originalText) {
+            if (/[\u0400-\u04FF]/.test(originalText)) srcCode = "ru";
+            else if (/[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/.test(originalText)) srcCode = "ja";
+            else if (/[\uac00-\ud7af]/.test(originalText)) srcCode = "ko";
+            else if (/[\u0600-\u06FF]/.test(originalText)) srcCode = "ar";
+            else if (baseCode !== "en") srcCode = "en";
+        }
+
+        // If source and base languages are identical (or source is unknown), no code-switching is needed
+        if (!srcCode || srcCode === baseCode) {
+            return [{ text: raw, lang: baseLang }];
+        }
+
+        // Regex matching quoted substrings:
+        // Double quotes ("..."), curly quotes (“...”, „...”, «...»), single quotes ('...')
+        const quoteRegex = /(["“„«]([^"”»\r\n]+)["”»]|(?:^|[\s(])'([^'\r\n]{2,})'(?=[.,!?;:\s)]|$))/g;
+
+        const matches = [];
+        let match;
+        while ((match = quoteRegex.exec(raw)) !== null) {
+            const fullMatch = match[0];
+            const inner = (match[2] || match[3] || "").trim();
+            if (!inner) continue;
+
+            const innerStart = match.index + fullMatch.indexOf(inner);
+            const innerEnd = innerStart + inner.length;
+
+            matches.push({
+                start: match.index,
+                end: match.index + fullMatch.length,
+                innerStart,
+                innerEnd,
+                inner,
+            });
+        }
+
+        if (matches.length === 0) {
+            return [{ text: raw, lang: baseLang }];
+        }
+
+        // Language-specific diacritics to avoid mistaking base-language quotes for foreign ones
+        const BASE_DIACRITICS = {
+            pl: /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/,
+            de: /[äöüßÄÖÜ]/,
+            fr: /[éàèùâêîôûëïüçœæÉÀÈÙÂÊÎÔÛËÏÜÇ]/,
+            es: /[áéíóúüñ¿¡ÁÉÍÓÚÜÑ]/,
+            it: /[àèéìíîòóùúÀÈÉÌÍÎÒÓÙÚ]/,
+            pt: /[ãõáéíóúâêôçÃÕÁÉÍÓÚÂÊÔÇ]/,
+            cs: /[áčďéěíňóřšťúůýžÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ]/,
+            sk: /[áäčďdžéíĺľňóôŕšťúýžÁÄČĎDŽÉÍĹĽŇÓÔŔŠŤÚÝŽ]/,
+            tr: /[çğıöşüÇĞİÖŞÜ]/,
+            ru: /[\u0400-\u04FF]/,
+            uk: /[іїєґІЇЄҐ\u0400-\u04FF]/,
+            zh: /[\u4e00-\u9fff]/,
+            ja: /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/,
+            ko: /[\uac00-\ud7af]/,
+            ar: /[\u0600-\u06FF]/,
+        };
+
+        const baseCharPattern = BASE_DIACRITICS[baseCode];
+
+        const segments = [];
+        let cursor = 0;
+
+        for (const m of matches) {
+            if (m.start > cursor) {
+                const preText = raw.slice(cursor, m.start).trim();
+                if (preText) {
+                    segments.push({ text: preText, lang: baseLang });
+                }
+            }
+
+            let isSourceLang = true;
+            if (baseCharPattern && baseCharPattern.test(m.inner)) {
+                isSourceLang = false;
+            } else if (originalText) {
+                const normOrig = originalText.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ");
+                const normInner = m.inner.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ");
+                if (normOrig.includes(normInner) || normInner.includes(normOrig)) {
+                    isSourceLang = true;
+                }
+            }
+
+            const targetSegmentLang = isSourceLang ? (sourceLang || "en") : baseLang;
+            segments.push({ text: m.inner, lang: targetSegmentLang });
+            cursor = m.end;
+        }
+
+        if (cursor < raw.length) {
+            const postText = raw.slice(cursor).trim();
+            if (postText) {
+                segments.push({ text: postText, lang: baseLang });
+            }
+        }
+
+        const merged = [];
+        for (const s of segments) {
+            if (!s.text.trim()) continue;
+            const last = merged[merged.length - 1];
+            if (last && last.lang.split(/[-_]/)[0].toLowerCase() === s.lang.split(/[-_]/)[0].toLowerCase()) {
+                last.text += " " + s.text;
+            } else {
+                merged.push({ text: s.text, lang: s.lang });
+            }
+        }
+
+        return merged.length > 0 ? merged : [{ text: raw, lang: baseLang }];
     }
 
     function getSafetyTimeout(text, rate = 1) {
@@ -120,6 +253,7 @@
         try {
             window.speechSynthesis?.cancel();
         } catch (_) {}
+        activeUtterances = [];
         if (activeAudio) {
             try {
                 activeAudio.pause();
@@ -131,30 +265,85 @@
     /**
      * Internal direct browser synthesis without resetting tokens.
      */
-    function speakBrowserDirect(cleanedText, lang, settings, { rate = null, volume = null, isCancelled = null, voices = null } = {}) {
+    function speakBrowserDirect(
+        cleanedText,
+        lang,
+        settings,
+        {
+            rate = null,
+            volume = null,
+            isCancelled = null,
+            voices = null,
+            sourceLang = null,
+            originalText = null,
+        } = {},
+    ) {
         if (!cleanedText) return null;
         if (isCancelled?.()) return null;
 
-        const utter = new SpeechSynthesisUtterance(cleanedText);
-        utter.lang = lang || "en";
-        utter.rate = rate !== null ? rate : settings.speechRate;
-        utter.volume = volume !== null ? volume : settings.ttsVolume;
-        const voice = pickVoice(settings.speechVoice, lang, voices);
-        if (voice) utter.voice = voice;
+        const segments = parseSpeechSegments(cleanedText, lang, { sourceLang, originalText });
+        if (!segments.length) return null;
 
-        try {
-            window.speechSynthesis?.speak(utter);
-            return utter;
-        } catch (error) {
-            console.warn("[Lectoro TTS] SpeechSynthesis error:", error);
-            return null;
+        const utterances = [];
+        let firstUtter = null;
+        let lastUtter = null;
+
+        for (const seg of segments) {
+            if (!seg.text.trim()) continue;
+            if (isCancelled?.()) {
+                cancel();
+                return null;
+            }
+
+            const utter = new SpeechSynthesisUtterance(seg.text);
+            utter.lang = seg.lang || lang || "en";
+            utter.rate = rate !== null ? rate : settings.speechRate;
+            utter.volume = volume !== null ? volume : settings.ttsVolume;
+            const voice = pickVoice(settings.speechVoice, seg.lang, voices);
+            if (voice) utter.voice = voice;
+
+            try {
+                window.speechSynthesis?.speak(utter);
+                if (!firstUtter) firstUtter = utter;
+                lastUtter = utter;
+                utterances.push(utter);
+            } catch (error) {
+                console.warn("[Lectoro TTS] SpeechSynthesis error:", error);
+            }
         }
+
+        if (!lastUtter) return null;
+
+        activeUtterances = utterances;
+        lastUtter.addEventListener("end", () => {
+            activeUtterances = [];
+        });
+
+        if (firstUtter && firstUtter !== lastUtter) {
+            firstUtter.addEventListener("error", (e) => {
+                try {
+                    lastUtter.onerror?.(e);
+                } catch (_) {}
+            });
+        }
+
+        return lastUtter;
     }
 
     /**
      * Speak text using Web Speech API (browser synthesizer).
      */
-    async function speakBrowser(text, lang = "en", { rate = null, volume = null, isCancelled = null } = {}) {
+    async function speakBrowser(
+        text,
+        lang = "en",
+        {
+            rate = null,
+            volume = null,
+            isCancelled = null,
+            sourceLang = null,
+            originalText = null,
+        } = {},
+    ) {
         const cleaned = cleanText(text);
         if (!cleaned) return null;
 
@@ -171,6 +360,8 @@
             rate,
             volume,
             voices,
+            sourceLang,
+            originalText,
             isCancelled: () => isCancelled?.() || currentToken !== globalSpeechToken,
         });
     }
@@ -186,6 +377,8 @@
             useConfiguredRate = true,
             cacheNotBefore = 0,
             isCancelled = null,
+            sourceLang = null,
+            originalText = null,
         } = {},
     ) {
         const cleaned = cleanText(text);
@@ -202,8 +395,12 @@
             return { type: "none", obj: null };
         }
 
+        const segments = parseSpeechSegments(cleaned, lang, { sourceLang, originalText });
+        const isMultilingual = segments.length > 1;
+
         const useElevenLabs =
             !forceBrowser &&
+            !isMultilingual &&
             settings.ttsMode === "elevenlabs" &&
             !!settings.elVoiceId &&
             settings.elVoiceId !== "random" &&
@@ -244,6 +441,8 @@
             rate: useConfiguredRate ? settings.speechRate : 1.0,
             volume: settings.ttsVolume,
             voices,
+            sourceLang,
+            originalText,
             isCancelled: () => isCancelled?.() || currentToken !== globalSpeechToken,
         });
 
@@ -426,6 +625,7 @@
     return Object.freeze({
         speak,
         speakBrowser,
+        parseSpeechSegments,
         ensureVoices,
         cancel,
         pickVoice,

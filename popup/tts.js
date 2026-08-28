@@ -36,6 +36,8 @@
             useConfiguredRate = false,
             cacheFirst = false,
             cacheNotBefore = 0,
+            sourceLang = null,
+            originalText = null,
         } = {},
     ) {
         const mySeq = ++popupSpeakSeq;
@@ -46,6 +48,8 @@
                 useConfiguredRate,
                 cacheFirst,
                 cacheNotBefore,
+                sourceLang,
+                originalText,
                 isCancelled: () => mySeq !== popupSpeakSeq,
             });
             return result;
@@ -76,6 +80,8 @@
                             useConfiguredRate: btn.dataset.useConfiguredRate === "true",
                             cacheFirst: btn.dataset.cacheFirst === "true",
                             cacheNotBefore: Number(btn.dataset.cacheNotBefore || 0),
+                            sourceLang: btn.dataset.sourceLang,
+                            originalText: btn.dataset.originalText,
                         },
                     );
                     if (result?.type === "utter" && result.obj) {

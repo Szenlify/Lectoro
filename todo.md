@@ -2,7 +2,6 @@
 
 2. Quizy dopracowac
 3. Npisy lepszy UI/UX tlumaczen "S"
-4. [ZROBIONE] wprowadz do tlumaczen ai w filmach kontekst aby przeslac napisy wczesniejsze i pozniejsze ktore sie wyswietlaja w filmach tak aby tlumaczenie AI mialo szeroki kontekst sytuacji a tlumaczyc ma tlumaczyc to co teraz czyli dokladnie to co jest w napisach
 
 
 Oferuj Plan Roczny z góry:
