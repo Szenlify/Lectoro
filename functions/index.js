@@ -606,8 +606,8 @@ exports.geminiProxy = onRequest(
         if (!prompt || typeof prompt !== "string") {
             return res.status(400).json({ error: "Brak pola 'prompt' w ciele żądania." });
         }
-        if (prompt.length > 4000) {
-            return res.status(400).json({ error: "Prompt zbyt długi (max 4 000 znaków)." });
+        if (prompt.length > 32000) {
+            return res.status(400).json({ error: "Prompt zbyt długi (max 32 000 znaków)." });
         }
 
         // Reserve atomically before calling Gemini so parallel requests cannot

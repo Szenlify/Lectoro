@@ -355,16 +355,32 @@
             lineEl.className = `${PREFIX}custom-sub-line`;
             lineEl.setAttribute("dir", "auto");
 
-            const parts = lineText.match(/\S+|\s+/g) || [];
-            for (const part of parts) {
-                if (/\S/.test(part)) {
+            const tokens = typeof SharedPhraseDetector !== "undefined"
+                ? SharedPhraseDetector.tokenizeSubtitleLine(lineText)
+                : (lineText.match(/\S+|\s+/g) || []).map((part) =>
+                    /\S/.test(part)
+                        ? { type: "word", text: part, clean: part, isPhrase: false }
+                        : { type: "space", text: part }
+                );
+
+            for (const token of tokens) {
+                if (token.type === "word") {
                     const span = document.createElement("span");
-                    span.className = `${PREFIX}sub-word`;
-                    span.textContent = part;
+                    span.className = token.isPhrase
+                        ? `${PREFIX}sub-word ${PREFIX}sub-phrase`
+                        : `${PREFIX}sub-word`;
+                    span.textContent = token.text;
+                    if (token.clean) {
+                        span.dataset.clean = token.clean;
+                    }
+                    if (token.isPhrase) {
+                        span.dataset.isPhrase = "true";
+                        span.title = "Phrase: " + token.clean;
+                    }
                     lineEl.appendChild(span);
                     activeWordSpans.push(span);
                 } else {
-                    lineEl.appendChild(document.createTextNode(part));
+                    lineEl.appendChild(document.createTextNode(token.text));
                 }
             }
             box.appendChild(lineEl);
@@ -479,7 +495,10 @@
             registry?.pauseVideo(video);
         }
 
-        const text = wordSpan.textContent.trim();
+        const text = (wordSpan.dataset.clean || wordSpan.textContent)
+            .trim()
+            .replace(/^[.,!?;:"\u201C\u201D\u2018\u2019'()\[\]{}—–\-_/\\<>]+|[.,!?;:"\u201C\u201D\u2018\u2019'()\[\]{}—–\-_/\\<>]+$/gu, "")
+            .trim();
         if (!text) return;
 
         const rect = wordSpan.getBoundingClientRect();
@@ -624,7 +643,10 @@
         if (!wasAlreadyHovering) subWasPlaying = video ? !video.paused : false;
         if (video && !video.paused) registry?.pauseVideo(video);
 
-        const text = wordSpan.textContent.trim();
+        const text = (wordSpan.dataset.clean || wordSpan.textContent)
+            .trim()
+            .replace(/^[.,!?;:"\u201C\u201D\u2018\u2019'()\[\]{}—–\-_/\\<>]+|[.,!?;:"\u201C\u201D\u2018\u2019'()\[\]{}—–\-_/\\<>]+$/gu, "")
+            .trim();
         if (!text) {
             closeSubTooltip();
             return;
@@ -1091,6 +1113,12 @@
         if (/\d/.test(text)) return false;
         if (/^[\s.,!?;:"'()\[\]{}—–\-_/\\<>]+$/.test(text)) return false;
 
+        // Multi-word phrases (phrasal verbs, idioms, collocations) should always be translated
+        if (/\s/.test(text)) {
+            const words = text.split(/\s+/).filter(Boolean);
+            if (words.length >= 2) return true;
+        }
+
         const cleanWord = text.replace(/[^\p{L}']/gu, "").toLowerCase();
         if (cleanWord.length <= 1) return false;
         if (SIMPLE_WORDS.has(cleanWord)) return false;
@@ -1226,7 +1254,7 @@
         );
         const translations = await Promise.all(
             translatableSpans.map(async (span) => {
-                const word = span.textContent
+                const word = (span.dataset.clean || span.textContent)
                     .trim()
                     .replace(/[.,!?;:"\u201C\u201D\u2018\u2019'()\[\]{}—–\-_/\\<>]/gu, "")
                     .trim();

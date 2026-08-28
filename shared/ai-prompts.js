@@ -209,9 +209,13 @@ Strict pedagogical and token-efficiency rules:
 2. Use the provided Vocabulary List and its context sentences to create authentic, practical questions (CEFR A2-B2).
 3. Include ONLY the requested sections. Generate 2 to 4 high-value questions per section:
    - "multiple_choice": Natural context sentence or definition in question. 4 plausible options in ${srcName} of the same part of speech. Exactly 1 correct answer.
-   - "fill_blank": Authentic sentence with "___" where the target word fits naturally. Short, helpful hint in ${tgtName}. Answer in ${srcName}.
+   - "fill_blank": Authentic sentence with "___" where the target word fits naturally. Short, helpful hint in ${tgtName}. Answer in ${srcName}. Include "acceptable_answers" (array of 2-4 valid spelling/contraction variants).
    - "matching": 4-6 distinct pairs (a = word in ${srcName}, b = accurate meaning in ${tgtName}).
-   - "translation": Natural conversational phrase or chunk in ${tgtName} (3-7 words), answer in ${srcName}.
+   - "translation": Test conversational translation of a target vocabulary item or phrase.
+      CRITICAL FOR CLARITY: It must be 100% obvious to the student what to write.
+      If testing a phrase within a sentence, explicitly highlight or isolate the target phrase (e.g. "Przetłumacz zwrot: [wszystko w porządku]" or "Don't worry, _____ (wszystko w porządku)").
+      If the prompt is a full sentence in ${tgtName}, the "answer" MUST be the complete translated sentence in ${srcName}.
+      ALWAYS provide "acceptable_answers": array of 3-5 valid alternative structures, synonyms, and contraction variants (e.g. with and without contractions, equivalent synonyms).
    - "true_false": Clear statement in ${tgtName} testing word meaning, usage, or collocation. Answer is boolean (true/false).
    - "correct_form": Sentence with "___ (lemma)" in ${srcName}, 3-4 grammatically inflected forms in options, answer is the correct form.
    - "odd_one_out": 4 words in ${srcName} (3 sharing a clear semantic or thematic category, 1 outlier as answer).
@@ -231,7 +235,7 @@ Respond ONLY with valid, raw JSON (no markdown formatting, no \`\`\`json blocks)
     {
       "type": "fill_blank",
       "instructions": "...",
-      "questions": [{ "sentence": "... ___ ...", "hint": "...", "answer": "..." }]
+      "questions": [{ "sentence": "... ___ ...", "hint": "...", "answer": "...", "acceptable_answers": ["...", "..."] }]
     },
     {
       "type": "matching",
@@ -241,7 +245,7 @@ Respond ONLY with valid, raw JSON (no markdown formatting, no \`\`\`json blocks)
     {
       "type": "translation",
       "instructions": "...",
-      "questions": [{ "prompt": "...", "answer": "..." }]
+      "questions": [{ "prompt": "...", "answer": "...", "acceptable_answers": ["...", "..."] }]
     },
     {
       "type": "true_false",

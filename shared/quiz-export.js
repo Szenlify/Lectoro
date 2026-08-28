@@ -859,12 +859,20 @@
         const srcLangName = getLangName(srcLang);
         const tgtLangName = getLangName(tgtLang);
 
-        const wordList = words
+        const wordsPool = (words || []).slice(0, 25);
+        const wordList = wordsPool
             .map((w, i) => {
-                const parts = [`${i + 1}. "${w.original}" = "${w.translated}"`];
+                const orig = String(w.original || "").trim();
+                const trans = String(w.translated || "").trim();
+                const parts = [`${i + 1}. "${orig}" = "${trans}"`];
                 if (w.sentence) {
-                    const cleanSentence = String(w.sentence).trim().slice(0, 140);
-                    parts.push(`(example: ${cleanSentence})`);
+                    const cleanSentence = String(w.sentence)
+                        .replace(/\s+/g, " ")
+                        .trim()
+                        .slice(0, 80);
+                    if (cleanSentence) {
+                        parts.push(`(example: ${cleanSentence})`);
+                    }
                 }
                 return parts.join(" ");
             })
@@ -1368,7 +1376,10 @@
                             const hint = q.hint
                                 ? `<span class="hint-badge">💡 ${escapeHtml(q.hint)}</span>`
                                 : "";
-                            return `<div class="q" data-qtype="text" data-qid="${qNum}" data-points="${secPoints}" data-answer="${escapeAttr(q.answer)}">
+                            const alts = Array.isArray(q.acceptable_answers) && q.acceptable_answers.length
+                                ? q.acceptable_answers
+                                : (Array.isArray(q.alternatives) ? q.alternatives : []);
+                            return `<div class="q" data-qtype="text" data-qid="${qNum}" data-points="${secPoints}" data-answer="${escapeAttr(q.answer)}" data-alternatives="${escapeAttr(JSON.stringify(alts))}">
                                 <div class="q-text-row"><p class="q-text"><b>${qNum}.</b> ${escapeHtml(q.sentence)} ${hint} <span class="pts-badge">${secPoints} ${escapeHtml(i18n.pointsSuffix)}</span></p>${ttsBtn(q.sentence, srcLang)}</div>
                                 <div class="input-row">
                                     <input type="text" class="q-input" placeholder="${escapeAttr(i18n.yourAnswerPlaceholder)}" onkeydown="if(event.key==='Enter'){event.preventDefault();gradeQuestion(this.closest('.q'));}">
@@ -1414,7 +1425,10 @@
                     body = (sec.questions || [])
                         .map((q) => {
                             qNum++;
-                            return `<div class="q" data-qtype="text" data-qid="${qNum}" data-points="${secPoints}" data-answer="${escapeAttr(q.answer)}">
+                            const alts = Array.isArray(q.acceptable_answers) && q.acceptable_answers.length
+                                ? q.acceptable_answers
+                                : (Array.isArray(q.alternatives) ? q.alternatives : []);
+                            return `<div class="q" data-qtype="text" data-qid="${qNum}" data-points="${secPoints}" data-answer="${escapeAttr(q.answer)}" data-alternatives="${escapeAttr(JSON.stringify(alts))}">
                                 <div class="q-text-row"><p class="q-text"><b>${qNum}.</b> ${escapeHtml(q.prompt)} <span class="pts-badge">${secPoints} ${escapeHtml(i18n.pointsSuffix)}</span></p>${ttsBtn(q.prompt, tgtLang)}</div>
                                 <div class="input-row">
                                     <input type="text" class="q-input" placeholder="${escapeAttr(i18n.yourAnswerPlaceholder)}" onkeydown="if(event.key==='Enter'){event.preventDefault();gradeQuestion(this.closest('.q'));}">
@@ -1887,8 +1901,10 @@
     function cleanForMatching(str) {
         if (!str) return '';
         var s = expandContractions(str);
+        // Remove apostrophes so "don't" and "dont" normalize identically
+        s = s.replace(/['’‘\\x60]/g, '');
         // Strip all punctuation, quotes, dashes, brackets, etc.
-        s = s.replace(/[.,\\/#!$%\\^&\\*;:{}=\\-_\\x60~()?\"'„”«»—–]/g, ' ');
+        s = s.replace(/[.,\\/#!$%\\^&\\*;:{}=\\-_~()?\"'„”«»—–]/g, ' ');
         return s.replace(/\\s+/g, ' ').trim();
     }
 
@@ -1940,7 +1956,7 @@
         return matched / longW.length;
     }
 
-    function matchPercent(userVal, answer) {
+    function singleMatchPercent(userVal, answer) {
         if (!userVal || !answer) return 0;
         var rawUser = (userVal || '').toString().trim().toLowerCase();
         var rawAns = (answer || '').toString().trim().toLowerCase();
@@ -1951,28 +1967,45 @@
         if (a === b) return 100;
         if (!a || !b) return 0;
 
+        // 1. Subphrase containment: user typed a full sentence containing the expected target phrase
+        if (a.indexOf(b) !== -1 && b.length >= 3) {
+            return 95;
+        }
+
+        // 2. Inverse containment: user typed the core target phrase of a full target sentence
+        if (b.indexOf(a) !== -1 && a.length >= 6) {
+            return 88;
+        }
+
         var aWords = a.split(' ').filter(Boolean);
         var bWords = b.split(' ').filter(Boolean);
 
-        // Word-level check for minor typo or contraction mismatch
+        // 3. Word-level comparison with minor typo tolerance
         if (aWords.length >= 2 && bWords.length >= 2 && aWords.length === bWords.length) {
             var diffCount = 0;
             for (var w = 0; w < aWords.length; w++) {
                 if (aWords[w] !== bWords[w]) {
                     var wd = levenshteinMatrix(aWords[w], bWords[w]);
                     var wDist = wd[aWords[w].length][bWords[w].length];
-                    if (wDist > 1) diffCount += 2;
-                    else diffCount += 1;
+                    if (wDist === 1 && Math.min(aWords[w].length, bWords[w].length) >= 4) {
+                        diffCount += 0.5;
+                    } else if (wDist === 1) {
+                        diffCount += 1;
+                    } else {
+                        diffCount += 2;
+                    }
                 }
             }
             if (diffCount === 0) return 100;
+            if (diffCount <= 0.5) return 96;
             if (diffCount === 1) return 92;
+            if (diffCount <= 1.5) return 88;
         }
 
-        // Sequence token check (e.g. missing auxiliary like "are", "do", "is", or extra words)
+        // 4. Token sequence ratio
         if (aWords.length >= 2 && bWords.length >= 2) {
             var seqRatio = checkTokenSequence(aWords, bWords);
-            if (seqRatio >= 0.8) {
+            if (seqRatio >= 0.75) {
                 return Math.max(88, Math.round(seqRatio * 100));
             }
         }
@@ -1988,6 +2021,32 @@
         }
 
         return pct;
+    }
+
+    function matchPercentWithBest(userVal, answer, alternatives) {
+        var candidates = [answer];
+        if (Array.isArray(alternatives)) {
+            for (var i = 0; i < alternatives.length; i++) {
+                if (alternatives[i] && candidates.indexOf(alternatives[i]) === -1) {
+                    candidates.push(alternatives[i]);
+                }
+            }
+        }
+        var bestPct = 0;
+        var bestAns = answer;
+        for (var c = 0; c < candidates.length; c++) {
+            var s = singleMatchPercent(userVal, candidates[c]);
+            if (s > bestPct) {
+                bestPct = s;
+                bestAns = candidates[c];
+            }
+            if (bestPct === 100) break;
+        }
+        return { pct: bestPct, bestAnswer: bestAns };
+    }
+
+    function matchPercent(userVal, answer, alternatives) {
+        return matchPercentWithBest(userVal, answer, alternatives).pct;
     }
 
     function diffAnswerHtml(userVal, answer) {
@@ -2163,7 +2222,19 @@
     function gradeQuestion(q, silent) {
         if (!q) return false;
         var type = q.dataset.qtype;
-        var answer = q.dataset.answer;
+        var answer = q.dataset.answer || '';
+        var rawAlts = q.dataset.alternatives;
+        var alternatives = [];
+        if (rawAlts) {
+            try { alternatives = JSON.parse(rawAlts); } catch (_) {}
+        }
+        if (answer && (answer.indexOf('/') !== -1 || answer.indexOf(';') !== -1)) {
+            var splitAns = answer.split(/[\/;]/).map(function(s) { return s.trim(); }).filter(Boolean);
+            for (var s = 0; s < splitAns.length; s++) {
+                if (alternatives.indexOf(splitAns[s]) === -1) alternatives.push(splitAns[s]);
+            }
+        }
+
         var userVal = '';
         if (type === 'choice') {
             userVal = q.dataset.selected || '';
@@ -2178,11 +2249,23 @@
 
         var pct = null;
         var isCorrect;
+        var bestAnswer = answer;
         if (type === 'text') {
-            pct = matchPercent(userVal, answer);
+            var matchRes = matchPercentWithBest(userVal, answer, alternatives);
+            pct = matchRes.pct;
+            bestAnswer = matchRes.bestAnswer;
             isCorrect = pct >= PASS_THRESHOLD;
         } else {
             isCorrect = normalize(userVal) === normalize(answer);
+            if (!isCorrect && alternatives.length > 0) {
+                for (var aIdx = 0; aIdx < alternatives.length; aIdx++) {
+                    if (normalize(userVal) === normalize(alternatives[aIdx])) {
+                        isCorrect = true;
+                        bestAnswer = alternatives[aIdx];
+                        break;
+                    }
+                }
+            }
         }
 
         var pts = parseFloat(q.dataset.points) || 1;
@@ -2194,7 +2277,7 @@
         if (fb) {
             var pctSuffix = pct !== null ? (' (' + (I18N.similarity || 'similarity') + ': ' + pct + '%)') : '';
             if (type === 'text') {
-                var diffHtml = diffAnswerHtml(userVal, answer);
+                var diffHtml = diffAnswerHtml(userVal, bestAnswer);
                 if (isCorrect) {
                     if (pct !== null && pct < 100) {
                         fb.innerHTML = '✓ ' + escapeHtmlClient(pick(PRAISE)) + pctSuffix +
@@ -2210,7 +2293,7 @@
                 if (isCorrect) {
                     fb.innerHTML = '✓ ' + escapeHtmlClient(pick(PRAISE));
                 } else {
-                    fb.innerHTML = '✗ ' + escapeHtmlClient(pick(ENCOURAGE)) + ' — <span class="fb-answer-label">' + (I18N.correctLabel || 'Correct answer') + ':</span> ' + escapeHtmlClient(answer);
+                    fb.innerHTML = '✗ ' + escapeHtmlClient(pick(ENCOURAGE)) + ' — <span class="fb-answer-label">' + (I18N.correctLabel || 'Correct answer') + ':</span> ' + escapeHtmlClient(bestAnswer);
                 }
             }
         }
@@ -2335,7 +2418,7 @@
         const sorted = [...words].sort(
             (a, b) => (b.timestamp || 0) - (a.timestamp || 0),
         );
-        const count = scope === "all" ? 60 : parseInt(scope, 10) || 5;
+        const count = scope === "all" ? 25 : Math.min(parseInt(scope, 10) || 5, 25);
         const quizWords = pickQuizWords(sorted, count, source);
 
         const quiz = await generateQuizWithGemini(quizWords, { tgtLang: targetLang });

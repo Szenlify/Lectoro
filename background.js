@@ -803,6 +803,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                         "shared/subscription-service.js",
                         "shared/gemini-proxy.js",
                         "shared/subtitle-service.js",
+                        "shared/phrase-detector.js",
                         "core.js",
                         "adapters/base-adapter.js",
                         "adapters/youtube-adapter.js",
