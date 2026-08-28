@@ -872,7 +872,7 @@
         overlay.classList.add(`${PREFIX}ai-explain-overlay`);
         overlay.dataset.state = "ai-loading";
         overlay.setAttribute("aria-label", "Analiza zdania w toku");
-        overlay.innerHTML = `<span class="ai-loader-label">✨ Analizuje…</span>`;
+        overlay.innerHTML = `<span class="ai-loader-label">✨ Analyzing…</span>`;
         positionOverlay(layout);
     }
 
