@@ -1564,15 +1564,17 @@
                 bottom = -Infinity,
                 left = Infinity,
                 right = -Infinity;
+            const maxRealisticSubtitleHeight = Math.min(180, window.innerHeight * 0.4);
             for (const el of els) {
                 const r = el.getBoundingClientRect();
                 if (r.width === 0 && r.height === 0) continue;
+                if (r.height > maxRealisticSubtitleHeight) continue;
                 top = Math.min(top, r.top);
                 bottom = Math.max(bottom, r.bottom);
                 left = Math.min(left, r.left);
                 right = Math.max(right, r.right);
             }
-            if (top !== Infinity) {
+            if (top !== Infinity && (bottom - top) <= maxRealisticSubtitleHeight) {
                 return { top, bottom, left, right, width: right - left, height: bottom - top };
             }
         }
@@ -1626,6 +1628,14 @@
             "--lectoro-translation-font-size",
             `${translationFontSize}px`,
         );
+        translationOverlay.style.setProperty("bottom", "auto", "important");
+        translationOverlay.style.setProperty("right", "auto", "important");
+        translationOverlay.style.setProperty("height", "auto", "important");
+        translationOverlay.style.setProperty(
+            "max-height",
+            "min(560px, calc(100vh - 48px))",
+            "important",
+        );
 
         const parent = QT.getOverlayParent();
         parent.appendChild(translationOverlay);
@@ -1652,9 +1662,10 @@
 
         const viewportWidth = Math.max(1, window.innerWidth);
         const viewportHeight = Math.max(1, window.innerHeight);
+        const maxAllowedHeight = Math.min(560, Math.max(100, viewportHeight - 48));
         const bubbleRect = translationOverlay.getBoundingClientRect();
         const bubbleWidth = bubbleRect.width || Math.min(420, viewportWidth - 24);
-        const bubbleHeight = bubbleRect.height || 64;
+        const bubbleHeight = Math.min(bubbleRect.height || 64, maxAllowedHeight);
         const anchorCenter = rect.left + rect.width / 2;
         const edgeGap = 12;
         const bubbleGap = 16;
@@ -1687,6 +1698,8 @@
             `${Math.max(edgeGap, top)}px`,
             "important",
         );
+        translationOverlay.style.setProperty("bottom", "auto", "important");
+        translationOverlay.style.setProperty("right", "auto", "important");
         translationOverlay.style.setProperty(
             "--lectoro-bubble-arrow-x",
             `${arrowX}px`,
@@ -1711,14 +1724,17 @@
         // Measure the final content before the user can see it. Both sentence
         // translation and Enter analysis grow from their loading-state size
         // to the measured target through this exact same transition.
+        const maxAllowedHeight = Math.min(560, Math.max(100, window.innerHeight - 48));
         const loadingRect = overlay.getBoundingClientRect();
+        const loadingClampedHeight = Math.min(loadingRect.height || 48, maxAllowedHeight);
         overlay.classList.remove(`${PREFIX}translation-reveal`);
         overlay.dataset.state = "measuring";
         overlay.replaceChildren(content);
         const targetRect = overlay.getBoundingClientRect();
+        const targetClampedHeight = Math.min(targetRect.height || 64, maxAllowedHeight);
 
         overlay.style.setProperty("width", `${loadingRect.width}px`, "important");
-        overlay.style.setProperty("height", `${loadingRect.height}px`, "important");
+        overlay.style.setProperty("height", `${loadingClampedHeight}px`, "important");
         overlay.dataset.state = "expanding";
         overlay.setAttribute("aria-label", ariaLabel);
         positionOverlay(layout);
@@ -1726,13 +1742,14 @@
         requestAnimationFrame(() => {
             if (overlay !== translationOverlay || !overlay.isConnected) return;
             overlay.style.setProperty("width", `${targetRect.width}px`, "important");
-            overlay.style.setProperty("height", `${targetRect.height}px`, "important");
+            overlay.style.setProperty("height", `${targetClampedHeight}px`, "important");
 
             setTimeout(() => {
                 if (overlay !== translationOverlay || !overlay.isConnected) return;
                 overlay.dataset.state = "ready";
                 overlay.style.removeProperty("width");
                 overlay.style.removeProperty("height");
+                overlay.style.setProperty("height", "auto", "important");
                 overlay.classList.add(`${PREFIX}translation-reveal`);
                 positionOverlay(layout);
             }, 260);

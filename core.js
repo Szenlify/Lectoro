@@ -140,6 +140,9 @@
         );
         const gap = 10;
 
+        tip.style.bottom = "auto";
+        tip.style.right = "auto";
+
         if (inFullscreen) {
             tip.style.position = "fixed";
             tip.style.left = "0px";
@@ -737,7 +740,7 @@
                     ${SVG.SAVE || "💾"} <span>Save</span>
                 </button>
                 <button class="${P}save-ai-btn ${P}save-footer-btn" ${dataAttrs} title="Generate AI sentence (Gemini)">
-                    ${SVG.SAVE_AI || "✨"} <span>AI</span>
+                    ${SVG.SAVE_AI || "✨"} <span>AI Sentence</span>
                 </button>
             </div>`;
     }
@@ -908,7 +911,7 @@
                     entry.sentenceTranslated = cleanedTranslation;
                     await QT.saveWord(entry);
 
-                    saveAiBtn.innerHTML = `${SVG.SAVE_AI_CHECK || "✓"} <span>Saved!</span>`;
+                    saveAiBtn.innerHTML = `${SVG.SAVE_AI_CHECK || "✓"} <span>Saved to Review!</span>`;
                     saveAiBtn.classList.remove("loading");
                     saveAiBtn.classList.add("saved");
                 } catch (err) {

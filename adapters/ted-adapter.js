@@ -47,11 +47,25 @@
             return [];
         }
 
-        const target =
+        let target =
             root.querySelector(".whitespace-pre-line") ||
             root.querySelector("span[dir]") ||
             root.querySelector(".text-textPrimary-onDark") ||
-            root;
+            root.querySelector("p") ||
+            root.querySelector("span");
+
+        if (!target && root.children.length > 0) {
+            const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+            let node;
+            while ((node = walker.nextNode())) {
+                if (node.textContent.trim()) {
+                    target = node.parentElement;
+                    break;
+                }
+            }
+        }
+
+        target = target || root;
 
         const text = (target.textContent || "").trim();
         if (text) {
