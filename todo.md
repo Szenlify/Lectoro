@@ -1,7 +1,7 @@
 [TODO]
 
 2. Quizy sprawdzic
-3. Npisy lepszy UI/UX tlumaczen "S"
+3. [x] Npisy lepszy UI/UX tlumaczen "S"
 4. sprawdzic jakos czy sie odnawia plan subskrypcji
 5. jesli wykorzystany trial nie pokazuj ze 3 dni za darmo
 6. jesli pobierze zle napisy lub ich nie ma to co zrobic bo czasami sa takie sytuacje ew czy moge pobierac zawsze napisy bez wlaczenia CC?

@@ -1007,7 +1007,7 @@
                     timestamp: Date.now(),
                     downloaded: false,
                 });
-                saveBtn.innerHTML = `${SVG.SAVE_SENTENCE_CHECK} <span>Saved!</span>`;
+                saveBtn.innerHTML = `<span>Saved!</span>`;
                 saveBtn.classList.remove("saving");
                 saveBtn.classList.add("saved");
             } catch (error) {
@@ -1609,17 +1609,19 @@
             });
         });
 
-        // The sentence translation follows the subtitle typography, but is
-        // intentionally one visual step smaller so it reads as supporting UI.
+        // The sentence translation follows the subtitle typography, dynamically scaled
+        // to 60% of the active subtitle font size.
         const subtitleReference = activeWordSpans.find((span) => span.isConnected) ||
-            customSubBoxEl?.querySelector(`.${PREFIX}custom-sub-line`);
+            customSubBoxEl?.querySelector(`.${PREFIX}custom-sub-line`) ||
+            customSubBoxEl ||
+            getPlayerRegistry()?.getSubtitleElements?.()?.[0];
         const liveFontSize = subtitleReference
             ? window.getComputedStyle(subtitleReference).fontSize
-            : "";
+            : (customSubLayerEl?.style?.getPropertyValue("--lectoro-sub-font-size") || "");
         const sourceFontSize = Number.parseFloat(layout?.fontSize || liveFontSize);
-        const translationFontSize = Number.isFinite(sourceFontSize)
-            ? Math.round(sourceFontSize * 0.8 * 100) / 100
-            : 20;
+        const translationFontSize = Number.isFinite(sourceFontSize) && sourceFontSize > 0
+            ? Math.round(sourceFontSize * 0.6 * 100) / 100
+            : 15;
         translationOverlay.style.setProperty(
             "--lectoro-translation-font-size",
             `${translationFontSize}px`,
@@ -1632,6 +1634,10 @@
     }
 
     function removeOverlay() {
+        if (aiExplainKeydownHandler) {
+            window.removeEventListener("keydown", aiExplainKeydownHandler, true);
+            aiExplainKeydownHandler = null;
+        }
         if (translationOverlay) {
             translationOverlay.remove();
             translationOverlay = null;
@@ -1734,38 +1740,52 @@
         return overlay;
     }
 
+    function applySentenceTranslation(html, layout = translationAnchorLayout) {
+        const overlay = translationOverlay || createOverlay(layout);
+        overlay.classList.remove(`${PREFIX}ai-explain-overlay`);
+        overlay.classList.add(`${PREFIX}sentence-clean-overlay`);
+        overlay.setAttribute("role", "status");
+        overlay.setAttribute("aria-live", "polite");
+
+        const subtitleReference = activeWordSpans.find((span) => span.isConnected) ||
+            customSubBoxEl?.querySelector(`.${PREFIX}custom-sub-line`) ||
+            customSubBoxEl ||
+            getPlayerRegistry()?.getSubtitleElements?.()?.[0];
+        const liveFontSize = subtitleReference
+            ? window.getComputedStyle(subtitleReference).fontSize
+            : (customSubLayerEl?.style?.getPropertyValue("--lectoro-sub-font-size") || "");
+        const effectiveLayout = layout || translationAnchorLayout;
+        const sourceFontSize = Number.parseFloat(effectiveLayout?.fontSize || liveFontSize);
+        if (Number.isFinite(sourceFontSize) && sourceFontSize > 0) {
+            const translationFontSize = Math.round(sourceFontSize * 0.6 * 100) / 100;
+            overlay.style.setProperty(
+                "--lectoro-translation-font-size",
+                `${translationFontSize}px`,
+            );
+        }
+
+        const copy = document.createElement("div");
+        copy.className = `${PREFIX}translation-copy ${PREFIX}sentence-clean-copy`;
+        copy.setAttribute("dir", "auto");
+        copy.innerHTML = html;
+        revealOverlayContent(copy, layout, "Sentence translation");
+    }
+
     function applyTranslation(translatedText, layout = translationAnchorLayout, sourceText = null, srcLang = null, tgtLang = null) {
         const sentence = String(translatedText || "").trim();
         const originalText = String(sourceText || activeText || getPlayerRegistry()?.getCurrentText() || "").trim();
-        const sourceTag = languageTag(srcLang || "auto");
-        const targetTag = languageTag(tgtLang || "pl");
 
         const html = `
-            <div class="${PREFIX}header">
-                <span>${QT.escapeHtml(sourceTag)} → ${QT.escapeHtml(targetTag)}</span>
-            </div>
-            <div class="${PREFIX}body">
-                ${originalText ? `
-                <div class="${PREFIX}row">
-                    <span class="${PREFIX}label" title="Source language">${QT.escapeHtml(sourceTag)}</span>
-                    <span class="${PREFIX}text ${PREFIX}original">${QT.escapeHtml(originalText)}</span>
-                </div>` : ""}
-                <div class="${PREFIX}row">
-                    <span class="${PREFIX}label" title="Translation language">${QT.escapeHtml(targetTag)}</span>
-                    <span class="${PREFIX}text ${PREFIX}translated">${QT.escapeHtml(sentence)}</span>
-                    <span class="${PREFIX}word-actions">
-                        <button class="${PREFIX}speak" data-text="${QT.escapeAttr(sentence)}" data-lang="${QT.escapeAttr(tgtLang || "pl")}" data-source-lang="${QT.escapeAttr(srcLang || "")}" data-original-text="${QT.escapeAttr(originalText || "")}" title="Play translation">${SVG.SPEAKER}</button>
-                    </span>
+            <div class="${PREFIX}sentence-clean-wrap">
+                <div class="${PREFIX}sentence-clean-text">${QT.escapeHtml(sentence)}</div>
+                <div class="${PREFIX}sentence-clean-footer">
+                    <button class="${PREFIX}ai-explain-save-btn ${PREFIX}sentence-clean-save-btn" title="Save sentence for review (Z)">
+                        <span>Save</span>
+                    </button>
                 </div>
-            </div>
-            <div class="${PREFIX}save-footer">
-                <button class="${PREFIX}ai-explain-save-btn ${PREFIX}save-footer-btn" title="Save sentence for review">
-                    ${SVG.SAVE || "💾"} <span>Save</span>
-                </button>
             </div>`;
 
-        applyAiExplanation(html, layout);
-        wireAiExplainSpeakButton();
+        applySentenceTranslation(html, layout);
         wireAiExplainSaveButton(
             originalText || sentence,
             sentence,
