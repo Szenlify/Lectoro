@@ -166,7 +166,7 @@
         const btn =
             player?.querySelector?.(".ytp-subtitles-button") ||
             document.querySelector(".ytp-subtitles-button");
-        if (!btn) return false;
+        if (!btn) return null;
         return (
             btn.getAttribute("aria-pressed") === "true" ||
             btn.classList.contains("ytp-button-active")
@@ -175,9 +175,17 @@
 
     function isCcEnabled() {
         if (isYouTubeShorts()) return true;
-        const track = getActiveTrack();
-        if (track && track.languageCode) return true;
-        if (isCaptionsButtonActive()) return true;
+        const btnActive = isCaptionsButtonActive();
+        if (btnActive !== null) {
+            return btnActive;
+        }
+        // If button is not in DOM yet, fallback to player method if available, otherwise default to false
+        const player = getYouTubePlayer();
+        try {
+            if (typeof player?.isSubtitlesOn === "function") {
+                return !!player.isSubtitlesOn();
+            }
+        } catch (_) {}
         return false;
     }
 

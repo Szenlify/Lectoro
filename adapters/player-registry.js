@@ -286,6 +286,97 @@
         return false;
     }
 
+    let lastMouseX = -1;
+    let lastMouseY = -1;
+    let lastHoveredVideo = null;
+
+    function handlePointerActivity(e) {
+        if (!e) return;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+        const target = e.target;
+        if (!target) return;
+        if (target.tagName === "VIDEO" && target instanceof HTMLVideoElement && target.isConnected) {
+            lastHoveredVideo = target;
+            return;
+        }
+        const container = target.closest?.(
+            "article, [data-testid='tweet'], [data-testid='videoPlayer'], [data-testid='videoComponent'], .html5-video-player, .vjs-tech, .video-js, [data-player-root]"
+        );
+        const video = container?.querySelector?.("video");
+        if (video && video instanceof HTMLVideoElement && video.isConnected) {
+            lastHoveredVideo = video;
+        }
+    }
+
+    document.addEventListener("mousemove", handlePointerActivity, { passive: true, capture: true });
+    document.addEventListener("pointerdown", handlePointerActivity, { passive: true, capture: true });
+
+    function getEffectiveMousePos() {
+        if (lastMouseX >= 0 && lastMouseY >= 0) {
+            return { x: lastMouseX, y: lastMouseY };
+        }
+        if (typeof QT !== "undefined" && typeof QT.getMousePos === "function") {
+            const pos = QT.getMousePos();
+            if (pos && pos.x >= 0 && pos.y >= 0) return pos;
+        }
+        return { x: -1, y: -1 };
+    }
+
+    function isDedicatedWatchPage() {
+        if (document.fullscreenElement) return true;
+        if (isNetflixPage() && window.location.pathname.includes("/watch/")) return true;
+        const host = window.location.hostname;
+        if (
+            (host.includes("youtube.com") || host.includes("youtube-nocookie.com")) &&
+            (window.location.pathname.startsWith("/watch") || window.location.pathname.startsWith("/embed") || window.location.pathname.startsWith("/shorts")) &&
+            document.querySelector("#movie_player video")
+        ) {
+            return true;
+        }
+        return false;
+    }
+
+    function isVideoInViewport(video) {
+        if (!video || !video.isConnected) return false;
+        const rect = video.getBoundingClientRect();
+        if (rect.width < 40 || rect.height < 40) return false;
+        const overlapX = Math.max(0, Math.min(rect.right, window.innerWidth) - Math.max(rect.left, 0));
+        const overlapY = Math.max(0, Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0));
+        return overlapX > 20 && overlapY > 20;
+    }
+
+    function getVideoDistanceToPoint(video, x, y) {
+        if (!video || !video.isConnected) return Infinity;
+        const rect = video.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return Infinity;
+
+        if (rect.bottom <= 0 || rect.top >= window.innerHeight || rect.right <= 0 || rect.left >= window.innerWidth) {
+            return Infinity;
+        }
+
+        // 1. Direct hit on video element
+        if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+            return 0;
+        }
+
+        // 2. Direct hit on tweet/player container
+        const container = video.closest?.(
+            "article, [data-testid='tweet'], [data-testid='videoPlayer'], [data-testid='videoComponent'], .html5-video-player, .vjs-tech, .video-js, [data-player-root]"
+        );
+        if (container) {
+            const cRect = container.getBoundingClientRect();
+            if (x >= cRect.left && x <= cRect.right && y >= cRect.top && y <= cRect.bottom) {
+                return 0;
+            }
+        }
+
+        // 3. Distance from point to bounding box
+        const dx = Math.max(rect.left - x, 0, x - rect.right);
+        const dy = Math.max(rect.top - y, 0, y - rect.bottom);
+        return Math.hypot(dx, dy);
+    }
+
     function visibleVideoArea(video) {
         const rect = video.getBoundingClientRect();
         const width = Math.max(
@@ -299,23 +390,89 @@
         return width * height;
     }
 
-    function selectBestVideo() {
-        let best = null;
-        let bestScore = -Infinity;
+    const MAX_MOUSE_VICINITY_PX = 320;
+
+    function selectBestVideo(options = {}) {
+        const requireNearby = !!options.requireNearbyMouse;
+        const pos = getEffectiveMousePos();
+        const hasMousePos = pos.x >= 0 && pos.y >= 0;
+
+        const candidates = [];
+        const seenVideos = new Set();
+
         for (const session of liveVideoSessions) {
-            const video = session.video;
-            if (!video.isConnected) continue;
-            const isPreview = isPreviewOrThumbnailVideo(video);
-            const score =
-                visibleVideoArea(video) +
-                (!video.paused && !video.ended ? 1_000_000_000 : 0) -
-                (isPreview ? 2_000_000_000 : 0);
-            if (score > bestScore) {
-                best = video;
-                bestScore = score;
-            }
+            const v = session.video;
+            if (!v || !v.isConnected || seenVideos.has(v)) continue;
+            if (isPreviewOrThumbnailVideo(v)) continue;
+            seenVideos.add(v);
+            candidates.push(v);
         }
-        return best;
+
+        const domVideos = document.querySelectorAll("video");
+        for (let i = 0; i < domVideos.length; i++) {
+            const v = domVideos[i];
+            if (!v || !v.isConnected || seenVideos.has(v)) continue;
+            if (isPreviewOrThumbnailVideo(v)) continue;
+            seenVideos.add(v);
+            candidates.push(v);
+        }
+
+        const visibleCandidates = candidates.filter(isVideoInViewport);
+
+        if (visibleCandidates.length === 0) {
+            if (isDedicatedWatchPage() && !requireNearby) {
+                const primary = document.querySelector(".watch-video video, [data-uia='video-canvas'] video, #movie_player video");
+                if (primary && primary.isConnected && !isPreviewOrThumbnailVideo(primary)) {
+                    return primary;
+                }
+            }
+            return null;
+        }
+
+        if (hasMousePos) {
+            const ranked = visibleCandidates.map((v) => {
+                const isHovered = lastHoveredVideo === v;
+                const dist = isHovered ? 0 : getVideoDistanceToPoint(v, pos.x, pos.y);
+                const area = visibleVideoArea(v);
+                const isPlaying = !v.paused && !v.ended;
+                return { video: v, dist, area, isPlaying, isHovered };
+            });
+
+            ranked.sort((a, b) => {
+                if (Math.abs(a.dist - b.dist) > 10) {
+                    return a.dist - b.dist;
+                }
+                if (a.isPlaying !== b.isPlaying) {
+                    return a.isPlaying ? -1 : 1;
+                }
+                return b.area - a.area;
+            });
+
+            const top = ranked[0];
+
+            if (requireNearby || !isDedicatedWatchPage()) {
+                if (top.dist <= MAX_MOUSE_VICINITY_PX || top.isHovered) {
+                    return top.video;
+                }
+                return null;
+            }
+
+            return top.video;
+        }
+
+        if (requireNearby) {
+            if (isDedicatedWatchPage()) return visibleCandidates[0];
+            return null;
+        }
+
+        visibleCandidates.sort((a, b) => {
+            const aPlaying = !a.paused && !a.ended;
+            const bPlaying = !b.paused && !b.ended;
+            if (aPlaying !== bPlaying) return aPlaying ? -1 : 1;
+            return visibleVideoArea(b) - visibleVideoArea(a);
+        });
+
+        return visibleCandidates[0] || null;
     }
 
     function findCaptionBinding(video) {
@@ -966,16 +1123,35 @@
             const session = videoSessions.get(this.getVideo());
             return session?.binding?.adapter?.id || "native";
         },
-        getVideo() {
-            if (activeVideo?.isConnected && !isPreviewOrThumbnailVideo(activeVideo)) return activeVideo;
-            const best = selectBestVideo();
+        getVideo(options = {}) {
+            // 1. Prioritize visible video near the cursor
+            const best = selectBestVideo(options);
             if (best) {
-                activateVideo(best);
+                if (activeVideo !== best) activateVideo(best);
                 return best;
             }
-            const first = document.querySelector(".watch-video video, [data-uia='video-canvas'] video, .nf-player-container video, #movie_player video, video");
-            if (first) activateVideo(first);
-            return first;
+
+            // 2. If requireNearbyMouse was explicitly requested and no video is near, return null
+            if (options.requireNearbyMouse) {
+                return null;
+            }
+
+            // 3. On dedicated single-player pages:
+            if (isDedicatedWatchPage()) {
+                if (document.fullscreenElement) {
+                    const fs = document.fullscreenElement.querySelector("video") || (document.fullscreenElement.tagName === "VIDEO" ? document.fullscreenElement : null);
+                    if (fs && isVideoInViewport(fs)) return fs;
+                }
+                const dedicated = document.querySelector(".watch-video video, [data-uia='video-canvas'] video, #movie_player video");
+                if (dedicated && isVideoInViewport(dedicated)) return dedicated;
+            }
+
+            // 4. Return activeVideo ONLY if it is still visible in the viewport!
+            if (activeVideo?.isConnected && isVideoInViewport(activeVideo) && !isPreviewOrThumbnailVideo(activeVideo)) {
+                return activeVideo;
+            }
+
+            return null;
         },
         pauseVideo,
         playVideo,

@@ -722,6 +722,28 @@
         );
     });
 
+    document.addEventListener("click", (e) => {
+        if (e.target?.closest?.("[data-uia*='subtitle'], [data-uia*='audio'], .track-list, .audio-subtitle-controller, [data-uia='control-audio-subtitle']")) {
+            setTimeout(() => {
+                if (!isWatchPage()) return;
+                const player = getNetflixPlayer();
+                const rawTrack = player?.getTimedTextTrack?.() || player?.getTextTrack?.();
+                const isCc = rawTrack && !isTrackOff(rawTrack);
+                window.dispatchEvent(
+                    new CustomEvent(TRACK_RESPONSE_EVENT, {
+                        detail: {
+                            requestId: "ui-click-sync",
+                            track: isCc ? primitiveTrackData(rawTrack) : null,
+                            isCcActive: !!isCc,
+                            playerReady: !!player,
+                            movieId: getWatchMovieId(),
+                        },
+                    }),
+                );
+            }, 120);
+        }
+    }, true);
+
     window.addEventListener(MANIFEST_REQUEST_EVENT, () => {
         if (!isWatchPage()) return;
         checkMovieChange();

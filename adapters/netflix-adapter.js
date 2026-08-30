@@ -344,7 +344,7 @@
         if (isPreviewVideo(video)) return false;
         return activeTextTrackState.playerReady
             ? activeTextTrackState.isCcActive
-            : true;
+            : false;
     }
 
     async function buildSubtitleIndex() {
@@ -365,10 +365,11 @@
         // If the player is ready and reports captions as disabled, do not fetch
         // an arbitrary first language from the manifest.
         if (trackState.playerReady && !trackState.isCcActive) return [];
+        if (!trackState.isCcActive) return [];
 
         const track = trackState.track
             ? selectManifestTrack(manifest, trackState.track)
-            : manifest.tracks?.[0];
+            : null;
         if (!track) return [];
 
         const subtitleService = getSubtitleService();
@@ -474,6 +475,10 @@
             optimisticSeek = null;
             if (nextState.playerReady && nextState.isCcActive) {
                 ensureSubtitleIndex().catch(() => {});
+            } else {
+                if (globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
+                    globalThis.LectoroSubtitleOverlay.renderCustomSubtitles([]);
+                }
             }
         } finally {
             trackPollInFlight = false;
@@ -506,6 +511,8 @@
     }
 
     function getCurrentCueLines(video = null) {
+        if (!isCcActive(video)) return null;
+
         // Outside the short post-seek window, Netflix's live DOM remains the
         // visual source. This prevents an indexed fallback from outliving an
         // actual cue or showing captions after the user disables the track.
@@ -550,6 +557,7 @@
     }
 
     function getCurrentSubtitleText(video = null) {
+        if (!isCcActive(video)) return "";
         const lines = getCurrentCueLines(video);
         return Array.isArray(lines) && lines.length > 0
             ? lines.join(" ")
@@ -557,6 +565,7 @@
     }
 
     function getAllCues() {
+        if (!isCcActive()) return [];
         return cueIndex;
     }
 
@@ -973,6 +982,32 @@
         }
     });
     window.addEventListener(MANIFEST_EVENT, acceptTimedTextManifest);
+    window.addEventListener(TRACK_RESPONSE_EVENT, (event) => {
+        if (event.detail?.requestId === "ui-click-sync") {
+            const nextState = {
+                playerReady: !!event.detail.playerReady,
+                isCcActive: !!event.detail.isCcActive,
+                track: event.detail.track || null,
+                movieId: String(event.detail.movieId || ""),
+            };
+            if (nextState.movieId === getWatchMovieId()) {
+                const prevActive = activeTextTrackState.isCcActive;
+                activeTextTrackState = nextState;
+                if (!nextState.isCcActive) {
+                    cueIndex = [];
+                    cueIndexKey = "";
+                    cueIndexPromise = null;
+                    manifestRevision += 1;
+                    optimisticSeek = null;
+                    if (globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
+                        globalThis.LectoroSubtitleOverlay.renderCustomSubtitles([]);
+                    }
+                } else if (!prevActive) {
+                    ensureSubtitleIndex().catch(() => {});
+                }
+            }
+        }
+    });
     if (isPage()) setInterval(pollActiveTextTrack, 1000);
     if (isWatchPage()) {
         ensureSubtitleIndex().catch(() => {});
@@ -995,14 +1030,14 @@
             !isPreviewVideo(video) &&
             !!video?.closest?.(".watch-video, [data-uia='video-canvas'], .nf-player-container"),
         getContainer: (video) => {
-            if (!isWatchPage() || isPreviewVideo(video)) return null;
+            if (!isWatchPage() || !isCcActive(video) || isPreviewVideo(video)) return null;
             const player =
                 video?.closest?.(".watch-video, [data-uia='video-canvas'], .nf-player-container") ||
                 document;
             return player.querySelector(".player-timedtext");
         },
         getCueElements: (container) => {
-            if (!isWatchPage() || !container || !container.isConnected) return [];
+            if (!isWatchPage() || !isCcActive() || !container || !container.isConnected) return [];
             const candidates = Array.from(
                 container.querySelectorAll(".player-timedtext-text-container"),
             );

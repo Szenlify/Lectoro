@@ -336,7 +336,7 @@
                 measureCtx.font = `600 ${fontSizePx}px "Netflix Sans Variable", "Netflix Sans", "Helvetica Neue", "Segoe UI", Roboto, sans-serif`;
                 return measureCtx.measureText(text).width;
             }
-        } catch (_) {}
+        } catch (_) { }
         return text.length * fontSizePx * 0.55;
     }
 
@@ -401,7 +401,11 @@
         const { layer, box } = ensureCustomSubtitlesLayer();
         const registry = getPlayerRegistry();
         const video = registry?.getVideo();
-        if (video && registry?.isPreviewOrThumbnailVideo?.(video)) {
+        if (
+            video &&
+            (registry?.isPreviewOrThumbnailVideo?.(video) ||
+                (typeof registry?.isCcActive === "function" && !registry.isCcActive(video)))
+        ) {
             lines = [];
         }
 
@@ -420,8 +424,11 @@
             box.innerHTML = "";
             box.style.setProperty("opacity", "0", "important");
             box.style.setProperty("pointer-events", "none", "important");
-            if (isSubHovering && !subClickLocked) {
-                closeSubTooltip();
+            if (eTranslateActive || wordCloudActive || (translationOverlay?.isConnected ?? false)) {
+                restoreOriginal();
+            }
+            if (isSubHovering || subClickLocked) {
+                closeSubTooltip({ resumeVideo: false });
             }
             return;
         }
@@ -455,6 +462,15 @@
             // If displayLines.length > activeLines.length, an upgraded multi-line
             // layout arrived (e.g. multi-line DOM replacing a 1-line seek fallback).
             // Proceed and render the richer displayLines!
+        }
+
+        if (newText !== activeText) {
+            if (eTranslateActive || wordCloudActive || (translationOverlay?.isConnected ?? false)) {
+                restoreOriginal();
+            }
+            if (isSubHovering || subClickLocked) {
+                closeSubTooltip({ resumeVideo: false });
+            }
         }
 
         activeLines = displayLines;
@@ -583,9 +599,9 @@
 
     // ── Word Tooltip (Hover & Click) ──────────────────────────────
 
-    function closeSubTooltip() {
-        if (!isSubHovering) return;
-        const shouldResumeVideo = subWasPlaying;
+    function closeSubTooltip(options = {}) {
+        if (!isSubHovering && !subClickLocked) return;
+        const shouldResumeVideo = options.resumeVideo !== undefined ? options.resumeVideo : subWasPlaying;
 
         isSubHovering = false;
         subWasPlaying = false;
@@ -1138,6 +1154,34 @@
                 .filter(Boolean)
                 .join(". ");
 
+            const formattedExplanation = (typeof QT !== "undefined" && typeof QT.formatSpeechMarkup === "function")
+                ? QT.formatSpeechMarkup(explanation, targetLang, {
+                    sourceLang,
+                    originalText: text,
+                    quoteClass: `${PREFIX}tts-original-quote`,
+                })
+                : ((typeof SharedTtsService !== "undefined" && typeof SharedTtsService.formatSpeechMarkup === "function")
+                    ? SharedTtsService.formatSpeechMarkup(explanation, targetLang, {
+                        sourceLang,
+                        originalText: text,
+                        quoteClass: `${PREFIX}tts-original-quote`,
+                    })
+                    : QT.escapeHtml(explanation));
+
+            const formattedTranslation = (typeof QT !== "undefined" && typeof QT.formatSpeechMarkup === "function")
+                ? QT.formatSpeechMarkup(translation, targetLang, {
+                    sourceLang,
+                    originalText: text,
+                    quoteClass: `${PREFIX}tts-original-quote`,
+                })
+                : ((typeof SharedTtsService !== "undefined" && typeof SharedTtsService.formatSpeechMarkup === "function")
+                    ? SharedTtsService.formatSpeechMarkup(translation, targetLang, {
+                        sourceLang,
+                        originalText: text,
+                        quoteClass: `${PREFIX}tts-original-quote`,
+                    })
+                    : QT.escapeHtml(translation));
+
             const html = `
                 <div class="${PREFIX}header">
                     <span>${QT.escapeHtml(sourceTag)} → ${QT.escapeHtml(targetTag)}</span>
@@ -1149,14 +1193,14 @@
                     </div>
                     <div class="${PREFIX}row">
                         <span class="${PREFIX}label" title="Translation language: ${QT.escapeAttr(languageName(targetLang))}">${QT.escapeHtml(targetTag)}</span>
-                        <span class="${PREFIX}text ${PREFIX}translated">${QT.escapeHtml(translation)}</span>
+                        <span class="${PREFIX}text ${PREFIX}translated">${formattedTranslation}</span>
                         <span class="${PREFIX}word-actions">
                             <button class="${PREFIX}speak" data-text="${QT.escapeAttr(aiSpeechText)}" data-lang="${QT.escapeAttr(targetLang)}" data-source-lang="${QT.escapeAttr(sourceLang)}" data-original-text="${QT.escapeAttr(text)}" title="Play translation and explanation" aria-label="Play translation and explanation">${SVG.SPEAKER}</button>
                         </span>
                     </div>
                     <div class="${PREFIX}ai-result">
                         <div class="${PREFIX}ai-label">✨ AI Explanation:</div>
-                        <div class="${PREFIX}ai-text">${QT.escapeHtml(explanation)}</div>
+                        <div class="${PREFIX}ai-text">${formattedExplanation}</div>
                     </div>
                 </div>
                 <div class="${PREFIX}save-footer">
@@ -1511,7 +1555,7 @@
                         detectedLang: cached.detectedLang || "en",
                     };
                 }
-            } catch (_) {}
+            } catch (_) { }
         }
 
         // 2. Check local quota before translation
@@ -1935,7 +1979,62 @@
                 window.speechSynthesis?.cancel();
             } catch (_) { }
         }
+
+        if (customSubBoxEl && activeLines.length > 0) {
+            customSubBoxEl.style.setProperty("opacity", "1", "important");
+            customSubBoxEl.style.setProperty("pointer-events", "auto", "important");
+        }
     }
+
+    if (typeof QT !== "undefined" && QT.addDismissHandler) {
+        QT.addDismissHandler(() => {
+            if (eTranslateActive || wordCloudActive || (translationOverlay?.isConnected ?? false)) {
+                restoreOriginal();
+            }
+        });
+    }
+
+    // Auto-dismiss overlays and tooltips when video resumes playing or seeks
+    function handleVideoPlaybackStarted() {
+        if (eTranslateActive || wordCloudActive || (translationOverlay?.isConnected ?? false)) {
+            restoreOriginal();
+        }
+        if (isSubHovering || subClickLocked) {
+            closeSubTooltip({ resumeVideo: false });
+        }
+        if (aiTooltipActive) {
+            closeAiTooltip({ resumeVideo: false });
+        }
+    }
+
+    document.addEventListener("play", (e) => {
+        if (e.target?.tagName === "VIDEO") {
+            handleVideoPlaybackStarted();
+        }
+    }, true);
+
+    document.addEventListener("playing", (e) => {
+        if (e.target?.tagName === "VIDEO") {
+            handleVideoPlaybackStarted();
+        }
+    }, true);
+
+    document.addEventListener("seeked", (e) => {
+        if (e.target?.tagName === "VIDEO") {
+            handleVideoPlaybackStarted();
+        }
+    }, true);
+
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+            if (eTranslateActive || wordCloudActive || (translationOverlay?.isConnected ?? false)) {
+                restoreOriginal();
+            }
+            if (isSubHovering || subClickLocked) {
+                closeSubTooltip({ resumeVideo: false });
+            }
+        }
+    }, true);
 
     function resumeVideoAfterSubtitleClose(preferredVideo) {
         const resumeRevision = ++subtitleResumeRevision;

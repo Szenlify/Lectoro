@@ -23,6 +23,74 @@
             ? SharedUtils.cleanTextForTTS(text)
             : String(text ?? "").trim();
     }
+    const BASE_DIACRITICS = Object.freeze({
+        pl: /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/,
+        de: /[äöüßÄÖÜ]/,
+        fr: /[éàèùâêîôûëïüçœæÉÀÈÙÂÊÎÔÛËÏÜÇ]/,
+        es: /[áéíóúüñ¿¡ÁÉÍÓÚÜÑ]/,
+        it: /[àèéìíîòóùúÀÈÉÌÍÎÒÓÙÚ]/,
+        pt: /[ãõáéíóúâêôçÃÕÁÉÍÓÚÂÊÔÇ]/,
+        cs: /[áčďéěíňóřšťúůýžÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ]/,
+        sk: /[áäčďdžéíĺľňóôŕšťúýžÁÄČĎDŽÉÍĹĽŇÓÔŔŠŤÚÝŽ]/,
+        tr: /[çğıöşüÇĞİÖŞÜ]/,
+        ru: /[\u0400-\u04FF]/,
+        uk: /[іїєґІЇЄҐ\u0400-\u04FF]/,
+        zh: /[\u4e00-\u9fff]/,
+        ja: /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/,
+        ko: /[\uac00-\ud7af]/,
+        ar: /[\u0600-\u06FF]/,
+    });
+
+    function escapeHtml(s) {
+        return String(s ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+    function escapeAttr(s) {
+        return String(s ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+    }
+
+    const TRANSLATION_INTRO_REGEX = /(?:oznacza|znaczy|czyli|znaczeniu|tłumaczy|przekład|translation|translated as|meaning|means|c-à-d|bedeutet|significa|signifie)\s*:?\s*$/i;
+    const SOURCE_INTRO_REGEX = /(?:zwrot|słowo|fraza|wyrażenie|termin|phrase|word|term|idiom|quote|tekst|zdanie|sentence)\s*:?\s*$/i;
+
+    function isSourceLanguageQuote(inner, preSnippet, baseCharPattern, originalText) {
+        if (!inner) return false;
+        if (baseCharPattern && baseCharPattern.test(inner)) {
+            return false;
+        }
+        if (TRANSLATION_INTRO_REGEX.test(preSnippet)) {
+            return false;
+        }
+        if (originalText) {
+            const normOrig = originalText.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ");
+            const normInner = inner.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ");
+            if (normOrig.includes(normInner) || normInner.includes(normOrig)) {
+                return true;
+            }
+            const innerWords = normInner.split(/\s+/).filter((w) => w.length > 2);
+            const origWords = new Set(normOrig.split(/\s+/).filter((w) => w.length > 2));
+            if (innerWords.length > 0 && innerWords.some((w) => origWords.has(w))) {
+                return true;
+            }
+            if (SOURCE_INTRO_REGEX.test(preSnippet)) {
+                return true;
+            }
+            return false;
+        }
+        if (SOURCE_INTRO_REGEX.test(preSnippet)) {
+            return true;
+        }
+        return true;
+    }
 
     /**
      * Parse text into language-tagged speech segments so foreign quotes,
@@ -87,25 +155,6 @@
             return [{ text: raw, lang: baseLang }];
         }
 
-        // Language-specific diacritics to avoid mistaking base-language quotes for foreign ones
-        const BASE_DIACRITICS = {
-            pl: /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/,
-            de: /[äöüßÄÖÜ]/,
-            fr: /[éàèùâêîôûëïüçœæÉÀÈÙÂÊÎÔÛËÏÜÇ]/,
-            es: /[áéíóúüñ¿¡ÁÉÍÓÚÜÑ]/,
-            it: /[àèéìíîòóùúÀÈÉÌÍÎÒÓÙÚ]/,
-            pt: /[ãõáéíóúâêôçÃÕÁÉÍÓÚÂÊÔÇ]/,
-            cs: /[áčďéěíňóřšťúůýžÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ]/,
-            sk: /[áäčďdžéíĺľňóôŕšťúýžÁÄČĎDŽÉÍĹĽŇÓÔŔŠŤÚÝŽ]/,
-            tr: /[çğıöşüÇĞİÖŞÜ]/,
-            ru: /[\u0400-\u04FF]/,
-            uk: /[іїєґІЇЄҐ\u0400-\u04FF]/,
-            zh: /[\u4e00-\u9fff]/,
-            ja: /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/,
-            ko: /[\uac00-\ud7af]/,
-            ar: /[\u0600-\u06FF]/,
-        };
-
         const baseCharPattern = BASE_DIACRITICS[baseCode];
 
         const segments = [];
@@ -119,17 +168,8 @@
                 }
             }
 
-            let isSourceLang = true;
-            if (baseCharPattern && baseCharPattern.test(m.inner)) {
-                isSourceLang = false;
-            } else if (originalText) {
-                const normOrig = originalText.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ");
-                const normInner = m.inner.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ");
-                if (normOrig.includes(normInner) || normInner.includes(normOrig)) {
-                    isSourceLang = true;
-                }
-            }
-
+            const preSnippet = raw.slice(Math.max(0, m.start - 35), m.start).trim();
+            const isSourceLang = isSourceLanguageQuote(m.inner, preSnippet, baseCharPattern, originalText);
             const targetSegmentLang = isSourceLang ? (sourceLang || "en") : baseLang;
             segments.push({ text: m.inner, lang: targetSegmentLang });
             cursor = m.end;
@@ -154,6 +194,79 @@
         }
 
         return merged.length > 0 ? merged : [{ text: raw, lang: baseLang }];
+    }
+
+    /**
+     * Formats speech markup so that any quotes read by TTS in the source/original language
+     * are wrapped in <span class="quoteClass">"..."</span> with white styling, while the rest
+     * of the explanation/translation retains its existing styling.
+     */
+    function formatSpeechMarkup(
+        text,
+        baseLang = "en",
+        { sourceLang = null, originalText = null, quoteClass = "__qt_tts-original-quote" } = {},
+    ) {
+        const raw = String(text ?? "");
+        if (!raw) return "";
+
+        const baseCode = (baseLang || "en").split(/[-_]/)[0].toLowerCase();
+        let srcCode = (sourceLang || "").split(/[-_]/)[0].toLowerCase();
+
+        if (!srcCode && originalText) {
+            if (/[\u0400-\u04FF]/.test(originalText)) srcCode = "ru";
+            else if (/[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/.test(originalText)) srcCode = "ja";
+            else if (/[\uac00-\ud7af]/.test(originalText)) srcCode = "ko";
+            else if (/[\u0600-\u06FF]/.test(originalText)) srcCode = "ar";
+            else if (baseCode !== "en") srcCode = "en";
+        }
+
+        if (!srcCode || srcCode === baseCode) {
+            return escapeHtml(raw);
+        }
+
+        const quoteRegex = /(["“„«]([^"”»\r\n]+)["”»]|(?:^|[\s(])'([^'\r\n]{2,})'(?=[.,!?;:\s)]|$))/g;
+        const baseCharPattern = BASE_DIACRITICS[baseCode];
+
+        let resultHtml = "";
+        let cursor = 0;
+        let match;
+
+        while ((match = quoteRegex.exec(raw)) !== null) {
+            const fullMatch = match[0];
+            const inner = (match[2] || match[3] || "").trim();
+            if (!inner) continue;
+
+            let quoteStart = match.index;
+            let quoteText = fullMatch;
+            const leadingChar = fullMatch[0];
+            if (leadingChar === " " || leadingChar === "(" || leadingChar === "\t") {
+                quoteStart += 1;
+                quoteText = fullMatch.slice(1);
+            }
+
+            const quoteEnd = match.index + fullMatch.length;
+
+            if (quoteStart > cursor) {
+                resultHtml += escapeHtml(raw.slice(cursor, quoteStart));
+            }
+
+            const preSnippet = raw.slice(Math.max(0, quoteStart - 35), quoteStart).trim();
+            const isSourceLang = isSourceLanguageQuote(inner, preSnippet, baseCharPattern, originalText);
+
+            if (isSourceLang) {
+                resultHtml += `<span class="${escapeAttr(quoteClass)}">${escapeHtml(quoteText)}</span>`;
+            } else {
+                resultHtml += escapeHtml(quoteText);
+            }
+
+            cursor = quoteEnd;
+        }
+
+        if (cursor < raw.length) {
+            resultHtml += escapeHtml(raw.slice(cursor));
+        }
+
+        return resultHtml;
     }
 
     function getSafetyTimeout(text, rate = 1) {
@@ -207,16 +320,16 @@
                 if (timer) clearTimeout(timer);
                 try {
                     window.speechSynthesis?.removeEventListener?.("voiceschanged", handler);
-                } catch (_) {}
+                } catch (_) { }
                 resolve(window.speechSynthesis?.getVoices?.() || []);
             };
             try {
                 window.speechSynthesis?.addEventListener?.("voiceschanged", handler);
-            } catch (_) {}
+            } catch (_) { }
             timer = setTimeout(() => {
                 try {
                     window.speechSynthesis?.removeEventListener?.("voiceschanged", handler);
-                } catch (_) {}
+                } catch (_) { }
                 resolve(window.speechSynthesis?.getVoices?.() || []);
             }, timeoutMs);
         });
@@ -252,13 +365,13 @@
         globalSpeechToken += 1;
         try {
             window.speechSynthesis?.cancel();
-        } catch (_) {}
+        } catch (_) { }
         activeUtterances = [];
         if (activeAudio) {
             try {
                 activeAudio.pause();
                 activeAudio = null;
-            } catch (_) {}
+            } catch (_) { }
         }
     }
 
@@ -323,7 +436,7 @@
             firstUtter.addEventListener("error", (e) => {
                 try {
                     lastUtter.onerror?.(e);
-                } catch (_) {}
+                } catch (_) { }
             });
         }
 
@@ -539,7 +652,7 @@
                             const blob = await r2Res.blob();
                             if (blob && blob.size > 0) {
                                 if (typeof AudioCache !== "undefined" && typeof AudioCache.set === "function") {
-                                    AudioCache.set(`${cleaned}|${candVoice}`, blob).catch(() => {});
+                                    AudioCache.set(`${cleaned}|${candVoice}`, blob).catch(() => { });
                                 }
                                 return { blob, provider: "elevenlabs", cached: true, voiceId: candVoice };
                             }
@@ -559,7 +672,7 @@
                     const blob = await flatRes.blob();
                     if (blob && blob.size > 0) {
                         if (typeof AudioCache !== "undefined" && typeof AudioCache.set === "function") {
-                            AudioCache.set(`${cleaned}|default`, blob).catch(() => {});
+                            AudioCache.set(`${cleaned}|default`, blob).catch(() => { });
                         }
                         return { blob, provider: "elevenlabs", cached: true, voiceId: "default" };
                     }
@@ -620,12 +733,13 @@
         if (typeof window !== "undefined" && window.speechSynthesis) {
             window.speechSynthesis.getVoices?.();
         }
-    } catch (_) {}
+    } catch (_) { }
 
     return Object.freeze({
         speak,
         speakBrowser,
         parseSpeechSegments,
+        formatSpeechMarkup,
         ensureVoices,
         cancel,
         pickVoice,

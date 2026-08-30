@@ -267,6 +267,13 @@
                 `data-tgt-lang="${escapeAttr(targetLang)}" ` +
                 `data-sentence="" data-sentence-translated=""`;
 
+            const formattedExplanation = (typeof QT !== "undefined" && typeof QT.formatSpeechMarkup === "function")
+                ? QT.formatSpeechMarkup(explanation, targetLang, { sourceLang: srcLang, originalText: text, quoteClass: `${PREFIX}tts-original-quote` })
+                : escapeHtml(explanation);
+            const formattedTranslation = (typeof QT !== "undefined" && typeof QT.formatSpeechMarkup === "function")
+                ? QT.formatSpeechMarkup(translation, targetLang, { sourceLang: srcLang, originalText: text, quoteClass: `${PREFIX}tts-original-quote` })
+                : escapeHtml(translation);
+
             const html = `
                 <div class="${PREFIX}header"><span>AI Translation</span></div>
                 <div class="${PREFIX}body">
@@ -277,19 +284,19 @@
                     </div>
                     <div class="${PREFIX}row" style="margin-top:8px;">
                         <span class="${PREFIX}label">${langTag(targetLang)}</span>
-                        <span class="${PREFIX}text ${PREFIX}translated">${escapeHtml(translation)}</span>
+                        <span class="${PREFIX}text ${PREFIX}translated">${formattedTranslation}</span>
                         <button class="${PREFIX}speak" data-text="${escapeAttr(translation)}" data-lang="${escapeAttr(targetLang)}" title="Play translation">${SVG.SPEAKER}</button>
                     </div>
                     <div class="${PREFIX}ai-result" style="margin-top:10px; display:block;">
-                        <div class="${PREFIX}ai-label">Explanation</div>
-                        <div class="${PREFIX}ai-text">${escapeHtml(explanation)}</div>
+                        <div class="${PREFIX}ai-label">✨ AI Explanation:</div>
+                        <div class="${PREFIX}ai-text">${formattedExplanation}</div>
                         <button class="${PREFIX}speak" data-text="${escapeAttr(explanation)}" data-lang="${escapeAttr(targetLang)}" data-source-lang="${escapeAttr(srcLang)}" data-original-text="${escapeAttr(text)}" title="Play explanation" style="margin-top:6px;">${SVG.SPEAKER}</button>
                     </div>
                     <div class="${PREFIX}ai-result" id="${PREFIX}ai-result" style="display:none;"></div>
                 </div>
                 <div class="${PREFIX}save-footer">
                     <button class="${PREFIX}save-word-btn ${PREFIX}save-footer-btn" ${saveDataAttrs} title="Save word with AI translation for review">
-                        ${SVG.SAVE} <span>Word</span>
+                        ${SVG.SAVE} <span>Save</span>
                     </button>
                     <button class="${PREFIX}save-ai-btn ${PREFIX}save-footer-btn" ${saveDataAttrs} title="Save with smart AI sentence (Gemini)">
                         ${SVG.SAVE_AI} <span>AI</span>
@@ -339,7 +346,7 @@
             while ((node = walker.nextNode())) {
                 try {
                     if (range.intersectsNode(node)) nodes.push(node);
-                } catch (_) {}
+                } catch (_) { }
             }
         }
 
@@ -491,7 +498,7 @@
         try {
             if (typeof CSS !== "undefined" && CSS.highlights)
                 CSS.highlights.delete("qt-reading-sentence");
-        } catch (_) {}
+        } catch (_) { }
     }
 
     function cleanupReading(session = null, hideToolbar = false) {
@@ -666,7 +673,7 @@
             } else if (typeof SharedUtils !== "undefined" && SharedUtils.ensureVoices) {
                 await SharedUtils.ensureVoices();
             }
-        } catch (_) {}
+        } catch (_) { }
 
         if (!isReading || session !== readingSession) return;
 

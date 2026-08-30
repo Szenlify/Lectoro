@@ -83,10 +83,12 @@
             document;
         const ccBtn = player.querySelector?.(".ytp-subtitles-button");
         if (ccBtn) {
-            return (
+            const active = (
                 ccBtn.getAttribute("aria-pressed") === "true" ||
                 ccBtn.classList.contains("ytp-button-active")
             );
+            isCcActive = active;
+            return active;
         }
         return isCcActive;
     }
@@ -139,12 +141,12 @@
             }
         }
 
-        // Neighborhood tolerance check (-0.2s / +0.3s) to prevent sub-frame flickering
-        const start = Math.max(0, high - 2);
-        const end = Math.min(cueIndex.length - 1, low + 2);
+        // Neighborhood tolerance check (±0.05s) to prevent sub-frame flickering without bleeding into gaps
+        const start = Math.max(0, high - 1);
+        const end = Math.min(cueIndex.length - 1, low + 1);
         for (let i = start; i <= end; i++) {
             const cue = cueIndex[i];
-            if (currentTime >= cue.startTime - 0.2 && currentTime <= cue.endTime + 0.3) {
+            if (currentTime >= cue.startTime - 0.05 && currentTime <= cue.endTime + 0.05) {
                 return cue;
             }
         }
@@ -189,7 +191,7 @@
 
         // Subtitles only display if CC is actively enabled (or on YouTube Shorts)
         if (!checkIsCcActive(video)) {
-            if (currentDisplayedText !== "") {
+            if (currentDisplayedText !== "" || (globalThis.LectoroSubtitleOverlay?.getActiveLines?.()?.length > 0)) {
                 currentDisplayedText = "";
                 if (globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
                     globalThis.LectoroSubtitleOverlay.renderCustomSubtitles([]);
@@ -206,15 +208,14 @@
             if (activeCue && activeCue.text) {
                 targetText = activeCue.text;
             }
-        }
-
-        // Fallback to DOM player text if timedtext has a gap or hasn't loaded
-        if (!targetText) {
+        } else {
+            // Fallback to DOM player text ONLY if timedtext has not loaded
             const domText = getDomSubtitleText();
             if (domText) targetText = domText;
         }
 
-        if (targetText !== currentDisplayedText) {
+        const overlayText = globalThis.LectoroSubtitleOverlay?.getActiveText?.() ?? "";
+        if (targetText !== currentDisplayedText || (targetText && overlayText !== targetText)) {
             currentDisplayedText = targetText;
             if (globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
                 globalThis.LectoroSubtitleOverlay.renderCustomSubtitles(
@@ -432,7 +433,7 @@
             ? true
             : (typeof detail.isCcActive === "boolean"
                 ? detail.isCcActive
-                : (!!detail.activeTrack || checkIsCcActive()));
+                : checkIsCcActive());
         isCcActive = ccState;
 
         if (!ccState) {
@@ -455,6 +456,62 @@
             if (video && !video.paused) startPlaybackLoop(video);
         }
     }
+
+    // ── Direct Content-Script Observer for CC Button (Instant SSOT sync) ──
+    let contentCcObserver = null;
+    function syncCcButtonState() {
+        const video = boundVideo || document.querySelector("video");
+        const active = checkIsCcActive(video);
+        if (active !== isCcActive) {
+            isCcActive = active;
+            if (!active) {
+                currentDisplayedText = "";
+                activeTrack = null;
+                stopPlaybackLoop();
+                if (globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
+                    globalThis.LectoroSubtitleOverlay.renderCustomSubtitles([]);
+                }
+            } else {
+                if (cueIndex.length === 0) {
+                    requestTracklistFromBridge();
+                } else if (video) {
+                    syncActiveCue(video);
+                    if (!video.paused) startPlaybackLoop(video);
+                }
+            }
+        }
+    }
+
+    function observeContentCcButton() {
+        const player = document.getElementById("movie_player") || document.querySelector(".html5-video-player");
+        const btn = player?.querySelector?.(".ytp-subtitles-button") || document.querySelector(".ytp-subtitles-button");
+        if (btn && (!contentCcObserver || contentCcObserver._target !== btn)) {
+            contentCcObserver?.disconnect?.();
+            contentCcObserver = new MutationObserver(() => syncCcButtonState());
+            contentCcObserver._target = btn;
+            contentCcObserver.observe(btn, {
+                attributes: true,
+                attributeFilter: ["aria-pressed", "class"],
+            });
+            syncCcButtonState();
+        }
+    }
+
+    document.addEventListener("click", (e) => {
+        if (e.target?.closest?.(".ytp-subtitles-button")) {
+            setTimeout(syncCcButtonState, 50);
+            setTimeout(syncCcButtonState, 200);
+        }
+    }, true);
+
+    document.addEventListener("keydown", (e) => {
+        const tag = e.target?.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || e.target?.isContentEditable) return;
+        if (e.key === "c" || e.key === "C") {
+            setTimeout(syncCcButtonState, 50);
+            setTimeout(syncCcButtonState, 200);
+        }
+    }, true);
 
     // ── Bridge Event Listeners ────────────────────────────────────
 
@@ -486,12 +543,14 @@
                 globalThis.LectoroSubtitleOverlay.renderCustomSubtitles([]);
             }
             requestTracklistFromBridge();
+            setTimeout(observeContentCcButton, 300);
         }
     });
 
     // Initial check on load
     setTimeout(() => {
         currentVideoId = getVideoIdFromUrl();
+        observeContentCcButton();
         requestTracklistFromBridge();
         const video = document.querySelector("video");
         if (video) bindVideoEvents(video);
@@ -612,9 +671,9 @@
                 ((x) => x)
             )(segments);
         },
-        hasTimedText: () => cueIndex.length > 0 && isCcActive,
-        getCueIndex: () => (isCcActive ? cueIndex : []),
-        getAllCues: () => (isCcActive ? cueIndex : []),
+        hasTimedText: () => cueIndex.length > 0 && checkIsCcActive(boundVideo || document.querySelector("video")),
+        getCueIndex: () => (checkIsCcActive(boundVideo || document.querySelector("video")) ? cueIndex : []),
+        getAllCues: () => (checkIsCcActive(boundVideo || document.querySelector("video")) ? cueIndex : []),
         getCurrentSubtitleText: (video) => {
             if (!checkIsCcActive(video)) return "";
             const time = video?.currentTime ?? (boundVideo?.currentTime || 0);

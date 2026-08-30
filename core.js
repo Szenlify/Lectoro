@@ -11,12 +11,12 @@
     const C = typeof LectoroConstants !== "undefined"
         ? LectoroConstants
         : {
-              PREFIX: "__qt_",
-              UI_IDS: { ICON: "__qt_icon", TOOLTIP: "__qt_tooltip", REVIEW_TOAST: "__qt_review_toast" },
-              SVG_ICONS: {},
-              langTag: (c) => c?.toUpperCase() || "?",
-              isOwnUI: () => false,
-          };
+            PREFIX: "__qt_",
+            UI_IDS: { ICON: "__qt_icon", TOOLTIP: "__qt_tooltip", REVIEW_TOAST: "__qt_review_toast" },
+            SVG_ICONS: {},
+            langTag: (c) => c?.toUpperCase() || "?",
+            isOwnUI: () => false,
+        };
 
     const {
         escapeHtml,
@@ -29,13 +29,13 @@
         typeof SharedUtils !== "undefined"
             ? SharedUtils
             : {
-                  escapeHtml: (s) => String(s || ""),
-                  escapeAttr: (s) => String(s || ""),
-                  cleanTextForTTS: (s) => String(s || "").replace(/^[,\s:;>«»<\\/|~*#—–-]+/, "").replace(/[.,\s]+$/, "").trim(),
-                  cleanCardText: (s) => String(s || "").replace(/^[,\s:;>«»<\\/|~*#—–-]+/, "").replace(/[.,\s]+$/, "").trim(),
-                  pickBestVoice: () => null,
-                  ensureVoices: () => Promise.resolve([]),
-              };
+                escapeHtml: (s) => String(s || ""),
+                escapeAttr: (s) => String(s || ""),
+                cleanTextForTTS: (s) => String(s || "").replace(/^[,\s:;>«»<\\/|~*#—–-]+/, "").replace(/[.,\s]+$/, "").trim(),
+                cleanCardText: (s) => String(s || "").replace(/^[,\s:;>«»<\\/|~*#—–-]+/, "").replace(/[.,\s]+$/, "").trim(),
+                pickBestVoice: () => null,
+                ensureVoices: () => Promise.resolve([]),
+            };
 
     const PREFIX = C.PREFIX || "__qt_";
     const ICON_ID = C.UI_IDS?.ICON || `${PREFIX}icon`;
@@ -227,7 +227,7 @@
     function hideAll() {
         hideTooltip();
         cleanupHandlers.forEach((fn) => {
-            try { fn(); } catch (_) {}
+            try { fn(); } catch (_) { }
         });
     }
 
@@ -239,7 +239,7 @@
     }
     function runDismiss() {
         dismissHandlers.forEach((fn) => {
-            try { fn(); } catch (_) {}
+            try { fn(); } catch (_) { }
         });
     }
 
@@ -559,7 +559,7 @@
             ) {
                 try {
                     candidate = new URL(candidate, document.baseURI).href;
-                } catch (_) {}
+                } catch (_) { }
             }
             if (/^(https?:|data:image\/|blob:)/i.test(candidate)) {
                 return candidate;
@@ -657,7 +657,7 @@
                             if (drawn) return drawn;
                         }
                     }
-                } catch (_) {}
+                } catch (_) { }
             } else if (/^https?:/i.test(src)) {
                 const imageData = await requestImageDataUrl(src);
                 const fetchedImage = imageData ? await loadImage(imageData) : null;
@@ -695,7 +695,7 @@
             try {
                 const screenshot = await captureMediaScreenshot(media);
                 if (screenshot) return screenshot;
-            } catch (_) {}
+            } catch (_) { }
         }
         return null;
     }
@@ -1112,6 +1112,9 @@
     }
 
     function getVideo() {
+        if (typeof globalThis.LectoroPlayerRegistry !== "undefined" && globalThis.LectoroPlayerRegistry.getVideo) {
+            return globalThis.LectoroPlayerRegistry.getVideo();
+        }
         return document.querySelector("video");
     }
 
@@ -1182,8 +1185,14 @@
             typeof SharedTtsService !== "undefined" && SharedTtsService.ensureVoices
                 ? SharedTtsService.ensureVoices()
                 : (typeof SharedUtils !== "undefined" && SharedUtils.ensureVoices
-                      ? SharedUtils.ensureVoices()
-                      : Promise.resolve([])),
+                    ? SharedUtils.ensureVoices()
+                    : Promise.resolve([])),
+        formatSpeechMarkup: (text, baseLang, opts) =>
+            typeof SharedTtsService !== "undefined" && SharedTtsService.formatSpeechMarkup
+                ? SharedTtsService.formatSpeechMarkup(text, baseLang, opts)
+                : (typeof SharedUtils !== "undefined" && SharedUtils.escapeHtml
+                    ? SharedUtils.escapeHtml(text)
+                    : String(text ?? "")),
 
         // Storage – delegates to SharedWordRepository and SharedTranslatorService
         getTargetLang: () =>

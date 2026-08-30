@@ -47,11 +47,19 @@
             if (isTyping(e.target)) return;
 
             const key = e.key;
+            if (key === " " || key === "Spacebar") {
+                const overlay = getOverlay();
+                if (overlay?.isSubtitleUiOpen?.()) {
+                    overlay?.restoreOriginal?.();
+                }
+                overlay?.closeSubTooltip?.({ resumeVideo: false });
+                return;
+            }
             if (!NAV_KEYS.has(key)) return;
 
             const registry = getRegistry();
             const overlay = getOverlay();
-            const video = registry?.getVideo();
+            const video = registry?.getVideo({ requireNearbyMouse: true });
             if (!video) return;
 
             const isHorizontalSubtitleNavigation = [
