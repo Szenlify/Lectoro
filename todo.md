@@ -5,11 +5,7 @@
 5. jesli wykorzystany trial nie pokazuj ze 3 dni za darmo
 7. sprawdz regulamin i polityke
 
-5. napisy czasami po przetlumaczeniu zostaja na video takie same nie zmieniaja sie przeanalizuj tej problem i wyklucz go
-6. jesli pobierze zle napisy lub ich nie ma to co zrobic bo czasami sa takie sytuacje ew czy moge pobierac zawsze napisy bez wlaczenia CC?
 8. SRS system poprawic w najbardziej najlepszym systemie Znam, nie znam abyile razy ma sie potwarzac i kiedy oraz nie licz steps tylko interwaly przez mnoznik 
-[x] 9. Po nacisnieciu Enter tlumaczenie AI wszystko to co TTS czyta w orginalnym jezyku ma miec kolor white razem z "" reszta textu na taki kolor jaki jest
-[x] 10. Popraw aby filmy WSAD uruchamialy sie tylko te ktore myszka jest w poblizu bo teraz np na platformie x.com jak przegladam filmy i je chce przewijac lub zatrzymywac to odpalaja sie inne filmy nawet te niewidoczne 
 
 
 Oferuj Plan Roczny z góry:
