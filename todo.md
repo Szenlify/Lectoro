@@ -1,11 +1,12 @@
 [TODO]
 
 2. Quizy sprawdzic
-3. [x] Npisy lepszy UI/UX tlumaczen "S"
 4. sprawdzic jakos czy sie odnawia plan subskrypcji
 5. jesli wykorzystany trial nie pokazuj ze 3 dni za darmo
-6. jesli pobierze zle napisy lub ich nie ma to co zrobic bo czasami sa takie sytuacje ew czy moge pobierac zawsze napisy bez wlaczenia CC?
 7. sprawdz regulamin i polityke
+
+6. jesli pobierze zle napisy lub ich nie ma to co zrobic bo czasami sa takie sytuacje ew czy moge pobierac zawsze napisy bez wlaczenia CC?
+8. SRS system poprawic w najbardziej najlepszym systemie Znam, nie znam abyile razy ma sie potwarzac i kiedy oraz nie licz steps tylko interwaly przez mnoznik 
 
 
 Oferuj Plan Roczny z góry:
