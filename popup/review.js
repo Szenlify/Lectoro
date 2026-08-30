@@ -1342,17 +1342,18 @@ async function rateWord(grade) {
     // Ensure card has SRS metadata
     ensureSR(w);
 
-    // Aktualizujemy SRS na podstawie odpowiedzi:
-    // grade === 1 -> Nie znam
-    // grade === 2 -> Znam
-    w.sr = srUpdate(w.sr, grade);
-
     _reviewSaving = true;
 
     try {
         if (typeof SharedWordRepository !== "undefined") {
-            await SharedWordRepository.recordReviewRating(w, grade);
+            const updated = await SharedWordRepository.recordReviewRating(w, grade);
+            if (updated?.sr) {
+                w.sr = updated.sr;
+            } else {
+                w.sr = srUpdate(w.sr, grade);
+            }
         } else {
+            w.sr = srUpdate(w.sr, grade);
             const data = await chrome.storage.local.get({ savedWords: [] });
             const words = data.savedWords || [];
             const idx = words.findIndex((x) => (w.id && x.id === w.id) || (x.original === w.original && x.translated === w.translated));

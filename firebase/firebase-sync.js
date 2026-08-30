@@ -311,8 +311,12 @@ const FirebaseSync = (() => {
 
         // SR data (flattened for simpler REST handling)
         if (word.sr) {
-            f.sr_step = { integerValue: String(word.sr.step ?? 0) };
+            const reps = word.sr.reps ?? word.sr.step ?? 0;
+            f.sr_step = { integerValue: String(reps) };
+            f.sr_reps = { integerValue: String(reps) };
+            f.sr_easeFactor = { doubleValue: word.sr.easeFactor ?? 2.5 };
             f.sr_interval = { doubleValue: word.sr.interval ?? 0 };
+            f.sr_lapses = { integerValue: String(word.sr.lapses ?? 0) };
             f.sr_nextReview = {
                 integerValue: String(word.sr.nextReview ?? 0),
             };
@@ -344,15 +348,18 @@ const FirebaseSync = (() => {
             ),
         };
 
-        if (fields.sr_step || fields.sr_nextReview) {
+        if (fields.sr_step || fields.sr_reps || fields.sr_nextReview) {
+            const reps = parseInt(fields.sr_reps?.integerValue || fields.sr_step?.integerValue || "0");
             word.sr = {
-                step: parseInt(fields.sr_step?.integerValue || "0"),
+                reps,
+                step: reps,
                 easeFactor:
                     fields.sr_easeFactor?.doubleValue ??
                     parseFloat(fields.sr_easeFactor?.integerValue || "2.5"),
                 interval:
                     fields.sr_interval?.doubleValue ??
                     parseFloat(fields.sr_interval?.integerValue || "0"),
+                lapses: parseInt(fields.sr_lapses?.integerValue || "0"),
                 nextReview: parseInt(fields.sr_nextReview?.integerValue || "0"),
                 lastReview: parseInt(fields.sr_lastReview?.integerValue || "0"),
             };

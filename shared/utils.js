@@ -209,8 +209,11 @@
 
         /** Check if a word is due for review */
         isDueForReview(w, now = Date.now()) {
-            if (!w.sr) return true;
-            return w.sr.nextReview <= now;
+            if (typeof SRS !== "undefined" && typeof SRS.isDue === "function") {
+                return SRS.isDue(w, now);
+            }
+            if (!w || !w.sr) return true;
+            return (w.sr.nextReview || 0) <= now;
         },
 
         /** Count how many words are due for review */

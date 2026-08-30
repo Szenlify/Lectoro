@@ -5,6 +5,7 @@ try {
         "shared/constants.js",
         "shared/subscription-config.js",
         "shared/utils.js",
+        "shared/srs.js",
         "shared/word-repository.js",
         "firebase/firebase-config.js",
         "firebase/firebase-sync.js",

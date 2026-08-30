@@ -36,11 +36,16 @@
     }
 
     function createDefaultSR() {
+        if (typeof SRS !== "undefined" && typeof SRS.defaultState === "function") {
+            return SRS.defaultState();
+        }
         return {
+            interval: 0,
+            reps: 0,
             step: 0,
             easeFactor: 2.5,
-            interval: 0,
-            nextReview: Date.now(),
+            lapses: 0,
+            nextReview: 0,
             lastReview: null,
         };
     }
@@ -234,8 +239,10 @@
                         ? SRS.update(srBase, rating)
                         : {
                               ...srBase,
-                              step: rating === 1 ? 0 : srBase.step + 1,
-                              nextReview: Date.now() + (rating === 1 ? 60000 : 86400000),
+                              reps: rating === 1 ? 0 : (srBase.reps || srBase.step || 0) + 1,
+                              step: rating === 1 ? 0 : (srBase.reps || srBase.step || 0) + 1,
+                              interval: rating === 1 ? 1 / 1440 : (srBase.interval < 10 / 1440 ? 10 / 1440 : (srBase.interval < 1 ? 1 : Math.round(srBase.interval * (srBase.easeFactor || 2.5)))),
+                              nextReview: Date.now() + (rating === 1 ? 60000 : (srBase.interval < 10 / 1440 ? 600000 : 86400000)),
                               lastReview: Date.now(),
                           };
                 return { sr: updatedSR };

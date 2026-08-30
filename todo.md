@@ -5,7 +5,7 @@
 5. jesli wykorzystany trial nie pokazuj ze 3 dni za darmo
 7. sprawdz regulamin i polityke
 
-8. SRS system poprawic w najbardziej najlepszym systemie Znam, nie znam abyile razy ma sie potwarzac i kiedy oraz nie licz steps tylko interwaly przez mnoznik 
+8. [ZROBIONE] SRS system poprawic w najbardziej najlepszym systemie Znam, nie znam abyile razy ma sie potwarzac i kiedy oraz nie licz steps tylko interwaly przez mnoznik (Wdrożono wykładniczy mnożnik interwałów 1d -> 3d -> 8d -> 20d -> 52d -> 138d -> 373d, relearn 10 min na błąd, Single Source of Truth w shared/srs.js)
 
 
 Oferuj Plan Roczny z góry:
