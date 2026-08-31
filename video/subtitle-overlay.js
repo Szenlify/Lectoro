@@ -292,7 +292,7 @@
             layer.style.overflow = "hidden";
 
             // Proportional uniform font sizing across all video platforms
-            const fontSizePx = Math.max(20, Math.min(54, Math.round(actualWidth * 0.026 + 4)));
+            const fontSizePx = Math.max(20, Math.min(57, Math.round(actualWidth * 0.028 + 4)));
             layer.style.setProperty("--lectoro-sub-font-size", `${fontSizePx}px`);
 
             applySubtitleStyles(layer);
