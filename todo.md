@@ -22,7 +22,7 @@ todo.md
 stripe.md
 
 firebase login
-firebase.cmd functions:secrets:set ELEVENLABS_API_KEY
+firebase functions:secrets:set ELEVENLABS_API_KEY
 
 
 
