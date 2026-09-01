@@ -69,7 +69,7 @@ Learn languages with bilingual video subtitles for YouTube & Netflix, instant on
 ```markdown
 Opanuj język obcy bez wysiłku podczas oglądania ulubionych filmów i przeglądania internetu!
 
-Lectoro AI zamienia każdą stronę internetową, wideo na YouTube oraz serial na Netflixie w angażującą, interaktywną lekcję języka. Korzystaj z immersji językowej, podwójnych napisów, inteligentnego asystenta AI oraz naukowo potwierdzonego systemu powtórek (Spaced Repetition).
+Lectoro AI zamienia każdą stronę internetową, wideo na YouTube oraz serial na Netflixie w angażującą, interaktywną lekcję języka. Korzystaj z immersji językowej, tlumaczen napisów, inteligentnego asystenta AI oraz naukowo potwierdzonego systemu powtórek (Spaced Repetition).
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✨ GŁÓWNE FUNKCJE LECTORO AI
