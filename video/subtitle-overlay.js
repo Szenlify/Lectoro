@@ -1841,7 +1841,7 @@
                 <div class="${PREFIX}sentence-clean-text">${QT.escapeHtml(sentence)}</div>
                 <div class="${PREFIX}sentence-clean-footer">
                     <button class="${PREFIX}ai-explain-save-btn ${PREFIX}sentence-clean-save-btn" title="Save sentence for review (Z)">
-                        <span>Save</span>
+                        <span>${SVG.SAVE}</span>
                     </button>
                 </div>
             </div>`;

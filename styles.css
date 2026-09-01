@@ -1187,8 +1187,8 @@ video::cue {
     width: 18px !important;
     height: 18px !important;
     box-sizing: border-box !important;
-    border: 2px solid rgba(255, 255, 255, 0.1) !important;
-    border-top-color: #4a6cf7 !important;
+    border: 2px solid #1e23529c !important;
+    border-top-color: #4af7da !important;
     border-radius: 50% !important;
     animation: __qt_spin 0.6s linear infinite !important;
     margin: auto !important;
@@ -1580,13 +1580,13 @@ video::cue {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    background: rgba(181, 181, 181, 0.637) !important;
+    background: rgba(181, 187, 196, 0.637) !important;
     gap: 4px !important;
     padding: 2px 7px !important;
     height: 22px !important;
     border: 1px solid rgba(255, 255, 255, 0.145) !important;
     border-radius: 6px !important;
-    color: rgba(226, 232, 240, 0.853) !important;
+    color: rgba(226, 238, 240, 0.853) !important;
     font-size: 10px !important;
     font-weight: 500 !important;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
@@ -1645,7 +1645,7 @@ video::cue {
 .__qt_sentence-clean-save-btn.saved {
     color: #4ecdc4 !important;
     border-color: rgba(78, 205, 196, 0.35) !important;
-    background: rgba(78, 205, 196, 0.1) !important;
+    background: rgba(78, 205, 197, 0.459) !important;
     pointer-events: none !important;
 }
 
