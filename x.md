@@ -4,16 +4,17 @@ Niniejszy dokument zawiera zwięzłą, krok-po-kroku instrukcję migracji wszyst
 
 ---
 
-## 🗺️ Mapa Plików i Zmiennych do Zmiany w Projekcie
+## 🗺️ Pełna Mapa Plików i Zmiennych do Zmiany w Projekcie
 
-| Komponent | Pliki w repozytorium do aktualizacji | Wartości / Zmienne |
+| Komponent | Pliki w repozytorium do aktualizacji | Wartości / Zmienne / Linie kodu |
 | :--- | :--- | :--- |
-| **Firebase / Firestore** | `firebase/firebase-config.js`<br>`.firebaserc`<br>`firebase/.firebaserc` | `apiKey`, `projectId`, `clientId`, `projects.default` |
-| **Stripe Live** | `functions/.env`<br>Firebase Secret Manager | `STRIPE_BASIC_PRICE_ID`, `STRIPE_PRO_PRICE_ID`<br>`STRIPE_SECRET_KEY` (`sk_live_...`), `STRIPE_WEBHOOK_SECRET` (`whsec_...`) |
-| **Cloudflare R2** | `functions/.env`<br>Firebase Secret Manager<br>`shared/utils.js`<br>`shared/tts-service.js`<br>`manifest.json` | `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL`, `R2_ACCESS_KEY_ID`<br>`R2_SECRET_ACCESS_KEY`<br>Domeny w `host_permissions` |
+| **Firebase / Firestore** | `firebase/firebase-config.js`<br>`.firebaserc` (główny folder)<br>`firebase/.firebaserc`<br>`firebase/firestore.rules` | `apiKey`, `projectId`, `clientId`, `projects.default`<br>Upewnij się, że oba pliki `.firebaserc` wskazują ten sam `projectId`. |
+| **Stripe Live** | `functions/.env`<br>Firebase Secret Manager<br>`functions/stripe-billing.js` | `STRIPE_BASIC_PRICE_ID`, `STRIPE_PRO_PRICE_ID`<br>`STRIPE_SECRET_KEY` (`sk_live_...`), `STRIPE_WEBHOOK_SECRET` (`whsec_...`)<br>`PUBLIC_FUNCTIONS_URL` (linia 31) |
+| **Cloudflare R2** | `functions/.env`<br>Firebase Secret Manager<br>`shared/utils.js`<br>`shared/tts-service.js`<br>`manifest.json` | `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL`, `R2_ACCESS_KEY_ID`<br>`R2_SECRET_ACCESS_KEY`<br>`shared/utils.js` (linie 96, 98, 159)<br>`shared/tts-service.js` (linia 669 — `flatUrl`)<br>`manifest.json` (`host_permissions`) |
 | **AI (Gemini & ElevenLabs)** | Firebase Secret Manager | `LECTORO_GEMINI_API_KEY`, `ELEVENLABS_API_KEY` |
-| **Backend URLs** | `functions/stripe-billing.js`<br>`shared/subscription-service.js`<br>`shared/gemini-proxy.js`<br>`manifest.json` | `PUBLIC_FUNCTIONS_URL`, `BILLING_FUNCTIONS_URL`, `PROXY_URL`, `host_permissions` |
+| **Backend URLs** | `functions/stripe-billing.js`<br>`shared/subscription-service.js`<br>`shared/gemini-proxy.js`<br>`background.js`<br>`manifest.json` | `functions/stripe-billing.js` (linia 31 — `PUBLIC_FUNCTIONS_URL`)<br>`shared/subscription-service.js` (linia 14 — `PROXY_URL`, linia 16 — `BILLING_FUNCTIONS_URL`)<br>`shared/gemini-proxy.js` (linia 19 — `PROXY_URL`)<br>`background.js` (linia 867 — fallback w akcji usuwania konta)<br>`manifest.json` (`host_permissions`) |
 | **Google OAuth / CWS** | `firebase/firebase-config.js`<br>`manifest.json` | `clientId`, autoryzowane URI w GCP (`https://<EXTENSION_ID>.chromiumapp.org/`) |
+| **Strony Prawne (Privacy & Terms)** | `popup.html`<br>Panel dewelopera CWS | `popup.html` (linie 571–574 — linki w stopce: `https://lectoro.app/privacy` i `https://lectoro.app/terms`) |
 
 ---
 
@@ -39,7 +40,7 @@ Niniejszy dokument zawiera zwięzłą, krok-po-kroku instrukcję migracji wszyst
          clientId: "PRODUKCYJNY_GOOGLE_CLIENT_ID.apps.googleusercontent.com",
      };
      ```
-   - W plikach `.firebaserc` oraz `firebase/.firebaserc` zmień domyślny projekt:
+   - Zaktualizuj oba pliki `.firebaserc` (w głównym folderze oraz w folderze `firebase/`):
      ```json
      {"projects":{"default":"NOWY_PRODUKCYJNY_PROJECT_ID"}}
      ```
@@ -53,8 +54,8 @@ Niniejszy dokument zawiera zwięzłą, krok-po-kroku instrukcję migracji wszyst
    - Upewnij się, że Twoje konto jest aktywowane (KYC / dane firmowe) i wyłącz przełącznik **Test mode** (przejdź do trybu **Live**).
 2. **Utworzenie Produktów i Cen:**
    - Wejdź w **Product Catalog → Add Product**:
-     - **Produkt 1:** `Lectoro Basic` → Model: Recurring, Cena: `$7.99 USD` miesięcznie. Skopiuj wygenerowany identyfikator ceny (np. `price_1P...`).
-     - **Produkt 2:** `Lectoro Pro` → Model: Recurring, Cena: `$19.99 USD` miesięcznie. Skopiuj wygenerowany identyfikator ceny (np. `price_1P...`).
+     - **Produkt 1:** `Lectoro Basic` → Model: Recurring, Cena: `$7.99 USD` miesięcznie. Skopiuj wygenerowany identyfikator ceny (format `price_1P...`).
+     - **Produkt 2:** `Lectoro Pro` → Model: Recurring, Cena: `$19.99 USD` miesięcznie. Skopiuj wygenerowany identyfikator ceny (format `price_1P...`).
 3. **Konfiguracja Stripe Customer Portal:**
    - Wejdź w **Settings → Billing → Customer portal** ([link](https://dashboard.stripe.com/settings/billing/portal)).
    - Dodaj oba produkty (`Lectoro Basic` i `Lectoro Pro`) do katalogu produktów w portalu.
@@ -73,6 +74,7 @@ Niniejszy dokument zawiera zwięzłą, krok-po-kroku instrukcję migracji wszyst
      - `customer.subscription.paused`
      - `customer.subscription.resumed`
      - `invoice.payment_succeeded`
+     - `invoice.paid`
      - `invoice.payment_failed`
    - Kliknij **Add endpoint** i odkryj klucz podpisu (**Signing secret**, format `whsec_...`).
 5. **Pobranie Live Secret Key:**
@@ -103,11 +105,12 @@ Niniejszy dokument zawiera zwięzłą, krok-po-kroku instrukcję migracji wszyst
    - W menu R2 kliknij **Manage R2 API Tokens → Create API Token**.
    - Uprawnienia: **Admin Read & Write** (Object Read & Write).
    - Skopiuj: `Account ID`, `Access Key ID`, `Secret Access Key`.
-5. **Aktualizacja w kodzie rozszerzenia:**
+5. **Aktualizacja w kodzie rozszerzenia i backendzie:**
    - Jeśli adres R2 uległ zmianie, zaktualizuj bazowy adres w plikach:
-     - `shared/utils.js` (funkcje `resolveImageUrl` oraz `getR2AudioUrl`)
-     - `shared/tts-service.js` (funkcja `playCachedAudio`)
-     - `manifest.json` (w sekcji `host_permissions` dopisz nowy adres publiczny R2)
+     - `functions/.env` (`R2_PUBLIC_URL`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_BUCKET_NAME`)
+     - `shared/utils.js` (w funkcjach `resolveImageUrl` linie 96, 98 oraz `getR2AudioUrl` linia 159)
+     - `shared/tts-service.js` (w funkcji `playCachedAudio` linia 669 — zmienna `flatUrl`)
+     - `manifest.json` (w sekcji `host_permissions` zaktualizuj domenę R2)
 
 ---
 
@@ -124,8 +127,8 @@ Niniejszy dokument zawiera zwięzłą, krok-po-kroku instrukcję migracji wszyst
 
 ## KROK 5: Konfiguracja Środowiska i Wdrożenie Backend (Cloud Functions)
 
-1. **Utworzenie pliku `functions/.env`:**
-   W katalogu `functions/` utwórz lub zaktualizuj plik `.env` z wartościami produkcyjnymi (plik ten nie zawiera tajnych kluczy prywatnych, tylko ID):
+1. **Utworzenie / Aktualizacja pliku `functions/.env`:**
+   W katalogu `functions/` utwórz lub zaktualizuj plik `.env` z wartościami produkcyjnymi (plik ten nie zawiera tajnych kluczy prywatnych, tylko ID i konfigurację publiczną):
    ```env
    STRIPE_BASIC_PRICE_ID=price_1PXXXXXXXXXXXXX
    STRIPE_PRO_PRICE_ID=price_1PXXXXXXXXXXXXX
@@ -157,7 +160,7 @@ Niniejszy dokument zawiera zwięzłą, krok-po-kroku instrukcję migracji wszyst
    # Wklej: produkcyjny Secret Access Key z Cloudflare R2
    ```
 
-3. **Deploy Backend i Reguł Bazy:**
+3. **Deploy Backend i Reguł Bazy Firestore:**
    ```bash
    cd functions
    npm install
@@ -167,10 +170,11 @@ Niniejszy dokument zawiera zwięzłą, krok-po-kroku instrukcję migracji wszyst
 4. **Weryfikacja adresów URL po wdrożeniu:**
    Po zakończeniu wdrożenia Firebase wyświetli publiczne adresy Cloud Functions (np. w regionie `europe-west1`).
    Upewnij się, że adresy w kodzie odpowiadają nowemu projektowi:
-   - `functions/stripe-billing.js` → stała `PUBLIC_FUNCTIONS_URL`
-   - `shared/subscription-service.js` → stałe `PROXY_URL` i `BILLING_FUNCTIONS_URL`
-   - `shared/gemini-proxy.js` → stała `PROXY_URL`
-   - `manifest.json` → `host_permissions`
+   - `functions/stripe-billing.js` → stała `PUBLIC_FUNCTIONS_URL` (linia 31)
+   - `shared/subscription-service.js` → stałe `PROXY_URL` (linia 14) i `BILLING_FUNCTIONS_URL` (linia 16)
+   - `shared/gemini-proxy.js` → stała `PROXY_URL` (linia 19)
+   - `background.js` → fallback URL w obsłudze `FIREBASE_DELETE_ACCOUNT` (linia 867)
+   - `manifest.json` → sekcja `host_permissions`
 
 ---
 
@@ -204,13 +208,15 @@ Logowanie Google Sign-In w rozszerzeniu MV3 korzysta z `chrome.identity.launchWe
 
 ## KROK 7: Wymogi Publikacji w Chrome Web Store (Checklista)
 
-### 1. Wymagane Strony Prawne (Musi działać online przed zgłoszeniem!)
+### 1. Wymagane Strony Prawne (Muszą działać online pod właściwą domeną!)
 - **Polityka Prywatności:** `https://lectoro.app/privacy`
   - **Obowiązkowa klauzula (Google Limited Use):**
     > *"Lectoro's use and transfer of information received from Google APIs to any other app will adhere to the Chrome Web Store User Data Policy, including the Limited Use requirements."*
   - Wyszczególnienie zbieranych danych: adres e-mail konta Google (uwierzytelnianie), zapisane słówka/fiszki (postępy SRS), dane subskrypcji Stripe.
   - Oświadczenie o braku sprzedaży danych i braku śledzenia historii przeglądania.
 - **Regulamin Serwisu (Terms of Service):** `https://lectoro.app/terms`
+- **Ujednolicenie w kodzie popupu:**
+  Upewnij się, że w `popup.html` (linie 571–574) linki wskazują `https://lectoro.app/privacy` oraz `https://lectoro.app/terms` (zamiast tymczasowej domeny typu vercel.app).
 
 ### 2. Formularz Privacy Practices w panelu CWS (Gotowe uzasadnienia po angielsku)
 
@@ -246,7 +252,7 @@ firebase functions:secrets:set LECTORO_GEMINI_API_KEY
 firebase functions:secrets:set ELEVENLABS_API_KEY
 firebase functions:secrets:set R2_SECRET_ACCESS_KEY
 
-# 3. Zbuduj i wdróż backend
+# 3. Zbuduj i wdróż backend oraz reguły Firestore
 cd functions
 npm install
 firebase deploy --only firestore:rules,functions
