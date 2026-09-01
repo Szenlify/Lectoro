@@ -1524,7 +1524,7 @@ video::cue {
     height: auto !important;
     bottom: auto !important;
     right: auto !important;
-    background: rgba(15, 17, 28, 0.612) !important;
+    background: #1e23529c !important;
     box-shadow:
         0 10px 30px rgba(0, 0, 0, 0.45),
         0 0 0 1px rgba(255, 255, 255, 0.09) inset !important;
