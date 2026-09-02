@@ -14,20 +14,6 @@ Wykorzystaj e-mail marketing:
 Każdy, kto loguje się w Firebase Auth, zostawia swój e-mail. Wyślij po 3 dniach automatyczny mail: "Oto 3 triki, jak uczyć się 2x szybciej z Lectoro + zniżka 20% na plan Basic ważna przez 48h".
 
 
-do usuniecia pozniej:
-.git/
-functions/
-scratch/
-todo.md
-stripe.md
-
-firebase login
-firebase functions:secrets:set ELEVENLABS_API_KEY
-
-
-
-
-
 
 Jesteś ekspertem od Chrome Extensions, Manifest V3 oraz zasad Chrome Web Store.
 
