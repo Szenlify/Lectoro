@@ -34,7 +34,8 @@ function escapeSyncHtml(value) {
 
 function refreshViewsAfterSync() {
     if (typeof loadWords === "function") loadWords();
-    if (typeof maybeRefreshReviewQueue === "function") maybeRefreshReviewQueue();
+    if (typeof maybeRefreshReviewQueue === "function")
+        maybeRefreshReviewQueue();
     if (typeof initReviewBadge === "function") initReviewBadge();
 }
 
@@ -79,11 +80,14 @@ async function renderSyncUI() {
             <button id="firebaseSyncRetry" class="sync-btn sync-primary" style="width:100%;">
                 Retry
             </button>`;
-        document.getElementById("firebaseSyncRetry")?.addEventListener("click", renderSyncUI);
+        document
+            .getElementById("firebaseSyncRetry")
+            ?.addEventListener("click", renderSyncUI);
         return;
     }
 
-    if (renderRevision !== firebaseUiRenderRevision || !container.isConnected) return;
+    if (renderRevision !== firebaseUiRenderRevision || !container.isConnected)
+        return;
 
     if (!user) {
         const signingIn = firebaseUiAction === "sign-in";
@@ -98,29 +102,43 @@ async function renderSyncUI() {
                 ${signingIn ? "⏳ Signing in..." : "🔑 Sign in with Google"}
             </button>
             ${signedOutStatusHtml}`;
-        document.getElementById("firebaseSignIn")?.addEventListener("click", async () => {
-            if (firebaseUiAction) return;
-            firebaseUiAction = "sign-in";
-            firebaseUiFeedback = null;
-            renderSyncUI();
-            try {
-                await sendBackgroundMessage({ type: "QT_FIREBASE_SIGN_IN" });
-                firebaseUiAction = null;
-                refreshViewsAfterSync();
-                showFirebaseFeedback("success", "Signed in and data synced.");
-            } catch (error) {
-                firebaseUiAction = null;
-                showFirebaseFeedback("error", error.message || "Sign in error", 0);
-            }
-        });
+        document
+            .getElementById("firebaseSignIn")
+            ?.addEventListener("click", async () => {
+                if (firebaseUiAction) return;
+                firebaseUiAction = "sign-in";
+                firebaseUiFeedback = null;
+                renderSyncUI();
+                try {
+                    await sendBackgroundMessage({
+                        type: "QT_FIREBASE_SIGN_IN",
+                    });
+                    firebaseUiAction = null;
+                    refreshViewsAfterSync();
+                    showFirebaseFeedback(
+                        "success",
+                        "Signed in and data synced.",
+                    );
+                } catch (error) {
+                    firebaseUiAction = null;
+                    showFirebaseFeedback(
+                        "error",
+                        error.message || "Sign in error",
+                        0,
+                    );
+                }
+            });
         return;
     }
 
-    const lastSyncText = typeof SharedUtils !== "undefined" && SharedUtils.formatTime
-        ? SharedUtils.formatTime(data.lastFirebaseSync)
-        : (data.lastFirebaseSync ? new Date(data.lastFirebaseSync).toLocaleTimeString("en-US") : "never");
-    const pendingCount = Object.keys(data.pendingFirebaseChanges || {}).length;
-    const syncing = firebaseUiAction === "sync" || firebaseUiAction === "sign-in";
+    const lastSyncText =
+        typeof SharedUtils !== "undefined" && SharedUtils.formatTime
+            ? SharedUtils.formatTime(data.lastFirebaseSync)
+            : data.lastFirebaseSync
+              ? new Date(data.lastFirebaseSync).toLocaleTimeString("en-US")
+              : "never";
+    const syncing =
+        firebaseUiAction === "sync" || firebaseUiAction === "sign-in";
     const signingOut = firebaseUiAction === "sign-out";
     const deletingAccount = firebaseUiAction === "delete-account";
     const syncButtonText = syncing
@@ -147,9 +165,6 @@ async function renderSyncUI() {
         <div class="sync-actions">
             <span class="sync-button-wrap">
                 <button id="firebaseSyncNow" class="sync-btn sync-primary" ${syncing || signingOut || deletingAccount ? "disabled" : ""}>${syncButtonText}</button>
-                <span class="sync-pending-dot${pendingCount ? " visible" : ""}"
-                      title="${pendingCount} unsynced changes"
-                      aria-label="Unsynced changes"></span>
             </span>
             <button id="firebaseSignOut" class="sync-btn" ${firebaseUiAction ? "disabled" : ""}>
                 ${signingOut ? "⏳ Signing out..." : "Sign out"}
@@ -160,66 +175,92 @@ async function renderSyncUI() {
         </div>
         ${statusHtml}`;
 
-    document.getElementById("firebaseSyncNow")?.addEventListener("click", async () => {
-        if (firebaseUiAction) return;
-        firebaseUiAction = "sync";
-        firebaseUiFeedback = null;
-        clearTimeout(firebaseUiFeedbackTimer);
-        renderSyncUI();
-        try {
-            const result = await sendBackgroundMessage({ type: "QT_FIREBASE_SYNC" });
-            firebaseUiAction = null;
-            refreshViewsAfterSync();
-            const sent = Number(result.sent || 0);
-            const pulled = Number(result.pulled || 0);
-            const message = sent || pulled
-                ? `Done — uploaded ${sent}, downloaded ${pulled}.`
-                : "All data is already in sync.";
-            showFirebaseFeedback("success", message);
-        } catch (error) {
-            firebaseUiAction = null;
-            showFirebaseFeedback("error", error.message || "Sync failed.", 0);
-        }
-    });
-
-    document.getElementById("firebaseSignOut")?.addEventListener("click", async () => {
-        if (firebaseUiAction) return;
-        firebaseUiAction = "sign-out";
-        firebaseUiFeedback = null;
-        clearTimeout(firebaseUiFeedbackTimer);
-        renderSyncUI();
-        try {
-            await sendBackgroundMessage({ type: "QT_FIREBASE_SIGN_OUT" });
-            firebaseUiAction = null;
+    document
+        .getElementById("firebaseSyncNow")
+        ?.addEventListener("click", async () => {
+            if (firebaseUiAction) return;
+            firebaseUiAction = "sync";
+            firebaseUiFeedback = null;
+            clearTimeout(firebaseUiFeedbackTimer);
             renderSyncUI();
-        } catch (error) {
-            firebaseUiAction = null;
-            showFirebaseFeedback("error", error.message || "Failed to sign out.", 0);
-        }
-    });
+            try {
+                const result = await sendBackgroundMessage({
+                    type: "QT_FIREBASE_SYNC",
+                });
+                firebaseUiAction = null;
+                refreshViewsAfterSync();
+                const sent = Number(result.sent || 0);
+                const pulled = Number(result.pulled || 0);
+                const message =
+                    sent || pulled
+                        ? `Done — uploaded ${sent}, downloaded ${pulled}.`
+                        : "All data is already in sync.";
+                showFirebaseFeedback("success", message);
+            } catch (error) {
+                firebaseUiAction = null;
+                showFirebaseFeedback(
+                    "error",
+                    error.message || "Sync failed.",
+                    0,
+                );
+            }
+        });
 
-    document.getElementById("firebaseDeleteAccount")?.addEventListener("click", async () => {
-        if (firebaseUiAction) return;
-        const confirmed = confirm(
-            "Are you sure you want to permanently delete your Lectoro account and all synced words and screenshots in the cloud?\n\nThis action cannot be undone."
-        );
-        if (!confirmed) return;
-
-        firebaseUiAction = "delete-account";
-        firebaseUiFeedback = null;
-        clearTimeout(firebaseUiFeedbackTimer);
-        renderSyncUI();
-        try {
-            await sendBackgroundMessage({ type: "QT_FIREBASE_DELETE_ACCOUNT" });
-            firebaseUiAction = null;
+    document
+        .getElementById("firebaseSignOut")
+        ?.addEventListener("click", async () => {
+            if (firebaseUiAction) return;
+            firebaseUiAction = "sign-out";
+            firebaseUiFeedback = null;
+            clearTimeout(firebaseUiFeedbackTimer);
             renderSyncUI();
-            refreshViewsAfterSync();
-            showFirebaseFeedback("success", "Account and cloud data have been permanently deleted.");
-        } catch (error) {
-            firebaseUiAction = null;
-            showFirebaseFeedback("error", error.message || "Failed to delete account.", 0);
-        }
-    });
+            try {
+                await sendBackgroundMessage({ type: "QT_FIREBASE_SIGN_OUT" });
+                firebaseUiAction = null;
+                renderSyncUI();
+            } catch (error) {
+                firebaseUiAction = null;
+                showFirebaseFeedback(
+                    "error",
+                    error.message || "Failed to sign out.",
+                    0,
+                );
+            }
+        });
+
+    document
+        .getElementById("firebaseDeleteAccount")
+        ?.addEventListener("click", async () => {
+            if (firebaseUiAction) return;
+            const confirmed = confirm(
+                "Are you sure you want to permanently delete your Lectoro account and all synced words and screenshots in the cloud?\n\nThis action cannot be undone.",
+            );
+            if (!confirmed) return;
+
+            firebaseUiAction = "delete-account";
+            firebaseUiFeedback = null;
+            clearTimeout(firebaseUiFeedbackTimer);
+            renderSyncUI();
+            try {
+                await sendBackgroundMessage({
+                    type: "QT_FIREBASE_DELETE_ACCOUNT",
+                });
+                firebaseUiAction = null;
+                renderSyncUI();
+                refreshViewsAfterSync();
+                showFirebaseFeedback(
+                    "success",
+                    "Account and cloud data have been permanently deleted.",
+                );
+            } catch (error) {
+                firebaseUiAction = null;
+                showFirebaseFeedback(
+                    "error",
+                    error.message || "Failed to delete account.",
+                    0,
+                );
+            }
+        });
 }
 
 renderSyncUI();
@@ -235,13 +276,20 @@ chrome.storage.onChanged.addListener((changes, area) => {
         renderSyncUI();
     }
     if (changes.lastFirebaseSync) {
-        const wordsTabActive = document.getElementById("tab-words")?.classList.contains("active");
+        const wordsTabActive = document
+            .getElementById("tab-words")
+            ?.classList.contains("active");
         if (wordsTabActive && typeof loadWords === "function") loadWords();
-        if (typeof maybeRefreshReviewQueue === "function") maybeRefreshReviewQueue();
+        if (typeof maybeRefreshReviewQueue === "function")
+            maybeRefreshReviewQueue();
         if (typeof initReviewBadge === "function") initReviewBadge();
     }
     if (changes.savedWords) {
-        if (typeof _reviewSaving !== "undefined" && !_reviewSaving && typeof maybeRefreshReviewQueue === "function") {
+        if (
+            typeof _reviewSaving !== "undefined" &&
+            !_reviewSaving &&
+            typeof maybeRefreshReviewQueue === "function"
+        ) {
             maybeRefreshReviewQueue();
         }
         if (typeof initReviewBadge === "function") initReviewBadge();
