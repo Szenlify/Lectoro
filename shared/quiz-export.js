@@ -834,16 +834,6 @@
         return [...pool].sort(() => Math.random() - 0.5).slice(0, count);
     }
 
-    function quizGradeFromPercent(pct, tgtLang) {
-        const i18n = getI18n(tgtLang);
-        if (pct >= 95) return { name: i18n.grades[6], num: 6 };
-        if (pct >= 85) return { name: i18n.grades[5], num: 5 };
-        if (pct >= 70) return { name: i18n.grades[4], num: 4 };
-        if (pct >= 55) return { name: i18n.grades[3], num: 3 };
-        if (pct >= 40) return { name: i18n.grades[2], num: 2 };
-        return { name: i18n.grades[1], num: 1 };
-    }
-
     // ── 1. Gemini AI Quiz Generator ─────────────────────────────────────
     async function generateQuizWithGemini(words, options = {}) {
         const srcLang = (words[0]?.srcLang || "en").toLowerCase();
@@ -2043,10 +2033,6 @@
             if (bestPct === 100) break;
         }
         return { pct: bestPct, bestAnswer: bestAns };
-    }
-
-    function matchPercent(userVal, answer, alternatives) {
-        return matchPercentWithBest(userVal, answer, alternatives).pct;
     }
 
     function diffAnswerHtml(userVal, answer) {

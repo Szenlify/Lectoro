@@ -786,40 +786,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             tabId: sender.tab.id,
             frameIds: [sender.frameId],
         };
+        const manifestScripts = chrome.runtime.getManifest()?.content_scripts || [];
+        const mainContentEntry = manifestScripts.find(
+            (cs) => Array.isArray(cs.matches) && cs.matches.includes("*://*/*") && !cs.all_frames,
+        );
+        const cssFiles = mainContentEntry?.css || ["styles.css"];
+        const jsFiles = mainContentEntry?.js || [];
+
         chrome.scripting
-            .insertCSS({ target, files: ["styles.css"] })
-            .then(() =>
-                chrome.scripting.executeScript({
-                    target,
-                    files: [
-                        "shared/constants.js",
-                        "shared/subscription-config.js",
-                        "shared/utils.js",
-                        "shared/word-repository.js",
-                        "shared/translator-service.js",
-                        "shared/tts-service.js",
-                        "shared/audio-cache.js",
-                        "shared/ai-prompts.js",
-                        "firebase/firebase-config.js",
-                        "firebase/firebase-sync.js",
-                        "shared/subscription-service.js",
-                        "shared/gemini-proxy.js",
-                        "shared/subtitle-service.js",
-                        "shared/phrase-detector.js",
-                        "core.js",
-                        "adapters/base-adapter.js",
-                        "adapters/youtube-adapter.js",
-                        "adapters/netflix-adapter.js",
-                        "adapters/generic-video-adapter.js",
-                        "adapters/generic-adapters.js",
-                        "adapters/ted-adapter.js",
-                        "adapters/player-registry.js",
-                        "video/subtitle-overlay.js",
-                        "video/video-hotkeys.js",
-                        "content.js",
-                    ],
-                }),
-            )
+            .insertCSS({ target, files: cssFiles })
+            .then(() => (jsFiles.length ? chrome.scripting.executeScript({ target, files: jsFiles }) : null))
             .then(() => sendResponse({ ok: true }))
             .catch((error) => sendResponse({ error: error.message }));
         return true;

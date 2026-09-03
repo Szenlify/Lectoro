@@ -291,8 +291,7 @@
     transition: all 0.2s ease;
 }
 
-#__qt_tooltip .__qt_speak:hover,
-#__qt_tooltip .__qt_img-search:hover {
+#__qt_tooltip .__qt_speak:hover {
     color: #fff;
     background: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.15);
@@ -737,27 +736,6 @@ video::cue {
     color: #ffffff !important;
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25) inset !important;
     text-shadow: 0 0 8px rgba(0, 0, 0, 0.95) !important;
-}
-
-.__qt_yt-sub-hint {
-    position: fixed;
-    z-index: 2147483647;
-    bottom: 105px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(74, 108, 247, 0.9);
-    color: #fff;
-    font-size: 12px;
-    padding: 6px 14px;
-    border-radius: 20px;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.4s ease;
-    white-space: nowrap;
-}
-
-.__qt_yt-sub-hint.visible {
-    opacity: 1;
 }
 
 /* ═══════════════════════════════════════════════════════════════

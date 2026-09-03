@@ -41,23 +41,25 @@
         ar: /[\u0600-\u06FF]/,
     });
 
-    function escapeHtml(s) {
-        return String(s ?? "")
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#39;");
-    }
+    const escapeHtml =
+        (typeof SharedUtils !== "undefined" && SharedUtils.escapeHtml) ||
+        ((s) =>
+            String(s ?? "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;"));
 
-    function escapeAttr(s) {
-        return String(s ?? "")
-            .replace(/&/g, "&amp;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#39;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;");
-    }
+    const escapeAttr =
+        (typeof SharedUtils !== "undefined" && SharedUtils.escapeAttr) ||
+        ((s) =>
+            String(s ?? "")
+                .replace(/&/g, "&amp;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;"));
 
     const TRANSLATION_INTRO_REGEX = /(?:oznacza|znaczy|czyli|znaczeniu|tłumaczy|przekład|translation|translated as|meaning|means|c-à-d|bedeutet|significa|signifie)\s*:?\s*$/i;
     const SOURCE_INTRO_REGEX = /(?:zwrot|słowo|fraza|wyrażenie|termin|phrase|word|term|idiom|quote|tekst|zdanie|sentence)\s*:?\s*$/i;
