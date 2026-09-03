@@ -730,10 +730,6 @@ async function ensureQuizExportLoaded() {
     return quizScriptLoadingPromise;
 }
 
-// Backward compatibility aliases
-const getQuizQuotaState = () => getExportQuota("quiz");
-const updateQuizQuotaUI = updateAllExportBadgesUI;
-
 const exportQuizBtn = document.getElementById("exportQuiz");
 if (exportQuizBtn) {
     exportQuizBtn.addEventListener("click", async () => {

@@ -142,17 +142,6 @@
    Reading Highlights
    ═══════════════════════════════════════════════════════════════ */
 
-.__qt_reading-hl {
-    background: rgba(78, 205, 196, 0.2) !important;
-    border-radius: 4px;
-    box-shadow: 0 0 12px rgba(78, 205, 196, 0.15);
-    outline: 1px solid rgba(78, 205, 196, 0.25);
-    outline-offset: 2px;
-    transition:
-        background 0.3s ease,
-        box-shadow 0.3s ease;
-}
-
 ::highlight(qt-reading-sentence) {
     background-color: rgba(78, 205, 196, 0.3);
 }
@@ -591,16 +580,6 @@ html[data-lectoro-ai-limit-reached] .__qt_save-ai-btn {
         -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-/* ── Spinner (small, inline) ── */
-.__qt_spinner-small {
-    display: inline-block;
-    width: 12px;
-    height: 12px;
-    border: 2px solid rgba(168, 85, 247, 0.3);
-    border-top-color: #a78bfa;
-    border-radius: 50%;
-    animation: __qt_spin 0.6s linear infinite;
-}
 
 /* ═══════════════════════════════════════════════════════════════
    Universal Native Subtitle Clean Hiding (DRY / Single Source of Truth)
@@ -1048,9 +1027,7 @@ video::cue {
    ═══════════════════════════════════════════════════════════════ */
 
 .__qt_sub-hint,
-.__qt_yt-sub-hint,
-.__qt_nf-sub-hint,
-.__qt_lm-sub-hint {
+.__qt_yt-sub-hint {
     position: fixed;
     z-index: 2147483647;
     bottom: 105px;
@@ -1074,9 +1051,7 @@ video::cue {
 }
 
 .__qt_sub-hint.visible,
-.__qt_yt-sub-hint.visible,
-.__qt_nf-sub-hint.visible,
-.__qt_lm-sub-hint.visible {
+.__qt_yt-sub-hint.visible {
     opacity: 1;
 }
 
@@ -1627,17 +1602,6 @@ video::cue {
     opacity: 1 !important;
 }
 
-/* Key hint badge */
-.lectoro-key-hint {
-    margin-left: 6px;
-    padding: 1px 5px;
-    font-size: 11px;
-    line-height: 1;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 3px;
-    background: rgba(0, 0, 0, 0.2);
-    display: inline-block;
-}
 
 /* Force-hide video.js control bar — only mouse movement removes this class */
 .video-js.__qt_hide-controls .vjs-control-bar {
@@ -1651,39 +1615,6 @@ video::cue {
     display: none !important;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   Word Cloud – per-word translation tooltips (S/↓ key mode)
-   ═══════════════════════════════════════════════════════════════ */
-
-.__qt_word-cloud-container {
-    position: fixed;
-    z-index: 2147483647;
-    pointer-events: none;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-}
-
-/* Netflix replaces its subtitle nodes immediately after pausing. This stable
-   visual copy keeps word-by-word highlights alive without touching its DOM. */
-.__qt_word-cloud-source-layer {
-    position: fixed;
-    z-index: 2147483646;
-    box-sizing: border-box;
-    pointer-events: none;
-    margin: 0;
-    padding: 0;
-}
-
-.__qt_word-cloud-source-layer .__qt_wc-word {
-    display: inline;
-}
-
-.__qt_word-cloud-source-line {
-    display: block;
-    white-space: nowrap;
-}
 
 html.__qt_netflix-subtitles-hidden .player-timedtext {
     visibility: hidden !important;

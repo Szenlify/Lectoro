@@ -942,66 +942,6 @@
 
     // ═══════════════════════════════════════════════════════════════
     //  Subtitle Helpers
-    // ═══════════════════════════════════════════════════════════════
-
-    function createSubtitleBuffer(maxSize = 3000, keepSize = 2000) {
-        let buffer = "";
-        let lastSegment = "";
-
-        return {
-            append(text) {
-                const trimmed = (text || "").trim();
-                if (!trimmed || trimmed === lastSegment) return;
-                if (buffer.endsWith(trimmed)) return;
-
-                let overlap = 0;
-                const maxOvl = Math.min(trimmed.length, buffer.length);
-                for (let i = 1; i <= maxOvl; i++) {
-                    if (buffer.endsWith(trimmed.substring(0, i))) overlap = i;
-                }
-
-                const newPart = trimmed.substring(overlap);
-                if (newPart) {
-                    buffer += (buffer && !buffer.endsWith(" ") ? " " : "") + newPart;
-                }
-                lastSegment = trimmed;
-
-                if (buffer.length > maxSize) {
-                    buffer = buffer.substring(buffer.length - keepSize);
-                }
-            },
-            extractSentence(word) {
-                const idx = buffer.lastIndexOf(word);
-                if (idx === -1) return null;
-
-                const enders = /[.!?…]/;
-                let start = 0;
-                for (let i = idx - 1; i >= 0; i--) {
-                    if (enders.test(buffer[i])) {
-                        start = i + 1;
-                        break;
-                    }
-                }
-                let end = buffer.length;
-                for (let i = idx + word.length; i < buffer.length; i++) {
-                    if (enders.test(buffer[i])) {
-                        end = i + 1;
-                        break;
-                    }
-                }
-
-                const sentence = buffer.substring(start, end).trim();
-                return sentence.length > word.length + 2 ? sentence : null;
-            },
-            clear() {
-                buffer = "";
-                lastSegment = "";
-            },
-            get text() {
-                return buffer;
-            },
-        };
-    }
 
     function splitIntoWordSpans(el, wordClass) {
         if (!el || isOwnUI(el)) return;
@@ -1225,7 +1165,6 @@
         buildTooltipHtml,
         attachTooltipHandlers,
 
-        createSubtitleBuffer,
         splitIntoWordSpans,
         createHint,
         findWordAtPoint,

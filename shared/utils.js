@@ -39,15 +39,6 @@
             return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
         },
 
-        /** Assign a stable id to a word if it doesn't have one yet (mutates in place). Returns true if one was assigned. */
-        ensureWordId(w) {
-            if (!w.id) {
-                w.id = SharedUtils.generateId();
-                return true;
-            }
-            return false;
-        },
-
         /**
          * Key used to identify a word across syncs/merges. Prefers the stable
          * `id` (set on creation) so editing a word's content never changes its
@@ -91,11 +82,12 @@
             if (trimmed.startsWith("data:") || /^https?:\/\//i.test(trimmed)) {
                 return trimmed;
             }
+            const baseCdn = (typeof LectoroConstants !== "undefined" && LectoroConstants.R2_CDN_BASE_URL) || "https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev";
             const cleanPath = trimmed.replace(/^\/+/, "");
             if (cleanPath.startsWith("images/")) {
-                return `https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev/${cleanPath}`;
+                return `${baseCdn}/${cleanPath}`;
             }
-            return `https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev/images/${cleanPath}`;
+            return `${baseCdn}/images/${cleanPath}`;
         },
 
         /**
@@ -156,7 +148,7 @@
         async getR2AudioUrl(voiceId, text) {
             const safeVoiceId = String(voiceId || "default").replace(/[^a-zA-Z0-9_-]/g, "");
             const hash = await this.computeTextHash(text);
-            const baseCdn = "https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev";
+            const baseCdn = (typeof LectoroConstants !== "undefined" && LectoroConstants.R2_CDN_BASE_URL) || "https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev";
             return `${baseCdn}/audio/${safeVoiceId}/${hash}.mp3`;
         },
 

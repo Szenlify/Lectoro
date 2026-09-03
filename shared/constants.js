@@ -136,30 +136,44 @@
         SPEED: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>`,
     });
 
+    const R2_CDN_BASE_URL = "https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev";
+
     /**
      * Central language registry – Single Source of Truth (SSOT)
      * Maps ISO 639-1 language codes to full English names, short uppercase tags, native labels, and flag emojis.
+     * Fully synchronized with all target languages available in Lectoro.
      */
     const SUPPORTED_LANGUAGES = Object.freeze({
-        pl: Object.freeze({ code: "pl", name: "Polish", tag: "PL", native: "Polski", flag: "🇵🇱" }),
-        en: Object.freeze({ code: "en", name: "English", tag: "EN", native: "English", flag: "🇬🇧" }),
-        de: Object.freeze({ code: "de", name: "German", tag: "DE", native: "Deutsch", flag: "🇩🇪" }),
-        fr: Object.freeze({ code: "fr", name: "French", tag: "FR", native: "Français", flag: "🇫🇷" }),
-        es: Object.freeze({ code: "es", name: "Spanish", tag: "ES", native: "Español", flag: "🇪🇸" }),
-        it: Object.freeze({ code: "it", name: "Italian", tag: "IT", native: "Italiano", flag: "🇮🇹" }),
-        pt: Object.freeze({ code: "pt", name: "Portuguese", tag: "PT", native: "Português", flag: "🇵🇹" }),
-        nl: Object.freeze({ code: "nl", name: "Dutch", tag: "NL", native: "Nederlands", flag: "🇳🇱" }),
-        sv: Object.freeze({ code: "sv", name: "Swedish", tag: "SV", native: "Svenska", flag: "🇸🇪" }),
+        ar: Object.freeze({ code: "ar", name: "Arabic", tag: "AR", native: "العربية", flag: "🇸🇦" }),
+        bg: Object.freeze({ code: "bg", name: "Bulgarian", tag: "BG", native: "Български", flag: "🇧🇬" }),
         cs: Object.freeze({ code: "cs", name: "Czech", tag: "CS", native: "Čeština", flag: "🇨🇿" }),
-        sk: Object.freeze({ code: "sk", name: "Slovak", tag: "SK", native: "Slovenčina", flag: "🇸🇰" }),
-        uk: Object.freeze({ code: "uk", name: "Ukrainian", tag: "UK", native: "Українська", flag: "🇺🇦" }),
-        ru: Object.freeze({ code: "ru", name: "Russian", tag: "RU", native: "Русский", flag: "🇷🇺" }),
-        zh: Object.freeze({ code: "zh", name: "Chinese", tag: "ZH", native: "中文", flag: "🇨🇳" }),
+        da: Object.freeze({ code: "da", name: "Danish", tag: "DA", native: "Dansk", flag: "🇩🇰" }),
+        de: Object.freeze({ code: "de", name: "German", tag: "DE", native: "Deutsch", flag: "🇩🇪" }),
+        el: Object.freeze({ code: "el", name: "Greek", tag: "EL", native: "Ελληνικά", flag: "🇬🇷" }),
+        en: Object.freeze({ code: "en", name: "English", tag: "EN", native: "English", flag: "🇬🇧" }),
+        es: Object.freeze({ code: "es", name: "Spanish", tag: "ES", native: "Español", flag: "🇪🇸" }),
+        fr: Object.freeze({ code: "fr", name: "French", tag: "FR", native: "Français", flag: "🇫🇷" }),
+        he: Object.freeze({ code: "he", name: "Hebrew", tag: "HE", native: "עברית", flag: "🇮🇱" }),
+        hi: Object.freeze({ code: "hi", name: "Hindi", tag: "HI", native: "हिन्दी", flag: "🇮🇳" }),
+        hr: Object.freeze({ code: "hr", name: "Croatian", tag: "HR", native: "Hrvatski", flag: "🇭🇷" }),
+        hu: Object.freeze({ code: "hu", name: "Hungarian", tag: "HU", native: "Magyar", flag: "🇭🇺" }),
+        id: Object.freeze({ code: "id", name: "Indonesian", tag: "ID", native: "Bahasa Indonesia", flag: "🇮🇩" }),
+        it: Object.freeze({ code: "it", name: "Italian", tag: "IT", native: "Italiano", flag: "🇮🇹" }),
         ja: Object.freeze({ code: "ja", name: "Japanese", tag: "JA", native: "日本語", flag: "🇯🇵" }),
         ko: Object.freeze({ code: "ko", name: "Korean", tag: "KO", native: "한국어", flag: "🇰🇷" }),
-        ar: Object.freeze({ code: "ar", name: "Arabic", tag: "AR", native: "العربية", flag: "🇸🇦" }),
-        hi: Object.freeze({ code: "hi", name: "Hindi", tag: "HI", native: "हिन्दी", flag: "🇮🇳" }),
+        nl: Object.freeze({ code: "nl", name: "Dutch", tag: "NL", native: "Nederlands", flag: "🇳🇱" }),
+        pl: Object.freeze({ code: "pl", name: "Polish", tag: "PL", native: "Polski", flag: "🇵🇱" }),
+        pt: Object.freeze({ code: "pt", name: "Portuguese", tag: "PT", native: "Português", flag: "🇵🇹" }),
+        "pt-br": Object.freeze({ code: "pt-br", name: "Portuguese (Brazil)", tag: "PT-BR", native: "Português (Brasil)", flag: "🇧🇷" }),
+        ro: Object.freeze({ code: "ro", name: "Romanian", tag: "RO", native: "Română", flag: "🇷🇴" }),
+        ru: Object.freeze({ code: "ru", name: "Russian", tag: "RU", native: "Русский", flag: "🇷🇺" }),
+        sk: Object.freeze({ code: "sk", name: "Slovak", tag: "SK", native: "Slovenčina", flag: "🇸🇰" }),
+        sv: Object.freeze({ code: "sv", name: "Swedish", tag: "SV", native: "Svenska", flag: "🇸🇪" }),
+        th: Object.freeze({ code: "th", name: "Thai", tag: "TH", native: "ไทย", flag: "🇹🇭" }),
         tr: Object.freeze({ code: "tr", name: "Turkish", tag: "TR", native: "Türkçe", flag: "🇹🇷" }),
+        uk: Object.freeze({ code: "uk", name: "Ukrainian", tag: "UK", native: "Українська", flag: "🇺🇦" }),
+        vi: Object.freeze({ code: "vi", name: "Vietnamese", tag: "VI", native: "Tiếng Việt", flag: "🇻🇳" }),
+        zh: Object.freeze({ code: "zh", name: "Chinese", tag: "ZH", native: "中文", flag: "🇨🇳" }),
     });
 
     const LANG_NAMES = Object.freeze(
@@ -209,6 +223,7 @@
         STORAGE_KEYS,
         DEFAULT_SUBTITLE_SETTINGS,
         SVG_ICONS,
+        R2_CDN_BASE_URL,
         SUPPORTED_LANGUAGES,
         LANG_NAMES,
         LANG_TAGS,
@@ -220,3 +235,4 @@
         isOwnUI,
     });
 });
+

@@ -223,10 +223,6 @@
         return { layer: customSubLayerEl, box: customSubBoxEl };
     }
 
-    function isYouTubePage() {
-        return /(^|\.)youtube\.com$/i.test(window.location.hostname) || getPlayerRegistry()?.type === "youtube";
-    }
-
     function syncCustomSubtitlePosition() {
         if (layoutRafId !== null) return;
         layoutRafId = requestAnimationFrame(() => {

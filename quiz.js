@@ -44,8 +44,6 @@
     }
 
     async function loadQuizData() {
-        const modeBadge = document.getElementById("quizModeBadge");
-
         try {
             const data = await new Promise((resolve) => {
                 chrome.storage.local.get(
@@ -56,11 +54,6 @@
 
             cachedHtml = data.latestQuizHtml || "";
             cachedTitle = data.latestQuizTitle || "Lectoro_Quiz";
-
-            if (modeBadge) {
-                modeBadge.textContent =
-                    data.latestQuizMode === "print" ? "Printable" : "Interactive";
-            }
 
             document.title = cachedTitle + " — Lectoro AI";
             startSending();
@@ -108,17 +101,6 @@
                 a.click();
                 document.body.removeChild(a);
                 setTimeout(() => URL.revokeObjectURL(url), 2000);
-            });
-        }
-
-        const printBtn = document.getElementById("printQuizBtn");
-        if (printBtn) {
-            printBtn.addEventListener("click", () => {
-                const frame = document.getElementById("quizFrame");
-                if (frame && frame.contentWindow) {
-                    frame.contentWindow.focus();
-                    frame.contentWindow.print();
-                }
             });
         }
 

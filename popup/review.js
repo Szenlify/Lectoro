@@ -142,22 +142,6 @@ function closeReviewVoiceMenu() {
     btn?.setAttribute("aria-expanded", "false");
 }
 
-function formatVoiceLabels(voice) {
-    const preferredKeys = [
-        "age",
-        "language",
-        "accent",
-        "use_case",
-        "gender",
-        "description",
-    ];
-    return preferredKeys
-        .map((key) => voice?.labels?.[key])
-        .filter(Boolean)
-        .slice(0, 4)
-        .join(" · ");
-}
-
 function selectedReviewVoice() {
     return (
         reviewElVoices.find((voice) => voice.voice_id === reviewElVoiceId) ||
@@ -303,33 +287,13 @@ function renderElevenLabsVoiceSelect() {
     content.appendChild(list);
 }
 
-const ALLOWED_REVIEW_VOICES =
-    (typeof LectoroConstants !== "undefined" && LectoroConstants.ALLOWED_ELEVENLABS_VOICE_KEYS) ||
-    ["liam", "matilda"];
-
-function filterReviewAllowedVoices(voices) {
-    if (!Array.isArray(voices)) return [];
-    return voices
-        .filter((v) => {
-            const name = (v?.name || "").trim().toLowerCase();
-            return ALLOWED_REVIEW_VOICES.some((t) => name.startsWith(t) || name.includes(t));
-        })
-        .sort((a, b) => {
-            const nameA = (a?.name || "").trim().toLowerCase();
-            const nameB = (b?.name || "").trim().toLowerCase();
-            const idxA = ALLOWED_REVIEW_VOICES.findIndex((t) => nameA.startsWith(t) || nameA.includes(t));
-            const idxB = ALLOWED_REVIEW_VOICES.findIndex((t) => nameB.startsWith(t) || nameB.includes(t));
-            return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
-        });
-}
-
 async function loadReviewElevenLabsVoices() {
     if (reviewVoicesLoading || reviewElVoices.length) return;
     reviewVoicesLoading = true;
     setReviewVoiceStatus("Loading voices…");
     try {
         const rawVoices = await SubscriptionService.getElevenLabsVoices("review");
-        reviewElVoices = filterReviewAllowedVoices(rawVoices);
+        reviewElVoices = Array.isArray(rawVoices) ? rawVoices : [];
         if (reviewElVoices.length > 0) {
             const currentValid = reviewElVoices.some((v) => v.voice_id === reviewElVoiceId);
             if (!currentValid) {
@@ -661,17 +625,6 @@ function renderReview() {
     }
 }
 
-// ── Shared card controls + question (front) side ───────────────────
-function reviewCardMetaHtml(sideLabel) {
-    return `
-        <div class="review-card-meta">
-            <span class="review-side-badge">${sideLabel}</span>
-            <span class="review-keyboard-cue" title="You can rate this card with keyboard">
-                <span>Keyboard</span><kbd>←</kbd><kbd>→</kbd>
-            </span>
-        </div>`;
-}
-
 function reviewControlsHtml(sr, answerShown) {
     const labels = [1, 2].map((grade) => previewLabel(sr, grade));
     const originalSideShown =
@@ -912,12 +865,6 @@ function flipCard() {
         showNext();
     }
 }
-
-// Backwards-compatible alias (kept in case anything still calls it by name).
-function revealAnswer() {
-    flipCard();
-}
-
 /** Swipe the current card off-screen (like a real flashcard being tossed
  * left/right) before applying the grade and loading the next card. */
 function animateSwipeAndRate(grade) {

@@ -7,6 +7,7 @@ try {
         "shared/utils.js",
         "shared/srs.js",
         "shared/word-repository.js",
+        "shared/translator-service.js",
         "firebase/firebase-config.js",
         "firebase/firebase-sync.js",
         "shared/subscription-service.js",
@@ -999,6 +1000,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     if (message.type === (MSG.GOOGLE_TRANSLATE || "QT_GOOGLE_TRANSLATE")) {
         (async () => {
+            if (typeof TranslatorService !== "undefined" && typeof TranslatorService.translate === "function") {
+                return await TranslatorService.translate(message.text, message.targetLang);
+            }
             const url =
                 "https://translate.googleapis.com/translate_a/single" +
                 "?client=gtx&sl=auto&tl=" +
