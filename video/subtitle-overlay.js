@@ -883,13 +883,21 @@
 
     // ── AI Explanations ──────────────────────────────────────────
 
-    function showAiShimmer(layout) {
+    function showSubtitleOverlayLoader(layout, { text = "✨ Translating…", ariaLabel = "Translating sentence..." } = {}) {
         const overlay = createOverlay(layout);
         overlay.classList.add(`${PREFIX}ai-explain-overlay`);
         overlay.dataset.state = "ai-loading";
-        overlay.setAttribute("aria-label", "Analiza zdania w toku");
-        overlay.innerHTML = `<span class="ai-loader-label">✨ Analyzing…</span>`;
+        overlay.setAttribute("aria-label", ariaLabel);
+        overlay.innerHTML = `<span class="ai-loader-label">${text}</span>`;
         positionOverlay(layout);
+        return overlay;
+    }
+
+    function showAiShimmer(layout) {
+        return showSubtitleOverlayLoader(layout, {
+            text: "✨ Analyzing…",
+            ariaLabel: "Analiza zdania w toku",
+        });
     }
 
     function removeAiShimmer() {
@@ -1751,11 +1759,10 @@
     }
 
     function showSubLoading(layout = null) {
-        const overlay = createOverlay(layout);
-        overlay.dataset.state = "loading";
-        overlay.setAttribute("aria-label", "Translating sentence...");
-        overlay.innerHTML = `<span class="${PREFIX}translation-spinner" aria-hidden="true"></span>`;
-        positionOverlay(layout);
+        return showSubtitleOverlayLoader(layout, {
+            text: "✨ Translating…",
+            ariaLabel: "Translating sentence...",
+        });
     }
 
     function revealOverlayContent(
@@ -1774,8 +1781,10 @@
         overlay.classList.remove(`${PREFIX}translation-reveal`);
         overlay.dataset.state = "measuring";
         overlay.replaceChildren(content);
+
         const targetRect = overlay.getBoundingClientRect();
         const targetClampedHeight = Math.min(targetRect.height || 64, maxAllowedHeight);
+        const resolvedTargetWidth = Math.ceil(targetRect.width);
 
         overlay.style.setProperty("width", `${loadingRect.width}px`, "important");
         overlay.style.setProperty("height", `${loadingClampedHeight}px`, "important");
@@ -1785,7 +1794,7 @@
 
         requestAnimationFrame(() => {
             if (overlay !== translationOverlay || !overlay.isConnected) return;
-            overlay.style.setProperty("width", `${targetRect.width}px`, "important");
+            overlay.style.setProperty("width", `${resolvedTargetWidth}px`, "important");
             overlay.style.setProperty("height", `${targetClampedHeight}px`, "important");
 
             setTimeout(() => {
@@ -1824,6 +1833,19 @@
                 `${translationFontSize}px`,
             );
         }
+
+        const originalRect = effectiveLayout?.rect || getSubtitleRect();
+        const originalWidth = originalRect?.width ? Math.round(originalRect.width) : 0;
+        if (originalWidth > 0) {
+            const maxSubWidth = Math.min(window.innerWidth - 32, Math.max(140, originalWidth));
+            overlay.style.setProperty(
+                "--lectoro-sentence-max-width",
+                `${maxSubWidth}px`,
+            );
+        } else {
+            overlay.style.removeProperty("--lectoro-sentence-max-width");
+        }
+        overlay.style.removeProperty("--lectoro-sentence-width");
 
         const copy = document.createElement("div");
         copy.className = `${PREFIX}translation-copy ${PREFIX}sentence-clean-copy`;
@@ -2100,8 +2122,8 @@
         let thumbHtml = "";
 
         if (state === "saving") {
-            iconHtml = `<div class="__qt_spinner"></div>`;
-            title = "Saving sentence…";
+            iconHtml = `<span class="ai-loader-label __qt_save_toast_sparkle">✨</span>`;
+            title = `<span class="ai-loader-label">Saving sentence…</span>`;
             bodyHtml = `<div class="__qt_save_toast_text">${QT.escapeHtml(text)}</div>`;
         } else if (state === "success") {
             iconHtml = `<div class="__qt_check_pop">${SVG.SAVE_SENTENCE_CHECK}</div>`;

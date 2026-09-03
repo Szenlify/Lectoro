@@ -1317,19 +1317,6 @@ body::before {
     box-shadow: 0 2px 6px rgba(220, 38, 38, 0.4);
 }
 
-.quiz-btn-spinner {
-    display: inline-block;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    border: 2px solid rgba(204, 251, 241, 0.3);
-    border-top-color: #2dd4bf;
-    animation: qtSpin 0.7s linear infinite;
-    vertical-align: middle;
-    margin-right: 6px;
-    flex-shrink: 0;
-}
-
 .export-clear {
     background: rgba(248, 113, 113, 0.04);
     border-color: rgba(248, 113, 113, 0.08);
@@ -2695,7 +2682,8 @@ body::before {
     text-align: center;
 }
 
-.review-ai-loader-label {
+.review-ai-loader-label,
+.ai-loader-label {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -4066,37 +4054,23 @@ html[data-lectoro-ai-limit-reached] .quiz-export-bottom {
     text-align: center;
 }
 
-.stripe-spinner {
-    display: inline-block;
-    flex: 0 0 auto;
-    width: 12px;
-    height: 12px;
-    border: 2px solid rgba(199, 210, 254, 0.22);
-    border-top-color: #a5b4fc;
-    border-radius: 50%;
-    animation: stripe-spin 0.7s linear infinite;
+.subscription-plan-button .ai-loader-label {
+    font-size: 11px;
 }
 
-.subscription-plan-button .stripe-spinner {
-    width: 11px;
-    height: 11px;
+.stripe-billing-status .ai-loader-label {
+    font-size: 10px;
+}
+
+.export-quiz .ai-loader-label {
+    font-size: 12px;
 }
 
 .ai-plans-section.is-highlighted .subscription-plans-grid {
     filter: drop-shadow(0 0 12px rgba(129, 140, 248, 0.17));
 }
 
-@keyframes stripe-spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
 @media (prefers-reduced-motion: reduce) {
-    .stripe-spinner {
-        animation-duration: 1.4s;
-    }
-
     .subscription-plan-card:hover {
         transform: none;
     }

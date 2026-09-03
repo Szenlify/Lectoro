@@ -980,7 +980,7 @@ async function aiTranslateReviewCard() {
     const panel = ensureReviewAiPanel("reviewAiTranslate");
     if (!panel) return;
     state.status = "loading";
-    panel.innerHTML = `<div class="review-ai-translate-loading"><span class="review-ai-loader-label">✨ Analyzing…</span></div>`;
+    panel.innerHTML = `<div class="review-ai-translate-loading"><span class="ai-loader-label review-ai-loader-label">✨ Analyzing…</span></div>`;
     panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
     try {
@@ -1138,7 +1138,7 @@ function restoreReviewAiPanels(w) {
     } else if (state.translation.status === "loading") {
         const panel = ensureReviewAiPanel("reviewAiTranslate");
         if (panel) {
-            panel.innerHTML = `<div class="review-ai-translate-loading"><span class="review-ai-spinner"></span>Translating (AI)…</div>`;
+            panel.innerHTML = `<div class="review-ai-translate-loading"><span class="ai-loader-label review-ai-loader-label">✨ Translating…</span></div>`;
         }
     }
 }

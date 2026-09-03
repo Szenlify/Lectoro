@@ -522,13 +522,13 @@ document
         button.classList.add("is-loading");
         button.setAttribute("aria-busy", "true");
         button.innerHTML =
-            '<span class="stripe-spinner" aria-hidden="true"></span><span>Connecting to Stripe...</span>';
+            '<span class="ai-loader-label review-ai-loader-label">✨ Connecting to Stripe...</span>';
         grid?.setAttribute("aria-busy", "true");
 
         if (status) {
             status.className = "stripe-billing-status is-loading";
             status.innerHTML =
-                '<span class="stripe-spinner" aria-hidden="true"></span><span>Opening secure checkout...</span>';
+                '<span class="ai-loader-label review-ai-loader-label">✨ Opening secure checkout...</span>';
         }
 
         try {
@@ -544,7 +544,7 @@ document
                 if (status) {
                     status.className = "stripe-billing-status is-loading";
                     status.innerHTML =
-                        '<span class="stripe-spinner" aria-hidden="true"></span><span>Signing in with Google...</span>';
+                        '<span class="ai-loader-label review-ai-loader-label">✨ Signing in with Google...</span>';
                 }
                 if (typeof sendBackgroundMessage === "function") {
                     await sendBackgroundMessage({

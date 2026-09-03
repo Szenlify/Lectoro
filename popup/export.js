@@ -767,9 +767,9 @@ if (exportQuizBtn) {
         exportQuizBtn.disabled = true;
         exportQuizBtn.classList.add("loading");
         if (labelEl) {
-            labelEl.innerHTML = '<span class="quiz-btn-spinner"></span><span>AI…</span>';
+            labelEl.innerHTML = '<span class="ai-loader-label review-ai-loader-label">✨ AI…</span>';
         } else {
-            exportQuizBtn.innerHTML = '<span class="quiz-btn-spinner"></span><span>AI…</span>';
+            exportQuizBtn.innerHTML = '<span class="ai-loader-label review-ai-loader-label">✨ AI…</span>';
         }
 
         try {

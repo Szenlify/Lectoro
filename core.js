@@ -880,7 +880,7 @@
                 if (saveAiBtn.classList.contains("saved") || saveAiBtn.classList.contains("loading")) return;
 
                 saveAiBtn.classList.add("loading");
-                saveAiBtn.innerHTML = `<span class="${PREFIX}spinner-small"></span> <span>Generating…</span>`;
+                saveAiBtn.innerHTML = `<span class="ai-loader-label">✨ Generating…</span>`;
                 const screenshotPromise = captureContextScreenshot();
                 const aiResultEl = tooltipEl.querySelector(`#${PREFIX}ai-result`);
                 const clean = typeof cleanCardText === "function" ? cleanCardText : (s) => String(s || "").trim();
