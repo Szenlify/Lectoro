@@ -3,4 +3,6 @@ function isReviewContext(context) {
     return context === "review";
 }
 
-module.exports = { isReviewContext };
+const ALLOWED_VOICE_KEYS = Object.freeze(["liam", "matilda"]);
+
+module.exports = { isReviewContext, ALLOWED_VOICE_KEYS };

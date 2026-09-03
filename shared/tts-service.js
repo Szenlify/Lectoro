@@ -633,14 +633,11 @@
             const candidateVoiceIds = [
                 preferredVoiceId,
                 settings.elVoiceId,
-                "CwhRBWXzGAHq8TQ4Fs17", // Roger
-                "EXAVITQu4vr4xnSDxMaL", // Sarah
-                "IKne3meq5aSn9XLyUdCD", // Charlie
-                "21m00Tcm4TlvDq8ikWAM", // Rachel
+                "TX3LPaxmHKxFdv7VOQHJ", // Liam
+                "XrExE9yKIg1WjnnlVkGX", // Matilda
                 "default",
-                "roger",
-                "sarah",
-                "charlie",
+                "liam",
+                "matilda",
             ].filter((v, idx, arr) => v && typeof v === "string" && arr.indexOf(v) === idx);
 
             for (const candVoice of candidateVoiceIds) {

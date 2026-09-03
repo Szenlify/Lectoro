@@ -32,17 +32,8 @@ Nie przepisuj całego projektu i nie wykonuj zmian w ciemno.
 pamietaj o zasadzie (Zasada DRY - Don't Repeat Yourself) oraz Centralizacja Logiki (Single Source of Truth)
 
 
-Jesteś ekspertem od Chrome Extensions, Manifest V3 oraz zasad Chrome Web Store.
 
-Przeanalizuj całe repozytorium tej wtyczki Chrome:
 
-## WAŻNE
-
-unowoczesnijmy funkcje Enter na video
-jak klikne Enter wszystko w animacji na fioletowo maja sie pokazywac osobno kazde idiomy, i slowa do wyjasnienia po kolei nie na raz a nastepne slowa w kolejnce maja miec lekki bg fioletowego jeden osobny nie pojedyncze slowa wszystko ma miec PIkeny UI/UX a te omawiane aktualnie razem z dymkiem maja byc mocniej fioletowe oczywiscie wyjasnienia TTS ma czytac tak aby nauka jezyka obcego byla przyjemna i konkretna
-
-Nie przepisuj całego projektu i nie wykonuj zmian w ciemno.
-pamietaj o zasadzie (Zasada DRY - Don't Repeat Yourself) oraz Centralizacja Logiki (Single Source of Truth)
 
 
 Jesteś ekspertem od Chrome Extensions, Manifest V3 oraz zasad Chrome Web Store.
@@ -50,8 +41,11 @@ Jesteś ekspertem od Chrome Extensions, Manifest V3 oraz zasad Chrome Web Store.
 Przeanalizuj całe repozytorium tej wtyczki Chrome:
 
 ## WAŻNE
-usun glosy Roger, Sarah, Charlie, Rachel, 
-i dodaj tylko dwa glosy Liam oraz Matilda
+
+unowoczesnijmy funkcje "Enter" na video
+jak klikne Enter wszystko w animacji na fioletowo maja sie pokazywac osobno kazde idiomy, definicje i slowa do wyjasnienia po kolei nie na raz a nastepne slowa w kolejce maja miec lekki bg fioletowego jeden osobny dla karzdych kolejnych slow ktore beda tlumaczone nie pojedyncze slowa wszystko ma miec Piekny UI/UX a te omawiane aktualnie razem z dymkiem maja byc mocniej fioletowe oczywiscie wyjasnienia TTS ma czytac tak aby nauka jezyka obcego byla przyjemna i konkretna wszystko ma byc w animacji
 
 Nie przepisuj całego projektu i nie wykonuj zmian w ciemno.
 pamietaj o zasadzie (Zasada DRY - Don't Repeat Yourself) oraz Centralizacja Logiki (Single Source of Truth)
+
+

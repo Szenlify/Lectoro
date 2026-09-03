@@ -9,7 +9,7 @@ const {
     checkAiLimit,
     checkElevenLabsLimit,
 } = require("./subscription-config");
-const { isReviewContext } = require("./elevenlabs-policy");
+const { isReviewContext, ALLOWED_VOICE_KEYS } = require("./elevenlabs-policy");
 const {
     getCachedAudio,
     saveCachedAudio,
@@ -427,7 +427,7 @@ exports.geminiProxy = onRequest(
                     return res.status(502).json({ error: "Nie udało się pobrać głosów ElevenLabs." });
                 }
 
-                const allowedOrder = ["roger", "sarah", "charlie"];
+                const allowedOrder = ALLOWED_VOICE_KEYS || ["liam", "matilda"];
                 const rawVoices = details.voices || [];
                 const filteredVoices = rawVoices
                     .filter((voice) => {

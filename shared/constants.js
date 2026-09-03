@@ -182,6 +182,17 @@
         return LANG_TAGS[c] || String(code).toUpperCase();
     }
 
+    /**
+     * Central ElevenLabs Voices registry – Single Source of Truth (SSOT)
+     */
+    const ELEVENLABS_VOICES = Object.freeze([
+        Object.freeze({ id: "TX3LPaxmHKxFdv7VOQHJ", name: "Liam", key: "liam" }),
+        Object.freeze({ id: "XrExE9yKIg1WjnnlVkGX", name: "Matilda", key: "matilda" }),
+    ]);
+
+    const ALLOWED_ELEVENLABS_VOICE_KEYS = Object.freeze(ELEVENLABS_VOICES.map((v) => v.key));
+    const ALLOWED_ELEVENLABS_VOICE_IDS = Object.freeze(ELEVENLABS_VOICES.map((v) => v.id));
+
     /** Check if a target element is part of Lectoro's own overlay / tooltip / cloud UI */
     function isOwnUI(target) {
         if (!target) return false;
@@ -201,6 +212,9 @@
         SUPPORTED_LANGUAGES,
         LANG_NAMES,
         LANG_TAGS,
+        ELEVENLABS_VOICES,
+        ALLOWED_ELEVENLABS_VOICE_KEYS,
+        ALLOWED_ELEVENLABS_VOICE_IDS,
         getLanguageName,
         langTag,
         isOwnUI,

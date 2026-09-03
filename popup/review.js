@@ -204,9 +204,8 @@ function renderFreeVoiceTeaser() {
             <div class="review-voice-teaser-title"><span>Natural AI voices</span><span>🔒</span></div>
             <p>Listen to authentic accents and choose a voice for your reviews.</p>
             <div class="review-voice-chips" aria-hidden="true">
-                <span class="review-voice-chip">Roger</span>
-                <span class="review-voice-chip">Sarah</span>
-                <span class="review-voice-chip">Charlie</span>
+                <span class="review-voice-chip">Liam</span>
+                <span class="review-voice-chip">Matilda</span>
             </div>
             <button type="button" class="review-voice-upgrade" id="reviewVoiceUpgrade">Unlock ElevenLabs voices</button>
         </div>`;
@@ -304,7 +303,9 @@ function renderElevenLabsVoiceSelect() {
     content.appendChild(list);
 }
 
-const ALLOWED_REVIEW_VOICES = ["roger", "sarah", "charlie"];
+const ALLOWED_REVIEW_VOICES =
+    (typeof LectoroConstants !== "undefined" && LectoroConstants.ALLOWED_ELEVENLABS_VOICE_KEYS) ||
+    ["liam", "matilda"];
 
 function filterReviewAllowedVoices(voices) {
     if (!Array.isArray(voices)) return [];
@@ -329,6 +330,15 @@ async function loadReviewElevenLabsVoices() {
     try {
         const rawVoices = await SubscriptionService.getElevenLabsVoices("review");
         reviewElVoices = filterReviewAllowedVoices(rawVoices);
+        if (reviewElVoices.length > 0) {
+            const currentValid = reviewElVoices.some((v) => v.voice_id === reviewElVoiceId);
+            if (!currentValid) {
+                reviewElVoiceId = reviewElVoices[0].voice_id;
+                if (ttsMode === "elevenlabs") {
+                    await chrome.storage.local.set({ elVoiceId: reviewElVoiceId });
+                }
+            }
+        }
         renderElevenLabsVoiceSelect();
         setReviewVoiceStatus(
             reviewElVoices.length

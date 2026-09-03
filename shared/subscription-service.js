@@ -345,7 +345,9 @@ const SubscriptionService = (() => {
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error || `Voice error (${response.status})`);
-        const allowedOrder = ["roger", "sarah", "charlie"];
+        const allowedOrder =
+            (typeof LectoroConstants !== "undefined" && LectoroConstants.ALLOWED_ELEVENLABS_VOICE_KEYS) ||
+            ["liam", "matilda"];
         const rawVoices = data.voices || [];
         const filtered = rawVoices
             .filter((voice) => {
