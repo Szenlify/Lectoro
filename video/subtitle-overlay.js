@@ -1930,7 +1930,7 @@
     }
 
     // The sentence translation follows the subtitle typography at 60% of its font size.
-    const TRANSLATION_FONT_RATIO = 0.6;
+    const TRANSLATION_FONT_RATIO = 0.5;
     const TRANSLATION_FONT_FALLBACK_PX = 15;
 
     function applyTranslationFontSize(
