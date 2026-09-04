@@ -16,8 +16,8 @@ const POPUP_INIT_KEYS = Object.freeze({
     pendingFirebaseChanges: {},
     aiUsageCache: null,
     subscriptionProfileCache: null,
-    subtitlePosition: (typeof LectoroConstants !== "undefined" && LectoroConstants.DEFAULT_SUBTITLE_SETTINGS?.POSITION) ?? 14,
-    subtitleBgOpacity: (typeof LectoroConstants !== "undefined" && LectoroConstants.DEFAULT_SUBTITLE_SETTINGS?.BG_OPACITY) ?? 0,
+    subtitlePosition: LectoroConstants.DEFAULT_SUBTITLE_SETTINGS.POSITION,
+    subtitleBgOpacity: LectoroConstants.DEFAULT_SUBTITLE_SETTINGS.BG_OPACITY,
 });
 
 let popupState = { ...POPUP_INIT_KEYS };

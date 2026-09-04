@@ -5,22 +5,12 @@
 (() => {
     "use strict";
 
-    const PREFIX = (typeof LectoroConstants !== "undefined" && LectoroConstants.PREFIX) || "__qt_";
+    const { PREFIX, isOwnUI } = LectoroConstants;
 
     function isLectoroElement(element) {
         return Array.from(element?.classList || []).some((className) =>
             className.startsWith(PREFIX),
         );
-    }
-
-    function isOwnUI(target) {
-        if (typeof LectoroConstants !== "undefined" && typeof LectoroConstants.isOwnUI === "function") {
-            return LectoroConstants.isOwnUI(target);
-        }
-        if (typeof QT !== "undefined" && typeof QT.isOwnUI === "function") {
-            return QT.isOwnUI(target);
-        }
-        return !!target?.closest?.(`#${PREFIX}icon, #${PREFIX}tooltip, .${PREFIX}word-cloud, #${PREFIX}save_toast`);
     }
 
     /**
@@ -100,23 +90,9 @@
         const lines = [];
         for (const el of elements) {
             if (!el || isOwnUI(el) || isLectoroElement(el)) continue;
-            let elLines = [];
-            if (typeof SharedUtils !== "undefined" && typeof SharedUtils.extractSubtitleLines === "function") {
-                elLines = SharedUtils.extractSubtitleLines(el);
-            } else if (typeof SharedUtils !== "undefined" && typeof SharedUtils.extractSubtitleText === "function") {
-                const text = SharedUtils.extractSubtitleText(el, { preserveNewlines: true });
-                elLines = text ? text.split(/\r?\n/).filter(Boolean) : [];
-            } else {
-                const text = (el.innerText || el.textContent || "").trim();
-                elLines = text ? text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean) : [];
-            }
-
+            const elLines = SharedUtils.extractSubtitleLines(el);
             for (let lineText of elLines) {
-                if (typeof SharedSubtitleService !== "undefined" && SharedSubtitleService.cleanCueText) {
-                    lineText = SharedSubtitleService.cleanCueText(lineText);
-                } else {
-                    lineText = lineText.replace(/(?:^|\s)(?:>>+|<<+|»+|«+)(?:\s|$)/g, " ").replace(/^[>»›<«\s—–-]+/, "").trim();
-                }
+                lineText = SharedSubtitleService.cleanCueText(lineText);
                 if (lineText && !lines.includes(lineText)) {
                     lines.push(lineText);
                 }

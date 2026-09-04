@@ -7,114 +7,119 @@
  *
  * Each entry is a small function that returns the final prompt string.
  */
-const AIPrompts = {
-  /** Helper resolving full English language name via central LectoroConstants SSOT */
-  getLangName(code) {
-    if (typeof LectoroConstants !== "undefined" && typeof LectoroConstants.getLanguageName === "function") {
-      return LectoroConstants.getLanguageName(code);
-    }
-    if (typeof SharedConstants !== "undefined" && typeof SharedConstants.getLanguageName === "function") {
-      return SharedConstants.getLanguageName(code);
-    }
-    if (typeof require !== "undefined") {
-      try {
-        const constants = require("./constants");
-        if (constants && typeof constants.getLanguageName === "function") {
-          return constants.getLanguageName(code);
-        }
-      } catch (_) { }
-    }
-    return code ? String(code).toUpperCase() : "Polish";
-  },
+(function initAiPrompts(root, factory) {
+    const isNode = typeof module !== "undefined" && !!module.exports;
+    const constants =
+        (root && root.LectoroConstants) ||
+        (isNode ? require("./constants") : null);
+    const api = factory(constants);
+    if (isNode) module.exports = api;
+    if (root) root.AIPrompts = api;
+})(
+    typeof globalThis !== "undefined" ? globalThis : this,
+    function createAiPrompts(Constants) {
+        "use strict";
 
-  /**
-   * Used by core.js (geminiGenerateSentence) to create one example
-   * sentence (+ translation) that shows a learned word in context.
-   */
-  sentenceExample(word, translated, srcLang, tgtLang) {
-    const srcName = AIPrompts.getLangName(srcLang);
-    const tgtName = AIPrompts.getLangName(tgtLang);
-    return `Create 1 natural everyday sentence (5-15 words) in ${srcName} using "${word}" (meaning: "${translated}").
+        const AIPrompts = {
+            /** Helper resolving full English language name via central LectoroConstants SSOT */
+            getLangName(code) {
+                return Constants.getLanguageName(code) || "Polish";
+            },
+
+            /**
+             * Used by core.js (geminiGenerateSentence) to create one example
+             * sentence (+ translation) that shows a learned word in context.
+             */
+            sentenceExample(word, translated, srcLang, tgtLang) {
+                const srcName = AIPrompts.getLangName(srcLang);
+                const tgtName = AIPrompts.getLangName(tgtLang);
+                return `Create 1 natural everyday sentence (5-15 words) in ${srcName} using "${word}" (meaning: "${translated}").
 The sentence must be practical, authentic, and clearly demonstrate the word's meaning in context for language learners. Translate the sentence to ${tgtName}.
 Respond ONLY with JSON:
 {"sentence": "...", "translation": "..."}`;
-  },
+            },
 
-  /** Helper to format surrounding movie dialogue context (before / after) */
-  formatSubtitleContext(context) {
-    if (!context || typeof context !== "object") return "";
+            /** Helper to format surrounding movie dialogue context (before / after) */
+            formatSubtitleContext(context) {
+                if (!context || typeof context !== "object") return "";
 
-    const normalizeLines = (val) => {
-      if (!val) return [];
-      if (Array.isArray(val)) {
-        return val.map((s) => String(s || "").trim()).filter(Boolean);
-      }
-      if (typeof val === "string") {
-        const trimmed = val.trim();
-        return trimmed ? [trimmed] : [];
-      }
-      return [];
-    };
+                const normalizeLines = (val) => {
+                    if (!val) return [];
+                    if (Array.isArray(val)) {
+                        return val
+                            .map((s) => String(s || "").trim())
+                            .filter(Boolean);
+                    }
+                    if (typeof val === "string") {
+                        const trimmed = val.trim();
+                        return trimmed ? [trimmed] : [];
+                    }
+                    return [];
+                };
 
-    const before = normalizeLines(context.before);
-    const after = normalizeLines(context.after);
+                const before = normalizeLines(context.before);
+                const after = normalizeLines(context.after);
 
-    if (before.length === 0 && after.length === 0) return "";
+                if (before.length === 0 && after.length === 0) return "";
 
-    const sections = ["\nSURROUNDING MOVIE DIALOGUE CONTEXT (Reference only - do NOT translate these):"];
-    if (before.length > 0) {
-      sections.push("Previous dialogue:");
-      for (const line of before) {
-        sections.push(`- "${line}"`);
-      }
-    }
-    if (after.length > 0) {
-      sections.push("Following dialogue:");
-      for (const line of after) {
-        sections.push(`- "${line}"`);
-      }
-    }
+                const sections = [
+                    "\nSURROUNDING MOVIE DIALOGUE CONTEXT (Reference only - do NOT translate these):",
+                ];
+                if (before.length > 0) {
+                    sections.push("Previous dialogue:");
+                    for (const line of before) {
+                        sections.push(`- "${line}"`);
+                    }
+                }
+                if (after.length > 0) {
+                    sections.push("Following dialogue:");
+                    for (const line of after) {
+                        sections.push(`- "${line}"`);
+                    }
+                }
 
-    return sections.join("\n");
-  },
+                return sections.join("\n");
+            },
 
-  /**
-   * Used by core.js (geminiExplainSentence) when the user asks the
-   * extension to explain/translate a subtitle sentence they didn't understand.
-   */
-  explainSentence(sentence, targetLang, context = null) {
-    const tgtName = AIPrompts.getLangName(targetLang);
-    const contextBlock = AIPrompts.formatSubtitleContext(context);
-    const hasContext = !!contextBlock;
+            /**
+             * Used by core.js (geminiExplainSentence) when the user asks the
+             * extension to explain/translate a subtitle sentence they didn't understand.
+             */
+            explainSentence(sentence, targetLang, context = null) {
+                const tgtName = AIPrompts.getLangName(targetLang);
+                const contextBlock = AIPrompts.formatSubtitleContext(context);
+                const hasContext = !!contextBlock;
 
-    return `Explain this video subtitle sentence in ${targetLang}:
+                return `Explain this video subtitle sentence in ${targetLang}:
 "${sentence}"
 ${hasContext ? `${contextBlock}\n` : ""}
 Instructions for language learner assistance:
 1. "source_language": Detect the sentence language and return only its lowercase ISO 639-1 code (for example "en", "es", "de").
 2. "translation": Accurate, natural, context-aware translation in ${tgtName} (${targetLang}), preserving spoken conversational nuances.${
-      hasContext
-        ? `\n   CRITICAL: Translate ONLY the target sentence ("${sentence}"). DO NOT translate the previous or following dialogue. Use the dialogue context strictly to resolve speaker gender, pronouns, tone, slang, and situational meaning.`
-        : ""
-    }
+                    hasContext
+                        ? `\n   CRITICAL: Translate ONLY the target sentence ("${sentence}"). DO NOT translate the previous or following dialogue. Use the dialogue context strictly to resolve speaker gender, pronouns, tone, slang, and situational meaning.`
+                        : ""
+                }
 3. "explanation": Concise, high-value learning breakdown in ${tgtName} (1-2 short sentences). Explain idioms, phrasal verbs, key vocabulary, or grammatical nuances accurately and to the point.${
-      hasContext ? " If the dialogue context clarifies an ambiguous phrase or tone, briefly mention it." : ""
-    }
+                    hasContext
+                        ? " If the dialogue context clarifies an ambiguous phrase or tone, briefly mention it."
+                        : ""
+                }
 
 Respond ONLY with JSON:
 {"source_language": "en", "translation": "...", "explanation": "..."}`;
-  },
+            },
 
-  /**
-   * Used by core.js (geminiMovieTranslate) for the "movie-style" subtitle
-   * translation + short explanation shown in the tooltip.
-   */
-  movieTranslate(text, targetLang, context = null) {
-    const tgtName = AIPrompts.getLangName(targetLang);
-    const contextBlock = AIPrompts.formatSubtitleContext(context);
-    const hasContext = !!contextBlock;
+            /**
+             * Used by core.js (geminiMovieTranslate) for the "movie-style" subtitle
+             * translation + short explanation shown in the tooltip.
+             */
+            movieTranslate(text, targetLang, context = null) {
+                const tgtName = AIPrompts.getLangName(targetLang);
+                const contextBlock = AIPrompts.formatSubtitleContext(context);
+                const hasContext = !!contextBlock;
 
-    return `You are an expert language teacher analyzing a short, possibly incomplete fragment of dialogue from a movie or TV show.
+                return `You are an expert language teacher analyzing a short, possibly incomplete fragment of dialogue from a movie or TV show.
 ${hasContext ? `${contextBlock}\n` : ""}
 The text may be:
 - cut off mid-sentence,
@@ -147,18 +152,20 @@ Return ONLY valid JSON:
 }
 
 Language: ${tgtName} (${targetLang})`;
-  },
+            },
 
-  /**
-   * Used by popup.js (aiTranslateReviewCard) for the flashcard "Enter"
-   * shortcut in the Review tab.
-   */
-standardTranslate(word, sentence, srcLang = "en", tgtLang = "pl") {
-    const srcName = AIPrompts.getLangName(srcLang);
-    const tgtName = AIPrompts.getLangName(tgtLang);
-    const context = sentence ? `\nContext sentence: "${sentence}"` : "";
+            /**
+             * Used by popup.js (aiTranslateReviewCard) for the flashcard "Enter"
+             * shortcut in the Review tab.
+             */
+            standardTranslate(word, sentence, srcLang = "en", tgtLang = "pl") {
+                const srcName = AIPrompts.getLangName(srcLang);
+                const tgtName = AIPrompts.getLangName(tgtLang);
+                const context = sentence
+                    ? `\nContext sentence: "${sentence}"`
+                    : "";
 
-    return `You are an expert language teacher helping a learner understand the word "${word}" in ${srcName}.
+                return `You are an expert language teacher helping a learner understand the word "${word}" in ${srcName}.
 
 Your task is to explain the word clearly and naturally for a language learner.
 
@@ -184,19 +191,24 @@ Respond ONLY with valid JSON:
   "sentence_translation": "...",
   "explanation": "..."
 }`;
-},
+            },
 
-  /**
-   * Used by popup (QuizExport) to build a multi-section vocabulary exam.
-   */
-  quiz(opts) {
-    const srcName = opts.srcLangName || AIPrompts.getLangName(opts.srcLang || "en");
-    const tgtName = opts.tgtLangName || AIPrompts.getLangName(opts.tgtLang || "pl");
-    const chosen = (opts.chosenTypes && opts.chosenTypes.length)
-      ? opts.chosenTypes.join(", ")
-      : "multiple_choice, fill_blank, matching, translation, correct_form, odd_one_out";
+            /**
+             * Used by popup (QuizExport) to build a multi-section vocabulary exam.
+             */
+            quiz(opts) {
+                const srcName =
+                    opts.srcLangName ||
+                    AIPrompts.getLangName(opts.srcLang || "en");
+                const tgtName =
+                    opts.tgtLangName ||
+                    AIPrompts.getLangName(opts.tgtLang || "pl");
+                const chosen =
+                    opts.chosenTypes && opts.chosenTypes.length
+                        ? opts.chosenTypes.join(", ")
+                        : "multiple_choice, fill_blank, matching, translation, correct_form, odd_one_out";
 
-    return `Create a high-value pedagogical vocabulary quiz for a language learner.
+                return `Create a high-value pedagogical vocabulary quiz for a language learner.
 Language tested (questions/options/answers): ${srcName}
 Instruction language (instructions/hints/prompts): ${tgtName}
 Sections to include: ${chosen}
@@ -264,15 +276,9 @@ Respond ONLY with valid, raw JSON (no markdown formatting, no \`\`\`json blocks)
     }
   ]
 }`;
-  },
-};
+            },
+        };
 
-// Content scripts share a plain global scope, popup.html/background.js run in
-// their own page-like contexts — expose on window when available so all
-// consumers (core.js, popup.js) can use the same `AIPrompts` reference.
-if (typeof window !== "undefined") {
-  window.AIPrompts = AIPrompts;
-}
-if (typeof module !== "undefined" && module.exports) {
-  module.exports = AIPrompts;
-}
+        return Object.freeze(AIPrompts);
+    },
+);

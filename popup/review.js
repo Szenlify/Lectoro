@@ -33,43 +33,18 @@ let reviewVoicesLoading = false;
 
 let reviewTargetLang = "pl";
 
-// Load the saved review direction, voice setting, and targetLang instantly via whenPopupReady.
-if (typeof whenPopupReady === "function") {
-    whenPopupReady((data) => {
-        reviewDirection = data.reviewDirection || "normal";
-        reviewTargetLang = data.targetLang || "pl";
-        reviewSystemVoice = data.speechVoice === "random" ? "" : (data.speechVoice || "");
-        if (data.speechVoice === "random") {
-            chrome.storage.local.set({ speechVoice: "" });
-        }
-        ttsMode = data.ttsMode || "browser";
-        reviewElVoiceId = data.elVoiceId || "";
-        updateDirBtnLabel();
-        void updateReviewVoiceUI();
-    });
-} else {
-    chrome.storage.local.get(
-        {
-            reviewDirection: "normal",
-            ttsMode: "browser",
-            speechVoice: "",
-            elVoiceId: "",
-            targetLang: "pl",
-        },
-        (data) => {
-            reviewDirection = data.reviewDirection || "normal";
-            reviewTargetLang = data.targetLang || "pl";
-            reviewSystemVoice = data.speechVoice === "random" ? "" : data.speechVoice;
-            if (data.speechVoice === "random") {
-                chrome.storage.local.set({ speechVoice: "" });
-            }
-            ttsMode = data.ttsMode;
-            reviewElVoiceId = data.elVoiceId;
-            updateDirBtnLabel();
-            void updateReviewVoiceUI();
-        },
-    );
-}
+whenPopupReady((data) => {
+    reviewDirection = data.reviewDirection || "normal";
+    reviewTargetLang = data.targetLang || "pl";
+    reviewSystemVoice = data.speechVoice === "random" ? "" : (data.speechVoice || "");
+    if (data.speechVoice === "random") {
+        chrome.storage.local.set({ speechVoice: "" });
+    }
+    ttsMode = data.ttsMode || "browser";
+    reviewElVoiceId = data.elVoiceId || "";
+    updateDirBtnLabel();
+    void updateReviewVoiceUI();
+});
 
 if (typeof chrome !== "undefined" && chrome.storage?.onChanged) {
     chrome.storage.onChanged.addListener((changes, area) => {
@@ -561,9 +536,17 @@ function initReviewBadge() {
 }
 initReviewBadge();
 
+let reviewCardEl = null;
+function getReviewCard() {
+    if (!reviewCardEl || !reviewCardEl.isConnected) {
+        reviewCardEl = document.getElementById("reviewCard");
+    }
+    return reviewCardEl;
+}
+
 // ── Render review card ────────────────────────────────────────────
 function renderReview() {
-    const card = document.getElementById("reviewCard");
+    const card = getReviewCard();
     const countEl = document.getElementById("reviewCount");
     const progressBar = document.getElementById("reviewProgressBar");
     const deleteAllBtn = document.getElementById("reviewDeleteAll");
@@ -692,7 +675,7 @@ function reviewScreenshotHtml(url) {
 }
 
 function renderQuestion(w) {
-    const card = document.getElementById("reviewCard");
+    const card = getReviewCard();
     const srcL = w.srcLang || "en";
     const tgtL = w.tgtLang || "pl";
     const isReverse = reviewDirection === "reverse";
@@ -772,7 +755,7 @@ function renderQuestion(w) {
  * only ever revealing the answer once.
  */
 function flipCard() {
-    const card = document.getElementById("reviewCard");
+    const card = getReviewCard();
     const flashcard = card?.querySelector(".review-flashcard");
     const w = reviewQueue[reviewIndex];
     if (!w) return;
@@ -800,7 +783,7 @@ function flipCard() {
 /** Swipe the current card off-screen (like a real flashcard being tossed
  * left/right) before applying the grade and loading the next card. */
 function animateSwipeAndRate(grade) {
-    const card = document.getElementById("reviewCard");
+    const card = getReviewCard();
     const flashcard = card?.querySelector(".review-flashcard");
     const controls = card?.querySelector(".review-controls");
     const flipButton = card?.querySelector(".review-flip-btn");
@@ -824,7 +807,7 @@ function animateSwipeAndRate(grade) {
  * side is visible and may make at most one successful request per card.
  */
 async function aiTranslateReviewCard() {
-    const card = document.getElementById("reviewCard");
+    const card = getReviewCard();
     if (!card || reviewIndex >= reviewQueue.length) return;
     const w = reviewQueue[reviewIndex];
     if (!w) return;
@@ -953,7 +936,7 @@ function getReviewAiState(w) {
 }
 
 function ensureReviewAiPanel(id) {
-    const card = document.getElementById("reviewCard");
+    const card = getReviewCard();
     const flashcard = card?.querySelector(".review-flashcard");
     if (!card || !flashcard) return null;
     let panel = card.querySelector(`#${id}`);
@@ -1033,7 +1016,7 @@ function restoreReviewAiPanels(w) {
 }
 
 function renderAnswer(w) {
-    const card = document.getElementById("reviewCard");
+    const card = getReviewCard();
     const sr = w.sr || { step: 0, interval: 0 };
     const srcL = w.srcLang || "en";
     const tgtL = w.tgtLang || "pl";
@@ -1116,7 +1099,7 @@ function renderAnswer(w) {
 
 // ── Edit form in review ───────────────────────────────────────────
 function showReviewEditForm(w, returnToAnswer = reviewAnswerShown) {
-    const card = document.getElementById("reviewCard");
+    const card = getReviewCard();
     card.innerHTML = `
         <div class="review-edit-form">
             <label>Original</label>

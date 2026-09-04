@@ -236,9 +236,7 @@ async function getExportQuota(type) {
     if (typeof SubscriptionService !== "undefined" && typeof SubscriptionService.getExportQuotaState === "function") {
         return SubscriptionService.getExportQuotaState(type);
     }
-    const currentMonth = (typeof SharedUtils !== "undefined" && SharedUtils.currentMonth)
-        ? SharedUtils.currentMonth()
-        : new Date().toISOString().slice(0, 7);
+    const currentMonth = SharedUtils.currentMonth();
     const data = await chrome.storage.local.get({
         exportUsage: null,
         quizGenerationsFreeCount: 0,
@@ -262,9 +260,7 @@ async function recordExportSuccess(type) {
     if (typeof SubscriptionService !== "undefined" && typeof SubscriptionService.recordExport === "function") {
         await SubscriptionService.recordExport(type);
     } else {
-        const currentMonth = (typeof SharedUtils !== "undefined" && SharedUtils.currentMonth)
-            ? SharedUtils.currentMonth()
-            : new Date().toISOString().slice(0, 7);
+        const currentMonth = SharedUtils.currentMonth();
         const data = await chrome.storage.local.get({ exportUsage: null });
         const usage = (data.exportUsage && data.exportUsage.month === currentMonth)
             ? data.exportUsage

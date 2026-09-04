@@ -7,6 +7,7 @@
 
     let currentFilter = "all";
     let wordSearchQuery = "";
+    let currentSortedWords = [];
 
     document.querySelectorAll(".filter-btn").forEach((btn) => {
         btn.addEventListener("click", () => {
@@ -65,20 +66,17 @@
         }
 
         const sorted = [...filtered].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        currentSortedWords = sorted;
 
-        const EDIT_SVG = typeof LectoroConstants !== "undefined" && LectoroConstants.SVG_ICONS?.EDIT
-            ? LectoroConstants.SVG_ICONS.EDIT
-            : `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>`;
+        const EDIT_SVG = LectoroConstants.SVG_ICONS.EDIT;
 
         wordListEl.innerHTML = sorted
             .map((w, i) => {
-                const date = typeof SharedUtils !== "undefined" ? SharedUtils.formatDate(w.timestamp) : "";
+                const date = SharedUtils.formatDate(w.timestamp);
                 const isNew = !w.downloaded ? " new-item" : "";
                 let sentenceHtml = "";
                 if (w.sentence) {
-                    const highlighted = typeof SharedUtils !== "undefined"
-                        ? SharedUtils.highlightWordInSentence(w.sentence, w.original, "wi-cloze")
-                        : escapeHtml(w.sentence);
+                    const highlighted = SharedUtils.highlightWordInSentence(w.sentence, w.original, "wi-cloze");
                     sentenceHtml = `<div class="wi-sentence">${highlighted}</div>`;
                     if (w.sentenceTranslated) {
                         sentenceHtml += `<div class="wi-sentence" style="color:rgba(255,255,255,0.25);">${escapeHtml(w.sentenceTranslated)}</div>`;
@@ -101,33 +99,33 @@
             })
             .join("");
 
-        // Edit handlers
-        wordListEl.querySelectorAll(".wi-edit").forEach((btn) => {
-            btn.addEventListener("click", () => {
-                const word = sorted[parseInt(btn.dataset.index, 10)];
-                const item = btn.closest(".word-item");
-                if (word && item) showWordEditForm(item, word);
+        if (!wordListEl._delegatedClickBound) {
+            wordListEl._delegatedClickBound = true;
+            wordListEl.addEventListener("click", (e) => {
+                const editBtn = e.target.closest(".wi-edit");
+                if (editBtn) {
+                    const idx = parseInt(editBtn.dataset.index, 10);
+                    const word = currentSortedWords[idx];
+                    const item = editBtn.closest(".word-item");
+                    if (word && item) showWordEditForm(item, word);
+                    return;
+                }
+                const deleteBtn = e.target.closest(".wi-delete");
+                if (deleteBtn) {
+                    const id = deleteBtn.dataset.id;
+                    const orig = deleteBtn.dataset.original;
+                    const ts = parseInt(deleteBtn.dataset.ts, 10);
+                    deleteWord(id || orig, ts);
+                }
             });
-        });
-
-        // Delete handlers
-        wordListEl.querySelectorAll(".wi-delete").forEach((btn) => {
-            btn.addEventListener("click", () => {
-                const id = btn.dataset.id;
-                const orig = btn.dataset.original;
-                const ts = parseInt(btn.dataset.ts, 10);
-                deleteWord(id || orig, ts);
-            });
-        });
+        }
     }
 
     async function deleteWord(idOrOriginal, timestamp) {
         if (!confirm(`Are you sure you want to delete this word and its context sentence?`)) {
             return;
         }
-        if (typeof SharedWordRepository !== "undefined") {
-            await SharedWordRepository.deleteWord(idOrOriginal, timestamp);
-        }
+        await SharedWordRepository.deleteWord(idOrOriginal, timestamp);
         loadWords();
     }
 

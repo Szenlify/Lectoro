@@ -1,5 +1,5 @@
 /**
- * Quick Translator – Core Module
+ * Lectoro – Core Module
  * Shared UI tooltips, context screenshot capture, and subtitle helpers.
  * Delegates translation, TTS, word repository, and constants to SSOT shared services.
  *
@@ -8,41 +8,18 @@
 (() => {
     "use strict";
 
-    const C = typeof LectoroConstants !== "undefined"
-        ? LectoroConstants
-        : {
-            PREFIX: "__qt_",
-            UI_IDS: { ICON: "__qt_icon", TOOLTIP: "__qt_tooltip", REVIEW_TOAST: "__qt_review_toast" },
-            SVG_ICONS: {},
-            langTag: (c) => c?.toUpperCase() || "?",
-            isOwnUI: () => false,
-        };
+    const C = LectoroConstants;
+    const { escapeHtml, escapeAttr, cleanTextForTTS, cleanCardText, pickBestVoice, ensureVoices } = SharedUtils;
+    const { PREFIX, langTag, isOwnUI } = C;
+    const ICON_ID = C.UI_IDS.ICON;
+    const TOOLTIP_ID = C.UI_IDS.TOOLTIP;
+    const SVG = C.SVG_ICONS;
+    const MSG = C.MESSAGE_TYPES;
 
-    const {
-        escapeHtml,
-        escapeAttr,
-        cleanTextForTTS,
-        cleanCardText,
-        pickBestVoice,
-        ensureVoices,
-    } =
-        typeof SharedUtils !== "undefined"
-            ? SharedUtils
-            : {
-                escapeHtml: (s) => String(s || ""),
-                escapeAttr: (s) => String(s || ""),
-                cleanTextForTTS: (s) => String(s || "").replace(/^[,\s:;>«»<\\/|~*#—–-]+/, "").replace(/[.,\s]+$/, "").trim(),
-                cleanCardText: (s) => String(s || "").replace(/^[,\s:;>«»<\\/|~*#—–-]+/, "").replace(/[.,\s]+$/, "").trim(),
-                pickBestVoice: () => null,
-                ensureVoices: () => Promise.resolve([]),
-            };
-
-    const PREFIX = C.PREFIX || "__qt_";
-    const ICON_ID = C.UI_IDS?.ICON || `${PREFIX}icon`;
-    const TOOLTIP_ID = C.UI_IDS?.TOOLTIP || `${PREFIX}tooltip`;
-    const SVG = C.SVG_ICONS || {};
-    const langTag = C.langTag || ((c) => c?.toUpperCase() || "?");
-    const isOwnUI = C.isOwnUI || ((target) => !!target?.closest?.(`#${ICON_ID}, #${TOOLTIP_ID}`));
+    const TOOLTIP_HIDE_MS = 180;
+    const REVIEW_TOAST_MS = 4000;
+    const SCREENSHOT_MAX_PX = 330;
+    const SCREENSHOT_BG = "#12131c";
 
     // ── Internal State ─────────────────────────────────────────────
     let tooltipEl = null;
@@ -59,22 +36,15 @@
     const dismissHandlers = [];
 
     // ── Review-due toast notification ──────────────────────────────
-    if (typeof chrome !== "undefined" && chrome.runtime?.onMessage) {
-        chrome.runtime.onMessage.addListener((msg) => {
-            if (
-                window === window.top &&
-                msg.type === (C.MESSAGE_TYPES?.REVIEW_DUE || "QT_REVIEW_DUE") &&
-                msg.count > 0
-            ) {
-                showReviewDueToast(msg.count);
-            }
-        });
-    }
+    chrome.runtime.onMessage.addListener((msg) => {
+        if (window === window.top && msg.type === MSG.REVIEW_DUE && msg.count > 0) {
+            showReviewDueToast(msg.count);
+        }
+    });
 
     function showReviewDueToast(count) {
-        const toastId = C.UI_IDS?.REVIEW_TOAST || `${PREFIX}review_toast`;
-        const existing = document.getElementById(toastId);
-        if (existing) existing.remove();
+        const toastId = C.UI_IDS.REVIEW_TOAST;
+        document.getElementById(toastId)?.remove();
 
         const toast = document.createElement("div");
         toast.id = toastId;
@@ -83,14 +53,14 @@
 
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
-                toast.classList.add(`${PREFIX}toast_visible`);
+                toast.classList.add(C.UI_CLASSES.TOAST_VISIBLE);
             });
         });
 
         setTimeout(() => {
-            toast.classList.remove(`${PREFIX}toast_visible`);
+            toast.classList.remove(C.UI_CLASSES.TOAST_VISIBLE);
             setTimeout(() => toast.remove(), 400);
-        }, 4000);
+        }, REVIEW_TOAST_MS);
     }
 
     document.addEventListener("mousemove", (e) => {
@@ -114,70 +84,52 @@
         );
     }
 
+    function isFullscreen() {
+        return !!(document.fullscreenElement || document.webkitFullscreenElement);
+    }
+
     function getTooltip() {
-        if (tooltipEl) {
-            const parent = getOverlayParent();
-            if (tooltipEl.parentElement !== parent) {
-                parent.appendChild(tooltipEl);
-            }
-            return tooltipEl;
+        if (!tooltipEl) {
+            tooltipEl = document.createElement("div");
+            tooltipEl.id = TOOLTIP_ID;
         }
-        tooltipEl = document.createElement("div");
-        tooltipEl.id = TOOLTIP_ID;
-        getOverlayParent().appendChild(tooltipEl);
+        const parent = getOverlayParent();
+        if (tooltipEl.parentElement !== parent) parent.appendChild(tooltipEl);
         return tooltipEl;
     }
 
+    // `preferredPosition` is part of the public QT signature; the tooltip is always laid out above
+    // the anchor and clamped into the viewport.
     function positionTooltip(rect, preferredPosition = "top") {
         if (!tooltipEl || !rect) return;
 
-        const tip = tooltipEl;
-        const parent = getOverlayParent();
-        if (tip.parentElement !== parent) parent.appendChild(tip);
-
-        const inFullscreen = !!(
-            document.fullscreenElement || document.webkitFullscreenElement
-        );
+        const tip = getTooltip();
+        const inFullscreen = isFullscreen();
         const gap = 10;
 
         tip.style.bottom = "auto";
         tip.style.right = "auto";
+        tip.style.position = inFullscreen ? "fixed" : "absolute";
+        // Reset before measuring so the tooltip's own size doesn't clamp the layout.
+        tip.style.left = "0px";
+        tip.style.top = "0px";
 
-        if (inFullscreen) {
-            tip.style.position = "fixed";
-            tip.style.left = "0px";
-            tip.style.top = "0px";
+        const tipRect = tip.getBoundingClientRect();
+        const scrollX = inFullscreen ? 0 : window.scrollX;
+        const scrollY = inFullscreen ? 0 : window.scrollY;
+        const viewportWidth = inFullscreen ? window.innerWidth : document.documentElement.clientWidth;
+        const viewportHeight = inFullscreen ? window.innerHeight : document.documentElement.clientHeight;
 
-            const tipRect = tip.getBoundingClientRect();
-            let left = rect.left + (rect.width - tipRect.width) / 2;
-            let top = rect.top - tipRect.height - gap;
+        let left = rect.left + scrollX + (rect.width - tipRect.width) / 2;
+        let top = rect.top + scrollY - tipRect.height - gap;
 
-            top = Math.max(4, Math.min(top, window.innerHeight - tipRect.height - 4));
-            left = Math.max(4, Math.min(left, window.innerWidth - tipRect.width - 4));
+        const maxTop = scrollY + viewportHeight - tipRect.height - 4;
+        const maxLeft = scrollX + viewportWidth - tipRect.width - 4;
+        top = Math.max(scrollY + 4, Math.min(top, maxTop));
+        left = Math.max(scrollX + 4, Math.min(left, maxLeft));
 
-            tip.style.left = `${left}px`;
-            tip.style.top = `${top}px`;
-        } else {
-            tip.style.position = "absolute";
-            const scrollX = window.scrollX;
-            const scrollY = window.scrollY;
-
-            tip.style.left = "0px";
-            tip.style.top = "0px";
-
-            const tipRect = tip.getBoundingClientRect();
-            let left = rect.left + scrollX + (rect.width - tipRect.width) / 2;
-            let top = rect.top + scrollY - tipRect.height - gap;
-
-            const maxTop = scrollY + document.documentElement.clientHeight - tipRect.height - 4;
-            const maxLeft = scrollX + document.documentElement.clientWidth - tipRect.width - 4;
-
-            top = Math.max(scrollY + 4, Math.min(top, maxTop));
-            left = Math.max(scrollX + 4, Math.min(left, maxLeft));
-
-            tip.style.left = `${left}px`;
-            tip.style.top = `${top}px`;
-        }
+        tip.style.left = `${left}px`;
+        tip.style.top = `${top}px`;
     }
 
     function showTooltip(html, rect, preferredPosition = "top", anchorOverride = null) {
@@ -212,7 +164,7 @@
         tooltipHideTimer = setTimeout(() => {
             if (tooltipEl) tooltipEl.innerHTML = "";
             tooltipHideTimer = null;
-        }, 180);
+        }, TOOLTIP_HIDE_MS);
     }
 
     function showLoading(rect, preferredPosition = "top", anchorOverride = null) {
@@ -224,11 +176,15 @@
         );
     }
 
-    function hideAll() {
-        hideTooltip();
-        cleanupHandlers.forEach((fn) => {
+    function runHandlers(handlers) {
+        handlers.forEach((fn) => {
             try { fn(); } catch (_) { }
         });
+    }
+
+    function hideAll() {
+        hideTooltip();
+        runHandlers(cleanupHandlers);
     }
 
     function addCleanup(fn) {
@@ -238,9 +194,7 @@
         dismissHandlers.push(fn);
     }
     function runDismiss() {
-        dismissHandlers.forEach((fn) => {
-            try { fn(); } catch (_) { }
-        });
+        runHandlers(dismissHandlers);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -387,50 +341,23 @@
             .map(({ media }) => media);
     }
 
-    function drawMediaToDataUrl(media) {
-        try {
-            const sourceWidth = media.videoWidth || media.naturalWidth || media.width;
-            const sourceHeight = media.videoHeight || media.naturalHeight || media.height;
-            if (!sourceWidth || !sourceHeight) return null;
-
-            const MAX = 330;
-            const scale = Math.min(MAX / sourceWidth, MAX / sourceHeight, 1);
-            const width = Math.max(1, Math.round(sourceWidth * scale));
-            const height = Math.max(1, Math.round(sourceHeight * scale));
-            const canvas = document.createElement("canvas");
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext("2d");
-            if (!ctx) return null;
-            ctx.fillStyle = "#12131c";
-            ctx.fillRect(0, 0, width, height);
-            ctx.drawImage(media, 0, 0, width, height);
-
-            const webpUrl = canvas.toDataURL("image/webp", 0.75);
-            if (webpUrl && webpUrl.startsWith("data:image/webp")) {
-                return webpUrl;
-            }
-            return canvas.toDataURL("image/jpeg", 0.80);
-        } catch (_) {
-            return null;
-        }
-    }
-
-    function cropAndScaleCanvas(img, sx, sy, sw, sh) {
-        if (sw <= 0 || sh <= 0) return null;
-        const MAX = 330;
-        const scale = Math.min(MAX / sw, MAX / sh, 1);
-        const dw = Math.max(1, Math.round(sw * scale));
-        const dh = Math.max(1, Math.round(sh * scale));
-
+    /**
+     * Renders `draw(ctx, width, height)` onto a canvas scaled to fit SCREENSHOT_MAX_PX
+     * and returns a WebP data URL (JPEG when WebP encoding is unavailable).
+     */
+    function renderScaledDataUrl(sourceWidth, sourceHeight, draw) {
+        if (!sourceWidth || !sourceHeight || sourceWidth <= 0 || sourceHeight <= 0) return null;
+        const scale = Math.min(SCREENSHOT_MAX_PX / sourceWidth, SCREENSHOT_MAX_PX / sourceHeight, 1);
+        const width = Math.max(1, Math.round(sourceWidth * scale));
+        const height = Math.max(1, Math.round(sourceHeight * scale));
         const canvas = document.createElement("canvas");
-        canvas.width = dw;
-        canvas.height = dh;
+        canvas.width = width;
+        canvas.height = height;
         const ctx = canvas.getContext("2d");
         if (!ctx) return null;
-        ctx.fillStyle = "#12131c";
-        ctx.fillRect(0, 0, dw, dh);
-        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, dw, dh);
+        ctx.fillStyle = SCREENSHOT_BG;
+        ctx.fillRect(0, 0, width, height);
+        draw(ctx, width, height);
 
         const webpUrl = canvas.toDataURL("image/webp", 0.75);
         if (webpUrl && webpUrl.startsWith("data:image/webp")) {
@@ -439,55 +366,64 @@
         return canvas.toDataURL("image/jpeg", 0.80);
     }
 
-    function captureVisibleTabCrop(rect) {
-        if (!rect || !chrome?.runtime?.sendMessage) return Promise.resolve(null);
-        return new Promise((resolve) => {
-            chrome.runtime.sendMessage({ type: "QT_CAPTURE_VISIBLE_TAB" }, async (response) => {
-                if (chrome.runtime.lastError || !response?.dataUrl) {
-                    resolve(null);
-                    return;
-                }
-                try {
-                    const img = await loadImage(response.dataUrl);
-                    if (!img || !img.naturalWidth || !img.naturalHeight) {
-                        resolve(null);
-                        return;
-                    }
-                    const dpr = window.devicePixelRatio || 1;
-
-                    const clientX = Math.max(0, rect.left);
-                    const clientY = Math.max(0, rect.top);
-                    const clientRight = Math.min(window.innerWidth, rect.right);
-                    const clientBottom = Math.min(window.innerHeight, rect.bottom);
-                    const clientWidth = clientRight - clientX;
-                    const clientHeight = clientBottom - clientY;
-
-                    if (clientWidth < 20 || clientHeight < 20) {
-                        resolve(null);
-                        return;
-                    }
-
-                    const sx = Math.round(clientX * dpr);
-                    const sy = Math.round(clientY * dpr);
-                    const sw = Math.round(clientWidth * dpr);
-                    const sh = Math.round(clientHeight * dpr);
-
-                    if (sx + sw > img.naturalWidth || sy + sh > img.naturalHeight) {
-                        const scaleX = img.naturalWidth / (window.innerWidth || 1);
-                        const scaleY = img.naturalHeight / (window.innerHeight || 1);
-                        const adjSx = Math.round(clientX * scaleX);
-                        const adjSy = Math.round(clientY * scaleY);
-                        const adjSw = Math.round(clientWidth * scaleX);
-                        const adjSh = Math.round(clientHeight * scaleY);
-                        return resolve(cropAndScaleCanvas(img, adjSx, adjSy, adjSw, adjSh));
-                    }
-
-                    resolve(cropAndScaleCanvas(img, sx, sy, sw, sh));
-                } catch (_) {
-                    resolve(null);
-                }
+    function drawMediaToDataUrl(media) {
+        try {
+            const sourceWidth = media.videoWidth || media.naturalWidth || media.width;
+            const sourceHeight = media.videoHeight || media.naturalHeight || media.height;
+            return renderScaledDataUrl(sourceWidth, sourceHeight, (ctx, width, height) => {
+                ctx.drawImage(media, 0, 0, width, height);
             });
+        } catch (_) {
+            return null;
+        }
+    }
+
+    function cropAndScaleCanvas(img, sx, sy, sw, sh) {
+        return renderScaledDataUrl(sw, sh, (ctx, dw, dh) => {
+            ctx.drawImage(img, sx, sy, sw, sh, 0, 0, dw, dh);
         });
+    }
+
+    async function captureVisibleTabCrop(rect) {
+        if (!rect) return null;
+        try {
+            const response = await SharedUtils.sendRuntimeMessage({ type: MSG.CAPTURE_VISIBLE_TAB });
+            if (!response?.dataUrl) return null;
+            const img = await loadImage(response.dataUrl);
+            if (!img || !img.naturalWidth || !img.naturalHeight) return null;
+            const dpr = window.devicePixelRatio || 1;
+
+            const clientX = Math.max(0, rect.left);
+            const clientY = Math.max(0, rect.top);
+            const clientRight = Math.min(window.innerWidth, rect.right);
+            const clientBottom = Math.min(window.innerHeight, rect.bottom);
+            const clientWidth = clientRight - clientX;
+            const clientHeight = clientBottom - clientY;
+
+            if (clientWidth < 20 || clientHeight < 20) return null;
+
+            const sx = Math.round(clientX * dpr);
+            const sy = Math.round(clientY * dpr);
+            const sw = Math.round(clientWidth * dpr);
+            const sh = Math.round(clientHeight * dpr);
+
+            if (sx + sw > img.naturalWidth || sy + sh > img.naturalHeight) {
+                // Captured image and viewport disagree on DPR – derive the scale from actual sizes.
+                const scaleX = img.naturalWidth / (window.innerWidth || 1);
+                const scaleY = img.naturalHeight / (window.innerHeight || 1);
+                return cropAndScaleCanvas(
+                    img,
+                    Math.round(clientX * scaleX),
+                    Math.round(clientY * scaleY),
+                    Math.round(clientWidth * scaleX),
+                    Math.round(clientHeight * scaleY),
+                );
+            }
+
+            return cropAndScaleCanvas(img, sx, sy, sw, sh);
+        } catch (_) {
+            return null;
+        }
     }
 
     function extractImageSourceUrl(media) {
@@ -584,20 +520,14 @@
             .catch(() => null);
     }
 
-    function requestImageDataUrl(url) {
-        if (!url || !chrome?.runtime?.sendMessage) return Promise.resolve(null);
-        return new Promise((resolve) => {
-            chrome.runtime.sendMessage(
-                { type: C.MESSAGE_TYPES?.FETCH_CONTEXT_IMAGE || "QT_FETCH_CONTEXT_IMAGE", url },
-                (response) => {
-                    if (chrome.runtime.lastError || !response?.dataUrl) {
-                        resolve(null);
-                        return;
-                    }
-                    resolve(response.dataUrl);
-                },
-            );
-        });
+    async function requestImageDataUrl(url) {
+        if (!url) return null;
+        try {
+            const response = await SharedUtils.sendRuntimeMessage({ type: MSG.FETCH_CONTEXT_IMAGE, url });
+            return response?.dataUrl || null;
+        } catch (_) {
+            return null;
+        }
     }
 
     function loadImage(src) {
@@ -607,6 +537,12 @@
             image.onerror = () => resolve(null);
             image.src = src;
         });
+    }
+
+    /** Load an image from a data URL and rasterize it into a scaled screenshot. */
+    async function drawFromDataUrl(dataUrl) {
+        const image = dataUrl ? await loadImage(dataUrl) : null;
+        return image ? drawMediaToDataUrl(image) : null;
     }
 
     async function captureMediaScreenshot(media) {
@@ -624,16 +560,10 @@
                 if (frame) return frame;
             }
             if (media.poster) {
-                const posterData = await requestImageDataUrl(media.poster);
-                const posterImage = posterData ? await loadImage(posterData) : null;
-                if (posterImage) {
-                    const drawn = drawMediaToDataUrl(posterImage);
-                    if (drawn) return drawn;
-                }
+                const drawn = await drawFromDataUrl(await requestImageDataUrl(media.poster));
+                if (drawn) return drawn;
             }
-            const videoCrop = await captureVisibleTabCrop(media.getBoundingClientRect());
-            if (videoCrop) return videoCrop;
-            return null;
+            return captureVisibleTabCrop(media.getBoundingClientRect());
         }
 
         const directCapture = drawMediaToDataUrl(media);
@@ -641,37 +571,18 @@
 
         const src = extractImageSourceUrl(media);
         if (src) {
+            let drawn = null;
             if (src.startsWith("data:image/")) {
-                const dataImage = await loadImage(src);
-                if (dataImage) {
-                    const drawn = drawMediaToDataUrl(dataImage);
-                    if (drawn) return drawn;
-                }
+                drawn = await drawFromDataUrl(src);
             } else if (src.startsWith("blob:")) {
-                try {
-                    const blobDataUrl = await fetchBlobAsDataUrl(src);
-                    if (blobDataUrl) {
-                        const blobImg = await loadImage(blobDataUrl);
-                        if (blobImg) {
-                            const drawn = drawMediaToDataUrl(blobImg);
-                            if (drawn) return drawn;
-                        }
-                    }
-                } catch (_) { }
+                drawn = await drawFromDataUrl(await fetchBlobAsDataUrl(src));
             } else if (/^https?:/i.test(src)) {
-                const imageData = await requestImageDataUrl(src);
-                const fetchedImage = imageData ? await loadImage(imageData) : null;
-                if (fetchedImage) {
-                    const drawn = drawMediaToDataUrl(fetchedImage);
-                    if (drawn) return drawn;
-                }
+                drawn = await drawFromDataUrl(await requestImageDataUrl(src));
             }
+            if (drawn) return drawn;
         }
 
-        const tabCrop = await captureVisibleTabCrop(media.getBoundingClientRect());
-        if (tabCrop) return tabCrop;
-
-        return null;
+        return captureVisibleTabCrop(media.getBoundingClientRect());
     }
 
     function captureVideoScreenshot(videoOverride = null) {
@@ -704,6 +615,10 @@
     //  Shared Tooltip HTML Builder & Handlers
     // ═══════════════════════════════════════════════════════════════
 
+    function speakButtonHtml(text, lang, title, extraAttrs = "") {
+        return `<button class="${PREFIX}speak" data-text="${escapeAttr(text)}" data-lang="${escapeAttr(lang)}" ${extraAttrs} title="${title}">${SVG.SPEAKER}</button>`;
+    }
+
     function buildTooltipHtml({
         srcLang,
         targetLang,
@@ -722,25 +637,25 @@
                     <span class="${P}label">${langTag(srcLang)}</span>
                     <span class="${P}text ${P}original">${escapeHtml(original)}</span>
                     <span class="${P}word-actions">
-                        <button class="${P}speak" data-text="${escapeAttr(original)}" data-lang="${escapeAttr(srcLang)}" title="Play original">${SVG.SPEAKER || "🔊"}</button>
-                        <button class="${P}img-search" data-word="${escapeAttr(original)}" title="Google Images">${SVG.IMAGE_SEARCH || "🔍"}</button>
+                        ${speakButtonHtml(original, srcLang, "Play original")}
+                        <button class="${P}img-search" data-word="${escapeAttr(original)}" title="Google Images">${SVG.IMAGE_SEARCH}</button>
                     </span>
                 </div>
                 <div class="${P}row">
                     <span class="${P}label">${langTag(targetLang)}</span>
                     <span class="${P}text ${P}translated">${escapeHtml(translated)}</span>
                     <span class="${P}word-actions">
-                        <button class="${P}speak" data-text="${escapeAttr(translated)}" data-lang="${escapeAttr(targetLang)}" title="Play translation">${SVG.SPEAKER || "🔊"}</button>
+                        ${speakButtonHtml(translated, targetLang, "Play translation")}
                     </span>
                 </div>
             </div>
-            <div class="${P}ai-result" id="${P}ai-result" style="display:none;"></div>
+            <div class="${P}ai-result" id="${C.UI_IDS.AI_RESULT}" style="display:none;"></div>
             <div class="${P}save-footer">
                 <button class="${P}save-word-btn ${P}save-footer-btn" ${dataAttrs} title="Save word">
-                    ${SVG.SAVE || "💾"} <span>Save</span>
+                    ${SVG.SAVE} <span>Save</span>
                 </button>
                 <button class="${P}save-ai-btn ${P}save-footer-btn" ${dataAttrs} title="Generate AI sentence (Gemini)">
-                    ${SVG.SAVE_AI || "✨"} <span>AI Sentence</span>
+                    ${SVG.SAVE_AI} <span>AI Sentence</span>
                 </button>
             </div>`;
     }
@@ -758,11 +673,144 @@
             ?.querySelectorAll(`.${PREFIX}speak.speaking`)
             .forEach((btn) => btn.classList.remove("speaking"));
 
-        if (cancelSpeech) {
-            if (typeof SharedTtsService !== "undefined") {
-                SharedTtsService.cancel();
-            } else {
-                window.speechSynthesis?.cancel();
+        if (cancelSpeech) SharedTtsService.cancel();
+    }
+
+    /** Attach one-shot end/error listeners to an <audio> element or SpeechSynthesisUtterance. */
+    function onPlaybackDone(result, onDone) {
+        if (result instanceof HTMLAudioElement) {
+            result.addEventListener("ended", onDone, { once: true });
+            result.addEventListener("error", onDone, { once: true });
+        } else if (typeof result.addEventListener === "function") {
+            result.addEventListener("end", onDone, { once: true });
+            result.addEventListener("error", onDone, { once: true });
+        } else {
+            result.onend = onDone;
+            result.onerror = onDone;
+        }
+    }
+
+    function handleTooltipSpeakClick(btn) {
+        if (activeTooltipSpeechButton === btn && btn.classList.contains("speaking")) {
+            stopTooltipSpeech();
+            return;
+        }
+
+        stopTooltipSpeech();
+        const token = tooltipSpeechToken;
+        activeTooltipSpeechButton = btn;
+        btn.classList.add("speaking");
+
+        const onDone = () => {
+            if (token !== tooltipSpeechToken) return;
+            stopTooltipSpeech(false);
+        };
+
+        SharedTtsService.speakBrowser(btn.dataset.text, btn.dataset.lang, {
+            sourceLang: btn.dataset.sourceLang,
+            originalText: btn.dataset.originalText,
+            isCancelled: () => token !== tooltipSpeechToken,
+        })
+            .then((result) => {
+                if (token !== tooltipSpeechToken) return;
+                if (!result) {
+                    onDone();
+                    return;
+                }
+                onPlaybackDone(result, onDone);
+                tooltipSpeechTimer = setTimeout(onDone, SharedTtsService.getSafetyTimeout(btn.dataset.text));
+            })
+            .catch(onDone);
+    }
+
+    async function buildSaveEntry(btn, screenshotPromise = null) {
+        const screenshot = screenshotPromise
+            ? await screenshotPromise
+            : await captureContextScreenshot();
+        return {
+            original: cleanCardText(btn.dataset.src),
+            translated: cleanCardText(btn.dataset.translated),
+            srcLang: btn.dataset.srcLang,
+            tgtLang: btn.dataset.tgtLang,
+            sentence: "",
+            sentenceTranslated: "",
+            aiSentence: "",
+            aiSentenceTranslated: "",
+            screenshot: screenshot || "",
+            timestamp: Date.now(),
+            downloaded: false,
+        };
+    }
+
+    async function handleSaveWordClick(saveWordBtn) {
+        try {
+            const entry = await buildSaveEntry(saveWordBtn);
+            await QT.saveWord(entry);
+            saveWordBtn.innerHTML = `${SVG.SAVE_CHECK} <span>Saved!</span>`;
+            saveWordBtn.classList.add("saved");
+        } catch (error) {
+            saveWordBtn.innerHTML = `${SVG.SAVE} <span>Plan limit</span>`;
+            saveWordBtn.title = error.message;
+        }
+    }
+
+    async function handleSaveAiClick(saveAiBtn) {
+        if (saveAiBtn.classList.contains("saved") || saveAiBtn.classList.contains("loading")) return;
+
+        saveAiBtn.classList.add("loading");
+        saveAiBtn.innerHTML = `<span class="ai-loader-label">✨ Generating…</span>`;
+        const screenshotPromise = captureContextScreenshot();
+        const aiResultEl = tooltipEl.querySelector(`#${C.UI_IDS.AI_RESULT}`);
+        const idleLabel = `${SVG.SAVE_AI} <span>AI</span>`;
+
+        try {
+            const result = await QT.geminiGenerateSentence(
+                saveAiBtn.dataset.src,
+                saveAiBtn.dataset.translated,
+                saveAiBtn.dataset.srcLang,
+                saveAiBtn.dataset.tgtLang,
+            );
+
+            const cleanedSentence = cleanCardText(result.sentence) || result.sentence;
+            const cleanedTranslation = cleanCardText(result.translation) || result.translation;
+
+            if (aiResultEl) {
+                aiResultEl.style.display = "block";
+                aiResultEl.innerHTML = `
+                    <div class="${PREFIX}ai-label">✨ AI sentence:</div>
+                    <div class="${PREFIX}ai-text">${escapeHtml(cleanedSentence)}</div>
+                    <div class="${PREFIX}ai-translation">${escapeHtml(cleanedTranslation)}</div>`;
+            }
+
+            const entry = await buildSaveEntry(saveAiBtn, screenshotPromise);
+            entry.aiSentence = cleanedSentence;
+            entry.aiSentenceTranslated = cleanedTranslation;
+            entry.sentence = cleanedSentence;
+            entry.sentenceTranslated = cleanedTranslation;
+            await QT.saveWord(entry);
+
+            saveAiBtn.innerHTML = `${SVG.SAVE_AI_CHECK} <span>Saved to Review!</span>`;
+            saveAiBtn.classList.remove("loading");
+            saveAiBtn.classList.add("saved");
+        } catch (err) {
+            console.error("[Lectoro] Gemini AI error:", err);
+            saveAiBtn.classList.remove("loading");
+            const limitReached = GeminiProxy.isLimitError(err);
+            saveAiBtn.innerHTML = limitReached
+                ? idleLabel
+                : `${SVG.SAVE_AI} <span style="color:#f87171;">Error</span>`;
+
+            if (aiResultEl) {
+                aiResultEl.style.display = limitReached ? "none" : "block";
+                aiResultEl.innerHTML = limitReached
+                    ? ""
+                    : `<div style="color:#f87171;font-size:11px;padding:6px 12px;">⚠ ${escapeHtml(err.message)}</div>`;
+            }
+
+            if (!limitReached) {
+                setTimeout(() => {
+                    saveAiBtn.innerHTML = idleLabel;
+                }, 3000);
             }
         }
     }
@@ -770,178 +818,54 @@
     function attachTooltipHandlers() {
         if (!tooltipEl) return;
 
-        // TTS buttons
         tooltipEl.querySelectorAll(`.${PREFIX}speak`).forEach((btn) => {
             btn.addEventListener("click", (ev) => {
                 ev.stopPropagation();
-                if (activeTooltipSpeechButton === btn && btn.classList.contains("speaking")) {
-                    stopTooltipSpeech();
-                    return;
-                }
-
-                stopTooltipSpeech();
-                const token = tooltipSpeechToken;
-                activeTooltipSpeechButton = btn;
-                btn.classList.add("speaking");
-
-                const onDone = () => {
-                    if (token !== tooltipSpeechToken) return;
-                    stopTooltipSpeech(false);
-                };
-
-                const speakFn = typeof SharedTtsService !== "undefined"
-                    ? SharedTtsService.speakBrowser
-                    : (text, lang, opts) => QT.speak(text, lang, opts);
-
-                speakFn(btn.dataset.text, btn.dataset.lang, {
-                    sourceLang: btn.dataset.sourceLang,
-                    originalText: btn.dataset.originalText,
-                    isCancelled: () => token !== tooltipSpeechToken,
-                })
-                    .then((result) => {
-                        if (token !== tooltipSpeechToken) return;
-                        if (!result) {
-                            onDone();
-                            return;
-                        }
-                        if (result instanceof HTMLAudioElement) {
-                            result.addEventListener("ended", onDone, { once: true });
-                            result.addEventListener("error", onDone, { once: true });
-                        } else {
-                            result.addEventListener?.("end", onDone, { once: true });
-                            result.addEventListener?.("error", onDone, { once: true });
-                            if (!result.addEventListener) {
-                                result.onend = onDone;
-                                result.onerror = onDone;
-                            }
-                        }
-                        const timeout = typeof SharedTtsService !== "undefined"
-                            ? SharedTtsService.getSafetyTimeout(btn.dataset.text)
-                            : 12000;
-                        tooltipSpeechTimer = setTimeout(onDone, timeout);
-                    })
-                    .catch(onDone);
+                handleTooltipSpeakClick(btn);
             });
         });
 
-        // Google Images Search buttons
         tooltipEl.querySelectorAll(`.${PREFIX}img-search`).forEach((btn) => {
             btn.addEventListener("click", (ev) => {
                 ev.stopPropagation();
-                const word = ((btn.dataset.word + " clipart" || "")).trim();
+                const word = (btn.dataset.word || "").trim();
                 if (!word) return;
-                const url = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(word)}`;
+                const url = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(`${word} clipart`)}`;
                 window.open(url, "_blank", "noopener,noreferrer");
             });
         });
 
-        async function buildSaveEntry(btn, screenshotPromise = null) {
-            const clean = typeof cleanCardText === "function" ? cleanCardText : (s) => String(s || "").trim();
-            const screenshot = screenshotPromise
-                ? await screenshotPromise
-                : await captureContextScreenshot();
-            return {
-                original: clean(btn.dataset.src),
-                translated: clean(btn.dataset.translated),
-                srcLang: btn.dataset.srcLang,
-                tgtLang: btn.dataset.tgtLang,
-                sentence: "",
-                sentenceTranslated: "",
-                aiSentence: "",
-                aiSentenceTranslated: "",
-                screenshot: screenshot || "",
-                timestamp: Date.now(),
-                downloaded: false,
-            };
-        }
-
-        // Save Word Only
         const saveWordBtn = tooltipEl.querySelector(`.${PREFIX}save-word-btn`);
-        if (saveWordBtn) {
-            saveWordBtn.addEventListener("click", async (ev) => {
-                ev.stopPropagation();
-                try {
-                    const entry = await buildSaveEntry(saveWordBtn);
-                    await QT.saveWord(entry);
-                    saveWordBtn.innerHTML = `${SVG.SAVE_CHECK || "✓"} <span>Saved!</span>`;
-                    saveWordBtn.classList.add("saved");
-                } catch (error) {
-                    saveWordBtn.innerHTML = `${SVG.SAVE || "💾"} <span>Plan limit</span>`;
-                    saveWordBtn.title = error.message;
-                }
-            });
-        }
+        saveWordBtn?.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            handleSaveWordClick(saveWordBtn);
+        });
 
-        // Save AI Sentence
         const saveAiBtn = tooltipEl.querySelector(`.${PREFIX}save-ai-btn`);
-        if (saveAiBtn) {
-            saveAiBtn.addEventListener("click", async (ev) => {
-                ev.stopPropagation();
-                if (saveAiBtn.classList.contains("saved") || saveAiBtn.classList.contains("loading")) return;
-
-                saveAiBtn.classList.add("loading");
-                saveAiBtn.innerHTML = `<span class="ai-loader-label">✨ Generating…</span>`;
-                const screenshotPromise = captureContextScreenshot();
-                const aiResultEl = tooltipEl.querySelector(`#${PREFIX}ai-result`);
-                const clean = typeof cleanCardText === "function" ? cleanCardText : (s) => String(s || "").trim();
-
-                try {
-                    const result = await QT.geminiGenerateSentence(
-                        saveAiBtn.dataset.src,
-                        saveAiBtn.dataset.translated,
-                        saveAiBtn.dataset.srcLang,
-                        saveAiBtn.dataset.tgtLang,
-                    );
-
-                    const cleanedSentence = clean(result.sentence) || result.sentence;
-                    const cleanedTranslation = clean(result.translation) || result.translation;
-
-                    if (aiResultEl) {
-                        aiResultEl.style.display = "block";
-                        aiResultEl.innerHTML = `
-                            <div class="${PREFIX}ai-label">✨ AI sentence:</div>
-                            <div class="${PREFIX}ai-text">${escapeHtml(cleanedSentence)}</div>
-                            <div class="${PREFIX}ai-translation">${escapeHtml(cleanedTranslation)}</div>`;
-                    }
-
-                    const entry = await buildSaveEntry(saveAiBtn, screenshotPromise);
-                    entry.aiSentence = cleanedSentence;
-                    entry.aiSentenceTranslated = cleanedTranslation;
-                    entry.sentence = cleanedSentence;
-                    entry.sentenceTranslated = cleanedTranslation;
-                    await QT.saveWord(entry);
-
-                    saveAiBtn.innerHTML = `${SVG.SAVE_AI_CHECK || "✓"} <span>Saved to Review!</span>`;
-                    saveAiBtn.classList.remove("loading");
-                    saveAiBtn.classList.add("saved");
-                } catch (err) {
-                    console.error("[Lectoro] Gemini AI error:", err);
-                    saveAiBtn.classList.remove("loading");
-                    const limitReached =
-                        typeof GeminiProxy !== "undefined" && GeminiProxy.isLimitError?.(err);
-                    saveAiBtn.innerHTML = limitReached
-                        ? `${SVG.SAVE_AI || "✨"} <span>AI</span>`
-                        : `${SVG.SAVE_AI || "✨"} <span style="color:#f87171;">Error</span>`;
-
-                    if (aiResultEl) {
-                        aiResultEl.style.display = limitReached ? "none" : "block";
-                        aiResultEl.innerHTML = limitReached
-                            ? ""
-                            : `<div style="color:#f87171;font-size:11px;padding:6px 12px;">⚠ ${escapeHtml(err.message)}</div>`;
-                    }
-
-                    if (!limitReached) {
-                        setTimeout(() => {
-                            saveAiBtn.innerHTML = `${SVG.SAVE_AI || "✨"} <span>AI</span>`;
-                        }, 3000);
-                    }
-                }
-            });
-        }
+        saveAiBtn?.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            handleSaveAiClick(saveAiBtn);
+        });
     }
 
     // ═══════════════════════════════════════════════════════════════
     //  Subtitle Helpers
+    // ═══════════════════════════════════════════════════════════════
+
+    function appendWordSpans(parent, text, wordClass, fontStyle) {
+        const parts = text.match(/\S+|\s+/g) || [];
+        for (const part of parts) {
+            if (/\S/.test(part)) {
+                const span = document.createElement("span");
+                span.className = wordClass;
+                span.textContent = part;
+                if (fontStyle) span.style.fontStyle = fontStyle;
+                parent.appendChild(span);
+            } else {
+                parent.appendChild(document.createTextNode(part));
+            }
+        }
+    }
 
     function splitIntoWordSpans(el, wordClass) {
         if (!el || isOwnUI(el)) return;
@@ -960,39 +884,15 @@
                 if (child.nodeName === "BR") {
                     el.appendChild(document.createElement("br"));
                 } else if (child.nodeType === Node.TEXT_NODE) {
-                    const parts = child.nodeValue.match(/\S+|\s+/g) || [];
-                    for (const part of parts) {
-                        if (/\S/.test(part)) {
-                            const span = document.createElement("span");
-                            span.className = wordClass;
-                            span.textContent = part;
-                            if (originalFontStyle) span.style.fontStyle = originalFontStyle;
-                            el.appendChild(span);
-                        } else {
-                            el.appendChild(document.createTextNode(part));
-                        }
-                    }
+                    appendWordSpans(el, child.nodeValue, wordClass, originalFontStyle);
                 } else if (child.nodeType === Node.ELEMENT_NODE) {
                     splitIntoWordSpans(child, wordClass);
                     el.appendChild(child);
                 }
             }
-            if (originalFontStyle) el.style.fontStyle = originalFontStyle;
-            return;
-        }
-
-        el.textContent = "";
-        const parts = text.match(/\S+|\s+/g) || [];
-        for (const part of parts) {
-            if (/\S/.test(part)) {
-                const span = document.createElement("span");
-                span.className = wordClass;
-                span.textContent = part;
-                if (originalFontStyle) span.style.fontStyle = originalFontStyle;
-                el.appendChild(span);
-            } else {
-                el.appendChild(document.createTextNode(part));
-            }
+        } else {
+            el.textContent = "";
+            appendWordSpans(el, text, wordClass, originalFontStyle);
         }
         if (originalFontStyle) el.style.fontStyle = originalFontStyle;
     }
@@ -1006,7 +906,7 @@
             show(msg, duration = 4000) {
                 if (!el) {
                     el = document.createElement("div");
-                    el.className = className;
+                    el.className = className || C.UI_CLASSES.SUB_HINT;
                     parentFn().appendChild(el);
                 }
                 const parent = parentFn();
@@ -1019,6 +919,9 @@
             },
         };
     }
+
+    const SUBTITLE_CONTAINER_SELECTOR =
+        ".player-timedtext, .player-timedtext-text-container, .ytp-caption-window-container, .vjs-text-track-display, [data-uia='video-canvas']";
 
     function findWordAtPoint(x, y, wordClass) {
         if (!x && !y) return null;
@@ -1033,9 +936,7 @@
         // If cursor is over any subtitle cue that hasn't been tokenized yet, tokenize immediately!
         for (const el of els) {
             if (isOwnUI(el)) continue;
-            const subContainer = el.closest?.(
-                ".player-timedtext, .player-timedtext-text-container, .ytp-caption-window-container, .vjs-text-track-display, [data-uia='video-canvas']"
-            );
+            const subContainer = el.closest?.(SUBTITLE_CONTAINER_SELECTOR);
             if (subContainer) {
                 const target = el.tagName === "SPAN" || el.tagName === "DIV" ? el : el.querySelector?.("span, div");
                 if (target && target.textContent?.trim() && !target.querySelector(`.${wordClass}`)) {
@@ -1051,11 +952,9 @@
         return null;
     }
 
+    // Player registry is injected after core.js; resolve it lazily at call time.
     function getVideo() {
-        if (typeof globalThis.LectoroPlayerRegistry !== "undefined" && globalThis.LectoroPlayerRegistry.getVideo) {
-            return globalThis.LectoroPlayerRegistry.getVideo();
-        }
-        return document.querySelector("video");
+        return globalThis.LectoroPlayerRegistry?.getVideo?.() ?? document.querySelector("video");
     }
 
     function pauseVideo(video = null) {
@@ -1083,7 +982,7 @@
     //  Expose Global Namespace (Backward Compatible)
     // ═══════════════════════════════════════════════════════════════
 
-    window.QT = {
+    const QT = {
         PREFIX,
         ICON_ID,
         TOOLTIP_ID,
@@ -1106,61 +1005,26 @@
         getMousePos: () => ({ x: lastMouseX, y: lastMouseY }),
 
         // Translation – delegates to SharedTranslatorService
-        translate: (text, lang) =>
-            typeof SharedTranslatorService !== "undefined"
-                ? SharedTranslatorService.translate(text, lang)
-                : Promise.reject(new Error("Translator unavailable")),
-        createTranslateCache: (size) =>
-            typeof SharedTranslatorService !== "undefined"
-                ? SharedTranslatorService.createTranslateCache(size)
-                : new Map(),
+        translate: (text, lang) => SharedTranslatorService.translate(text, lang),
+        createTranslateCache: (size) => SharedTranslatorService.createTranslateCache(size),
 
-        // TTS – delegates to SharedTtsService
-        speak: (text, lang, opts) =>
-            typeof SharedTtsService !== "undefined"
-                ? SharedTtsService.speakBrowser(text, lang, opts)
-                : window.speechSynthesis?.speak(new SpeechSynthesisUtterance(text)),
+        // TTS – delegates to SharedTtsService / SharedUtils
+        speak: (text, lang, opts) => SharedTtsService.speakBrowser(text, lang, opts),
         pickBestVoice,
-        ensureVoices: () =>
-            typeof SharedTtsService !== "undefined" && SharedTtsService.ensureVoices
-                ? SharedTtsService.ensureVoices()
-                : (typeof SharedUtils !== "undefined" && SharedUtils.ensureVoices
-                    ? SharedUtils.ensureVoices()
-                    : Promise.resolve([])),
-        formatSpeechMarkup: (text, baseLang, opts) =>
-            typeof SharedTtsService !== "undefined" && SharedTtsService.formatSpeechMarkup
-                ? SharedTtsService.formatSpeechMarkup(text, baseLang, opts)
-                : (typeof SharedUtils !== "undefined" && SharedUtils.escapeHtml
-                    ? SharedUtils.escapeHtml(text)
-                    : String(text ?? "")),
+        ensureVoices: () => ensureVoices(),
+        formatSpeechMarkup: (text, baseLang, opts) => SharedTtsService.formatSpeechMarkup(text, baseLang, opts),
 
         // Storage – delegates to SharedWordRepository and SharedTranslatorService
-        getTargetLang: () =>
-            typeof SharedTranslatorService !== "undefined"
-                ? SharedTranslatorService.getTargetLang()
-                : Promise.resolve("pl"),
-        saveWord: (entry) =>
-            typeof SharedWordRepository !== "undefined"
-                ? SharedWordRepository.saveWord(entry)
-                : Promise.reject(new Error("WordRepository unavailable")),
+        getTargetLang: () => SharedTranslatorService.getTargetLang(),
+        saveWord: (entry) => SharedWordRepository.saveWord(entry),
 
         // AI & Screenshots – delegates to SharedTranslatorService
-        geminiGenerateSentence: (w, t, s, tgt) =>
-            typeof SharedTranslatorService !== "undefined"
-                ? SharedTranslatorService.generateSentence(w, t, s, tgt)
-                : Promise.reject(new Error("TranslatorService unavailable")),
-        geminiExplainSentence: (s, tgt, ctx = null) =>
-            typeof SharedTranslatorService !== "undefined"
-                ? SharedTranslatorService.explainSentence(s, tgt, ctx)
-                : Promise.reject(new Error("TranslatorService unavailable")),
-        geminiMovieTranslate: (t, tgt, ctx = null) =>
-            typeof SharedTranslatorService !== "undefined"
-                ? SharedTranslatorService.movieTranslate(t, tgt, ctx)
-                : Promise.reject(new Error("TranslatorService unavailable")),
+        geminiGenerateSentence: (w, t, s, tgt) => SharedTranslatorService.generateSentence(w, t, s, tgt),
+        geminiExplainSentence: (s, tgt, ctx = null) => SharedTranslatorService.explainSentence(s, tgt, ctx),
+        geminiMovieTranslate: (t, tgt, ctx = null) => SharedTranslatorService.movieTranslate(t, tgt, ctx),
         captureVideoScreenshot,
         captureContextScreenshot,
-        rememberScreenshotContext: (rect, anchorOverride = null) =>
-            rememberScreenshotContext(rect, anchorOverride),
+        rememberScreenshotContext,
 
         buildTooltipHtml,
         attachTooltipHandlers,
@@ -1177,4 +1041,6 @@
         pauseVideo,
         resumeVideo,
     };
+
+    window.QT = QT;
 })();

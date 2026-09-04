@@ -29,9 +29,36 @@ test("central configuration matches the three product plans", () => {
             ]),
         ),
         {
-            free: { trialDays: 0, price: 0, currency: "PLN", ai: 10, srs: 50, ttsEnabled: false, ttsRequest: 0, ttsMonth: 0 },
-            basic: { trialDays: 3, price: 7.99, currency: "USD", ai: 200, srs: 3000, ttsEnabled: true, ttsRequest: 500, ttsMonth: 20000 },
-            pro: { trialDays: 3, price: 19.99, currency: "USD", ai: 1200, srs: 10000, ttsEnabled: true, ttsRequest: 1000, ttsMonth: 120000 },
+            free: {
+                trialDays: 0,
+                price: 0,
+                currency: "PLN",
+                ai: 10,
+                srs: 50,
+                ttsEnabled: false,
+                ttsRequest: 0,
+                ttsMonth: 0,
+            },
+            basic: {
+                trialDays: 3,
+                price: 7.99,
+                currency: "USD",
+                ai: 200,
+                srs: 3000,
+                ttsEnabled: true,
+                ttsRequest: 500,
+                ttsMonth: 20000,
+            },
+            pro: {
+                trialDays: 3,
+                price: 19.99,
+                currency: "USD",
+                ai: 1200,
+                srs: 10000,
+                ttsEnabled: true,
+                ttsRequest: 1000,
+                ttsMonth: 120000,
+            },
         },
     );
 });
@@ -55,20 +82,29 @@ test("AI and SRS limits come from the central configuration", () => {
             checkAiLimit({ plan, used: limits.ai.usesPerMonth - 1 }).allowed,
             true,
         );
-        assert.equal(checkAiLimit({ plan, used: limits.ai.usesPerMonth }).allowed, false);
         assert.equal(
-            checkSrsLimit({ plan, savedCards: limits.srs.maxSavedCards - 1 }).allowed,
+            checkAiLimit({ plan, used: limits.ai.usesPerMonth }).allowed,
+            false,
+        );
+        assert.equal(
+            checkSrsLimit({ plan, savedCards: limits.srs.maxSavedCards - 1 })
+                .allowed,
             true,
         );
         assert.equal(
-            checkSrsLimit({ plan, savedCards: limits.srs.maxSavedCards }).allowed,
+            checkSrsLimit({ plan, savedCards: limits.srs.maxSavedCards })
+                .allowed,
             false,
         );
     }
 });
 
 test("FREE cannot use ElevenLabs", () => {
-    const result = checkElevenLabsLimit({ plan: "free", text: "Hello", usedCharacters: 0 });
+    const result = checkElevenLabsLimit({
+        plan: "free",
+        text: "Hello",
+        usedCharacters: 0,
+    });
     assert.equal(result.allowed, false);
     assert.equal(result.code, "ELEVENLABS_NOT_INCLUDED");
 });
@@ -128,22 +164,34 @@ test("currentMonth returns YYYY-MM format", () => {
 test("cleanCardText strips subtitle artifacts, music tags, speaker markers, chevrons, and trailing dots or commas", () => {
     const SharedUtils = require("../shared/utils");
     const cases = [
-        ["[music] >> If you going then I will go.", "If you going then I will go"],
+        [
+            "[music] >> If you going then I will go.",
+            "If you going then I will go",
+        ],
         ["[Muzyka]", ""],
         ["[Śmiech]", ""],
         ["[Brawa]", ""],
         ["[Oklaski] Cześć wszystkim!", "Cześć wszystkim!"],
         ["♪ Never gonna give you up ♪", "Never gonna give you up"],
-        [">> (music playing) >> Hey guys, welcome back!", "Hey guys, welcome back!"],
+        [
+            ">> (music playing) >> Hey guys, welcome back!",
+            "Hey guys, welcome back!",
+        ],
         ["[Applause] - Wait, is that true?", "Wait, is that true?"],
-        ["NARRATOR: In a world where anything is possible.", "In a world where anything is possible"],
-        ["<b>Hello</b> <font color=\"#fff\">world</font>", "Hello world"],
+        [
+            "NARRATOR: In a world where anything is possible.",
+            "In a world where anything is possible",
+        ],
+        ['<b>Hello</b> <font color="#fff">world</font>', "Hello world"],
         ["[screaming] [laughter] Just do it!", "Just do it!"],
         ["  >>  Let's do this!  ", "Let's do this!"],
         ["SPEAKER 1: Exactly what I thought.", "Exactly what I thought"],
         ["Hello, world,", "Hello, world"],
         ["Word...", "Word"],
-        ["Sentence with dots... and ending with comma,", "Sentence with dots... and ending with comma"],
+        [
+            "Sentence with dots... and ending with comma,",
+            "Sentence with dots... and ending with comma",
+        ],
         ["Napis z kropką na końcu.", "Napis z kropką na końcu"],
         ["Napis z przecinkiem na końcu,", "Napis z przecinkiem na końcu"],
         ["Wielokropek na końcu...", "Wielokropek na końcu"],
@@ -155,11 +203,14 @@ test("cleanCardText strips subtitle artifacts, music tags, speaker markers, chev
     }
 
     require("../shared/subtitle-service");
-    const SubtitleService = global.SharedSubtitleService || global.LectoroSubtitleService;
+    const SubtitleService = global.SharedSubtitleService;
     if (SubtitleService?.cleanCueText) {
         assert.equal(SubtitleService.cleanCueText("[Muzyka]"), "");
         assert.equal(SubtitleService.cleanCueText("[Music] Hello!"), "Hello!");
-        assert.equal(SubtitleService.cleanCueText(">> [Śmiech] Dobry wieczór"), "Dobry wieczór");
+        assert.equal(
+            SubtitleService.cleanCueText(">> [Śmiech] Dobry wieczór"),
+            "Dobry wieczór",
+        );
     }
 });
 
@@ -182,27 +233,47 @@ test("checkExportLimit enforces 3/month for FREE and unlimited for BASIC and PRO
         // Free plan: 0, 1, 2 used -> allowed
         for (let used = 0; used < 3; used++) {
             const res = checkExportLimit({ plan: "free", type, used });
-            assert.equal(res.allowed, true, `Free plan should allow export #${used + 1} for ${type}`);
+            assert.equal(
+                res.allowed,
+                true,
+                `Free plan should allow export #${used + 1} for ${type}`,
+            );
             assert.equal(res.limit, 3);
             assert.equal(res.remaining, 3 - used);
         }
 
         // Free plan: 3 used -> blocked
         const blocked = checkExportLimit({ plan: "free", type, used: 3 });
-        assert.equal(blocked.allowed, false, `Free plan should block export #4 for ${type}`);
+        assert.equal(
+            blocked.allowed,
+            false,
+            `Free plan should block export #4 for ${type}`,
+        );
         assert.equal(blocked.code, "EXPORT_LIMIT_REACHED");
         assert.equal(blocked.remaining, 0);
 
         // Basic plan: Anki and Excel are unlimited
         if (type !== "quiz") {
-            const basicRes = checkExportLimit({ plan: "basic", type, used: 100 });
-            assert.equal(basicRes.allowed, true, `Basic plan should allow unlimited ${type} exports`);
+            const basicRes = checkExportLimit({
+                plan: "basic",
+                type,
+                used: 100,
+            });
+            assert.equal(
+                basicRes.allowed,
+                true,
+                `Basic plan should allow unlimited ${type} exports`,
+            );
             assert.equal(basicRes.limit, Infinity);
             assert.equal(basicRes.remaining, Infinity);
 
             // Pro plan: Anki and Excel are unlimited
             const proRes = checkExportLimit({ plan: "pro", type, used: 500 });
-            assert.equal(proRes.allowed, true, `Pro plan should allow unlimited ${type} exports`);
+            assert.equal(
+                proRes.allowed,
+                true,
+                `Pro plan should allow unlimited ${type} exports`,
+            );
             assert.equal(proRes.limit, Infinity);
             assert.equal(proRes.remaining, Infinity);
         }

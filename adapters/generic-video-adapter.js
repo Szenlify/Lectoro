@@ -37,9 +37,9 @@
     document.addEventListener("fullscreenchange", () => setTimeout(initControlBarHide, 200));
     document.addEventListener("webkitfullscreenchange", () => setTimeout(initControlBarHide, 200));
 
-    const { createDomAdapter } = globalThis.LectoroBaseAdapter || {};
+    const { createDomAdapter } = globalThis.LectoroBaseAdapter;
 
-    const adapterConfig = {
+    const GenericVideoAdapter = createDomAdapter({
         id: "videojs",
         name: "Video.js / HTML5 Player",
         playerSelector: ".video-js",
@@ -47,23 +47,13 @@
         cueSelector: ".vjs-text-track-cue div",
         leafOnly: true,
         isPage: () => !!document.querySelector(".video-js"),
-        ensureControlsHidden,
-        clearControlBarTimer() {
-            clearTimeout(controlBarTimer);
+        extraProps: {
+            ensureControlsHidden,
+            clearControlBarTimer() {
+                clearTimeout(controlBarTimer);
+            },
         },
-    };
-
-    const GenericVideoAdapter = typeof createDomAdapter === "function"
-        ? createDomAdapter({
-              ...adapterConfig,
-              extraProps: {
-                  ensureControlsHidden,
-                  clearControlBarTimer() {
-                      clearTimeout(controlBarTimer);
-                  },
-              },
-          })
-        : adapterConfig;
+    });
 
     globalThis.LectoroGenericVideoAdapter = GenericVideoAdapter;
 })();

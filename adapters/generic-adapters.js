@@ -47,5 +47,5 @@
         }),
     ];
 
-    globalThis.LectoroGenericAdapters = GenericAdapters;
+    globalThis.LectoroGenericAdapters = Object.freeze(GenericAdapters);
 })();

@@ -71,6 +71,8 @@
         }
 
         window.addEventListener("message", (event) => {
+            const frame = document.getElementById("quizFrame");
+            if (!frame || event.source !== frame.contentWindow) return;
             if (!event.data) return;
             if (event.data.action === "QUIZ_SANDBOX_READY") {
                 startSending();

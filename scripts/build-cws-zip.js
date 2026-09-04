@@ -52,6 +52,7 @@ const INCLUDED_ENTRIES = [
     "quiz.css",
     "quiz.js",
     "quiz-runner.html",
+    "quiz-runner.js",
     "styles.css",
     "icons",
     "popup",

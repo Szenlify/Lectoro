@@ -522,7 +522,7 @@ document
         button.classList.add("is-loading");
         button.setAttribute("aria-busy", "true");
         button.innerHTML =
-            '<span class="ai-loader-label review-ai-loader-label">✨ Connecting to Stripe...</span>';
+            '<span class="ai-loader-label review-ai-loader-label">✨ Processing</span>';
         grid?.setAttribute("aria-busy", "true");
 
         if (status) {

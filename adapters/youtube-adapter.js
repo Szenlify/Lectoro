@@ -8,17 +8,17 @@
     "use strict";
 
     const HOST_RE = /(^|\.)youtube\.com$/i;
-    const EVT = (typeof LectoroConstants !== "undefined" && LectoroConstants.EVENT_NAMES) || {};
-    const TIMED_TEXT_EVENT = EVT.YOUTUBE_TIMED_TEXT || "__lectoro_youtube_timed_text";
-    const TRACKS_EVENT = EVT.YOUTUBE_TRACKS_AVAILABLE || "__lectoro_youtube_tracks_available";
-    const TRACK_REQUEST_EVENT = EVT.YOUTUBE_TRACK_REQUEST || "__lectoro_youtube_track_request";
-    const TRACK_RESPONSE_EVENT = EVT.YOUTUBE_TRACK_RESPONSE || "__lectoro_youtube_track_response";
-    const FETCH_REQUEST_EVENT = EVT.YOUTUBE_FETCH_REQUEST || "__lectoro_youtube_fetch_request";
-    const FETCH_RESPONSE_EVENT = EVT.YOUTUBE_FETCH_RESPONSE || "__lectoro_youtube_fetch_response";
-    const SEEK_EVENT = EVT.YOUTUBE_SEEK || "__lectoro_youtube_seek";
-    const PAUSE_EVENT = EVT.YOUTUBE_PAUSE || "__lectoro_youtube_pause";
-    const PLAY_EVENT = EVT.YOUTUBE_PLAY || "__lectoro_youtube_play";
-    const NAV_EVENT = EVT.YOUTUBE_NAVIGATION || "__lectoro_youtube_navigation";
+    const EVT = LectoroConstants.EVENT_NAMES;
+    const TIMED_TEXT_EVENT = EVT.YOUTUBE_TIMED_TEXT;
+    const TRACKS_EVENT = EVT.YOUTUBE_TRACKS_AVAILABLE;
+    const TRACK_REQUEST_EVENT = EVT.YOUTUBE_TRACK_REQUEST;
+    const TRACK_RESPONSE_EVENT = EVT.YOUTUBE_TRACK_RESPONSE;
+    const FETCH_REQUEST_EVENT = EVT.YOUTUBE_FETCH_REQUEST;
+    const FETCH_RESPONSE_EVENT = EVT.YOUTUBE_FETCH_RESPONSE;
+    const SEEK_EVENT = EVT.YOUTUBE_SEEK;
+    const PAUSE_EVENT = EVT.YOUTUBE_PAUSE;
+    const PLAY_EVENT = EVT.YOUTUBE_PLAY;
+    const NAV_EVENT = EVT.YOUTUBE_NAVIGATION;
 
     let cueIndex = [];
     let currentVideoId = "";
@@ -32,10 +32,7 @@
     let isCcActive = false;
 
     function getSubtitleService() {
-        return (
-            globalThis.SharedSubtitleService ||
-            globalThis.LectoroSubtitleService
-        );
+        return globalThis.SharedSubtitleService;
     }
 
     function isPage() {

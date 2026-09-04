@@ -27,7 +27,13 @@
         cleanTextForTTS,
         pickBestVoice,
         ensureVoices,
+        formatSpeechMarkup,
     } = QT;
+
+    const READING_HIGHLIGHT_NAME =
+        LectoroConstants.UI_CLASSES.READING_SENTENCE_HIGHLIGHT;
+    const DEFAULT_TTS = LectoroConstants.DEFAULT_TTS_SETTINGS;
+    const MAX_SELECTION_LENGTH = 5000;
 
     // ═══════════════════════════════════════════════════════════════
     //  State
@@ -59,42 +65,67 @@
         if (isReading) cleanupReading();
     });
 
+    /** Element that contains a Range (its ancestor container, or that node's parent for text nodes). */
+    function rangeAnchorElement(range) {
+        const node = range?.commonAncestorContainer;
+        if (!node) return null;
+        return node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+    }
+
     // ═══════════════════════════════════════════════════════════════
     //  Icon – Create & Position
     // ═══════════════════════════════════════════════════════════════
+
+    function createToolbarButton(kind, svg, title, onClick) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = `${PREFIX}tb-btn ${PREFIX}tb-${kind}`;
+        button.innerHTML = svg;
+        button.title = title;
+        button.addEventListener("click", onClick);
+        return button;
+    }
 
     function getIcon() {
         if (iconEl) return iconEl;
         iconEl = document.createElement("div");
         iconEl.id = ICON_ID;
 
-        const translateBtn = document.createElement("button");
-        translateBtn.type = "button";
-        translateBtn.className = `${PREFIX}tb-btn ${PREFIX}tb-translate`;
-        translateBtn.innerHTML = SVG.TRANSLATE;
-        translateBtn.title = "Translate";
-        translateBtn.addEventListener("click", onIconClick);
-
-        const readBtn = document.createElement("button");
-        readBtn.type = "button";
-        readBtn.className = `${PREFIX}tb-btn ${PREFIX}tb-read`;
-        readBtn.innerHTML = SVG.READ;
-        readBtn.title = "Read aloud";
+        const readBtn = createToolbarButton(
+            "read",
+            SVG.READ,
+            "Read aloud",
+            onReadClick,
+        );
         readBtn.setAttribute("aria-pressed", "false");
-        readBtn.addEventListener("click", onReadClick);
 
-        const aiBtn = document.createElement("button");
-        aiBtn.type = "button";
-        aiBtn.className = `${PREFIX}tb-btn ${PREFIX}tb-ai`;
-        aiBtn.innerHTML = SVG.AI;
-        aiBtn.title = "AI Translate";
-        aiBtn.addEventListener("click", onAITranslateClick);
-
-        iconEl.appendChild(translateBtn);
+        iconEl.appendChild(
+            createToolbarButton(
+                "translate",
+                SVG.TRANSLATE,
+                "Translate",
+                onIconClick,
+            ),
+        );
         iconEl.appendChild(readBtn);
-        iconEl.appendChild(aiBtn);
+        iconEl.appendChild(
+            createToolbarButton(
+                "ai",
+                SVG.AI,
+                "AI Translate",
+                onAITranslateClick,
+            ),
+        );
         document.body.appendChild(iconEl);
         return iconEl;
+    }
+
+    function setReadButtonState(reading) {
+        const readBtn = iconEl?.querySelector(`.${PREFIX}tb-read`);
+        if (!readBtn) return;
+        readBtn.classList.toggle("reading", reading);
+        readBtn.setAttribute("aria-pressed", String(reading));
+        readBtn.title = reading ? "Stop reading" : "Read aloud";
     }
 
     function showIcon(rect) {
@@ -182,12 +213,7 @@
 
         const text = currentText;
         const rect = currentRect;
-        const anchorNode = currentRange?.commonAncestorContainer;
-        const anchorEl = anchorNode
-            ? anchorNode.nodeType === Node.ELEMENT_NODE
-                ? anchorNode
-                : anchorNode.parentElement
-            : null;
+        const anchorEl = rangeAnchorElement(currentRange);
         const revision = selectionRevision;
         if (isReading) cleanupReading();
         hideIcon();
@@ -213,7 +239,7 @@
             attachTooltipHandlers();
         } catch (err) {
             if (revision !== selectionRevision) return;
-            console.error("[Quick Translator]", err);
+            console.error("[Lectoro]", err);
             showTooltip(
                 `<div class="${PREFIX}error">⚠ ${escapeHtml(err.message)}</div>`,
                 rect,
@@ -230,12 +256,7 @@
 
         const text = currentText;
         const rect = currentRect;
-        const anchorNode = currentRange?.commonAncestorContainer;
-        const anchorEl = anchorNode
-            ? anchorNode.nodeType === Node.ELEMENT_NODE
-                ? anchorNode
-                : anchorNode.parentElement
-            : null;
+        const anchorEl = rangeAnchorElement(currentRange);
         const revision = selectionRevision;
         if (isReading) cleanupReading();
         hideIcon();
@@ -264,12 +285,21 @@
                 `data-tgt-lang="${escapeAttr(targetLang)}" ` +
                 `data-sentence="" data-sentence-translated=""`;
 
-            const formattedExplanation = (typeof QT !== "undefined" && typeof QT.formatSpeechMarkup === "function")
-                ? QT.formatSpeechMarkup(explanation, targetLang, { sourceLang: srcLang, originalText: text, quoteClass: `${PREFIX}tts-original-quote` })
-                : escapeHtml(explanation);
-            const formattedTranslation = (typeof QT !== "undefined" && typeof QT.formatSpeechMarkup === "function")
-                ? QT.formatSpeechMarkup(translation, targetLang, { sourceLang: srcLang, originalText: text, quoteClass: `${PREFIX}tts-original-quote` })
-                : escapeHtml(translation);
+            const markupOptions = {
+                sourceLang: srcLang,
+                originalText: text,
+                quoteClass: `${PREFIX}tts-original-quote`,
+            };
+            const formattedExplanation = formatSpeechMarkup(
+                explanation,
+                targetLang,
+                markupOptions,
+            );
+            const formattedTranslation = formatSpeechMarkup(
+                translation,
+                targetLang,
+                markupOptions,
+            );
 
             const html = `
                 <div class="${PREFIX}header"><span>AI Translation</span></div>
@@ -308,8 +338,8 @@
             });
         } catch (err) {
             if (revision !== selectionRevision) return;
-            console.error("[Quick Translator AI]", err);
-            const limitReached = typeof GeminiProxy !== "undefined" && GeminiProxy.isLimitError?.(err);
+            console.error("[Lectoro AI]", err);
+            const limitReached = GeminiProxy.isLimitError(err);
             if (limitReached) {
                 hideTooltip();
             } else {
@@ -343,7 +373,7 @@
             while ((node = walker.nextNode())) {
                 try {
                     if (range.intersectsNode(node)) nodes.push(node);
-                } catch (_) { }
+                } catch (_) {}
             }
         }
 
@@ -494,8 +524,8 @@
     function clearSentenceHighlight() {
         try {
             if (typeof CSS !== "undefined" && CSS.highlights)
-                CSS.highlights.delete("qt-reading-sentence");
-        } catch (_) { }
+                CSS.highlights.delete(READING_HIGHLIGHT_NAME);
+        } catch (_) {}
     }
 
     function cleanupReading(session = null, hideToolbar = false) {
@@ -512,14 +542,7 @@
         isReading = false;
 
         clearSentenceHighlight();
-        if (iconEl) {
-            const rb = iconEl.querySelector(`.${PREFIX}tb-read`);
-            if (rb) {
-                rb.classList.remove("reading");
-                rb.setAttribute("aria-pressed", "false");
-                rb.title = "Read aloud";
-            }
-        }
+        setReadButtonState(false);
         if (hideToolbar) hideIcon();
 
         try {
@@ -548,15 +571,18 @@
             utter.lang = lang;
             utter.rate = Math.max(
                 0.1,
-                Math.min(10, Number(settings.speechRate) || 1.1),
+                Math.min(
+                    10,
+                    Number(settings.speechRate) || DEFAULT_TTS.speechRate,
+                ),
             );
             const volume =
                 settings.ttsVolume !== undefined
                     ? Number(settings.ttsVolume)
-                    : 1;
+                    : DEFAULT_TTS.ttsVolume;
             utter.volume = Number.isFinite(volume)
                 ? Math.max(0, Math.min(1, volume))
-                : 1;
+                : DEFAULT_TTS.ttsVolume;
             const voice = pickBestVoice(settings.speechVoice || "", lang);
             if (voice) utter.voice = voice;
         } catch (error) {
@@ -665,12 +691,8 @@
         if (!isReading || session !== readingSession) return;
 
         try {
-            if (typeof ensureVoices === "function") {
-                await ensureVoices();
-            } else if (typeof SharedUtils !== "undefined" && SharedUtils.ensureVoices) {
-                await SharedUtils.ensureVoices();
-            }
-        } catch (_) { }
+            await ensureVoices();
+        } catch (_) {}
 
         if (!isReading || session !== readingSession) return;
 
@@ -694,7 +716,7 @@
                         CSS.highlights
                     ) {
                         CSS.highlights.set(
-                            "qt-reading-sentence",
+                            READING_HIGHLIGHT_NAME,
                             new Highlight(fragment.range),
                         );
                     }
@@ -717,15 +739,17 @@
             readNext();
         };
 
+        const ttsDefaults = {
+            speechVoice: DEFAULT_TTS.speechVoice,
+            speechRate: DEFAULT_TTS.speechRate,
+            ttsVolume: DEFAULT_TTS.ttsVolume,
+        };
         if (!chrome?.storage?.local) {
-            start({ speechVoice: "", speechRate: 1.1, ttsVolume: 1 });
+            start(ttsDefaults);
             return;
         }
 
-        chrome.storage.local.get(
-            { speechVoice: "", speechRate: 1.1, ttsVolume: 1 },
-            start,
-        );
+        chrome.storage.local.get(ttsDefaults, start);
     }
 
     function onReadClick(e) {
@@ -741,15 +765,7 @@
         readingSession += 1;
         isReading = true;
         const session = readingSession;
-
-        if (iconEl) {
-            const rb = iconEl.querySelector(`.${PREFIX}tb-read`);
-            if (rb) {
-                rb.classList.add("reading");
-                rb.setAttribute("aria-pressed", "true");
-                rb.title = "Zatrzymaj czytanie";
-            }
-        }
+        setReadButtonState(true);
 
         const utterText = cleanTextForTTS(currentText);
         if (!utterText) {
@@ -813,7 +829,7 @@
             if (
                 !text ||
                 text.length === 0 ||
-                text.length > 5000 ||
+                text.length > MAX_SELECTION_LENGTH ||
                 !selection.rangeCount
             ) {
                 hideAll();
@@ -833,15 +849,7 @@
             currentRect = rect;
             currentRange = range.cloneRange();
 
-            const anchorNode = range.commonAncestorContainer;
-            const anchorEl = anchorNode
-                ? anchorNode.nodeType === Node.ELEMENT_NODE
-                    ? anchorNode
-                    : anchorNode.parentElement
-                : null;
-            if (typeof QT.rememberScreenshotContext === "function") {
-                QT.rememberScreenshotContext(rect, anchorEl);
-            }
+            QT.rememberScreenshotContext(rect, rangeAnchorElement(range));
 
             hideTooltip();
             showIcon(rect);

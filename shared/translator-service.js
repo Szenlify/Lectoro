@@ -4,246 +4,275 @@
  * and Gemini AI explanations / sentence generation via Firebase Proxy.
  */
 (function initTranslatorService(root, factory) {
-    const api = factory();
-    if (typeof module !== "undefined" && module.exports) module.exports = api;
-    if (root) {
-        root.SharedTranslatorService = api;
-        root.TranslatorService = api;
-    }
-})(typeof globalThis !== "undefined" ? globalThis : this, function createTranslatorService() {
-    "use strict";
+    const isNode = typeof module !== "undefined" && !!module.exports;
+    const resolve = (name, path) =>
+        (root && root[name]) || (isNode ? require(path) : undefined);
+    const api = factory({
+        Utils: resolve("SharedUtils", "./utils"),
+        Constants: resolve("LectoroConstants", "./constants"),
+    });
+    if (isNode) module.exports = api;
+    if (root) root.SharedTranslatorService = api;
+})(
+    typeof globalThis !== "undefined" ? globalThis : this,
+    function createTranslatorService(deps) {
+        "use strict";
 
-    /**
-     * In-memory & chrome.storage.local backed LRU cache factory for translations.
-     */
-    const PERSISTENT_TRANSLATE_CACHE_KEY = "persistentTranslateCache";
+        const { Utils, Constants } = deps;
+        const MSG = Constants.MESSAGE_TYPES;
+        const PERSISTENT_TRANSLATE_CACHE_KEY =
+            Constants.STORAGE_KEYS.PERSISTENT_TRANSLATE_CACHE;
+        const PERSISTENT_MAX_ENTRIES = 500;
+        const PERSIST_DEBOUNCE_MS = 1000;
 
-    function createTranslateCache(maxSize = 500) {
-        const cache = new Map();
-
-        // Load cached translations asynchronously from chrome.storage.local
-        if (typeof chrome !== "undefined" && chrome?.storage?.local) {
-            chrome.storage.local.get({ [PERSISTENT_TRANSLATE_CACHE_KEY]: {} }, (data) => {
-                const stored = data[PERSISTENT_TRANSLATE_CACHE_KEY] || {};
-                for (const [k, v] of Object.entries(stored)) {
-                    if (!cache.has(k)) cache.set(k, v);
-                }
-            });
+        function hasLocalStorage() {
+            return typeof chrome !== "undefined" && !!chrome?.storage?.local;
         }
 
-        let saveTimeout = null;
-        function schedulePersistentSave() {
-            if (typeof chrome === "undefined" || !chrome?.storage?.local) return;
-            if (saveTimeout) clearTimeout(saveTimeout);
-            saveTimeout = setTimeout(() => {
-                saveTimeout = null;
-                const obj = {};
-                let count = 0;
-                for (const [k, v] of cache.entries()) {
-                    if (count++ >= maxSize) break;
-                    obj[k] = v;
+        /**
+         * Single persistent translation memo shared by every cache instance, so word- and
+         * sentence-level caches never overwrite each other's snapshot in chrome.storage.local.
+         */
+        const persistentStore = {
+            entries: new Map(),
+            loading: null,
+            saveTimer: null,
+            load() {
+                if (this.loading) return this.loading;
+                if (!hasLocalStorage()) {
+                    this.loading = Promise.resolve(this.entries);
+                    return this.loading;
                 }
-                chrome.storage.local.set({ [PERSISTENT_TRANSLATE_CACHE_KEY]: obj }).catch(() => {});
-            }, 1000);
-        }
-
-        return {
-            async get(text, targetLang, fetcher = null) {
-                const key = `${text}|${targetLang}`;
-                if (cache.has(key)) return cache.get(key);
-                const fetchFn = fetcher || ((t, l) => googleTranslate(t, l));
-                const result = await fetchFn(text, targetLang);
-                cache.set(key, result);
-                if (cache.size > maxSize) {
-                    cache.delete(cache.keys().next().value);
-                }
-                schedulePersistentSave();
-                return result;
-            },
-            set(text, targetLang, result) {
-                const key = `${text}|${targetLang}`;
-                cache.set(key, result);
-                if (cache.size > maxSize) {
-                    cache.delete(cache.keys().next().value);
-                }
-                schedulePersistentSave();
-            },
-            has(text, targetLang) {
-                return cache.has(`${text}|${targetLang}`);
-            },
-            clear() {
-                cache.clear();
-                if (typeof chrome !== "undefined" && chrome?.storage?.local) {
-                    chrome.storage.local.remove(PERSISTENT_TRANSLATE_CACHE_KEY).catch(() => {});
-                }
-            },
-            get size() {
-                return cache.size;
-            },
-        };
-    }
-
-    const defaultCache = createTranslateCache(500);
-
-    /**
-     * Get preferred target language from storage.
-     */
-    async function getTargetLang() {
-        if (!chrome?.storage?.local) return "pl";
-        const data = await chrome.storage.local.get({ targetLang: "pl" });
-        return data.targetLang || "pl";
-    }
-
-    function isContentScriptEnvironment() {
-        return (
-            typeof window !== "undefined" &&
-            window.location?.protocol !== "chrome-extension:" &&
-            typeof chrome !== "undefined" &&
-            typeof chrome.runtime?.sendMessage === "function"
-        );
-    }
-
-    /**
-     * Google Translate (client=gtx, no API key needed).
-     */
-    async function googleTranslate(text, targetLang = "pl") {
-        if (isContentScriptEnvironment()) {
-            try {
-                const response = await new Promise((resolve, reject) => {
-                    chrome.runtime.sendMessage(
-                        { type: "QT_GOOGLE_TRANSLATE", text, targetLang },
-                        (res) => {
-                            if (chrome.runtime.lastError) {
-                                return reject(new Error(chrome.runtime.lastError.message));
+                this.loading = new Promise((resolve) => {
+                    chrome.storage.local.get(
+                        { [PERSISTENT_TRANSLATE_CACHE_KEY]: {} },
+                        (data) => {
+                            const stored =
+                                data?.[PERSISTENT_TRANSLATE_CACHE_KEY] || {};
+                            for (const [key, value] of Object.entries(stored)) {
+                                if (!this.entries.has(key))
+                                    this.entries.set(key, value);
                             }
-                            if (res?.error) {
-                                return reject(new Error(res.error));
-                            }
-                            resolve(res?.result);
+                            resolve(this.entries);
                         },
                     );
                 });
-                if (response) return response;
-            } catch (_) {
-                // Fallback to direct fetch if sendMessage is unavailable
+                return this.loading;
+            },
+            remember(key, value) {
+                this.entries.delete(key);
+                this.entries.set(key, value);
+                while (this.entries.size > PERSISTENT_MAX_ENTRIES) {
+                    this.entries.delete(this.entries.keys().next().value);
+                }
+                this.scheduleSave();
+            },
+            scheduleSave() {
+                if (!hasLocalStorage()) return;
+                if (this.saveTimer) clearTimeout(this.saveTimer);
+                this.saveTimer = setTimeout(() => {
+                    this.saveTimer = null;
+                    chrome.storage.local
+                        .set({
+                            [PERSISTENT_TRANSLATE_CACHE_KEY]:
+                                Object.fromEntries(this.entries),
+                        })
+                        .catch(() => {});
+                }, PERSIST_DEBOUNCE_MS);
+            },
+            clear() {
+                this.entries.clear();
+                if (hasLocalStorage()) {
+                    chrome.storage.local
+                        .remove(PERSISTENT_TRANSLATE_CACHE_KEY)
+                        .catch(() => {});
+                }
+            },
+        };
+
+        /**
+         * In-memory LRU translation cache backed by the shared persistent store.
+         */
+        function createTranslateCache(maxSize = 500) {
+            const cache = new Map();
+            const cacheKey = (text, targetLang) => `${text}|${targetLang}`;
+
+            persistentStore.load().then((entries) => {
+                for (const [key, value] of entries) {
+                    if (!cache.has(key)) cache.set(key, value);
+                }
+            });
+
+            function store(key, result) {
+                cache.set(key, result);
+                if (cache.size > maxSize) {
+                    cache.delete(cache.keys().next().value);
+                }
+                persistentStore.remember(key, result);
             }
+
+            return {
+                async get(text, targetLang, fetcher = null) {
+                    const key = cacheKey(text, targetLang);
+                    if (cache.has(key)) return cache.get(key);
+                    const fetchFn = fetcher || googleTranslate;
+                    const result = await fetchFn(text, targetLang);
+                    store(key, result);
+                    return result;
+                },
+                set(text, targetLang, result) {
+                    store(cacheKey(text, targetLang), result);
+                },
+                has(text, targetLang) {
+                    return cache.has(cacheKey(text, targetLang));
+                },
+                clear() {
+                    cache.clear();
+                    persistentStore.clear();
+                },
+                get size() {
+                    return cache.size;
+                },
+            };
         }
 
-        const url =
-            "https://translate.googleapis.com/translate_a/single" +
-            "?client=gtx&sl=auto&tl=" +
-            encodeURIComponent(targetLang) +
-            "&dt=t&q=" +
-            encodeURIComponent(text);
+        /**
+         * Get preferred target language from storage.
+         */
+        async function getTargetLang() {
+            if (!chrome?.storage?.local) return "pl";
+            const data = await chrome.storage.local.get({ targetLang: "pl" });
+            return data.targetLang || "pl";
+        }
 
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
+        /**
+         * Google Translate (client=gtx, no API key needed).
+         * Content scripts delegate to the background so the host page's CSP can't block the request.
+         */
+        async function googleTranslate(text, targetLang = "pl") {
+            if (Utils.isContentScriptEnvironment()) {
+                try {
+                    const response = await Utils.sendRuntimeMessage({
+                        type: MSG.GOOGLE_TRANSLATE,
+                        text,
+                        targetLang,
+                    });
+                    if (response?.result) return response.result;
+                } catch (_) {
+                    // Fallback to direct fetch if the background is unavailable
+                }
+            }
 
-        const translated = data[0].map((s) => s[0]).join("");
-        const detectedLang = data[2] || "auto";
-        return { translated, detectedLang };
-    }
+            const url =
+                `${Constants.ENDPOINTS.GOOGLE_TRANSLATE}?client=gtx&sl=auto&tl=` +
+                encodeURIComponent(targetLang) +
+                "&dt=t&q=" +
+                encodeURIComponent(text);
 
-    /**
-     * Translate with caching.
-     */
-    async function translateWithCache(text, targetLang = "pl") {
-        return defaultCache.get(text, targetLang, googleTranslate);
-    }
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
 
-    /**
-     * Gemini AI Request via Firebase Secure Proxy.
-     */
-    async function geminiRequest(
-        prompt,
-        { temperature = 0.8, maxOutputTokens = 250 } = {},
-    ) {
-        if (typeof GeminiProxy === "undefined") {
-            throw new Error(
-                "GeminiProxy is unavailable – ensure Firebase modules are loaded.",
+            const translated = data[0].map((s) => s[0]).join("");
+            const detectedLang = data[2] || "auto";
+            return { translated, detectedLang };
+        }
+
+        /**
+         * Gemini AI Request via Firebase Secure Proxy.
+         */
+        async function geminiRequest(
+            prompt,
+            { temperature = 0.8, maxOutputTokens = 250 } = {},
+        ) {
+            if (typeof GeminiProxy === "undefined") {
+                throw new Error(
+                    "GeminiProxy is unavailable – ensure Firebase modules are loaded.",
+                );
+            }
+            return GeminiProxy.requestJSON(prompt, {
+                temperature,
+                maxOutputTokens,
+            });
+        }
+
+        /**
+         * AI Sentence generator for Anki / Spaced Repetition cards.
+         */
+        async function generateSentence(word, translated, srcLang, tgtLang) {
+            if (typeof AIPrompts === "undefined") {
+                throw new Error("AIPrompts is unavailable.");
+            }
+            const prompt = AIPrompts.sentenceExample(
+                word,
+                translated,
+                srcLang,
+                tgtLang,
             );
+            const parsed = await geminiRequest(prompt, {
+                temperature: 0.8,
+                maxOutputTokens: 200,
+            });
+            return {
+                sentence: parsed.sentence || "",
+                translation: parsed.translation || "",
+            };
         }
-        return GeminiProxy.requestJSON(prompt, {
-            temperature,
-            maxOutputTokens,
-        });
-    }
 
-    /**
-     * AI Sentence generator for Anki / Spaced Repetition cards.
-     */
-    async function generateSentence(word, translated, srcLang, tgtLang) {
-        if (typeof AIPrompts === "undefined") {
-            throw new Error("AIPrompts is unavailable.");
+        /**
+         * AI Deep Sentence explanation.
+         */
+        async function explainSentence(sentence, targetLang, context = null) {
+            if (typeof AIPrompts === "undefined") {
+                throw new Error("AIPrompts is unavailable.");
+            }
+            const prompt = AIPrompts.explainSentence(
+                sentence,
+                targetLang,
+                context,
+            );
+            const parsed = await geminiRequest(prompt, {
+                temperature: 0.7,
+                maxOutputTokens: 350,
+            });
+            return {
+                detectedLang:
+                    parsed.source_language ||
+                    parsed.sourceLanguage ||
+                    parsed.detected_language ||
+                    parsed.detectedLang ||
+                    "",
+                translation: parsed.translation || "",
+                explanation: parsed.explanation || "",
+            };
         }
-        const prompt = AIPrompts.sentenceExample(
-            word,
-            translated,
-            srcLang,
-            tgtLang,
-        );
-        const parsed = await geminiRequest(prompt, {
-            temperature: 0.8,
-            maxOutputTokens: 200,
-        });
-        return {
-            sentence: parsed.sentence || "",
-            translation: parsed.translation || "",
-        };
-    }
 
-    /**
-     * AI Deep Sentence explanation.
-     */
-    async function explainSentence(sentence, targetLang, context = null) {
-        if (typeof AIPrompts === "undefined") {
-            throw new Error("AIPrompts is unavailable.");
+        /**
+         * AI Movie dialogue translation with contextual explanation.
+         */
+        async function movieTranslate(text, targetLang, context = null) {
+            if (typeof AIPrompts === "undefined") {
+                throw new Error("AIPrompts is unavailable.");
+            }
+            const prompt = AIPrompts.movieTranslate(text, targetLang, context);
+            const parsed = await geminiRequest(prompt, {
+                temperature: 0.8,
+                maxOutputTokens: 350,
+            });
+            return {
+                translation: parsed.translation || "",
+                explanation: parsed.explanation || "",
+            };
         }
-        const prompt = AIPrompts.explainSentence(sentence, targetLang, context);
-        const parsed = await geminiRequest(prompt, {
-            temperature: 0.7,
-            maxOutputTokens: 350,
-        });
-        return {
-            detectedLang:
-                parsed.source_language ||
-                parsed.sourceLanguage ||
-                parsed.detected_language ||
-                parsed.detectedLang ||
-                "",
-            translation: parsed.translation || "",
-            explanation: parsed.explanation || "",
-        };
-    }
 
-    /**
-     * AI Movie dialogue translation with contextual explanation.
-     */
-    async function movieTranslate(text, targetLang, context = null) {
-        if (typeof AIPrompts === "undefined") {
-            throw new Error("AIPrompts is unavailable.");
-        }
-        const prompt = AIPrompts.movieTranslate(text, targetLang, context);
-        const parsed = await geminiRequest(prompt, {
-            temperature: 0.8,
-            maxOutputTokens: 350,
+        return Object.freeze({
+            translate: googleTranslate,
+            createTranslateCache,
+            getTargetLang,
+            geminiRequest,
+            generateSentence,
+            explainSentence,
+            movieTranslate,
         });
-        return {
-            translation: parsed.translation || "",
-            explanation: parsed.explanation || "",
-        };
-    }
-
-    return Object.freeze({
-        translate: googleTranslate,
-        translateWithCache,
-        createTranslateCache,
-        getTargetLang,
-        geminiRequest,
-        generateSentence,
-        explainSentence,
-        movieTranslate,
-        defaultCache,
-    });
-});
+    },
+);

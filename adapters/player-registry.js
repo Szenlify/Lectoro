@@ -25,17 +25,11 @@
     }
 
     function isOwnUI(target) {
-        if (globalThis.LectoroBaseAdapter?.isOwnUI) {
-            return globalThis.LectoroBaseAdapter.isOwnUI(target);
-        }
-        return false;
+        return LectoroConstants.isOwnUI(target);
     }
 
     function extractCueText(node) {
-        if (typeof SharedUtils !== "undefined" && SharedUtils.extractSubtitleText) {
-            return SharedUtils.extractSubtitleText(node);
-        }
-        return (node?.textContent || "").replace(/\s+/g, " ").trim();
+        return SharedUtils.extractSubtitleText(node);
     }
 
     function cueText(cue) {
@@ -977,7 +971,7 @@
             }
             if (!Number.isFinite(targetTime)) {
                 if (typeof QT !== "undefined" && QT.createHint) {
-                    QT.createHint("").show(
+                    QT.createHint(LectoroConstants.UI_CLASSES.SUB_HINT).show(
                         direction < 0
                             ? "No previous subtitle in timeline"
                             : "No next subtitle in timeline",
@@ -1009,7 +1003,7 @@
         } catch (error) {
             console.warn("[Lectoro] Netflix subtitle navigation failed:", error);
             if (typeof QT !== "undefined" && QT.createHint) {
-                QT.createHint("").show(
+                QT.createHint(LectoroConstants.UI_CLASSES.SUB_HINT).show(
                     "Could not load Netflix subtitle timeline",
                     2200,
                 );
