@@ -669,6 +669,7 @@
                         <div class="${P}image-card ${P}image-skeleton"></div>
                         <div class="${P}image-card ${P}image-skeleton"></div>
                         <div class="${P}image-card ${P}image-skeleton"></div>
+                        <div class="${P}image-card ${P}image-skeleton"></div>
                     </div>
                 </div>
             </div>
