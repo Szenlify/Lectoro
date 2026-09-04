@@ -87,7 +87,7 @@
         if (video && !video.paused) {
             try {
                 video.pause();
-            } catch (_) {}
+            } catch (_) { }
         }
     }
 
@@ -99,8 +99,8 @@
                 : document.querySelector("video");
         if (video && video.paused) {
             try {
-                video.play()?.catch?.(() => {});
-            } catch (_) {}
+                video.play()?.catch?.(() => { });
+            } catch (_) { }
         }
     }
 
@@ -151,7 +151,7 @@
             return;
         }
         if (timedTextManifest && manifestKey(timedTextManifest) === manifestKey(manifest)) {
-            ensureSubtitleIndex().catch(() => {});
+            ensureSubtitleIndex().catch(() => { });
             return;
         }
         timedTextManifest = manifest;
@@ -165,7 +165,7 @@
 
         // Start downloading immediately. Waiting for an idle period caused the
         // first A/D navigation to stall for up to 1.5 seconds.
-        ensureSubtitleIndex().catch(() => {});
+        ensureSubtitleIndex().catch(() => { });
     }
 
     function waitForTimedTextManifest(timeoutMs = 2500) {
@@ -251,20 +251,20 @@
         const active = activeTrack || {};
         const activeId = normalizedValue(
             active.new_track_id ??
-                active.trackId ??
-                active.track_id ??
-                active.id,
+            active.trackId ??
+            active.track_id ??
+            active.id,
         );
         const activeLanguage = normalizedValue(
             active.bcp47 ??
-                active.bcp47LanguageTag ??
-                active.language ??
-                active.languageCode,
+            active.bcp47LanguageTag ??
+            active.language ??
+            active.languageCode,
         );
         const activeName = normalizedValue(
             active.displayName ??
-                active.languageDescription ??
-                active.description,
+            active.languageDescription ??
+            active.description,
         );
 
         return manifest.tracks
@@ -330,9 +330,16 @@
     function isCcActive(video = null) {
         if (!isWatchPage()) return false;
         if (isPreviewVideo(video)) return false;
-        return activeTextTrackState.playerReady
-            ? activeTextTrackState.isCcActive
-            : false;
+        if (activeTextTrackState.playerReady) {
+            return activeTextTrackState.isCcActive;
+        }
+        // Robust fallback: if player API is not ready yet, inspect live DOM for active timed text
+        const player =
+            video?.closest?.(
+                ".watch-video, [data-uia='video-canvas'], .nf-player-container",
+            ) || document;
+        const timedText = player.querySelector(".player-timedtext");
+        return !!(timedText && timedText.childElementCount > 0);
     }
 
     async function buildSubtitleIndex() {
@@ -433,11 +440,7 @@
     }
 
     async function pollActiveTextTrack() {
-        if (trackPollInFlight || cueIndexPromise || !isWatchPage()) return;
-        if (!timedTextManifest) {
-            ensureSubtitleIndex().catch(() => {});
-            return;
-        }
+        if (trackPollInFlight || !isWatchPage()) return;
         trackPollInFlight = true;
         try {
             const nextState = await requestActiveTextTrack();
@@ -451,7 +454,7 @@
                     cueIndex.length === 0 &&
                     (!nextState.playerReady || nextState.isCcActive)
                 ) {
-                    ensureSubtitleIndex().catch(() => {});
+                    ensureSubtitleIndex().catch(() => { });
                 }
                 return;
             }
@@ -462,7 +465,7 @@
             manifestRevision += 1;
             optimisticSeek = null;
             if (nextState.playerReady && nextState.isCcActive) {
-                ensureSubtitleIndex().catch(() => {});
+                ensureSubtitleIndex().catch(() => { });
             } else {
                 if (globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
                     globalThis.LectoroSubtitleOverlay.renderCustomSubtitles([]);
@@ -527,6 +530,17 @@
         ) {
             optimisticSeek = null;
             return null;
+        }
+        // If video is playing forward past the seek target, release the lock immediately
+        // so real-time playback subtitles advance without delay.
+        if (video && !video.paused && Number.isFinite(lookupTime)) {
+            if (
+                lookupTime > optimisticSeek.targetTime + 0.35 ||
+                lookupTime < optimisticSeek.targetTime - 1.5
+            ) {
+                optimisticSeek = null;
+                return null;
+            }
         }
         if (!optimisticSeek.confirmed) {
             lookupTime = optimisticSeek.targetTime;
@@ -761,11 +775,12 @@
     }
 
     async function captureArtwork() {
-        if (cachedNetflixArtworkDataUrl) {
+        const movieId = getWatchMovieId();
+        if (cachedNetflixArtworkDataUrl && cachedNetflixMovieId === movieId) {
             return cachedNetflixArtworkDataUrl;
         }
 
-        const info = await requestArtworkInfo(1500);
+        const info = await requestArtworkInfo(1200);
         const url = info?.url;
         const title = info?.title;
 
@@ -784,22 +799,19 @@
 
                 if (dataUrl) {
                     const resized = await resizeImageDataUrl(dataUrl);
-                    if (resized) {
-                        cachedNetflixArtworkDataUrl = resized;
-                        return resized;
-                    }
-                    cachedNetflixArtworkDataUrl = dataUrl;
-                    return dataUrl;
+                    const finalDataUrl = resized || dataUrl;
+                    cachedNetflixArtworkDataUrl = finalDataUrl;
+                    cachedNetflixMovieId = movieId;
+                    return finalDataUrl;
                 }
-            } catch (err) {
-                console.warn("[Lectoro] Netflix artwork fetch failed:", err);
-            }
+            } catch (_) { }
         }
 
         // Fallback: high-res branded Netflix canvas card (guarantees image is never blank)
         const fallbackCard = renderFallbackNetflixCard(title);
         if (fallbackCard) {
             cachedNetflixArtworkDataUrl = fallbackCard;
+            cachedNetflixMovieId = movieId;
             return fallbackCard;
         }
         return "";
@@ -809,7 +821,7 @@
         try {
             const response = await sendMessage({
                 type: LectoroConstants.MESSAGE_TYPES.CAPTURE_VISIBLE_TAB,
-            });
+            }).catch(() => null);
             const tabDataUrl = response?.dataUrl;
             if (!tabDataUrl || typeof tabDataUrl !== "string") {
                 return null;
@@ -819,9 +831,9 @@
                 videoFallback instanceof HTMLElement
                     ? videoFallback
                     : document.querySelector("video") ||
-                      document.querySelector(
-                          ".watch-video, [data-uia='video-canvas'], .nf-player-container, [data-uia='player']",
-                      );
+                    document.querySelector(
+                        ".watch-video, [data-uia='video-canvas'], .nf-player-container, [data-uia='player']",
+                    );
 
             const rect = video?.getBoundingClientRect
                 ? video.getBoundingClientRect()
@@ -891,33 +903,31 @@
                             canvas.toDataURL("image/jpeg", 0.82);
 
                         resolve(sceneDataUrl || tabDataUrl);
-                    } catch (err) {
-                        console.warn("[Lectoro] Video scene crop error:", err);
+                    } catch (_) {
                         resolve(tabDataUrl);
                     }
                 };
                 img.onerror = () => resolve(null);
                 img.src = tabDataUrl;
             });
-        } catch (err) {
-            console.warn("[Lectoro] captureVideoScene failed:", err);
+        } catch (_) {
             return null;
         }
     }
 
     /**
      * Captures current review scene from the video on Netflix.
-     * 1. First priority: Live visible video scene screenshot.
+     * 1. First priority: Live visible video scene screenshot (if permitted).
      * 2. Secondary fallback: High-res video artwork / Falcor / canvas card.
      */
     async function captureReviewImage(videoFallback = null) {
         if (!isPage()) return "";
 
-        // 1. Primary: Capture current live video scene
+        // 1. Primary: Try capturing live scene (if supported by tab context)
         const sceneShot = await captureVideoScene(videoFallback);
         if (sceneShot) return sceneShot;
 
-        // 2. Secondary fallback: High-res artwork / title card
+        // 2. Secondary fallback: High-res artwork / title card (zero delay, guaranteed crisp)
         return (await captureArtwork()) || "";
     }
 
@@ -964,7 +974,7 @@
         resetSubtitleState(String(event.detail?.movieId || ""));
         if (event.detail?.movieId) {
             setTimeout(
-                () => ensureSubtitleIndex().catch(() => {}),
+                () => ensureSubtitleIndex().catch(() => { }),
                 0,
             );
         }
@@ -991,14 +1001,14 @@
                         globalThis.LectoroSubtitleOverlay.renderCustomSubtitles([]);
                     }
                 } else if (!prevActive) {
-                    ensureSubtitleIndex().catch(() => {});
+                    ensureSubtitleIndex().catch(() => { });
                 }
             }
         }
     });
     if (isPage()) setInterval(pollActiveTextTrack, 1000);
     if (isWatchPage()) {
-        ensureSubtitleIndex().catch(() => {});
+        ensureSubtitleIndex().catch(() => { });
     }
 
     const NetflixAdapter = {

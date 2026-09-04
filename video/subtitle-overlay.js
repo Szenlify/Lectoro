@@ -695,6 +695,17 @@
     document.addEventListener("webkitfullscreenchange", () =>
         setTimeout(syncCustomSubtitlePosition, 50),
     );
+    document.addEventListener(
+        "play",
+        (e) => {
+            if (e.target instanceof HTMLVideoElement) {
+                if (isSubHovering || subClickLocked) {
+                    closeSubTooltip({ resumeVideo: false });
+                }
+            }
+        },
+        true,
+    );
 
     // Subtitle visual preferences from storage (Single Source of Truth)
     const subPosKey = C.STORAGE_KEYS.SUBTITLE_POSITION;

@@ -560,7 +560,11 @@
                 const all = getAllCuesFn(session.video);
                 if (Array.isArray(all) && all.length > 0) {
                     const now = session.video.currentTime;
-                    const match = all.find((c) => now >= c.startTime && now <= c.endTime);
+                    const match = all.find(
+                        (c) =>
+                            now >= c.startTime &&
+                            now <= (Number.isFinite(c.endTime) ? c.endTime : c.startTime + 3),
+                    );
                     if (match) {
                         if (Array.isArray(match.lines) && match.lines.length > 0) {
                             lines = match.lines;
@@ -745,6 +749,27 @@
             { signal },
         );
         video.addEventListener(
+            "seeking",
+            () => {
+                const session = videoSessions.get(video);
+                if (session === videoSessions.get(activeVideo)) {
+                    refreshCaptionBinding(session, true);
+                }
+            },
+            { signal },
+        );
+        video.addEventListener(
+            "seeked",
+            () => {
+                const session = videoSessions.get(video);
+                if (session === videoSessions.get(activeVideo)) {
+                    refreshCaptionBinding(session, true);
+                    dispatchSubtitleChange(session);
+                }
+            },
+            { signal },
+        );
+        video.addEventListener(
             "timeupdate",
             () => {
                 if (
@@ -762,7 +787,10 @@
                 if (now - session.lastFallbackAt < fallbackMs) return;
                 session.lastFallbackAt = now;
                 session.nativeText = getNativeCueText(video);
-                refreshCaptionBinding(session, !session.binding);
+                refreshCaptionBinding(
+                    session,
+                    !session.binding || !session.binding.container?.isConnected,
+                );
                 queueSubtitleDomScan(session);
             },
             { signal },
@@ -1082,7 +1110,9 @@
         const targetVideo = video || PlayerRegistry.getVideo();
         if (!targetVideo) return false;
         const session = videoSessions.get(targetVideo);
-        const adapter = session?.binding?.adapter;
+        const adapter =
+            session?.binding?.adapter ||
+            (isNetflixPage() ? globalThis.LectoroNetflixAdapter : null);
         if (typeof adapter?.pauseVideo === "function") {
             adapter.pauseVideo(targetVideo);
             return true;
@@ -1100,7 +1130,9 @@
         const targetVideo = video || PlayerRegistry.getVideo();
         if (!targetVideo) return;
         const session = videoSessions.get(targetVideo);
-        const adapter = session?.binding?.adapter;
+        const adapter =
+            session?.binding?.adapter ||
+            (isNetflixPage() ? globalThis.LectoroNetflixAdapter : null);
         if (typeof adapter?.playVideo === "function") {
             adapter.playVideo(targetVideo);
             return;

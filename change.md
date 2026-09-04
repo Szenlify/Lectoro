@@ -1,4 +1,5 @@
-# Lectoro Extension – Rejestr Refaktoringu i Porządkowania KoduStatus ogólny: UKOŃCZONO
+# Lectoro Extension – Rejestr Refaktoringu i Porządkowania Kodu
+Status ogólny: UKOŃCZONO
 Data rozpoczęcia: 2026-09-04
 Ostatnia aktualizacja: 2026-09-04
 
@@ -127,3 +128,12 @@ Ostatnia aktualizacja: 2026-09-04
     - Log: `node scratch/test-srs.js` i `node scratch/test_anki_export.js` – algorytm SRS (1m → 10m → 1d → Multiplier) oraz eksport Smart Cloze Anki – PASS.
 - [x] 7.5. Test logowania i synchronizacji Firebase/Stripe.
     - Log: `npm test --prefix functions` – 51/51 testów jednostkowych Cloud Functions zakończonych sukcesem (PASS).
+
+## Faza 8: Analiza i Eliminacja Zawieszania się Napisów (Netflix & Video Players)
+
+- [x] 8.1. Eliminacja błędu `captureVideoScene` / `captureVisibleTab` (`activeTab` / `<all_urls>` permission).
+    - Log: `background.js` przechwytuje teraz błędy `captureVisibleTab` i zwraca bezpieczne `{ dataUrl: null }` bez rzucania niespójnych wyjątków IPC. W `adapters/netflix-adapter.js` obsłużono brak uprawnień zrzutu ekranu i wprowadzono cache'owanie wygenerowanej karty studyjnej per `movieId` (`cachedNetflixMovieId`), dzięki czemu zapisywanie kolejnych słówek zwraca okładkę w 0 ms bez zbędnych zapytań i opóźnień.
+- [x] 8.2. Odblokowanie wznawiania odtwarzania wideo (`playVideo` / `pauseVideo` bridge fallback).
+    - Log: W `adapters/player-registry.js` funkcje `playVideo` i `pauseVideo` otrzymały fallback do `globalThis.LectoroNetflixAdapter`, gdy `session.binding` jest tymczasowo `null` (podczas usuwania kontenera DOM napisów przez odtwarzacz Netflixa). Zapobiega to utknięciu odtwarzacza w pauzie po zapisie słówka/zdania lub zamknięciu tooltipa.
+- [x] 8.3. Eliminacja blokady `optimisticSeek` i odświeżanie cyklu życia napisów.
+    - Log: W `adapters/netflix-adapter.js` dodano zwalnianie blokady `optimisticSeek`, gdy wideo odtwarza się w przód (`lookupTime > targetTime + 0.35s`), zapobiegając zamrożeniu napisu na 3 sekundy po przewinięciu. W `pollActiveTextTrack` usunięto przedwczesny `return`, gwarantując stałe odpytywanie stanu ścieżki napisów (`isCcActive`). W `adapters/player-registry.js` zarejestrowano nasłuchy `seeking` i `seeked` na sesji wideo oraz dodano automatyczne zamykanie stale podświetlonych/zablokowanych tooltipów na zdarzenie `"play"` w `video/subtitle-overlay.js`.

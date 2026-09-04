@@ -108,7 +108,7 @@
                 ) {
                     result[key] = value;
                 }
-            } catch (_) {}
+            } catch (_) { }
         }
         for (const [key, value] of Object.entries(track)) {
             if (
@@ -163,8 +163,8 @@
             const downloads = track?.downloadables || track?.downloadUrls;
             const profiles = Array.isArray(downloads)
                 ? downloads.map(
-                      (item) => item?.contentProfile || item?.profile || item?.type || "",
-                  )
+                    (item) => item?.contentProfile || item?.profile || item?.type || "",
+                )
                 : Object.keys(downloads || {});
             return profiles.some((profile) =>
                 /webvtt|dfxp|ttml|timedtext|simple-sdh|simple-text/i.test(
@@ -184,12 +184,12 @@
 
         const entries = Array.isArray(rawDownloads)
             ? rawDownloads.map((download, index) => [
-                  download?.contentProfile ||
-                      download?.profile ||
-                      download?.type ||
-                      String(index),
-                  download,
-              ])
+                download?.contentProfile ||
+                download?.profile ||
+                download?.type ||
+                String(index),
+                download,
+            ])
             : Object.entries(rawDownloads);
 
         return entries
@@ -236,7 +236,7 @@
         if (!movieId) {
             try {
                 movieId = String(getNetflixPlayer()?.getMovieId?.() || "");
-            } catch (_) {}
+            } catch (_) { }
         }
         return {
             movieId,
@@ -330,7 +330,7 @@
             if (!payload) return;
             const manifest = normalizeTimedTextManifest(payload);
             if (manifest) publishTimedTextManifest(manifest);
-        } catch (_) {}
+        } catch (_) { }
     }
 
     // ── 1. Intercept JSON.parse with Fast-Path Guard ─────────────────────
@@ -371,9 +371,9 @@
                         .clone()
                         .json()
                         .then((data) => tryExtractManifest(data))
-                        .catch(() => {});
+                        .catch(() => { });
                 }
-            } catch (_) {}
+            } catch (_) { }
             return response;
         };
     }
@@ -409,7 +409,7 @@
                             const data = nativeJsonParse(responseText);
                             tryExtractManifest(data);
                         }
-                    } catch (_) {}
+                    } catch (_) { }
                 }, { once: true });
             }
             return originalSend.apply(this, args);
@@ -448,10 +448,10 @@
                 player.pause();
                 return;
             }
-        } catch (_) {}
+        } catch (_) { }
         try {
             document.querySelector("video")?.pause();
-        } catch (_) {}
+        } catch (_) { }
     });
 
     window.addEventListener(PLAY_EVENT, () => {
@@ -461,10 +461,10 @@
                 player.play();
                 return;
             }
-        } catch (_) {}
+        } catch (_) { }
         try {
-            document.querySelector("video")?.play()?.catch?.(() => {});
-        } catch (_) {}
+            document.querySelector("video")?.play()?.catch?.(() => { });
+        } catch (_) { }
     });
 
     window.addEventListener(SEEK_EVENT, (event) => {
@@ -503,7 +503,7 @@
             if (title && typeof title === "string" && title.trim()) {
                 return title.trim();
             }
-        } catch (_) {}
+        } catch (_) { }
 
         try {
             const titleEl = document.querySelector(
@@ -512,13 +512,13 @@
             if (titleEl?.textContent?.trim()) {
                 return titleEl.textContent.trim();
             }
-        } catch (_) {}
+        } catch (_) { }
 
         try {
             if (document.title && !document.title.toLowerCase().startsWith("netflix")) {
                 return document.title.replace(/-?\s*netflix\s*$/i, "").trim();
             }
-        } catch (_) {}
+        } catch (_) { }
 
         return "";
     }
@@ -542,7 +542,7 @@
                 );
                 if (found?.src) return found.src;
             }
-        } catch (_) {}
+        } catch (_) { }
 
         // 2. Try Netflix Falcor Cache (Redux / Models)
         try {
@@ -623,7 +623,7 @@
                     if (preferred) return preferred;
                 }
             }
-        } catch (_) {}
+        } catch (_) { }
 
         // 3. Try DOM images on Netflix Watch page
         try {
@@ -651,7 +651,7 @@
                     return bgMatch[1];
                 }
             }
-        } catch (_) {}
+        } catch (_) { }
 
         // 4. Try OpenGraph / Twitter meta tags
         try {
@@ -660,7 +660,7 @@
                 document.querySelector('meta[name="twitter:image"]')?.content ||
                 document.querySelector('link[rel="image_src"]')?.href;
             if (og && /^https?:\/\//i.test(og)) return og;
-        } catch (_) {}
+        } catch (_) { }
 
         return "";
     }
@@ -707,7 +707,7 @@
                     track = primitiveTrackData(rawTrack);
                     isCcActive = true;
                 }
-            } catch (_) {}
+            } catch (_) { }
         }
         window.dispatchEvent(
             new CustomEvent(TRACK_RESPONSE_EVENT, {
@@ -778,6 +778,6 @@
                 });
                 if (manifest) publishTimedTextManifest(manifest);
             }
-        } catch (_) {}
+        } catch (_) { }
     });
 })();

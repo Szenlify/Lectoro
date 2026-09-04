@@ -718,8 +718,10 @@ function serializeError(error) {
 const MESSAGE_HANDLERS = Object.freeze({
     [MSG.CAPTURE_VISIBLE_TAB]: async (message, sender) => {
         const windowId = Number.isInteger(sender.tab?.windowId) ? sender.tab.windowId : null;
-        const dataUrl = await captureVisibleTab(windowId).catch(() => captureVisibleTab(null));
-        return { dataUrl };
+        const dataUrl = await captureVisibleTab(windowId)
+            .catch(() => captureVisibleTab(null))
+            .catch(() => null);
+        return { dataUrl: dataUrl || null };
     },
 
     [MSG.FETCH_NETFLIX_TIMED_TEXT]: async (message, sender) => {
