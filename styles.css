@@ -157,9 +157,10 @@
 #__qt_tooltip {
     position: absolute;
     z-index: 2147483647;
-    width: auto !important;
+    width: 360px !important;
+    min-width: 320px !important;
+    max-width: min(360px, calc(100vw - 20px)) !important;
     height: auto !important;
-    max-width: min(520px, calc(100vw - 24px));
     max-height: min(560px, calc(100vh - 48px)) !important;
     bottom: auto !important;
     right: auto !important;
@@ -321,28 +322,237 @@
     padding: 12px 14px;
 }
 
-#__qt_tooltip .__qt_loading {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 14px;
-    color: rgba(255, 255, 255, 0.5);
-    font-size: 13px;
+#__qt_tooltip:has(.__qt_loading),
+#__qt_tooltip.__qt_is-loading {
+    width: 48px !important;
+    min-width: 48px !important;
+    max-width: 48px !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    max-height: 48px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+}
+
+#__qt_tooltip:has(.__qt_loading) .__qt_loading,
+#__qt_tooltip.__qt_is-loading .__qt_loading {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    height: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
 }
 
 #__qt_tooltip .__qt_spinner {
-    width: 18px;
-    height: 18px;
-    border: 2px solid rgba(255, 255, 255, 0.1);
+    width: 22px;
+    height: 22px;
+    border: 2.5px solid rgba(255, 255, 255, 0.15);
     border-top-color: #4a6cf7;
     border-radius: 50%;
     animation: __qt_spin 0.6s linear infinite;
+    box-sizing: border-box;
 }
 
 @keyframes __qt_spin {
     to {
         transform: rotate(360deg);
     }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Visual Associations / Educational Image Gallery Strip
+   ═══════════════════════════════════════════════════════════════ */
+
+@keyframes __qt_img_shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+#__qt_tooltip .__qt_image-section {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+}
+
+#__qt_tooltip .__qt_image-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    padding: 0 2px;
+}
+
+#__qt_tooltip .__qt_image-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: rgba(255, 255, 255, 0.35);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+#__qt_tooltip .__qt_image-ext-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.4);
+    text-decoration: none;
+    padding: 2px 6px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+#__qt_tooltip .__qt_image-ext-link:hover {
+    color: #ffd54f;
+    background: rgba(255, 183, 77, 0.12);
+    border-color: rgba(255, 183, 77, 0.25);
+}
+
+#__qt_tooltip .__qt_image-ext-link svg {
+    width: 10px;
+    height: 10px;
+    flex-shrink: 0;
+}
+
+#__qt_tooltip .__qt_image-strip {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scroll-snap-type: x mandatory !important;
+    padding: 2px 2px 6px 2px !important;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+    -webkit-overflow-scrolling: touch;
+    min-height: 70px;
+}
+
+#__qt_tooltip .__qt_image-strip::-webkit-scrollbar {
+    height: 4px;
+}
+
+#__qt_tooltip .__qt_image-strip::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 4px;
+}
+
+#__qt_tooltip .__qt_image-strip::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 4px;
+}
+
+#__qt_tooltip .__qt_image-strip::-webkit-scrollbar-thumb:hover {
+    background: #4ecdc4;
+}
+
+#__qt_tooltip .__qt_image-card {
+    position: relative;
+    width: 70px !important;
+    height: 70px !important;
+    flex-shrink: 0 !important;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    overflow: hidden;
+    scroll-snap-align: start;
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+#__qt_tooltip .__qt_image-card:hover {
+    border-color: rgba(78, 205, 196, 0.4);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+#__qt_tooltip .__qt_image-card.selected {
+    border-color: #4ecdc4 !important;
+    box-shadow: 0 0 0 1.5px #4ecdc4, 0 4px 14px rgba(78, 205, 196, 0.35) !important;
+}
+
+#__qt_tooltip .__qt_image-card .__qt_check-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #4ecdc4;
+    color: #0f0f23;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transform: scale(0.6);
+    pointer-events: none;
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+#__qt_tooltip .__qt_image-card.selected .__qt_check-badge {
+    opacity: 1;
+    transform: scale(1);
+}
+
+#__qt_tooltip .__qt_image-skeleton {
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.03) 25%,
+        rgba(255, 255, 255, 0.09) 50%,
+        rgba(255, 255, 255, 0.03) 75%
+    );
+    background-size: 200% 100%;
+    animation: __qt_img_shimmer 1.8s infinite ease-in-out;
+}
+
+#__qt_tooltip .__qt_image-card.is-loaded {
+    animation: none;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+#__qt_tooltip .__qt_image-thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+
+#__qt_tooltip .__qt_image-card.is-loaded .__qt_image-thumb {
+    opacity: 1;
+}
+
+#__qt_tooltip .__qt_image-empty {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.35);
+    padding: 8px 4px;
+    font-style: italic;
 }
 
 /* ═══════════════════════════════════════════════════════════════

@@ -143,6 +143,12 @@
             button.type = "button";
         });
         tip.classList.remove("visible");
+        const isLoadingHtml = tip.querySelector(`.${PREFIX}loading`) !== null;
+        if (isLoadingHtml) {
+            tip.classList.add(`${PREFIX}is-loading`);
+        } else {
+            tip.classList.remove(`${PREFIX}is-loading`);
+        }
 
         positionTooltip(rect, preferredPosition);
 
@@ -160,7 +166,9 @@
         }
         clearTimeout(tooltipHideTimer);
         stopTooltipSpeech();
+        tooltipImageToken += 1;
         tooltipEl.classList.remove("visible");
+        tooltipEl.classList.remove(`${PREFIX}is-loading`);
         tooltipHideTimer = setTimeout(() => {
             if (tooltipEl) tooltipEl.innerHTML = "";
             tooltipHideTimer = null;
@@ -168,6 +176,8 @@
     }
 
     function showLoading(rect, preferredPosition = "top", anchorOverride = null) {
+        const tip = getTooltip();
+        tip.classList.add(`${PREFIX}is-loading`);
         showTooltip(
             `<div class="${PREFIX}loading"><div class="${PREFIX}spinner"></div></div>`,
             rect,
@@ -638,7 +648,6 @@
                     <span class="${P}text ${P}original">${escapeHtml(original)}</span>
                     <span class="${P}word-actions">
                         ${speakButtonHtml(original, srcLang, "Play original")}
-                        <button class="${P}img-search" data-word="${escapeAttr(original)}" title="Google Images">${SVG.IMAGE_SEARCH}</button>
                     </span>
                 </div>
                 <div class="${P}row">
@@ -647,6 +656,20 @@
                     <span class="${P}word-actions">
                         ${speakButtonHtml(translated, targetLang, "Play translation")}
                     </span>
+                </div>
+                <div class="${P}image-section">
+                    <div class="${P}image-header">
+                        <span class="${P}image-label">${SVG.IMAGE_SEARCH} Visual Concept</span>
+                        <a class="${P}image-ext-link" href="https://www.google.com/search?q=${encodeURIComponent(`${original} clipart`)}&udm=2" target="_blank" rel="noopener noreferrer" title="Search Google Images">
+                            Google Images ${SVG.EXTERNAL_LINK}
+                        </a>
+                    </div>
+                    <div class="${P}image-strip ${P}image-strip-loading" data-query="${escapeAttr(original)}" data-translated="${escapeAttr(translated)}" data-src-lang="${escapeAttr(srcLang)}" data-tgt-lang="${escapeAttr(targetLang)}">
+                        <div class="${P}image-card ${P}image-skeleton"></div>
+                        <div class="${P}image-card ${P}image-skeleton"></div>
+                        <div class="${P}image-card ${P}image-skeleton"></div>
+                        <div class="${P}image-card ${P}image-skeleton"></div>
+                    </div>
                 </div>
             </div>
             <div class="${P}ai-result" id="${C.UI_IDS.AI_RESULT}" style="display:none;"></div>
@@ -724,15 +747,22 @@
     }
 
     async function buildSaveEntry(btn, screenshotPromise = null) {
-        const screenshot = screenshotPromise
-            ? await screenshotPromise
-            : await captureContextScreenshot();
-        return {
+        const stripEl = tooltipEl?.querySelector(`.${PREFIX}image-strip`);
+        const userSelectedImage = stripEl?.dataset?.selectedUrl || null;
+        const userSelectedCaption = stripEl?.dataset?.selectedCaption || null;
+
+        const screenshot = userSelectedImage
+            ? userSelectedImage
+            : (screenshotPromise
+                ? await screenshotPromise
+                : await captureContextScreenshot());
+
+        const entry = {
             original: cleanCardText(btn.dataset.src),
             translated: cleanCardText(btn.dataset.translated),
             srcLang: btn.dataset.srcLang,
             tgtLang: btn.dataset.tgtLang,
-            sentence: "",
+            sentence: userSelectedCaption || "",
             sentenceTranslated: "",
             aiSentence: "",
             aiSentenceTranslated: "",
@@ -740,6 +770,8 @@
             timestamp: Date.now(),
             downloaded: false,
         };
+
+        return entry;
     }
 
     async function handleSaveWordClick(saveWordBtn) {
@@ -815,6 +847,108 @@
         }
     }
 
+    let tooltipImageToken = 0;
+
+    async function loadTooltipImages(query) {
+        if (!tooltipEl) return;
+        const stripEl = tooltipEl.querySelector(`.${PREFIX}image-strip`);
+        if (!stripEl) return;
+
+        const currentToken = ++tooltipImageToken;
+        const targetWord = (query || stripEl.dataset.query || "").trim();
+        if (!targetWord) {
+            const section = stripEl.closest(`.${PREFIX}image-section`);
+            if (section) section.style.display = "none";
+            return;
+        }
+
+        const context = {
+            original: stripEl.dataset.query || targetWord,
+            translated: stripEl.dataset.translated || "",
+            srcLang: stripEl.dataset.srcLang || "",
+            targetLang: stripEl.dataset.tgtLang || "",
+        };
+
+        const section = stripEl.closest(`.${PREFIX}image-section`);
+
+        try {
+            const response = await new Promise((resolve) => {
+                chrome.runtime.sendMessage(
+                    { type: C.MESSAGE_TYPES.SEARCH_IMAGES, query: targetWord, context },
+                    (res) => resolve(res || {})
+                );
+            });
+            const images = Array.isArray(response?.results) ? response.results : [];
+
+            if (currentToken !== tooltipImageToken || !tooltipEl || !stripEl.isConnected) {
+                return;
+            }
+
+            stripEl.classList.remove(`${PREFIX}image-strip-loading`);
+
+            if (!images || images.length === 0) {
+                if (section) section.style.display = "none";
+                return;
+            }
+
+            stripEl.innerHTML = "";
+            images.forEach((img) => {
+                const card = document.createElement("div");
+                card.className = `${PREFIX}image-card ${PREFIX}image-skeleton`;
+                card.dataset.url = img.fullUrl || img.thumbnail;
+                card.dataset.caption = img.title || targetWord;
+                card.title = `${img.title || targetWord} (Click to set as card visual)`;
+
+                const imageEl = document.createElement("img");
+                imageEl.className = `${PREFIX}image-thumb`;
+                imageEl.alt = img.title || targetWord;
+                imageEl.loading = "lazy";
+
+                imageEl.onload = () => {
+                    card.classList.add("is-loaded");
+                    card.classList.remove(`${PREFIX}image-skeleton`);
+                };
+
+                imageEl.onerror = () => {
+                    card.remove();
+                    if (stripEl.children.length === 0 && section) {
+                        section.style.display = "none";
+                    }
+                };
+
+                imageEl.src = img.thumbnail;
+                card.appendChild(imageEl);
+
+                const badge = document.createElement("div");
+                badge.className = `${PREFIX}check-badge`;
+                badge.innerHTML = SVG.CHECK_SMALL;
+                card.appendChild(badge);
+
+                card.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    const wasSelected = card.classList.contains("selected");
+                    stripEl.querySelectorAll(`.${PREFIX}image-card.selected`).forEach((c) => {
+                        c.classList.remove("selected");
+                    });
+                    if (!wasSelected) {
+                        card.classList.add("selected");
+                        stripEl.dataset.selectedUrl = card.dataset.url;
+                        stripEl.dataset.selectedCaption = card.dataset.caption;
+                    } else {
+                        delete stripEl.dataset.selectedUrl;
+                        delete stripEl.dataset.selectedCaption;
+                    }
+                });
+
+                stripEl.appendChild(card);
+            });
+        } catch (_) {
+            if (currentToken === tooltipImageToken && stripEl.isConnected) {
+                if (section) section.style.display = "none";
+            }
+        }
+    }
+
     function attachTooltipHandlers() {
         if (!tooltipEl) return;
 
@@ -825,12 +959,18 @@
             });
         });
 
+        // Initialize educational visual associations if image strip is present
+        const stripEl = tooltipEl.querySelector(`.${PREFIX}image-strip`);
+        if (stripEl && stripEl.dataset.query) {
+            loadTooltipImages(stripEl.dataset.query);
+        }
+
         tooltipEl.querySelectorAll(`.${PREFIX}img-search`).forEach((btn) => {
             btn.addEventListener("click", (ev) => {
                 ev.stopPropagation();
                 const word = (btn.dataset.word || "").trim();
                 if (!word) return;
-                const url = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(`${word} clipart`)}`;
+                const url = `https://www.google.com/search?q=${encodeURIComponent(`${word} clipart`)}&udm=2`;
                 window.open(url, "_blank", "noopener,noreferrer");
             });
         });
@@ -1028,6 +1168,16 @@
 
         buildTooltipHtml,
         attachTooltipHandlers,
+        loadTooltipImages,
+        searchImages: (query) =>
+            typeof SharedImageService !== "undefined"
+                ? SharedImageService.search(query)
+                : new Promise((resolve) => {
+                      chrome.runtime.sendMessage(
+                          { type: C.MESSAGE_TYPES.SEARCH_IMAGES, query },
+                          (res) => resolve(res?.results || [])
+                      );
+                  }),
 
         splitIntoWordSpans,
         createHint,

@@ -319,6 +319,20 @@
                         <div class="${PREFIX}ai-text">${formattedExplanation}</div>
                         <button class="${PREFIX}speak" data-text="${escapeAttr(explanation)}" data-lang="${escapeAttr(targetLang)}" data-source-lang="${escapeAttr(srcLang)}" data-original-text="${escapeAttr(text)}" title="Play explanation" style="margin-top:6px;">${SVG.SPEAKER}</button>
                     </div>
+                    <div class="${PREFIX}image-section">
+                        <div class="${PREFIX}image-header">
+                            <span class="${PREFIX}image-label">${SVG.IMAGE_SEARCH} Visual Concept</span>
+                            <a class="${PREFIX}image-ext-link" href="https://www.google.com/search?q=${encodeURIComponent(`${text} clipart`)}&udm=2" target="_blank" rel="noopener noreferrer" title="Search Google Images">
+                                Google Images ${SVG.EXTERNAL_LINK}
+                            </a>
+                        </div>
+                        <div class="${PREFIX}image-strip ${PREFIX}image-strip-loading" data-query="${escapeAttr(text)}" data-translated="${escapeAttr(translation)}" data-src-lang="${escapeAttr(srcLang)}" data-tgt-lang="${escapeAttr(targetLang)}">
+                            <div class="${PREFIX}image-card ${PREFIX}image-skeleton"></div>
+                            <div class="${PREFIX}image-card ${PREFIX}image-skeleton"></div>
+                            <div class="${PREFIX}image-card ${PREFIX}image-skeleton"></div>
+                            <div class="${PREFIX}image-card ${PREFIX}image-skeleton"></div>
+                        </div>
+                    </div>
                     <div class="${PREFIX}ai-result" id="${PREFIX}ai-result" style="display:none;"></div>
                 </div>
                 <div class="${PREFIX}save-footer">

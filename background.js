@@ -11,6 +11,7 @@ importScripts(
     "firebase/firebase-sync.js",
     "shared/subscription-service.js",
     "shared/gemini-proxy.js",
+    "shared/image-service.js",
 );
 
 const { wordKey, countDueWords, bytesToBase64 } = SharedUtils;
@@ -855,6 +856,11 @@ const MESSAGE_HANDLERS = Object.freeze({
     [MSG.ELEVENLABS_VOICES]: async (message) => ({
         ok: true,
         voices: await SubscriptionService.getElevenLabsVoices(message.context || "review"),
+    }),
+
+    [MSG.SEARCH_IMAGES]: async (message) => ({
+        ok: true,
+        results: await SharedImageService.search(message.query, message.context),
     }),
 });
 
