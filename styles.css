@@ -1372,6 +1372,29 @@ video::cue {
     }
 }
 
+@property --qt-ai-angle {
+    syntax: "<angle>";
+    inherits: false;
+    initial-value: 0deg;
+}
+
+@keyframes __qt_ai_border_sweep {
+    0% {
+        --qt-ai-angle: 0deg;
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    90% {
+        opacity: 1;
+    }
+    100% {
+        --qt-ai-angle: 360deg;
+        opacity: 0;
+    }
+}
+
 #__qt_sentence_translation.__qt_ai-explain-overlay {
     pointer-events: auto !important;
     cursor: default !important;
@@ -1380,6 +1403,224 @@ video::cue {
     max-height: min(560px, calc(100vh - 48px)) !important;
     bottom: auto !important;
     right: auto !important;
+    position: fixed !important;
+}
+
+#__qt_sentence_translation.__qt_ai-explain-overlay::before {
+    content: "";
+    position: absolute;
+    inset: -1.5px;
+    border-radius: 17px;
+    padding: 1.5px;
+    background: conic-gradient(
+        from var(--qt-ai-angle, 0deg),
+        transparent 0%,
+        transparent 25%,
+        #a855f7 45%,
+        #4ecdc4 65%,
+        #ffffff 80%,
+        #a855f7 92%,
+        transparent 100%
+    );
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 2;
+}
+
+#__qt_sentence_translation.__qt_ai-explain-overlay[data-state="ready"].__qt_translation-reveal::before {
+    animation: __qt_ai_border_sweep 2.2s cubic-bezier(0.25, 1, 0.5, 1) 1 forwards;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   AI Explanation Queue & Multi-step Navigation
+   ═══════════════════════════════════════════════════════════════ */
+
+#__qt_sentence_translation .__qt_ai-queue-ribbon {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 2px 2px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch !important;
+    max-width: 100% !important;
+}
+
+#__qt_sentence_translation .__qt_ai-queue-ribbon::-webkit-scrollbar {
+    display: none !important;
+}
+
+#__qt_sentence_translation .__qt_ai-queue-pill {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    padding: 3px 9px !important;
+    border-radius: 10px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+    cursor: pointer !important;
+    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    color: rgba(255, 255, 255, 0.55) !important;
+    user-select: none !important;
+}
+
+#__qt_sentence_translation .__qt_ai-queue-pill:hover {
+    color: #ffffff !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Nadchodzące idiomy/słówka w kolejce: lekki bg fioletowego */
+#__qt_sentence_translation .__qt_ai-queue-pill.__qt_ai-pill-upcoming {
+    background: rgba(168, 85, 247, 0.16) !important;
+    border: 1px solid rgba(168, 85, 247, 0.35) !important;
+    color: #e9d5ff !important;
+}
+
+#__qt_sentence_translation .__qt_ai-queue-pill.__qt_ai-pill-upcoming:hover {
+    background: rgba(168, 85, 247, 0.26) !important;
+    border-color: #c084fc !important;
+    color: #ffffff !important;
+}
+
+/* Aktywny krok */
+#__qt_sentence_translation .__qt_ai-queue-pill.active {
+    background: linear-gradient(135deg, rgba(78, 205, 196, 0.28), rgba(168, 85, 247, 0.28)) !important;
+    border: 1px solid #4ecdc4 !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 10px rgba(78, 205, 196, 0.35) !important;
+}
+
+#__qt_sentence_translation .__qt_ai-queue-pill .__qt_pill-icon {
+    font-size: 10px !important;
+    line-height: 1 !important;
+}
+
+/* Szczegóły aktywnego idiomu / trudnego słowa */
+#__qt_sentence_translation .__qt_ai-term-card {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    width: 100% !important;
+}
+
+#__qt_sentence_translation .__qt_ai-term-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    width: 100% !important;
+}
+
+#__qt_sentence_translation .__qt_ai-term-title-wrap {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+}
+
+#__qt_sentence_translation .__qt_ai-term {
+    font-size: 17px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.2px !important;
+    color: #00ffea !important;
+    line-height: 1.3 !important;
+}
+
+#__qt_sentence_translation .__qt_ai-badge {
+    font-size: 9px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.6px !important;
+    padding: 2px 7px !important;
+    border-radius: 6px !important;
+    background: rgba(168, 85, 247, 0.2) !important;
+    border: 1px solid rgba(168, 85, 247, 0.4) !important;
+    color: #e9d5ff !important;
+}
+
+#__qt_sentence_translation .__qt_ai-term-meaning {
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    color: rgba(255, 255, 255, 0.95) !important;
+    line-height: 1.4 !important;
+}
+
+#__qt_sentence_translation .__qt_ai-term-explanation {
+    font-size: 13px !important;
+    line-height: 1.5 !important;
+    color: rgba(255, 255, 255, 0.82) !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    border-radius: 10px !important;
+    padding: 8px 10px !important;
+}
+
+#__qt_sentence_translation .__qt_ai-context-quote {
+    font-size: 12px !important;
+    line-height: 1.45 !important;
+    color: rgba(255, 255, 255, 0.5) !important;
+    font-style: italic !important;
+    border-left: 2px solid #4ecdc4 !important;
+    padding: 2px 0 2px 8px !important;
+    margin-top: 2px !important;
+}
+
+#__qt_sentence_translation .__qt_ai-context-quote mark {
+    background: none !important;
+    color: #4ecdc4 !important;
+    font-weight: 700 !important;
+    font-style: normal !important;
+}
+
+/* Przyciski nawigacji krokowego przejścia */
+#__qt_sentence_translation .__qt_ai-nav-group {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+}
+
+#__qt_sentence_translation .__qt_ai-nav-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 3px !important;
+    padding: 4px 8px !important;
+    border-radius: 7px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    color: rgba(255, 255, 255, 0.65) !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+}
+
+#__qt_sentence_translation .__qt_ai-nav-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.12) !important;
+    color: #ffffff !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+#__qt_sentence_translation .__qt_ai-nav-btn:disabled {
+    opacity: 0.25 !important;
+    cursor: not-allowed !important;
+}
+
+#__qt_sentence_translation .__qt_ai-step-counter {
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    color: rgba(255, 255, 255, 0.4) !important;
+    padding: 0 4px !important;
+    letter-spacing: 0.5px !important;
 }
 
 #__qt_sentence_translation[data-state="ai-loading"],
@@ -1922,4 +2163,30 @@ html.__qt_netflix-capturing [id^="__qt_"] {
     box-shadow: 0 0 0 2px rgba(74, 108, 247, 0.25);
     border-radius: 3px;
     transition: background 0.2s ease;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Video Subtitle Highlighting for AI Breakdown
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Active term currently being explained */
+.__qt_ai-sub-active {
+    background: linear-gradient(135deg, rgba(78, 205, 196, 0.45), rgba(168, 85, 247, 0.45)) !important;
+    color: #ffffff !important;
+    text-shadow: 0 0 8px rgba(78, 205, 196, 0.8), 0 1px 2px rgba(0, 0, 0, 0.9) !important;
+    border-radius: 4px !important;
+    box-shadow: 0 0 0 1.5px #4ecdc4, 0 0 10px rgba(78, 205, 196, 0.5) !important;
+    padding: 0 3px !important;
+    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+/* Upcoming terms queued for explanation in this sentence */
+.__qt_ai-sub-upcoming {
+    background: rgba(168, 85, 247, 0.26) !important;
+    color: #f3e8ff !important;
+    text-shadow: 0 0 8px rgba(168, 85, 247, 0.7), 0 1px 2px rgba(0, 0, 0, 0.9) !important;
+    border-radius: 4px !important;
+    box-shadow: 0 0 0 1px rgba(168, 85, 247, 0.4) !important;
+    padding: 0 3px !important;
+    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
 }

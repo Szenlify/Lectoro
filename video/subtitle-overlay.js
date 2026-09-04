@@ -63,6 +63,14 @@
 
     let aiTooltipActive = false;
     let aiExplainKeydownHandler = null;
+    let aiExplainQueue = [];
+    let aiExplainIndex = 0;
+    let aiExplainSourceLang = "en";
+    let aiExplainTargetLang = "pl";
+    let aiExplainLayout = null;
+    let aiExplainSpeechToken = 0;
+    let aiAutoAdvanceTimer = null;
+    const aiSavedIndices = new Set();
 
     let speedOverlayEl = null;
     let speedOverlayTimer = null;
@@ -680,6 +688,9 @@
         box.style.setProperty("opacity", "1", "important");
         box.style.setProperty("pointer-events", "auto", "important");
         syncCustomSubtitlePosition();
+        if (aiTooltipActive) {
+            updateSubtitleVideoHighlights();
+        }
     }
 
     // Geometry event listeners
@@ -1087,6 +1098,14 @@
         }
         if (!aiTooltipActive) return;
         aiTooltipActive = false;
+        clearTimeout(aiAutoAdvanceTimer);
+        aiAutoAdvanceTimer = null;
+        aiExplainSpeechToken++;
+        aiExplainQueue = [];
+        aiExplainIndex = 0;
+        aiExplainLayout = null;
+        aiSavedIndices.clear();
+        clearSubtitleVideoHighlights();
         QT.hideTooltip();
         removeAiShimmer();
         cleanupReading();
@@ -1149,8 +1168,349 @@
         }
     }
 
+    function clearSubtitleVideoHighlights() {
+        try {
+            const highlighted = document.querySelectorAll(
+                `.${PREFIX}ai-sub-active, .${PREFIX}ai-sub-upcoming`,
+            );
+            highlighted.forEach((el) => {
+                el.classList.remove(
+                    `${PREFIX}ai-sub-active`,
+                    `${PREFIX}ai-sub-upcoming`,
+                );
+            });
+        } catch (_) {}
+    }
+
+    function normalizeWordForMatching(w) {
+        return String(w || "")
+            .toLowerCase()
+            .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "")
+            .trim();
+    }
+
+    function highlightSpansForTerm(spans, term, cssClass) {
+        if (!term || !spans || !spans.length) return;
+        const termWords = String(term)
+            .split(/\s+/)
+            .map(normalizeWordForMatching)
+            .filter(Boolean);
+        if (!termWords.length) return;
+
+        const spanWords = spans.map((s) =>
+            normalizeWordForMatching(s.dataset?.clean || s.textContent),
+        );
+
+        // Slide window of length termWords.length
+        for (let i = 0; i <= spanWords.length - termWords.length; i++) {
+            let match = true;
+            for (let j = 0; j < termWords.length; j++) {
+                if (spanWords[i + j] !== termWords[j]) {
+                    match = false;
+                    break;
+                }
+            }
+            if (match) {
+                for (let j = 0; j < termWords.length; j++) {
+                    spans[i + j].classList.add(cssClass);
+                }
+                return;
+            }
+        }
+
+        // Substring / partial fallback for single words or fused tokens
+        for (const span of spans) {
+            const sw = normalizeWordForMatching(
+                span.dataset?.clean || span.textContent,
+            );
+            if (sw && termWords.includes(sw)) {
+                span.classList.add(cssClass);
+            }
+        }
+    }
+
+    function updateSubtitleVideoHighlights() {
+        clearSubtitleVideoHighlights();
+        if (!aiTooltipActive || !aiExplainQueue.length) return;
+
+        let spans =
+            activeWordSpans && activeWordSpans.length > 0
+                ? activeWordSpans.filter((s) => s && s.isConnected)
+                : [];
+
+        if (!spans.length && customSubBoxEl?.isConnected) {
+            spans = Array.from(
+                customSubBoxEl.querySelectorAll(`.${SUB_WORD_CLASS}`),
+            );
+        }
+
+        if (!spans.length) {
+            const registryElements =
+                getPlayerRegistry()?.getSubtitleElements?.() || [];
+            for (const el of registryElements) {
+                const words = el.querySelectorAll
+                    ? el.querySelectorAll(`.${SUB_WORD_CLASS}`)
+                    : [];
+                if (words.length > 0) {
+                    spans.push(...words);
+                } else if (el) {
+                    spans.push(el);
+                }
+            }
+        }
+
+        if (!spans.length) return;
+
+        // 1. Highlight upcoming terms in the queue (soft violet)
+        for (let i = aiExplainIndex + 1; i < aiExplainQueue.length; i++) {
+            const upcomingItem = aiExplainQueue[i];
+            if (upcomingItem?.term) {
+                highlightSpansForTerm(
+                    spans,
+                    upcomingItem.term,
+                    `${PREFIX}ai-sub-upcoming`,
+                );
+            }
+        }
+
+        // 2. Highlight currently discussed term (active neon cyan/gradient)
+        const currentItem = aiExplainQueue[aiExplainIndex];
+        if (currentItem?.term) {
+            highlightSpansForTerm(
+                spans,
+                currentItem.term,
+                `${PREFIX}ai-sub-active`,
+            );
+        }
+    }
+
+    function renderAiExplainContent(index) {
+        if (!aiExplainQueue.length) return "";
+        const item = aiExplainQueue[index];
+        if (!item) return "";
+
+        const markupOptions = {
+            sourceLang: aiExplainSourceLang,
+            originalText: item.term || item.originalText,
+            quoteClass: TTS_QUOTE_CLASS,
+        };
+
+        const totalItems = aiExplainQueue.length;
+        const hasMultiple = totalItems > 1;
+
+        let headerHtml = "";
+        if (hasMultiple) {
+            const ribbonItemsHtml = aiExplainQueue
+                .map((qItem, idx) => {
+                    const isActive = idx === index;
+                    const isUpcoming = idx > index;
+                    const icon = "✨";
+                    const classes = [
+                        `${PREFIX}ai-queue-pill`,
+                        isActive ? "active" : "",
+                        isUpcoming ? `${PREFIX}ai-pill-upcoming` : "",
+                    ]
+                        .filter(Boolean)
+                        .join(" ");
+
+                    return `<button type="button" class="${classes}" data-index="${idx}" role="tab" aria-selected="${isActive}" title="${QT.escapeAttr(qItem.title)}">
+                        <span class="${PREFIX}pill-icon">${icon}</span>
+                        <span>${QT.escapeHtml(qItem.title)}</span>
+                    </button>`;
+                })
+                .join("");
+
+            headerHtml = `
+                <div class="${PREFIX}header">
+                    <div class="${PREFIX}ai-queue-ribbon" role="tablist" aria-label="Breakdown items">
+                        ${ribbonItemsHtml}
+                    </div>
+                    <div class="${PREFIX}ai-nav-group">
+                        <button type="button" class="${PREFIX}ai-nav-btn ${PREFIX}ai-prev-btn" data-action="prev" ${index === 0 ? "disabled" : ""} title="Poprzednie (← / A)">
+                            ◀
+                        </button>
+                        <span class="${PREFIX}ai-step-counter">${index + 1}/${totalItems}</span>
+                        <button type="button" class="${PREFIX}ai-nav-btn ${PREFIX}ai-next-btn" data-action="next" ${index >= totalItems - 1 ? "disabled" : ""} title="Następne (→ / D)">
+                            ▶
+                        </button>
+                    </div>
+                </div>`;
+        }
+
+        const formattedExplanation = QT.formatSpeechMarkup(
+            item.explanation || "",
+            aiExplainTargetLang,
+            markupOptions,
+        );
+        const speechParts = [item.term, item.meaning, item.explanation]
+            .filter(Boolean)
+            .join(". ");
+
+        const bodyHtml = `
+            <div class="${PREFIX}body">
+                <div class="${PREFIX}ai-term-card">
+                    <div class="${PREFIX}ai-term-header">
+                        <div class="${PREFIX}ai-term-title-wrap">
+                            <span class="${PREFIX}ai-term">${QT.escapeHtml(item.term)}</span>
+                            <span class="${PREFIX}ai-badge">${QT.escapeHtml(item.badge || item.type)}</span>
+                        </div>
+                        <span class="${PREFIX}word-actions">
+                            <button class="${PREFIX}speak" data-text="${QT.escapeAttr(speechParts)}" data-lang="${QT.escapeAttr(aiExplainTargetLang)}" data-source-lang="${QT.escapeAttr(aiExplainSourceLang)}" data-original-text="${QT.escapeAttr(item.term)}" title="Odtwórz wymowę i wyjaśnienie" aria-label="Odtwórz wymowę i wyjaśnienie">${SVG.SPEAKER}</button>
+                        </span>
+                    </div>
+                    ${
+                        item.meaning
+                            ? `
+                    <div class="${PREFIX}ai-term-meaning">
+                        ${QT.escapeHtml(item.meaning)}
+                    </div>`
+                            : ""
+                    }
+                    ${
+                        item.explanation
+                            ? `
+                    <div class="${PREFIX}ai-term-explanation">
+                        ${formattedExplanation}
+                    </div>`
+                            : ""
+                    }
+                </div>
+            </div>`;
+
+        const isSaved = aiSavedIndices.has(index);
+        const footerHtml = `
+            <div class="${PREFIX}save-footer">
+                <button class="${PREFIX}ai-explain-save-btn ${PREFIX}save-footer-btn ${isSaved ? "saved" : ""}" ${isSaved ? "disabled" : ""} title="Save for review (Z)">
+                    ${isSaved ? "<span>Saved!</span>" : `${SVG.SAVE} <span>Save</span><kbd class="${PREFIX}key-hint">Z</kbd>`}
+                </button>
+            </div>`;
+
+        return (headerHtml ? headerHtml : "") + bodyHtml + footerHtml;
+    }
+
+    async function speakAiExplainItem(item, speechToken) {
+        if (!aiTooltipActive || speechToken !== aiExplainSpeechToken || !item) return;
+
+        const isCancelled = () =>
+            !aiTooltipActive || speechToken !== aiExplainSpeechToken;
+
+        try {
+            if (item.type === "sentence") {
+                const aiSpeechText = [item.meaning, item.explanation]
+                    .filter(Boolean)
+                    .join(". ");
+                if (aiSpeechText) {
+                    await QT.speak(aiSpeechText, aiExplainTargetLang, {
+                        sourceLang: aiExplainSourceLang,
+                        originalText: item.term,
+                        isCancelled,
+                    });
+                }
+            } else {
+                if (item.term) {
+                    await QT.speak(item.term, aiExplainSourceLang, {
+                        sourceLang: aiExplainSourceLang,
+                        originalText: item.term,
+                        isCancelled,
+                    });
+                }
+                if (isCancelled()) return;
+
+                const explanationSpeech = [item.meaning, item.explanation]
+                    .filter(Boolean)
+                    .join(". ");
+                if (explanationSpeech) {
+                    await QT.speak(explanationSpeech, aiExplainTargetLang, {
+                        sourceLang: aiExplainSourceLang,
+                        originalText: item.term,
+                        isCancelled,
+                    });
+                }
+            }
+        } catch (_) {
+            // Speech cancellation or error is handled gracefully
+        }
+    }
+
+    function showAiExplainItem(index) {
+        if (!aiTooltipActive || !aiExplainQueue.length) return;
+        const clampedIndex = Math.max(
+            0,
+            Math.min(aiExplainQueue.length - 1, index),
+        );
+        aiExplainIndex = clampedIndex;
+        const item = aiExplainQueue[clampedIndex];
+
+        clearTimeout(aiAutoAdvanceTimer);
+        aiAutoAdvanceTimer = null;
+        const speechToken = ++aiExplainSpeechToken;
+        SharedTtsService.cancel();
+
+        // 1. Highlight active and upcoming terms on the film subtitle!
+        updateSubtitleVideoHighlights();
+
+        // 2. Render and reveal AI card
+        const html = renderAiExplainContent(clampedIndex);
+        const copy = applyAiExplanation(html, aiExplainLayout);
+
+        // Ribbon pills click navigation
+        copy.querySelectorAll(`.${PREFIX}ai-queue-pill`).forEach((pill) => {
+            pill.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const targetIdx = parseInt(pill.dataset.index, 10);
+                if (!isNaN(targetIdx) && targetIdx !== aiExplainIndex) {
+                    showAiExplainItem(targetIdx);
+                }
+            });
+        });
+
+        // Navigation stepper buttons
+        copy.querySelector(`.${PREFIX}ai-prev-btn`)?.addEventListener(
+            "click",
+            (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                navigateAiExplain(-1);
+            },
+        );
+        copy.querySelector(`.${PREFIX}ai-next-btn`)?.addEventListener(
+            "click",
+            (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                navigateAiExplain(1);
+            },
+        );
+
+        wireAiExplainSpeakButton(item);
+        wireAiExplainSaveButton(item);
+
+        if (aiTooltipActive) {
+            speakAiExplainItem(item, speechToken);
+        }
+    }
+
+    function navigateAiExplain(delta) {
+        if (!aiTooltipActive || !aiExplainQueue.length) return false;
+        const target = aiExplainIndex + delta;
+        if (target < 0 || target >= aiExplainQueue.length) {
+            return true;
+        }
+        showAiExplainItem(target);
+        return true;
+    }
+
+    function nextAiExplainItem() {
+        return navigateAiExplain(1);
+    }
+
+    function prevAiExplainItem() {
+        return navigateAiExplain(-1);
+    }
+
     function wireAiExplainSaveButton(
-        text,
+        firstArg,
         translation,
         explanation,
         sourceLang,
@@ -1162,11 +1522,32 @@
         );
         if (!saveBtn) return;
 
+        let item = null;
+        if (firstArg && typeof firstArg === "object" && firstArg.type) {
+            item = firstArg;
+        } else {
+            item = {
+                type: "sentence",
+                term: firstArg || "",
+                originalText: firstArg || "",
+                meaning: translation || "",
+                explanation: explanation || "",
+            };
+            if (sourceLang) aiExplainSourceLang = sourceLang;
+            if (targetLang) aiExplainTargetLang = targetLang;
+        }
+
         if (!saveBtn.querySelector(`.${PREFIX}key-hint`)) {
             const hintNode = document.createElement("kbd");
             hintNode.className = `${PREFIX}key-hint`;
             hintNode.textContent = "Z";
             saveBtn.appendChild(hintNode);
+        }
+
+        if (aiSavedIndices.has(aiExplainIndex)) {
+            saveBtn.innerHTML = `<span>Saved!</span>`;
+            saveBtn.classList.add("saved");
+            saveBtn.disabled = true;
         }
 
         saveBtn.addEventListener("click", async (ev) => {
@@ -1188,17 +1569,25 @@
                     await getPlayerRegistry()?.captureVideoReviewScreenshot(
                         getPlayerRegistry().getVideo(),
                     );
-                const cleanedText = cleanCardText(text) || text;
-                const cleanedTranslation =
-                    cleanCardText(translation) || translation || cleanedText;
-                const cleanedExplanation = cleanCardText(explanation);
+                const currentItem = item || aiExplainQueue[aiExplainIndex] || {};
+
+                const cleanedTerm =
+                    cleanCardText(currentItem.term) || currentItem.term;
+                const cleanedMeaning =
+                    cleanCardText(currentItem.meaning || currentItem.translation) ||
+                    currentItem.meaning ||
+                    currentItem.translation ||
+                    cleanedTerm;
+                const cleanedExplanation = cleanCardText(currentItem.explanation);
+                const contextSentence =
+                    cleanCardText(currentItem.originalText) || "";
 
                 await QT.saveWord({
-                    original: cleanedText,
-                    translated: cleanedTranslation,
-                    srcLang: sourceLang,
-                    tgtLang: targetLang,
-                    sentence: "",
+                    original: cleanedTerm,
+                    translated: cleanedMeaning,
+                    srcLang: aiExplainSourceLang,
+                    tgtLang: aiExplainTargetLang,
+                    sentence: contextSentence,
                     sentenceTranslated: "",
                     aiSentence: cleanedExplanation || "",
                     aiSentenceTranslated: "",
@@ -1207,6 +1596,8 @@
                     timestamp: Date.now(),
                     downloaded: false,
                 });
+
+                aiSavedIndices.add(aiExplainIndex);
                 saveBtn.innerHTML = `<span>Saved!</span>`;
                 saveBtn.classList.remove("saving");
                 saveBtn.classList.add("saved");
@@ -1232,48 +1623,81 @@
             if (isTyping) return;
 
             if (ev.key === "z" || ev.key === "Z") {
-                if (document.contains(saveBtn)) {
+                const currentSaveBtn = translationOverlay?.querySelector(
+                    `.${PREFIX}ai-explain-save-btn`,
+                );
+                if (currentSaveBtn && document.contains(currentSaveBtn)) {
                     ev.preventDefault();
                     ev.stopPropagation();
                     ev.stopImmediatePropagation();
-                    saveBtn.click();
-                } else {
-                    window.removeEventListener(
-                        "keydown",
-                        aiExplainKeydownHandler,
-                        true,
-                    );
-                    aiExplainKeydownHandler = null;
+                    currentSaveBtn.click();
                 }
+                return;
+            }
+
+            if (ev.key === "Escape") {
+                ev.preventDefault();
+                ev.stopPropagation();
+                ev.stopImmediatePropagation();
+                closeAiTooltip({ resumeVideo: true });
+                return;
+            }
+
+            if (ev.key === "ArrowRight" || ev.key === "d" || ev.key === "D") {
+                if (aiTooltipActive && aiExplainQueue.length > 1) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    ev.stopImmediatePropagation();
+                    navigateAiExplain(1);
+                }
+                return;
+            }
+
+            if (ev.key === "ArrowLeft" || ev.key === "a" || ev.key === "A") {
+                if (aiTooltipActive && aiExplainQueue.length > 1) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    ev.stopImmediatePropagation();
+                    navigateAiExplain(-1);
+                }
+                return;
             }
         };
-        // Capture before video-hotkeys.js so Z activates this AI-result button
-        // instead of the global "save current subtitle" action.
         window.addEventListener("keydown", aiExplainKeydownHandler, true);
     }
 
-    function wireAiExplainSpeakButton() {
+    function wireAiExplainSpeakButton(item) {
         const speakBtn = translationOverlay?.querySelector(`.${PREFIX}speak`);
         if (!speakBtn) return;
         speakBtn.addEventListener("click", async (event) => {
             event.preventDefault();
             event.stopPropagation();
+            clearTimeout(aiAutoAdvanceTimer);
+            aiAutoAdvanceTimer = null;
+            const currentToken = ++aiExplainSpeechToken;
+            SharedTtsService.cancel();
             speakBtn.classList.add("speaking");
             speakBtn.setAttribute(
                 "aria-label",
                 "Playing translation and explanation",
             );
             try {
-                await QT.speak(
-                    speakBtn.dataset.text || "",
-                    speakBtn.dataset.lang || "pl",
-                    {
-                        sourceLang: speakBtn.dataset.sourceLang,
-                        originalText: speakBtn.dataset.originalText,
-                    },
-                );
+                if (item) {
+                    await speakAiExplainItem(item, currentToken);
+                } else {
+                    await QT.speak(
+                        speakBtn.dataset.text || "",
+                        speakBtn.dataset.lang || "pl",
+                        {
+                            sourceLang: speakBtn.dataset.sourceLang,
+                            originalText: speakBtn.dataset.originalText,
+                            isCancelled: () =>
+                                !aiTooltipActive || currentToken !== aiExplainSpeechToken,
+                        },
+                    );
+                }
             } catch (_) {
-                // The panel stays interactive even when browser TTS is unavailable.
+                // Keep panel interactive
             } finally {
                 if (speakBtn.isConnected) {
                     speakBtn.classList.remove("speaking");
@@ -1342,9 +1766,9 @@
                 width: 200,
                 height: 50,
             };
-        const aiLayout = layout || { rect };
+        aiExplainLayout = layout || { rect };
 
-        showAiShimmer(aiLayout);
+        showAiShimmer(aiExplainLayout);
         try {
             const targetLang = await QT.getTargetLang();
             const context = getActiveSubtitleContext(video, text);
@@ -1361,73 +1785,50 @@
                 res,
             );
             if (!aiTooltipActive) return;
-            const translation = res.translation || "";
-            const explanation = res.explanation || res;
-            const sourceTag = languageTag(sourceLang);
-            const targetTag = languageTag(targetLang);
-            const aiSpeechText = [translation, explanation]
-                .filter(Boolean)
-                .join(". ");
 
-            const markupOptions = {
-                sourceLang,
-                originalText: text,
-                quoteClass: TTS_QUOTE_CLASS,
-            };
-            const formattedExplanation = QT.formatSpeechMarkup(
-                explanation,
-                targetLang,
-                markupOptions,
-            );
-            const formattedTranslation = QT.formatSpeechMarkup(
-                translation,
-                targetLang,
-                markupOptions,
-            );
+            aiExplainSourceLang = sourceLang;
+            aiExplainTargetLang = targetLang;
+            aiSavedIndices.clear();
 
-            const html = `
-                <div class="${PREFIX}header">
-                    <span>${QT.escapeHtml(sourceTag)} → ${QT.escapeHtml(targetTag)}</span>
-                </div>
-                <div class="${PREFIX}body">
-                    <div class="${PREFIX}row">
-                        <span class="${PREFIX}label" title="Source language: ${QT.escapeAttr(languageName(sourceLang))}">${QT.escapeHtml(sourceTag)}</span>
-                        <span class="${PREFIX}text ${PREFIX}original">${QT.escapeHtml(text)}</span>
-                    </div>
-                    <div class="${PREFIX}row">
-                        <span class="${PREFIX}label" title="Translation language: ${QT.escapeAttr(languageName(targetLang))}">${QT.escapeHtml(targetTag)}</span>
-                        <span class="${PREFIX}text ${PREFIX}translated">${formattedTranslation}</span>
-                        <span class="${PREFIX}word-actions">
-                            <button class="${PREFIX}speak" data-text="${QT.escapeAttr(aiSpeechText)}" data-lang="${QT.escapeAttr(targetLang)}" data-source-lang="${QT.escapeAttr(sourceLang)}" data-original-text="${QT.escapeAttr(text)}" title="Play translation and explanation" aria-label="Play translation and explanation">${SVG.SPEAKER}</button>
-                        </span>
-                    </div>
-                    <div class="${PREFIX}ai-result">
-                        <div class="${PREFIX}ai-label">✨ AI Explanation:</div>
-                        <div class="${PREFIX}ai-text">${formattedExplanation}</div>
-                    </div>
-                </div>
-                <div class="${PREFIX}save-footer">
-                    <button class="${PREFIX}ai-explain-save-btn ${PREFIX}save-footer-btn" title="Save sentence for review">
-                        ${SVG.SAVE} <span>Save</span>
-                    </button>
-                </div>`;
-            applyAiExplanation(html, aiLayout);
-            wireAiExplainSpeakButton();
-            wireAiExplainSaveButton(
-                text,
-                translation,
-                explanation,
-                sourceLang,
-                targetLang,
-            );
+            const translation = res?.translation || "";
+            const explanation =
+                res?.explanation || (typeof res === "string" ? res : "");
 
-            if (aiTooltipActive) {
-                await QT.speak(aiSpeechText, targetLang, {
-                    sourceLang,
+            if (Array.isArray(res?.items) && res.items.length > 0) {
+                aiExplainQueue = res.items.map((item) => ({
+                    type: item.type || "idiom",
+                    title: item.term,
+                    term: item.term,
+                    meaning: item.meaning || "",
+                    explanation: item.explanation || "",
                     originalText: text,
-                    isCancelled: () => !aiTooltipActive,
-                });
+                    badge:
+                        item.type === "idiom"
+                            ? "Idiom"
+                            : item.type === "phrasal_verb"
+                              ? "Phrasal Verb"
+                              : item.type === "slang"
+                                ? "Slang"
+                                : item.type === "vocabulary"
+                                  ? "Słówko"
+                                  : item.type || "Wyrażenie",
+                }));
+            } else {
+                aiExplainQueue = [
+                    {
+                        type: "sentence",
+                        title: "Tłumaczenie",
+                        term: text,
+                        meaning: translation,
+                        explanation: explanation,
+                        originalText: text,
+                        badge: "Tłumaczenie",
+                    },
+                ];
             }
+
+            aiExplainIndex = 0;
+            showAiExplainItem(0);
         } catch (err) {
             if (aiTooltipActive) {
                 if (GeminiProxy.isLimitError(err)) {
@@ -1435,7 +1836,7 @@
                 } else {
                     applyAiExplanation(
                         `<div class="${PREFIX}error">⚠ ${QT.escapeHtml(err.message)}</div>`,
-                        aiLayout,
+                        aiExplainLayout,
                     );
                 }
             }
@@ -2591,6 +2992,9 @@
         handleAIExplain,
         closeAiTooltip,
         isAiTooltipActive: () => aiTooltipActive,
+        navigateAiExplain,
+        nextAiExplainItem,
+        prevAiExplainItem,
         isSubtitleUiOpen: () =>
             eTranslateActive ||
             wordCloudActive ||

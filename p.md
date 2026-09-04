@@ -36,3 +36,22 @@ Wymogi dotyczące `change.md`:
 
 
 sprawdz i dokończ w wzorcowej czytelności [change.md](file;file:///c%3A/Users/FS/Documents/GitHub/Lectoro/change.md) 
+
+
+
+
+
+
+
+
+Jesteś ekspertem od Chrome Extensions, Manifest V3 oraz zasad Chrome Web Store.
+
+Przeanalizuj całe repozytorium tej wtyczki Chrome:
+
+## WAŻNE
+
+unowoczesnijmy funkcje "Enter" na video
+jak klikne Enter wszystko w animacji tak jak teraz jest powiekszajace sie dymki oraz qtAiShimmer. maja sie pokazywac osobno kazde idiomy trudne slowa do wyjasnienia po kolei nie na raz a nastepne slowa / idiomy w kolejce maja miec lekki bg fioletowego zeby bylo wiadomo co nastepne, które beda tlumaczone. wszystko ma miec Piekny UI/UX spojny z qtAiShimmer fajnie by bylo jakby raz po borderze kolory z przeszly jak teraz jest modne w AI oczywiscie wyjasnienia TTS ma czytac tak aby nauka jezyka obcego byla przyjemna i konkretna. strzalkami w bok przechodz do nastepnego slowa / idiumy/ frazy zeby nie czekac na to co chce uslyszec, sam dymek ma byc z tych CSS co juz mam
+
+Nie przepisuj całego projektu i nie wykonuj zmian w ciemno.
+pamietaj o zasadzie (Zasada DRY - Don't Repeat Yourself) oraz Centralizacja Logiki (Single Source of Truth)

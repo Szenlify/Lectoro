@@ -331,6 +331,7 @@
                             <div class="${PREFIX}image-card ${PREFIX}image-skeleton"></div>
                             <div class="${PREFIX}image-card ${PREFIX}image-skeleton"></div>
                             <div class="${PREFIX}image-card ${PREFIX}image-skeleton"></div>
+                            <div class="${PREFIX}image-card ${PREFIX}image-skeleton"></div>
                         </div>
                     </div>
                     <div class="${PREFIX}ai-result" id="${PREFIX}ai-result" style="display:none;"></div>

@@ -111,6 +111,7 @@
                 key === "q" ||
                 key === "Q"
             ) {
+                if (e.repeat) return;
                 if (aiTooltipOpen) {
                     overlay?.closeAiTooltip?.({ resumeVideo: true });
                 } else {
@@ -119,8 +120,18 @@
                 return;
             }
 
-            // Close existing AI tooltip / TTS if open when pressing any navigation hotkey (WSAD, etc.)
+            // AI Explanation Queue Navigation: ArrowRight / ArrowLeft / A / D
             if (aiTooltipOpen) {
+                if (key === "ArrowRight" || key === "d" || key === "D") {
+                    if (overlay?.nextAiExplainItem?.()) {
+                        return;
+                    }
+                }
+                if (key === "ArrowLeft" || key === "a" || key === "A") {
+                    if (overlay?.prevAiExplainItem?.()) {
+                        return;
+                    }
+                }
                 overlay?.closeAiTooltip?.({
                     resumeVideo: !isHorizontalSubtitleNavigation,
                 });

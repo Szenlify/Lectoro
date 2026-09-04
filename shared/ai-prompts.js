@@ -105,9 +105,22 @@ Instructions for language learner assistance:
                         ? " If the dialogue context clarifies an ambiguous phrase or tone, briefly mention it."
                         : ""
                 }
+4. "items": Array of specific idioms, phrasal verbs, slang, or difficult words in this sentence (max 4, ordered as they appear in the sentence):
+   - "term": the exact idiom, phrasal verb, or word from the sentence.
+   - "type": "idiom" | "phrasal_verb" | "slang" | "vocabulary".
+   - "meaning": brief translation or core meaning in ${tgtName}.
+   - "explanation": 1 concise sentence explaining its meaning in this context.
+   (If the sentence contains no idioms or difficult words, return []).
 
 Respond ONLY with JSON:
-{"source_language": "en", "translation": "...", "explanation": "..."}`;
+{
+  "source_language": "en",
+  "translation": "...",
+  "explanation": "...",
+  "items": [
+    {"term": "...", "type": "idiom", "meaning": "...", "explanation": "..."}
+  ]
+}`;
             },
 
             /**

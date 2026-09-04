@@ -233,17 +233,32 @@
             );
             const parsed = await geminiRequest(prompt, {
                 temperature: 0.7,
-                maxOutputTokens: 350,
+                maxOutputTokens: 600,
             });
+            const rawItems = Array.isArray(parsed?.items)
+                ? parsed.items
+                : Array.isArray(parsed?.breakdown)
+                  ? parsed.breakdown
+                  : [];
+            const items = rawItems
+                .filter((item) => item && typeof item === "object" && item.term)
+                .map((item) => ({
+                    term: String(item.term || "").trim(),
+                    type: String(item.type || "idiom").toLowerCase().trim(),
+                    meaning: String(item.meaning || item.translation || "").trim(),
+                    explanation: String(item.explanation || "").trim(),
+                }));
+
             return {
                 detectedLang:
-                    parsed.source_language ||
-                    parsed.sourceLanguage ||
-                    parsed.detected_language ||
-                    parsed.detectedLang ||
+                    parsed?.source_language ||
+                    parsed?.sourceLanguage ||
+                    parsed?.detected_language ||
+                    parsed?.detectedLang ||
                     "",
-                translation: parsed.translation || "",
-                explanation: parsed.explanation || "",
+                translation: parsed?.translation || "",
+                explanation: parsed?.explanation || "",
+                items,
             };
         }
 
