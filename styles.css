@@ -548,13 +548,6 @@
     opacity: 1;
 }
 
-#__qt_tooltip .__qt_image-empty {
-    font-size: 11px;
-    color: rgba(255, 255, 255, 0.35);
-    padding: 8px 4px;
-    font-style: italic;
-}
-
 /* ═══════════════════════════════════════════════════════════════
    Save Buttons
    ═══════════════════════════════════════════════════════════════ */
@@ -1214,8 +1207,7 @@ video::cue {
    Universal Subtitle Hints & Notifications
    ═══════════════════════════════════════════════════════════════ */
 
-.__qt_sub-hint,
-.__qt_yt-sub-hint {
+.__qt_sub-hint {
     position: fixed;
     z-index: 2147483647;
     bottom: 105px;
@@ -1238,8 +1230,7 @@ video::cue {
     white-space: nowrap;
 }
 
-.__qt_sub-hint.visible,
-.__qt_yt-sub-hint.visible {
+.__qt_sub-hint.visible {
     opacity: 1;
 }
 
@@ -1282,9 +1273,39 @@ video::cue {
     justify-content: flex-start !important;
     box-sizing: border-box !important;
     isolation: isolate !important;
-    /* overflow: hidden !important; */
     transform-origin: 50% 100% !important;
     animation: __qt_translation_bubble_in 0.2s cubic-bezier(0.34, 1.3, 0.64, 1) both !important;
+    transition:
+        left 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
+        top 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+/* Visual pointer arrow connecting the bubble directly to the highlighted text */
+#__qt_sentence_translation.__qt_sub-overlay::after {
+    content: "" !important;
+    position: absolute !important;
+    bottom: -6px !important;
+    left: var(--lectoro-bubble-arrow-x, 50%) !important;
+    transform: translateX(-50%) rotate(45deg) !important;
+    width: 12px !important;
+    height: 12px !important;
+    background: #0f0f23 !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.35) !important;
+    pointer-events: none !important;
+    transition: left 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+    z-index: 1 !important;
+}
+
+#__qt_sentence_translation.__qt_sub-overlay.__qt_bubble-below::after {
+    bottom: auto !important;
+    top: -6px !important;
+    border-right: none !important;
+    border-bottom: none !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
+    box-shadow: -2px -2px 5px rgba(0, 0, 0, 0.35) !important;
 }
 
 #__qt_sentence_translation[data-state="measuring"] {
@@ -1431,7 +1452,7 @@ video::cue {
 }
 
 #__qt_sentence_translation.__qt_ai-explain-overlay[data-state="ready"].__qt_translation-reveal::before {
-    animation: __qt_ai_border_sweep 2.2s cubic-bezier(0.25, 1, 0.5, 1) 1 forwards;
+    animation: __qt_ai_border_sweep 2.2s cubic-bezier(0.35, 1, 0.5, 0.9) 1 forwards;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1564,21 +1585,19 @@ video::cue {
     padding: 8px 10px !important;
 }
 
-#__qt_sentence_translation .__qt_ai-context-quote {
-    font-size: 12px !important;
-    line-height: 1.45 !important;
-    color: rgba(255, 255, 255, 0.5) !important;
-    font-style: italic !important;
-    border-left: 2px solid #4ecdc4 !important;
-    padding: 2px 0 2px 8px !important;
-    margin-top: 2px !important;
+/* Dedykowana hierarchia wizualna dla tłumaczenia pełnego zdania */
+#__qt_sentence_translation .__qt_ai-term-card[data-type="sentence"] .__qt_ai-term {
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+    line-height: 1.4 !important;
 }
 
-#__qt_sentence_translation .__qt_ai-context-quote mark {
-    background: none !important;
-    color: #4ecdc4 !important;
+#__qt_sentence_translation .__qt_ai-term-card[data-type="sentence"] .__qt_ai-term-meaning {
+    font-size: 16px !important;
     font-weight: 700 !important;
-    font-style: normal !important;
+    color: #00ffea !important;
+    line-height: 1.4 !important;
 }
 
 /* Przyciski nawigacji krokowego przejścia */
@@ -2169,24 +2188,86 @@ html.__qt_netflix-capturing [id^="__qt_"] {
    Video Subtitle Highlighting for AI Breakdown
    ═══════════════════════════════════════════════════════════════ */
 
-/* Active term currently being explained */
+/* Unified phrase/word wrapper ensuring contiguous background across multi-word idioms */
+.__qt_ai-sub-wrap {
+    display: inline !important;
+    box-decoration-break: clone !important;
+    -webkit-box-decoration-break: clone !important;
+    border-radius: 4px !important;
+    padding: 1px 4px !important;
+    margin: 0 !important;
+    line-height: inherit !important;
+    pointer-events: auto !important;
+    transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+/* Neutralize individual word borders/backgrounds inside the unified phrase wrapper */
+.__qt_ai-sub-wrap .__qt_sub-word {
+    background: transparent !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    color: inherit !important;
+    text-shadow: inherit !important;
+    transition: color 0.25s ease !important;
+}
+
+/* Active term currently being explained (neon cyan & violet gradient) */
+.__qt_ai-sub-wrap.__qt_ai-sub-active,
 .__qt_ai-sub-active {
     background: linear-gradient(135deg, rgba(78, 205, 196, 0.45), rgba(168, 85, 247, 0.45)) !important;
     color: #ffffff !important;
     text-shadow: 0 0 8px rgba(78, 205, 196, 0.8), 0 1px 2px rgba(0, 0, 0, 0.9) !important;
     border-radius: 4px !important;
     box-shadow: 0 0 0 1.5px #4ecdc4, 0 0 10px rgba(78, 205, 196, 0.5) !important;
-    padding: 0 3px !important;
-    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+    padding: 1px 4px !important;
+    animation: __qt_sub_highlight_glow_in 0.42s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+    transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
 }
 
-/* Upcoming terms queued for explanation in this sentence */
-.__qt_ai-sub-upcoming {
+/* Queued terms: upcoming and previous idioms/words in the sentence (soft violet) */
+.__qt_ai-sub-wrap.__qt_ai-sub-upcoming,
+.__qt_ai-sub-wrap.__qt_ai-sub-queued,
+.__qt_ai-sub-upcoming,
+.__qt_ai-sub-queued {
     background: rgba(168, 85, 247, 0.26) !important;
     color: #f3e8ff !important;
     text-shadow: 0 0 8px rgba(168, 85, 247, 0.7), 0 1px 2px rgba(0, 0, 0, 0.9) !important;
     border-radius: 4px !important;
     box-shadow: 0 0 0 1px rgba(168, 85, 247, 0.4) !important;
-    padding: 0 3px !important;
-    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+    padding: 1px 4px !important;
+    animation: __qt_sub_queued_fade_in 0.42s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+    transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+/* Soft, non-aggressive entrance animation for active highlighted words */
+@keyframes __qt_sub_highlight_glow_in {
+    0% {
+        box-shadow: 0 0 0 0 rgba(78, 205, 196, 0), 0 0 0 rgba(78, 205, 196, 0);
+        opacity: 0.7;
+    }
+    45% {
+        box-shadow: 0 0 0 2.5px rgba(78, 205, 196, 0.85), 0 0 16px rgba(78, 205, 196, 0.65);
+        opacity: 1;
+    }
+    100% {
+        box-shadow: 0 0 0 1.5px #4ecdc4, 0 0 10px rgba(78, 205, 196, 0.5);
+        opacity: 1;
+    }
+}
+
+/* Smooth fade-in animation for queued (upcoming/previous) words */
+@keyframes __qt_sub_queued_fade_in {
+    0% {
+        box-shadow: 0 0 0 0 rgba(168, 85, 247, 0);
+        opacity: 0.5;
+    }
+    50% {
+        box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.55), 0 0 8px rgba(168, 85, 247, 0.35);
+    }
+    100% {
+        box-shadow: 0 0 0 1px rgba(168, 85, 247, 0.4);
+        opacity: 1;
+    }
 }

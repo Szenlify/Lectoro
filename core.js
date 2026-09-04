@@ -123,6 +123,11 @@
         let left = rect.left + scrollX + (rect.width - tipRect.width) / 2;
         let top = rect.top + scrollY - tipRect.height - gap;
 
+        // If not enough room above the selected text, position cleanly below
+        if (top < scrollY + 4) {
+            top = rect.bottom + scrollY + gap;
+        }
+
         const maxTop = scrollY + viewportHeight - tipRect.height - 4;
         const maxLeft = scrollX + viewportWidth - tipRect.width - 4;
         top = Math.max(scrollY + 4, Math.min(top, maxTop));

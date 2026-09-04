@@ -463,6 +463,7 @@
     const SharedPhraseDetector = Object.freeze({
         isPhrase,
         tokenizeSubtitleLine,
+        stemVerb,
     });
 
     if (typeof module !== "undefined" && module.exports) {

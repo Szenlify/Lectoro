@@ -45,6 +45,11 @@
             IMAGE_THUMB: `${PREFIX}image-thumb`,
             IMAGE_SELECTED: `${PREFIX}image-selected`,
             IS_LOADING: `${PREFIX}is-loading`,
+            AI_SUB_WRAP: `${PREFIX}ai-sub-wrap`,
+            AI_SUB_ACTIVE: `${PREFIX}ai-sub-active`,
+            AI_SUB_QUEUED: `${PREFIX}ai-sub-queued`,
+            AI_SUB_UPCOMING: `${PREFIX}ai-sub-upcoming`,
+            AI_PILL_UPCOMING: `${PREFIX}ai-pill-upcoming`,
         });
 
         const EVENT_NAMES = Object.freeze({
