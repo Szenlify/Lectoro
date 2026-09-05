@@ -249,4 +249,48 @@ assert(
 );
 console.log("✓ Test 9 Passed: Auto-close & simple_target TTS enhancements verified successfully.");
 
+// 10. Verify Phase 15: Subtitle word hover suppression & click-to-scroll navigation in Enter mode
+const latestJs = fs.readFileSync(jsPath, "utf-8").replace(/\r\n/g, "\n");
+assert(
+    latestJs.includes("wordCloudActive ||\n                aiTooltipActive"),
+    "subtitle-overlay.js mousemove must suppress word hover when aiTooltipActive is true",
+);
+assert(
+    latestJs.includes("if (aiTooltipActive) {\n                // In Enter mode: clicking a highlighted subtitle word navigates to it in the AI queue"),
+    "subtitle-overlay.js click must intercept clicks in Enter mode to navigate to highlighted term",
+);
+assert(
+    latestJs.includes("showAiExplainItem(targetIdx, { manual: true });"),
+    "subtitle-overlay.js must jump to clicked term via showAiExplainItem with manual: true",
+);
+assert(
+    latestJs.includes("dataset.aiIndex = String(aiIndex);"),
+    "subtitle-overlay.js must associate highlighted wrappers with queue indices",
+);
+const stylesContent = fs.readFileSync(path.join(__dirname, "../styles.css"), "utf-8");
+assert(
+    stylesContent.includes(".__qt_ai-sub-wrap:hover") && stylesContent.includes("cursor: pointer !important;"),
+    "styles.css must style highlighted subtitle terms with cursor: pointer",
+);
+console.log("✓ Test 10 Passed: Enter mode hover suppression & click-to-scroll navigation verified successfully.");
+
+// 11. Verify Phase 16: Tailored hover styles, pill highlight synchronization, and pointerdown capture
+assert(
+    latestJs.includes("document.addEventListener(\n        \"pointerdown\",") &&
+    latestJs.includes("e.stopImmediatePropagation?.();"),
+    "subtitle-overlay.js must intercept pointerdown and click with stopImmediatePropagation in Enter mode",
+);
+assert(
+    latestJs.includes("pill.classList.add(`${PREFIX}pill-highlight`);") &&
+    latestJs.includes("pill.classList.remove(`${PREFIX}pill-highlight`);"),
+    "subtitle-overlay.js mousemove must synchronize hover with ribbon pills",
+);
+assert(
+    stylesContent.includes(".__qt_ai-queue-pill.__qt_pill-highlight") &&
+    stylesContent.includes("body[data-lectoro-ai-active=\"true\"]") &&
+    stylesContent.includes("rgba(168, 85, 247, 0.42)"),
+    "styles.css must provide tailored violet hover styles, pill highlight, and disable unhighlighted word hover during AI active state",
+);
+console.log("✓ Test 11 Passed: Tailored hover, pill sync, and video player event interception verified successfully.");
+
 console.log("\nALL ENTER MODE & SETTING IMPROVEMENTS VERIFIED! 🚀");

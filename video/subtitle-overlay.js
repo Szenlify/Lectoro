@@ -851,9 +851,46 @@
             if (
                 (typeof isReading !== "undefined" && isReading) ||
                 eTranslateActive ||
-                wordCloudActive
+                wordCloudActive ||
+                aiTooltipActive
             ) {
                 if (isSubHovering && !subClickLocked) closeSubTooltip();
+                if (aiTooltipActive) {
+                    // Synchronize hover state between subtitle highlighted word and ribbon pill
+                    const targetWrap =
+                        e.target?.closest?.(
+                            `.${C.UI_CLASSES.AI_SUB_WRAP}, [data-ai-index]`,
+                        ) ||
+                        document
+                            .elementFromPoint(e.clientX, e.clientY)
+                            ?.closest?.(
+                                `.${C.UI_CLASSES.AI_SUB_WRAP}, [data-ai-index]`,
+                            );
+                    const hoveredIdx =
+                        targetWrap && targetWrap.dataset.aiIndex !== undefined
+                            ? parseInt(targetWrap.dataset.aiIndex, 10)
+                            : -1;
+                    const ribbon = document.querySelector(
+                        `.${PREFIX}ai-queue-ribbon`,
+                    );
+                    if (ribbon) {
+                        const pills = ribbon.querySelectorAll(
+                            `.${PREFIX}ai-queue-pill`,
+                        );
+                        pills.forEach((pill) => {
+                            const pIdx = parseInt(pill.dataset.index, 10);
+                            if (
+                                hoveredIdx !== -1 &&
+                                pIdx === hoveredIdx &&
+                                !pill.classList.contains("active")
+                            ) {
+                                pill.classList.add(`${PREFIX}pill-highlight`);
+                            } else {
+                                pill.classList.remove(`${PREFIX}pill-highlight`);
+                            }
+                        });
+                    }
+                }
                 return;
             }
 
@@ -966,12 +1003,97 @@
     }
 
     document.addEventListener(
+        "pointerdown",
+        (e) => {
+            if (!aiTooltipActive) return;
+            const targetWrap =
+                e.target?.closest?.(
+                    `.${C.UI_CLASSES.AI_SUB_WRAP}, [data-ai-index]`,
+                ) ||
+                document
+                    .elementFromPoint(e.clientX, e.clientY)
+                    ?.closest?.(
+                        `.${C.UI_CLASSES.AI_SUB_WRAP}, [data-ai-index]`,
+                    );
+            if (targetWrap) {
+                // Prevent video player controls/canvas from pausing or seeking
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        },
+        true,
+    );
+
+    document.addEventListener(
         "click",
         (e) => {
             const registry = getPlayerRegistry();
             const video = registry?.getVideo();
             if (!video?.isConnected) return;
             if (isOwnUI(e.target)) return;
+
+            if (aiTooltipActive) {
+                // In Enter mode: clicking a highlighted subtitle word navigates to it in the AI queue
+                const targetWrap =
+                    e.target?.closest?.(
+                        `.${C.UI_CLASSES.AI_SUB_WRAP}, [data-ai-index]`,
+                    ) ||
+                    document
+                        .elementFromPoint(e.clientX, e.clientY)
+                        ?.closest?.(
+                            `.${C.UI_CLASSES.AI_SUB_WRAP}, [data-ai-index]`,
+                        );
+                if (targetWrap && targetWrap.dataset.aiIndex !== undefined) {
+                    const targetIdx = parseInt(targetWrap.dataset.aiIndex, 10);
+                    if (
+                        !isNaN(targetIdx) &&
+                        targetIdx >= 0 &&
+                        targetIdx < aiExplainQueue.length
+                    ) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation?.();
+                        showAiExplainItem(targetIdx, { manual: true });
+                        return;
+                    }
+                }
+
+                // Fallback: match clicked subtitle word against breakdown items in queue
+                const wordSpan =
+                    QT.findWordAtPoint(
+                        e.clientX,
+                        e.clientY,
+                        SUB_WORD_CLASS,
+                    ) ||
+                    document
+                        .elementFromPoint(e.clientX, e.clientY)
+                        ?.closest?.(`.${SUB_WORD_CLASS}`);
+                if (wordSpan) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation?.();
+                    const cleanWord = normalizeWordForMatching(
+                        wordSpan.dataset?.clean || wordSpan.textContent,
+                    );
+                    const foundIdx = aiExplainQueue.findIndex((item) => {
+                        if (!item?.term || item.type === "sentence") return false;
+                        const termWords = String(item.term)
+                            .split(/\s+/)
+                            .map(normalizeWordForMatching)
+                            .filter(Boolean);
+                        return (
+                            termWords.includes(cleanWord) ||
+                            normalizeWordForMatching(item.term) === cleanWord
+                        );
+                    });
+                    if (foundIdx !== -1) {
+                        showAiExplainItem(foundIdx, { manual: true });
+                    }
+                    return;
+                }
+                return;
+            }
+
             const wordSpan = QT.findWordAtPoint(
                 e.clientX,
                 e.clientY,
@@ -1029,6 +1151,9 @@
         }
         if (!aiTooltipActive) return;
         aiTooltipActive = false;
+        try {
+            document.body?.removeAttribute("data-lectoro-ai-active");
+        } catch (_) {}
         clearTimeout(aiAutoAdvanceTimer);
         aiAutoAdvanceTimer = null;
         aiAutoAdvanceDisabled = false;
@@ -1120,6 +1245,12 @@
                     C.UI_CLASSES.AI_SUB_QUEUED,
                 );
             });
+            const ribbonPills = document.querySelectorAll(
+                `.${PREFIX}pill-highlight`,
+            );
+            ribbonPills.forEach((p) =>
+                p.classList.remove(`${PREFIX}pill-highlight`),
+            );
         } catch (_) {}
     }
 
@@ -1206,7 +1337,7 @@
         return null;
     }
 
-    function wrapMatchedSpans(matchingSpans, cssClass) {
+    function wrapMatchedSpans(matchingSpans, cssClass, aiIndex) {
         if (!matchingSpans || matchingSpans.length === 0) return;
 
         // Group consecutive spans by parent container
@@ -1217,10 +1348,13 @@
         for (const span of matchingSpans) {
             if (!span || !span.isConnected) continue;
 
-            // If already wrapped in an existing ai-sub-wrap, update class
+            // If already wrapped in an existing ai-sub-wrap, update class and ai-index
             const existingWrap = span.closest(`.${C.UI_CLASSES.AI_SUB_WRAP}`);
             if (existingWrap) {
                 existingWrap.className = `${C.UI_CLASSES.AI_SUB_WRAP} ${cssClass}`;
+                if (aiIndex !== undefined) {
+                    existingWrap.dataset.aiIndex = String(aiIndex);
+                }
                 continue;
             }
 
@@ -1257,12 +1391,18 @@
                 // Sibling traversal fallback: add class to individual spans
                 for (const s of spans) {
                     s.classList.add(cssClass);
+                    if (aiIndex !== undefined) {
+                        s.dataset.aiIndex = String(aiIndex);
+                    }
                 }
                 continue;
             }
 
             const wrapper = document.createElement("span");
             wrapper.className = `${C.UI_CLASSES.AI_SUB_WRAP} ${cssClass}`;
+            if (aiIndex !== undefined) {
+                wrapper.dataset.aiIndex = String(aiIndex);
+            }
             parent.insertBefore(wrapper, first);
             for (const node of nodesToWrap) {
                 wrapper.appendChild(node);
@@ -1270,14 +1410,14 @@
         }
     }
 
-    function highlightSpansForTerm(spans, term, cssClass) {
+    function highlightSpansForTerm(spans, term, cssClass, aiIndex) {
         const range = findMatchingSpanRange(spans, term);
         if (!range) return;
         const matchingSpans = spans.slice(
             range.startIndex,
             range.startIndex + range.count,
         );
-        wrapMatchedSpans(matchingSpans, cssClass);
+        wrapMatchedSpans(matchingSpans, cssClass, aiIndex);
     }
 
     function updateSubtitleVideoHighlights() {
@@ -1315,7 +1455,7 @@
         const currentItem = aiExplainQueue[aiExplainIndex];
         const isSentenceTranslation = currentItem?.type === "sentence";
 
-        // 1. Highlight all upcoming & queued breakdown terms in soft violet
+        // 1. Highlight all upcoming & queued breakdown terms in soft violet with their queue index
         for (let i = 0; i < aiExplainQueue.length; i++) {
             if (i === aiExplainIndex) continue;
             const queuedItem = aiExplainQueue[i];
@@ -1326,6 +1466,7 @@
                     spans,
                     queuedItem.term,
                     C.UI_CLASSES.AI_SUB_QUEUED,
+                    i,
                 );
             }
         }
@@ -1338,6 +1479,7 @@
                 spans,
                 currentItem.term,
                 C.UI_CLASSES.AI_SUB_ACTIVE,
+                aiExplainIndex,
             );
         }
     }
@@ -1995,12 +2137,16 @@
         const text = activeText || registry?.getCurrentText();
         if (!text) return;
         cleanupReading();
+        closeSubTooltip({ resumeVideo: false });
 
         if (eTranslateActive || wordCloudActive) {
             restoreOriginal();
         }
 
         aiTooltipActive = true;
+        try {
+            document.body?.setAttribute("data-lectoro-ai-active", "true");
+        } catch (_) {}
         pauseIfPlaying(video);
         QT.hideTooltip();
 

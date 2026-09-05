@@ -209,6 +209,35 @@ Ostatnia aktualizacja: 2026-09-04
       2. W `video/subtitle-overlay.js` w `handleAIExplain` dodano odczyt języka napisów z odtwarzacza wideo (`knownSourceLang`) i przekazano go wprost do `QT.geminiExplainSentence(text, targetLang, context, { aiExplanationLanguage, sourceLang: knownSourceLang })`, co eliminuje wszelkie pomyłki modelu co do języka docelowego.
       3. Zaktualizowano testy w `scratch/test_enter_mode.js` (9/9 PASS) oraz potwierdzono poprawność składniową w `scratch/check_syntax.js` (100% PASS).
 
+## Faza 15: Blokada Tłumaczenia Słów na Hover w Trybie Enter & Interaktywne Przewijanie po Kliknięciu na Podświetlone Słowo
+
+- [x] 15.1. Blokada wywoływania pojedynczych tłumaczeń słówek na zdarzeniu hover (ruch myszą) w trakcie aktywnego trybu Enter (`aiTooltipActive`).
+    - Log: W `video/subtitle-overlay.js` w zdarzeniu `mousemove` dodano warunek wczesnego wyjścia `if (aiTooltipActive) return;`. Dzięki temu przesuwanie kursora myszy nad napisami filmu nie powoduje pojawiania się pojedynczych chmurek ze słówkami i nie zakłóca karty wyjaśnień AI.
+- [x] 15.2. Interaktywne klikanie w podświetlone słówka/zwroty na napisach wideo w celu bezpośredniego przewinięcia do danego kroku w dymku AI.
+    - Log:
+      1. W `video/subtitle-overlay.js` w funkcjach `wrapMatchedSpans` oraz `highlightSpansForTerm` dodano przekazywanie indeksu kolejki (`aiIndex`) i zapisywanie go w atrybucie `data-ai-index` na elementach `.__qt_ai-sub-wrap`.
+      2. W globalnym nasłuchiwaczu zdarzenia `click` dodano obsługę trybu `aiTooltipActive`: kliknięcie w podświetlone słowo (lub dowolny span dopasowany do zwrotu w `aiExplainQueue`) wywołuje `showAiExplainItem(targetIdx, { manual: true })`, natychmiast przewijając dymek do klikniętego hasła i wyłączając auto-zamykanie. Standardowe kliknięcie otwierające słownik jest w tym trybie zablokowane.
+      3. W `styles.css` dodano styl `cursor: pointer !important;` oraz podświetlenie `filter: brightness(1.25) !important;` na hover dla klas `.__qt_ai-sub-wrap`, `.__qt_ai-sub-active`, `.__qt_ai-sub-queued` i `.__qt_ai-sub-upcoming`.
+- [x] 15.3. Poprawka sygnatury `wrapMatchedSpans(matchingSpans, cssClass, aiIndex)`.
+    - Log: W `video/subtitle-overlay.js` w definicji funkcji `wrapMatchedSpans` dodano brakujący parametr `aiIndex`, co wyeliminowało błąd czasu wykonania `ReferenceError: aiIndex is not defined` przy podświetlaniu słów.
+
+## Faza 16: Dopasowany Hover dla Podświetlonych Słów w Napisach & Płynne Przewijanie po Kliknięciu w Oryginalny Tekst
+
+- [x] 16.1. Dopasowany styl efektu hover dla fioletowych słów w napisach wideo (`.__qt_ai-sub-queued`).
+    - Log:
+      1. W `styles.css` dodano dedykowaną regułę hover dla `.__qt_ai-sub-queued:hover` oraz `.__qt_ai-sub-wrap:hover`: luksusowe, miękkie tło `rgba(168, 85, 247, 0.42)`, wyrazista ramka `box-shadow: inset 0 0 0 1.5px #c084fc, 0 0 12px rgba(168, 85, 247, 0.65)`, biały tekst i poświata dopasowana do tematyki AI.
+      2. Wyeliminowano konflikt ze stylem słownika napisów (`#__qt_custom_subtitles_layer .__qt_sub-word:hover`), uniemożliwiając niepożądane kolorowanie pojedynczych słów wewnątrz podświetlonych fraz na niebiesko.
+      3. W trakcie aktywnego trybu Enter AI (`body[data-lectoro-ai-active="true"]`) wyłączono domyślny niebieski hover dla niepodświetlonych słów napisów (`cursor: default`), co eliminuje mylące sygnały wizualne.
+- [x] 16.2. Synchronizacja najechania myszą na słowo w napisach z podświetleniem pigułki w dymku AI.
+    - Log:
+      1. W `video/subtitle-overlay.js` w zdarzeniu `mousemove` zaimplementowano detekcję najechanego słowa z `data-ai-index` i dynamiczne nadawanie klasy `.__qt_pill-highlight` odpowiadającej pigułce we wstążce `.__qt_ai-queue-ribbon`.
+      2. W `styles.css` dodano styl `.__qt_ai-queue-pill.__qt_pill-highlight` rozświetlający odpowiedni kafelek na fioletowo w czasie rzeczywistym.
+- [x] 16.3. Niezawodne przechwytywanie kliknięć w oryginalne napisy i blokada pauzowania odtwarzacza.
+    - Log:
+      1. W `video/subtitle-overlay.js` dodano nasłuchiwacz `pointerdown` w fazie przechwytywania (`capture: true`), blokujący wywoływanie pauzy/wznowienia filmu przez odtwarzacze wideo (np. YouTube) przy klikaniu w podświetlone słowo w napisach.
+      2. W nasłuchiwaczu `click` dodano wywołanie `e.stopImmediatePropagation()`, zapobiegając propagacji zdarzenia do innych skryptów odtwarzacza.
+      3. Kliknięcie w podświetlone słowo w oryginalnych napisach natychmiast wywołuje `showAiExplainItem(targetIdx, { manual: true })`, płynnie centrując chmurkę wyjaśnień nad klikniętym słowem i wyłączając automatyczne zamykanie dymka.
+
 
 
 

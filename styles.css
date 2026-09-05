@@ -1479,7 +1479,7 @@ video::cue {
     display: inline-flex !important;
     align-items: center !important;
     gap: 4px !important;
-    padding: 3px 9px !important;
+    padding: 2px 8px !important;
     border-radius: 10px !important;
     font-size: 9px !important;
     font-weight: 600 !important;
@@ -1510,6 +1510,15 @@ video::cue {
     background: rgba(168, 85, 247, 0.26) !important;
     border-color: #c084fc !important;
     color: #ffffff !important;
+}
+
+/* Podświetlenie pigułki we wstążce dymka AI, gdy kursor najeżdża na odpowiadające słowo w napisach */
+#__qt_sentence_translation .__qt_ai-queue-pill.__qt_pill-highlight {
+    background: rgba(168, 85, 247, 0.42) !important;
+    border-color: #c084fc !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.55) !important;
+    transform: translateY(-1px) scale(1.05) !important;
 }
 
 /* Aktywny krok */
@@ -2202,7 +2211,12 @@ html.__qt_netflix-capturing [id^="__qt_"] {
 }
 
 /* Neutralize individual word borders/backgrounds inside the unified phrase wrapper */
-.__qt_ai-sub-wrap .__qt_sub-word {
+.__qt_ai-sub-wrap .__qt_sub-word,
+#__qt_custom_subtitles_layer .__qt_ai-sub-wrap .__qt_sub-word:hover,
+#__qt_custom_subtitles_layer .__qt_ai-sub-wrap .__qt_sub-word.__qt_word-hover,
+#__qt_custom_subtitles_layer .__qt_sub-word.__qt_ai-sub-queued:hover,
+#__qt_custom_subtitles_layer .__qt_sub-word.__qt_ai-sub-active:hover,
+#__qt_custom_subtitles_layer .__qt_sub-word.__qt_ai-sub-upcoming:hover {
     background: transparent !important;
     box-shadow: none !important;
     border-radius: 0 !important;
@@ -2223,8 +2237,9 @@ html.__qt_netflix-capturing [id^="__qt_"] {
     box-shadow: inset 0 0 0 1px #4ecdc4, 0 0 8px rgba(78, 205, 196, 0.45) !important;
     padding: 0 !important;
     margin: 0 !important;
+    cursor: pointer !important;
     animation: __qt_sub_highlight_glow_in 0.42s cubic-bezier(0.16, 1, 0.3, 1) both !important;
-    transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
 }
 
 /* Queued terms: upcoming and previous idioms/words in the sentence (soft violet) */
@@ -2239,8 +2254,46 @@ html.__qt_netflix-capturing [id^="__qt_"] {
     box-shadow: inset 0 0 0 1px rgba(168, 85, 247, 0.4) !important;
     padding: 0 !important;
     margin: 0 !important;
+    cursor: pointer !important;
     animation: __qt_sub_queued_fade_in 0.42s cubic-bezier(0.16, 1, 0.3, 1) both !important;
-    transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+/* Dopasowany hover dla podświetlonych terminów fioletowych (queued / upcoming) */
+.__qt_ai-sub-wrap:hover,
+.__qt_ai-sub-wrap.__qt_ai-sub-queued:hover,
+.__qt_ai-sub-wrap.__qt_ai-sub-upcoming:hover,
+.__qt_ai-sub-queued:hover,
+.__qt_ai-sub-upcoming:hover {
+    background: rgba(168, 85, 247, 0.42) !important;
+    box-shadow: inset 0 0 0 1.5px #c084fc, 0 0 12px rgba(168, 85, 247, 0.65) !important;
+    color: #ffffff !important;
+    text-shadow: 0 0 10px rgba(168, 85, 247, 0.95), 0 1px 2px rgba(0, 0, 0, 0.9) !important;
+    cursor: pointer !important;
+    filter: brightness(1.15) !important;
+}
+
+/* Dopasowany hover dla podświetlonego aktywnego terminu (cyan gradient) */
+.__qt_ai-sub-wrap.__qt_ai-sub-active:hover,
+.__qt_ai-sub-active:hover {
+    background: linear-gradient(135deg, rgba(78, 205, 196, 0.62), rgba(168, 85, 247, 0.62)) !important;
+    box-shadow: inset 0 0 0 1.5px #00ffea, 0 0 14px rgba(78, 205, 196, 0.75) !important;
+    color: #ffffff !important;
+    text-shadow: 0 0 10px rgba(78, 205, 196, 0.95), 0 1px 2px rgba(0, 0, 0, 0.9) !important;
+    cursor: pointer !important;
+    filter: brightness(1.15) !important;
+}
+
+/* Wyłączenie fałszywego niebieskiego hovera dla niepodświetlonych słów podczas aktywnego trybu Enter AI */
+body[data-lectoro-ai-active="true"] #__qt_custom_subtitles_layer .__qt_sub-word:not(.__qt_ai-sub-active):not(.__qt_ai-sub-queued):not(.__qt_ai-sub-upcoming) {
+    cursor: default !important;
+}
+
+body[data-lectoro-ai-active="true"] #__qt_custom_subtitles_layer .__qt_sub-word:not(.__qt_ai-sub-active):not(.__qt_ai-sub-queued):not(.__qt_ai-sub-upcoming):hover {
+    background: transparent !important;
+    box-shadow: none !important;
+    color: inherit !important;
+    text-shadow: inherit !important;
 }
 
 /* Soft, non-aggressive entrance animation for active highlighted words */
