@@ -95,78 +95,7 @@
     let pausedForSave = false;
     let wasPlayingBeforeSave = false;
 
-    const SIMPLE_WORDS = new Set([
-        "an",
-        "oh",
-        "uh",
-        "ah",
-        "a",
-        "and",
-        "are",
-        "as",
-        "at",
-        "be",
-        "but",
-        "by",
-        "can",
-        "can't",
-        "could",
-        "did",
-        "do",
-        "does",
-        "for",
-        "from",
-        "had",
-        "has",
-        "have",
-        "he",
-        "her",
-        "here",
-        "his",
-        "if",
-        "in",
-        "into",
-        "is",
-        "it",
-        "its",
-        "me",
-        "my",
-        "not",
-        "of",
-        "on",
-        "or",
-        "our",
-        "she",
-        "should",
-        "so",
-        "some",
-        "that",
-        "the",
-        "their",
-        "them",
-        "there",
-        "they",
-        "this",
-        "to",
-        "too",
-        "us",
-        "was",
-        "we",
-        "were",
-        "what",
-        "when",
-        "where",
-        "which",
-        "who",
-        "why",
-        "will",
-        "with",
-        "won't",
-        "would",
-        "you",
-        "your",
-        "yours",
-    ]);
+    const SIMPLE_WORDS = C.SIMPLE_WORDS;
 
     function isNetflixPage() {
         return !!globalThis.LectoroPlayerRegistry?.isNetflixPage?.();
@@ -1482,11 +1411,16 @@
             ? item.meaning
             : [
                   item.type === "sentence" ? "" : item.term,
-                  item.meaning,
+                  aiExplainMode === "simple_target" ? "" : item.meaning,
                   item.explanation,
               ]
                   .filter(Boolean)
                   .join(". ");
+
+        const speakLang =
+            aiExplainMode === "simple_target"
+                ? aiExplainSourceLang
+                : aiExplainTargetLang;
 
         const bodyHtml = `
             <div class="${PREFIX}body">
@@ -1497,7 +1431,7 @@
                             ${item.badge ? `<span class="${PREFIX}ai-badge">${QT.escapeHtml(item.badge)}</span>` : ""}
                         </div>
                         <span class="${PREFIX}word-actions">
-                            <button class="${PREFIX}speak" data-text="${QT.escapeAttr(speechParts)}" data-lang="${QT.escapeAttr(aiExplainTargetLang)}" data-source-lang="${QT.escapeAttr(aiExplainSourceLang)}" data-original-text="${QT.escapeAttr(item.term)}" title="Odtwórz wymowę" aria-label="Odtwórz wymowę">${SVG.SPEAKER}</button>
+                            <button class="${PREFIX}speak" data-text="${QT.escapeAttr(speechParts)}" data-lang="${QT.escapeAttr(speakLang)}" data-source-lang="${QT.escapeAttr(aiExplainSourceLang)}" data-original-text="${QT.escapeAttr(item.term)}" title="Odtwórz wymowę" aria-label="Odtwórz wymowę">${SVG.SPEAKER}</button>
                         </span>
                     </div>
                     ${
@@ -1618,11 +1552,16 @@
         try {
             if (item.type === "sentence") {
                 // If it is 1/1, explain the sentence (meaning + explanation).
-                // If there are breakdown items (1/N, where N > 1), only speak the translation!
+                // If there are breakdown items (1/N, where N > 1), only speak the translation/simplified sentence!
                 const isSingleSentence = aiExplainQueue.length <= 1;
+                const sentenceLang =
+                    aiExplainMode === "simple_target"
+                        ? aiExplainSourceLang
+                        : aiExplainTargetLang;
+
                 if (isSingleSentence) {
                     if (item.meaning) {
-                        await speakUntilFinished(item.meaning, aiExplainTargetLang, {
+                        await speakUntilFinished(item.meaning, sentenceLang, {
                             sourceLang: aiExplainSourceLang,
                             originalText: item.term,
                             isCancelled,
@@ -1642,7 +1581,7 @@
                     }
                 } else {
                     if (item.meaning) {
-                        await speakUntilFinished(item.meaning, aiExplainTargetLang, {
+                        await speakUntilFinished(item.meaning, sentenceLang, {
                             sourceLang: aiExplainSourceLang,
                             originalText: item.term,
                             isCancelled,
@@ -1660,14 +1599,6 @@
                 if (isCancelled()) return;
 
                 if (aiExplainMode === "simple_target") {
-                    if (item.meaning) {
-                        await speakUntilFinished(item.meaning, aiExplainTargetLang, {
-                            sourceLang: aiExplainSourceLang,
-                            originalText: item.term,
-                            isCancelled,
-                        });
-                    }
-                    if (isCancelled()) return;
                     if (item.explanation) {
                         await speakUntilFinished(item.explanation, aiExplainSourceLang, {
                             sourceLang: aiExplainSourceLang,
@@ -1702,6 +1633,12 @@
                     if (isCancelled() || aiAutoAdvanceDisabled) return;
                     showAiExplainItem(aiExplainIndex + 1);
                 }, 500);
+            } else if (!aiAutoAdvanceDisabled && aiExplainIndex + 1 >= aiExplainQueue.length) {
+                clearTimeout(aiAutoAdvanceTimer);
+                aiAutoAdvanceTimer = setTimeout(() => {
+                    if (isCancelled() || aiAutoAdvanceDisabled) return;
+                    closeAiTooltip({ resumeVideo: true });
+                }, 800);
             }
         } catch (_) {
             // Speech cancellation or error is handled gracefully
@@ -2084,11 +2021,15 @@
                 (await QT.getAiExplanationLanguage?.()) || "native";
             aiExplainMode = aiExplanationLanguage;
             const context = getActiveSubtitleContext(video, text);
+            const knownSourceLang = normalizeLanguageCode(
+                getPlayerRegistry()?.getCurrentLanguage?.() ||
+                getPlayerRegistry()?.getTrackLanguage?.()
+            );
             const res = await QT.geminiExplainSentence(
                 text,
                 targetLang,
                 context,
-                { aiExplanationLanguage },
+                { aiExplanationLanguage, sourceLang: knownSourceLang },
             );
             if (!aiTooltipActive) return;
 
@@ -2103,7 +2044,8 @@
             aiExplainTargetLang = targetLang;
             aiSavedIndices.clear();
 
-            const translation = res?.translation || "";
+            const translation =
+                res?.translation || res?.simple_sentence || "";
             const explanation =
                 res?.explanation || (typeof res === "string" ? res : "");
 
@@ -2141,8 +2083,12 @@
                 }));
             }
 
-            // Always start queue with full sentence translation, followed by breakdown items
-            aiExplainQueue = [sentenceItem, ...breakdownItems];
+            // In simple_target mode, skip the full sentence card if breakdown items exist
+            if (aiExplainMode === "simple_target" && breakdownItems.length > 0) {
+                aiExplainQueue = breakdownItems;
+            } else {
+                aiExplainQueue = [sentenceItem, ...breakdownItems];
+            }
 
             aiAutoAdvanceDisabled = false;
             aiExplainIndex = 0;

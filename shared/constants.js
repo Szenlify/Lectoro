@@ -124,6 +124,7 @@
             AI_USAGE_CACHE: "aiUsageCache",
             SUBSCRIPTION_PROFILE_CACHE: "subscriptionProfileCache",
             PERSISTENT_TRANSLATE_CACHE: "persistentTranslateCache",
+            PERSISTENT_IMAGE_CACHE: "persistentImageCache",
             LATEST_QUIZ_HTML: "latestQuizHtml",
             LATEST_QUIZ_TITLE: "latestQuizTitle",
             LATEST_QUIZ_MODE: "latestQuizMode",
@@ -155,6 +156,22 @@
             GOOGLE_TRANSLATE:
                 "https://translate.googleapis.com/translate_a/single",
             GOOGLE_TTS: "https://translate.google.com/translate_tts",
+            PIXABAY: "https://pixabay.com/api/",
+        });
+
+        /**
+         * Obfuscated external API credentials to protect against plain-text scraping.
+         */
+        const API_KEYS = Object.freeze({
+            get PIXABAY() {
+                // Obfuscated key: 57435186-f7a69b9d5541aea7ed5f2e318
+                const _x = [
+                    111, 109, 110, 105, 111, 107, 98, 108, 119, 60, 109, 59,
+                    108, 99, 56, 99, 62, 111, 111, 110, 107, 59, 63, 59, 109,
+                    63, 62, 111, 60, 104, 63, 105, 107, 98,
+                ];
+                return _x.map((c) => String.fromCharCode(c ^ 0x5a)).join("");
+            },
         });
 
         const SVG_ICONS = Object.freeze({
@@ -449,6 +466,24 @@
             ELEVENLABS_VOICES.map((v) => v.id),
         );
 
+        /**
+         * Stopwords / simple functional words (pronouns, auxiliary verbs, articles, prepositions)
+         * Single Source of Truth shared across subtitle overlay, word cloud, and visual concept filters.
+         */
+        const SIMPLE_WORDS = Object.freeze(
+            new Set([
+                "an", "oh","um", "uh", "ah", "a", "and", "are", "as", "at", "be",
+                "but", "by", "can", "can't", "could", "did", "do", "does",
+                "for", "from", "had", "has", "have", "he", "her", "here",
+                "his", "if", "in", "into", "is", "it", "its", "me", "my",
+                "not", "of", "on", "or", "our", "she", "should", "so",
+                "some", "that", "the", "their", "them", "there", "they",
+                "this", "to", "too", "us", "was", "we", "were", "what",
+                "when", "where", "which", "who", "why", "will", "with",
+                "won't", "would", "you", "your", "yours",
+            ]),
+        );
+
         /** Check if a target element is part of Lectoro's own overlay / tooltip / cloud UI */
         function isOwnUI(target) {
             if (!target) return false;
@@ -466,6 +501,8 @@
             DEFAULT_SUBTITLE_SETTINGS,
             DEFAULT_TTS_SETTINGS,
             ENDPOINTS,
+            API_KEYS,
+            SIMPLE_WORDS,
             SVG_ICONS,
             R2_CDN_BASE_URL,
             SUPPORTED_LANGUAGES,

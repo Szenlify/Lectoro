@@ -532,7 +532,7 @@
 
 #__qt_tooltip .__qt_image-card.is-loaded {
     animation: none;
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(255, 255, 255, 0.2);
 }
 
 #__qt_tooltip .__qt_image-thumb {
@@ -1481,7 +1481,7 @@ video::cue {
     gap: 4px !important;
     padding: 3px 9px !important;
     border-radius: 10px !important;
-    font-size: 11px !important;
+    font-size: 9px !important;
     font-weight: 600 !important;
     line-height: 1.2 !important;
     white-space: nowrap !important;

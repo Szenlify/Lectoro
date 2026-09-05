@@ -188,6 +188,27 @@ Ostatnia aktualizacja: 2026-09-04
       7. W `video/subtitle-overlay.js` w `handleAIExplain` odczytywany jest stan `QT.getAiExplanationLanguage()` i zapisywany w `aiExplainMode`. W syntezatorze mowy `speakAiExplainItem` oraz formatowaniu speech markup dostosowano odczyt: w trybie `simple_target` wyjaśnienie jest czytane głosem języka źródłowego (`aiExplainSourceLang`), a tłumaczenie znaczenia głosem języka ojczystego (`aiExplainTargetLang`), gwarantując bezbłędną wymowę fonetyczną.
       8. Rozszerzono testy w `scratch/test_enter_mode.js` (8/8 testów zaliczonych) oraz potwierdzono poprawność składniową w `scratch/check_syntax.js` (100% PASS).
 
+## Faza 14: Auto-Zamknięcie Dymka AI i Wznowienie Wideo po Zakończeniu Kolejki & Rafinacja Trybu Simple Target Language
+
+- [x] 14.1. Automatyczne zamykanie dymka i wznawianie wideo po zakończeniu odtwarzania kolejki (np. 4/4 lub 1/1).
+    - Log: W `video/subtitle-overlay.js` w funkcji `speakAiExplainItem` dodano warunek zakończenia kolejki: gdy `aiExplainIndex + 1 >= aiExplainQueue.length` i nie wyłączono automatycznego odtwarzania (`!aiAutoAdvanceDisabled`), uruchamiany jest timer (800 ms), po którym wywoływana jest funkcja `closeAiTooltip({ resumeVideo: true })`. Dzięki temu po odczytaniu ostatniego elementu dymek samoczynnie znika, a wideo płynnie wznawia odtwarzanie bez konieczności naciskania Escape.
+- [x] 14.2. Uproszczenie całego zdania w języku docelowym (CEFR A2-B1) zamiast tłumaczenia na język ojczysty w trybie `simple_target`.
+    - Log:
+      1. W `shared/ai-prompts.js` w funkcji `explainSentence` zaktualizowano instrukcję dla trybu `simple_target`: pole `"translation"` instruuje model Gemini, aby przepisać analizowane zdanie prostym językiem docelowym/źródłowym (poziom CEFR A2-B1, proste słownictwo i gramatyka) zamiast tłumaczyć je na język ojczysty (`targetLang`).
+      2. W `video/subtitle-overlay.js` w `speakAiExplainItem` dla `item.type === "sentence"` głos lektora `sentenceLang` został ustawiony na `aiExplainSourceLang` (angielski) w trybie `simple_target` (zamiast głosu języka ojczystego `aiExplainTargetLang`).
+- [x] 14.3. Wyłączenie odczytu języka ojczystego przez TTS w kolejnych etapach wyjaśniania (idiomy, phrasal verbs, słówka) w trybie `simple_target`.
+    - Log:
+      1. W `video/subtitle-overlay.js` w `speakAiExplainItem` dla `item.type !== "sentence"` w trybie `simple_target` wyeliminowano wywołanie odczytu polskiego tłumaczenia (`speakUntilFinished(item.meaning, aiExplainTargetLang)`). Lektor TTS czyta wyłącznie angielski termin (`item.term`) oraz angielskie wyjaśnienie (`item.explanation`) głosem `aiExplainSourceLang`.
+      2. W `renderAiExplainContent` dostosowano atrybuty przycisku odsłuchu na karcie (`data-lang` oraz `speechParts`): w trybie `simple_target` język ustawiany jest na `aiExplainSourceLang`, a tekst nie zawiera polskiego znaczenia.
+      3. Zaktualizowano i rozszerzono zestaw testów w `scratch/test_enter_mode.js` (9/9 testów PASS) oraz zweryfikowano poprawność składniową w `scratch/check_syntax.js` (100% PASS).
+- [x] 14.4. Pomijanie początkowej karty całego zdania w trybie `simple_target`, gdy dostępne są elementy breakdown (idiomy/słówka).
+    - Log: W `video/subtitle-overlay.js` w `handleAIExplain` zaktualizowano inicjalizację kolejki `aiExplainQueue`: gdy aktywny jest tryb `simple_target` oraz lista `breakdownItems.length > 0`, karta `sentenceItem` nie jest dodawana na początku kolejki. Dymek przechodzi od razu do pierwszego idiomu/słówka (np. 1/3 zamiast 1/4), podświetlając termin na filmie i czytając wyłącznie jego wyjaśnienie w simple target language. W przypadku braku elementów breakdown (0 słówek), karta zdania jest zachowywana jako bezpieczny fallback 1/1.
+- [x] 14.5. Bezwzględne wymuszenie generowania wszystkich pól w języku docelowym (Target Language) w trybie `simple_target` (brak mieszania z językiem polskim/innym).
+    - Log:
+      1. W `shared/ai-prompts.js` w funkcji `explainSentence` wydzielono dedykowaną, autonomiczną ścieżkę promptu dla `isSimpleTarget`. Wprowadzono rygorystyczną regułę językową `MANDATORY LANGUAGE RULE`: wszystkie generowane pola (`translation`, `explanation`, `items[].meaning`, `items[].explanation`) muszą być sformułowane w 100% wyłącznie w języku docelowym (np. angielskim). Wyeliminowano z instrukcji dla `items` wszelkie odwołania do języka ojczystego (`${tgtName}` / Polish), zamieniając je na wymóg podania prostego synonimu lub krótkiej definicji w języku docelowym (np. `turn down` -> `refuse`).
+      2. W `video/subtitle-overlay.js` w `handleAIExplain` dodano odczyt języka napisów z odtwarzacza wideo (`knownSourceLang`) i przekazano go wprost do `QT.geminiExplainSentence(text, targetLang, context, { aiExplanationLanguage, sourceLang: knownSourceLang })`, co eliminuje wszelkie pomyłki modelu co do języka docelowego.
+      3. Zaktualizowano testy w `scratch/test_enter_mode.js` (9/9 PASS) oraz potwierdzono poprawność składniową w `scratch/check_syntax.js` (100% PASS).
+
 
 
 

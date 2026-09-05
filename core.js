@@ -9,7 +9,7 @@
     "use strict";
 
     const C = LectoroConstants;
-    const { escapeHtml, escapeAttr, cleanTextForTTS, cleanCardText, pickBestVoice, ensureVoices } = SharedUtils;
+    const { escapeHtml, escapeAttr, cleanTextForTTS, cleanCardText, pickBestVoice, ensureVoices, isSingleWord, isSimpleWord } = SharedUtils;
     const { PREFIX, langTag, isOwnUI } = C;
     const ICON_ID = C.UI_IDS.ICON;
     const TOOLTIP_ID = C.UI_IDS.TOOLTIP;
@@ -643,6 +643,26 @@
         const P = PREFIX;
         const dataAttrs = `data-src="${escapeAttr(original)}" data-translated="${escapeAttr(translated)}" data-src-lang="${escapeAttr(srcLang)}" data-tgt-lang="${escapeAttr(targetLang)}"`;
 
+        const showVisualConcept = isSingleWord(original) && !isSimpleWord(original);
+        const imageSectionHtml = showVisualConcept
+            ? `
+                <div class="${P}image-section">
+                    <div class="${P}image-header">
+                        <span class="${P}image-label">${SVG.IMAGE_SEARCH} Visual Concept</span>
+                        <a class="${P}image-ext-link" href="https://www.google.com/search?q=${encodeURIComponent(`${original} clipart`)}&udm=2" target="_blank" rel="noopener noreferrer" title="Search Google Images">
+                            Google Images ${SVG.EXTERNAL_LINK}
+                        </a>
+                    </div>
+                    <div class="${P}image-strip ${P}image-strip-loading" data-query="${escapeAttr(original)}" data-translated="${escapeAttr(translated)}" data-src-lang="${escapeAttr(srcLang)}" data-tgt-lang="${escapeAttr(targetLang)}">
+                        <div class="${P}image-card ${P}image-skeleton"></div>
+                        <div class="${P}image-card ${P}image-skeleton"></div>
+                        <div class="${P}image-card ${P}image-skeleton"></div>
+                        <div class="${P}image-card ${P}image-skeleton"></div>
+                        <div class="${P}image-card ${P}image-skeleton"></div>
+                    </div>
+                </div>`
+            : "";
+
         return `
             <div class="${P}header">
                 <span>${langTag(srcLang)} → ${langTag(targetLang)}</span>
@@ -662,21 +682,7 @@
                         ${speakButtonHtml(translated, targetLang, "Play translation")}
                     </span>
                 </div>
-                <div class="${P}image-section">
-                    <div class="${P}image-header">
-                        <span class="${P}image-label">${SVG.IMAGE_SEARCH} Visual Concept</span>
-                        <a class="${P}image-ext-link" href="https://www.google.com/search?q=${encodeURIComponent(`${original} clipart`)}&udm=2" target="_blank" rel="noopener noreferrer" title="Search Google Images">
-                            Google Images ${SVG.EXTERNAL_LINK}
-                        </a>
-                    </div>
-                    <div class="${P}image-strip ${P}image-strip-loading" data-query="${escapeAttr(original)}" data-translated="${escapeAttr(translated)}" data-src-lang="${escapeAttr(srcLang)}" data-tgt-lang="${escapeAttr(targetLang)}">
-                        <div class="${P}image-card ${P}image-skeleton"></div>
-                        <div class="${P}image-card ${P}image-skeleton"></div>
-                        <div class="${P}image-card ${P}image-skeleton"></div>
-                        <div class="${P}image-card ${P}image-skeleton"></div>
-                        <div class="${P}image-card ${P}image-skeleton"></div>
-                    </div>
-                </div>
+                ${imageSectionHtml}
             </div>
             <div class="${P}ai-result" id="${C.UI_IDS.AI_RESULT}" style="display:none;"></div>
             <div class="${P}save-footer">
@@ -862,8 +868,8 @@
 
         const currentToken = ++tooltipImageToken;
         const targetWord = (query || stripEl.dataset.query || "").trim();
-        if (!targetWord) {
-            const section = stripEl.closest(`.${PREFIX}image-section`);
+        const section = stripEl.closest(`.${PREFIX}image-section`);
+        if (!targetWord || !isSingleWord(targetWord) || isSimpleWord(targetWord)) {
             if (section) section.style.display = "none";
             return;
         }
@@ -874,8 +880,6 @@
             srcLang: stripEl.dataset.srcLang || "",
             targetLang: stripEl.dataset.tgtLang || "",
         };
-
-        const section = stripEl.closest(`.${PREFIX}image-section`);
 
         try {
             const response = await new Promise((resolve) => {
@@ -1138,6 +1142,8 @@
         escapeAttr,
         cleanCardText,
         cleanTextForTTS,
+        isSingleWord,
+        isSimpleWord,
         langTag,
         isOwnUI,
 

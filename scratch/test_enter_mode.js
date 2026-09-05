@@ -165,19 +165,27 @@ const simpleTargetPrompt = AIPrompts.explainSentence(
     "The cat sat on the mat.",
     "pl",
     null,
-    { aiExplanationLanguage: "simple_target" },
+    { aiExplanationLanguage: "simple_target", sourceLang: "en" },
 );
 assert(
-    simpleTargetPrompt.includes("Explain this video subtitle sentence in simple language (CEFR A2-B1"),
-    "Simple target prompt must include CEFR A2-B1 instructions in prompt header",
+    simpleTargetPrompt.includes("All outputs (simplified sentence, meanings, explanations) MUST be written 100% EXCLUSIVELY in English (en)"),
+    "Simple target prompt must enforce 100% exclusive output in target language (English)",
 );
 assert(
-    simpleTargetPrompt.includes("written in SIMPLE, clear words in the sentence's original language (CEFR A2-B1 level"),
-    "Simple target prompt must request explanation in simple target language",
+    simpleTargetPrompt.includes("NEVER translate into Polish, Polish, Spanish, or any other language.") || simpleTargetPrompt.includes("NEVER translate into Polish"),
+    "Simple target prompt must explicitly forbid translating into native language",
 );
 assert(
-    simpleTargetPrompt.includes('translation": Accurate, natural, context-aware translation in Polish (pl)'),
-    "Simple target prompt must keep translation in native language (Polish)",
+    simpleTargetPrompt.includes("DO NOT translate to Polish - write it in simple English (en)"),
+    "Simple target prompt must instruct not to translate sentence to Polish",
+);
+assert(
+    simpleTargetPrompt.includes("a simple synonym or short, basic definition (1-4 words) in simple English (en)"),
+    "Simple target prompt must request item meanings in simple target language",
+);
+assert(
+    simpleTargetPrompt.includes("DO NOT use Polish or any native language"),
+    "Simple target prompt must explicitly ban native language from item meanings",
 );
 console.log("✓ Test 6 Passed: AIPrompts.explainSentence simple_target mode verified successfully.");
 
@@ -206,18 +214,39 @@ assert(
 console.log("✓ Test 7 Passed: translator-service and core.js delegation verified successfully.");
 
 // 8. Verify Task 12.2 Part 4: subtitle-overlay.js TTS voice and settings integration
+const updatedJsContent = fs.readFileSync(jsPath, "utf-8");
 assert(
-    jsContent.includes("let aiExplainMode = \"native\";"),
+    updatedJsContent.includes("let aiExplainMode = \"native\";"),
     "subtitle-overlay.js must declare aiExplainMode state",
 );
 assert(
-    jsContent.includes("const aiExplanationLanguage ="),
+    updatedJsContent.includes("const aiExplanationLanguage ="),
     "subtitle-overlay.js must query getAiExplanationLanguage",
 );
 assert(
-    jsContent.includes("aiExplainMode === \"simple_target\""),
+    updatedJsContent.includes("aiExplainMode === \"simple_target\""),
     "subtitle-overlay.js must handle simple_target for TTS voice selection",
 );
 console.log("✓ Test 8 Passed: subtitle-overlay.js simple_target TTS voice verified successfully.");
+
+// 9. Verify Phase 14: Auto-close after queue completion & simple_target TTS refinement
+assert(
+    updatedJsContent.includes("closeAiTooltip({ resumeVideo: true });"),
+    "subtitle-overlay.js must auto-close tooltip and resume video at queue end",
+);
+const normalizedJs = updatedJsContent.replace(/\r\n/g, "\n");
+assert(
+    normalizedJs.includes("const sentenceLang =\n                    aiExplainMode === \"simple_target\"\n                        ? aiExplainSourceLang\n                        : aiExplainTargetLang;"),
+    "subtitle-overlay.js must speak simplified sentence in sourceLang when in simple_target mode",
+);
+assert(
+    !normalizedJs.includes("if (aiExplainMode === \"simple_target\") {\n                    if (item.meaning) {"),
+    "subtitle-overlay.js must not speak native language meaning in simple_target mode breakdown items",
+);
+assert(
+    normalizedJs.includes("if (aiExplainMode === \"simple_target\" && breakdownItems.length > 0) {\n                aiExplainQueue = breakdownItems;"),
+    "subtitle-overlay.js must skip sentence card in simple_target mode when breakdown items exist",
+);
+console.log("✓ Test 9 Passed: Auto-close & simple_target TTS enhancements verified successfully.");
 
 console.log("\nALL ENTER MODE & SETTING IMPROVEMENTS VERIFIED! 🚀");

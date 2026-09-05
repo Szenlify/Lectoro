@@ -23,9 +23,9 @@
         [SUBSCRIPTION_PLANS.FREE]: Object.freeze({
             displayName: "FREE",
             trialDays: 0,
-            priceMonthly: Object.freeze({ amount: 0, currency: "PLN" }),
+            priceMonthly: Object.freeze({ amount: 0, currency: "USD" }),
             ai: Object.freeze({ usesPerMonth: 10 }),
-            srs: Object.freeze({ maxSavedCards: 50 }),
+            srs: Object.freeze({ maxSavedCards: 25 }),
             elevenLabs: Object.freeze({
                 enabled: false,
                 maxCharactersPerRequest: 0,
@@ -44,12 +44,12 @@
             displayName: "BASIC",
             trialDays: 3,
             priceMonthly: Object.freeze({ amount: 7.99, currency: "USD" }),
-            ai: Object.freeze({ usesPerMonth: 200 }),
+            ai: Object.freeze({ usesPerMonth: 1000 }),
             srs: Object.freeze({ maxSavedCards: 3000 }),
             elevenLabs: Object.freeze({
                 enabled: true,
                 maxCharactersPerRequest: 500,
-                charactersPerMonth: 20000,
+                charactersPerMonth: 15000,
             }),
             subtitles: Object.freeze({
                 charactersPerHour: Infinity,
@@ -65,12 +65,12 @@
             displayName: "PRO",
             trialDays: 3,
             priceMonthly: Object.freeze({ amount: 19.99, currency: "USD" }),
-            ai: Object.freeze({ usesPerMonth: 1200 }),
+            ai: Object.freeze({ usesPerMonth: 10000 }),
             srs: Object.freeze({ maxSavedCards: 10000 }),
             elevenLabs: Object.freeze({
                 enabled: true,
                 maxCharactersPerRequest: 1000,
-                charactersPerMonth: 120000,
+                charactersPerMonth: 100000,
             }),
             subtitles: Object.freeze({
                 charactersPerHour: Infinity,

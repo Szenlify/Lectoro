@@ -28,7 +28,9 @@
         "https://*.nflximg.net/*",
         "https://*.nflxext.com/*",
         "https://duckduckgo.com/*",
-        "https://*.bing.net/*"
+        "https://*.bing.net/*",
+        "https://pixabay.com/*",
+        "https://*.pixabay.com/*"
     ],
     "background": {
         "service_worker": "background.js"

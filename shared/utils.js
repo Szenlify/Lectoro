@@ -48,6 +48,38 @@
             },
 
             /**
+             * Checks whether a text string contains strictly a single word
+             * (ignoring surrounding punctuation, symbols, quotes, and whitespace).
+             */
+            isSingleWord(str) {
+                if (!str || typeof str !== "string") return false;
+                const cleaned = str.trim().replace(/^[\p{P}\p{S}\s]+|[\p{P}\p{S}\s]+$/gu, "");
+                if (!cleaned) return false;
+                const tokens = cleaned.split(/\s+/).filter(Boolean);
+                return tokens.length === 1;
+            },
+
+            /**
+             * Checks whether a word is in the set of simple function words / stopwords
+             * (pronouns, auxiliary verbs, articles, prepositions) where showing a visual concept
+             * creates visual clutter and has no mnemonic value.
+             */
+            isSimpleWord(str) {
+                if (!str || typeof str !== "string") return false;
+                const cleanWord = str
+                    .trim()
+                    .toLowerCase()
+                    .replace(/^[\p{P}\p{S}\s]+|[\p{P}\p{S}\s]+$/gu, "")
+                    .replace(/[^\p{L}']/gu, "");
+                if (!cleanWord || cleanWord.length <= 1) return true;
+                const simpleSet = C?.SIMPLE_WORDS;
+                if (simpleSet && simpleSet.has(cleanWord)) return true;
+                const baseWord = cleanWord.replace(/(n't|'s|'ll|'d|'re|'ve|'m)$/, "");
+                if (baseWord.length <= 1) return true;
+                return !!(simpleSet && simpleSet.has(baseWord));
+            },
+
+            /**
              * True when running inside a content script on a regular web page
              * (as opposed to the popup, quiz page or the background service worker).
              * Content scripts must proxy privileged network calls through the background.
