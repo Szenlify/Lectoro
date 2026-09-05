@@ -120,7 +120,7 @@
                 return;
             }
 
-            // AI Explanation Queue Navigation: ArrowRight / ArrowLeft / A / D
+            // AI Explanation Queue Navigation: ArrowRight / ArrowLeft / A / D / Z (save active card)
             if (aiTooltipOpen) {
                 if (key === "ArrowRight" || key === "d" || key === "D") {
                     if (overlay?.nextAiExplainItem?.({ manual: true })) {
@@ -129,6 +129,11 @@
                 }
                 if (key === "ArrowLeft" || key === "a" || key === "A") {
                     if (overlay?.prevAiExplainItem?.({ manual: true })) {
+                        return;
+                    }
+                }
+                if (key === "z" || key === "Z") {
+                    if (overlay?.saveCurrentAiExplainItem?.()) {
                         return;
                     }
                 }

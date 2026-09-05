@@ -48,6 +48,7 @@
     let activeText = "";
     let activeWordSpans = [];
     let trackedVideo = null;
+    let activeAiVideo = null;
     let videoResizeObserver = null;
     let layoutRafId = null;
     const recentSubtitlesHistory = [];
@@ -1162,6 +1163,7 @@
         aiExplainIndex = 0;
         aiExplainLayout = null;
         aiSavedIndices.clear();
+        activeAiVideo = null;
         clearSubtitleVideoHighlights();
         QT.hideTooltip();
         removeAiShimmer();
@@ -1195,19 +1197,6 @@
             if (names.includes(raw)) return code;
         }
         return fallback;
-    }
-
-    function languageTag(code) {
-        if (code && code !== "auto" && code !== "?") {
-            return QT.langTag(code);
-        }
-        const playerLang =
-            getPlayerRegistry()?.getCurrentLanguage?.() ||
-            getPlayerRegistry()?.getTrackLanguage?.();
-        if (playerLang && playerLang !== "auto") {
-            return QT.langTag(playerLang);
-        }
-        return "EN";
     }
 
     async function detectSourceLanguage(text, targetLang, aiResult) {
@@ -1568,13 +1557,13 @@
             <div class="${PREFIX}body">
                 <div class="${PREFIX}ai-term-card" data-type="${QT.escapeAttr(item.type || "")}">
                     <div class="${PREFIX}ai-term-header">
+                        ${item.badge ? `<span class="${PREFIX}ai-badge">${QT.escapeHtml(item.badge)}</span>` : ""}
                         <div class="${PREFIX}ai-term-title-wrap">
                             <span class="${PREFIX}ai-term">${QT.escapeHtml(item.term)}</span>
-                            ${item.badge ? `<span class="${PREFIX}ai-badge">${QT.escapeHtml(item.badge)}</span>` : ""}
+                            <span class="${PREFIX}word-actions">
+                                <button class="${PREFIX}speak" data-text="${QT.escapeAttr(speechParts)}" data-lang="${QT.escapeAttr(speakLang)}" data-source-lang="${QT.escapeAttr(aiExplainSourceLang)}" data-original-text="${QT.escapeAttr(item.term)}" title="Odtwórz wymowę" aria-label="Odtwórz wymowę">${SVG.SPEAKER}</button>
+                            </span>
                         </div>
-                        <span class="${PREFIX}word-actions">
-                            <button class="${PREFIX}speak" data-text="${QT.escapeAttr(speechParts)}" data-lang="${QT.escapeAttr(speakLang)}" data-source-lang="${QT.escapeAttr(aiExplainSourceLang)}" data-original-text="${QT.escapeAttr(item.term)}" title="Odtwórz wymowę" aria-label="Odtwórz wymowę">${SVG.SPEAKER}</button>
-                        </span>
                     </div>
                     ${
                         item.meaning
@@ -1875,33 +1864,24 @@
         return navigateAiExplain(-1, options);
     }
 
-    function wireAiExplainSaveButton(
-        firstArg,
-        translation,
-        explanation,
-        sourceLang,
-        targetLang,
-    ) {
+    function saveCurrentAiExplainItem() {
+        if (!aiTooltipActive) return false;
+        const currentSaveBtn = translationOverlay?.querySelector(
+            `.${PREFIX}ai-explain-save-btn`,
+        );
+        if (currentSaveBtn && document.contains(currentSaveBtn)) {
+            currentSaveBtn.click();
+            return true;
+        }
+        return false;
+    }
+
+    function wireAiExplainSaveButton(item) {
         const tooltipNode = translationOverlay || QT.getTooltipEl();
         const saveBtn = tooltipNode?.querySelector(
             `.${PREFIX}ai-explain-save-btn`,
         );
         if (!saveBtn) return;
-
-        let item = null;
-        if (firstArg && typeof firstArg === "object" && firstArg.type) {
-            item = firstArg;
-        } else {
-            item = {
-                type: "sentence",
-                term: firstArg || "",
-                originalText: firstArg || "",
-                meaning: translation || "",
-                explanation: explanation || "",
-            };
-            if (sourceLang) aiExplainSourceLang = sourceLang;
-            if (targetLang) aiExplainTargetLang = targetLang;
-        }
 
         if (!saveBtn.querySelector(`.${PREFIX}key-hint`)) {
             const hintNode = document.createElement("kbd");
@@ -1931,15 +1911,19 @@
             saveBtn.innerHTML = `${SVG.SAVE_SENTENCE} <span>Saving…</span><kbd class="${PREFIX}key-hint">Z</kbd>`;
 
             try {
+                const targetVideo =
+                    activeAiVideo ||
+                    trackedVideo ||
+                    getPlayerRegistry()?.getVideo();
                 const screenshot =
                     await getPlayerRegistry()?.captureVideoReviewScreenshot(
-                        getPlayerRegistry().getVideo(),
+                        targetVideo,
                     );
                 const currentItem = item || aiExplainQueue[aiExplainIndex] || {};
 
                 const cleanedTerm =
                     cleanCardText(currentItem.term) || currentItem.term;
-                const cleanedMeaning =
+                let cleanedMeaning =
                     cleanCardText(currentItem.meaning || currentItem.translation) ||
                     currentItem.meaning ||
                     currentItem.translation ||
@@ -1954,18 +1938,76 @@
                     aiExplainQueue.find((q) => q.sentenceTranslated)?.sentenceTranslated ||
                     aiExplainQueue.find((q) => q.type === "sentence")?.meaning ||
                     "";
-                const contextSentenceTranslated = isSentenceCard
+                let contextSentenceTranslated = isSentenceCard
                     ? ""
                     : cleanCardText(rawSentenceTr) || "";
+
+                // In AI mode (especially simple_target mode where definitions are in the target language,
+                // or if meaning is missing/untranslated), ensure flashcard translation is in the user's native language!
+                const targetNativeLang =
+                    aiExplainTargetLang || (await QT.getTargetLang?.()) || "pl";
+                let aiDefinition = "";
+
+                if (aiExplainMode === "simple_target") {
+                    // In simple_target mode, currentItem.meaning is a simplified target-language definition (e.g. English).
+                    // Preserve that simple definition in aiSentence for learning,
+                    // but translate the term and context sentence to the native language for the flashcard!
+                    aiDefinition =
+                        cleanedMeaning !== cleanedTerm ? cleanedMeaning : "";
+                    try {
+                        const trTerm = await QT.translate(
+                            cleanedTerm,
+                            targetNativeLang,
+                        );
+                        if (trTerm?.translated) {
+                            cleanedMeaning =
+                                cleanCardText(trTerm.translated) ||
+                                trTerm.translated;
+                        }
+                    } catch (_) {}
+
+                    if (contextSentence) {
+                        try {
+                            const trSent = await QT.translate(
+                                contextSentence,
+                                targetNativeLang,
+                            );
+                            if (trSent?.translated) {
+                                contextSentenceTranslated =
+                                    cleanCardText(trSent.translated) ||
+                                    trSent.translated;
+                            }
+                        } catch (_) {}
+                    }
+                } else if (
+                    !cleanedMeaning ||
+                    cleanedMeaning.toLowerCase() === cleanedTerm.toLowerCase()
+                ) {
+                    try {
+                        const trTerm = await QT.translate(
+                            cleanedTerm,
+                            targetNativeLang,
+                        );
+                        if (trTerm?.translated) {
+                            cleanedMeaning =
+                                cleanCardText(trTerm.translated) ||
+                                trTerm.translated;
+                        }
+                    } catch (_) {}
+                }
+
+                const resolvedAiSentence = [aiDefinition, cleanedExplanation]
+                    .filter(Boolean)
+                    .join(" — ");
 
                 await QT.saveWord({
                     original: cleanedTerm,
                     translated: cleanedMeaning,
                     srcLang: aiExplainSourceLang,
-                    tgtLang: aiExplainTargetLang,
+                    tgtLang: targetNativeLang,
                     sentence: contextSentence,
                     sentenceTranslated: contextSentenceTranslated,
-                    aiSentence: cleanedExplanation || "",
+                    aiSentence: resolvedAiSentence || cleanedExplanation || "",
                     aiSentenceTranslated: contextSentenceTranslated,
                     screenshot,
                     url: window.location.href,
@@ -2136,6 +2178,7 @@
         const registry = getPlayerRegistry();
         const text = activeText || registry?.getCurrentText();
         if (!text) return;
+        activeAiVideo = video || trackedVideo || registry?.getVideo?.() || null;
         cleanupReading();
         closeSubTooltip({ resumeVideo: false });
 
@@ -2740,7 +2783,7 @@
             : null;
     }
 
-    // The sentence translation follows the subtitle typography at 60% of its font size.
+    // The sentence translation follows the subtitle typography at 50% of its font size.
     const TRANSLATION_FONT_RATIO = 0.5;
     const TRANSLATION_FONT_FALLBACK_PX = 15;
 
@@ -2749,7 +2792,17 @@
         layout,
         { fallbackPx = null } = {},
     ) {
+        if (!overlay) return;
         const sourceFontSize = getSubtitleSourceFontSize(layout);
+        const effectiveSource =
+            sourceFontSize ||
+            (fallbackPx ? fallbackPx / TRANSLATION_FONT_RATIO : 24);
+
+        overlay.style.setProperty(
+            "--lectoro-sub-source-size",
+            `${effectiveSource}px`,
+        );
+
         if (sourceFontSize) {
             const translationFontSize =
                 Math.round(sourceFontSize * TRANSLATION_FONT_RATIO * 100) / 100;
@@ -2763,6 +2816,42 @@
                 `${fallbackPx}px`,
             );
         }
+
+        // Enter AI explanation proportional font sizes (scaled percentage-wise to subtitle text, slightly more compact)
+        const termSize =
+            Math.round(Math.max(13, Math.min(30, effectiveSource * 0.62)) * 10) / 10;
+        const meaningSize =
+            Math.round(Math.max(12, Math.min(26, effectiveSource * 0.54)) * 10) / 10;
+        const explanationSize =
+            Math.round(Math.max(11, Math.min(20, effectiveSource * 0.46)) * 10) / 10;
+        const metaSize =
+            Math.round(Math.max(9, Math.min(15, effectiveSource * 0.38)) * 10) / 10;
+        const sentenceTermSize =
+            Math.round(Math.max(13, Math.min(26, effectiveSource * 0.56)) * 10) / 10;
+        const sentenceMeaningSize =
+            Math.round(Math.max(14, Math.min(28, effectiveSource * 0.60)) * 10) / 10;
+        const badgeSize =
+            Math.round(Math.max(7.5, Math.min(10.5, effectiveSource * 0.28)) * 10) / 10;
+
+        overlay.style.setProperty("--lectoro-ai-term-font-size", `${termSize}px`);
+        overlay.style.setProperty(
+            "--lectoro-ai-meaning-font-size",
+            `${meaningSize}px`,
+        );
+        overlay.style.setProperty(
+            "--lectoro-ai-explanation-font-size",
+            `${explanationSize}px`,
+        );
+        overlay.style.setProperty("--lectoro-ai-badge-font-size", `${badgeSize}px`);
+        overlay.style.setProperty("--lectoro-ai-meta-font-size", `${metaSize}px`);
+        overlay.style.setProperty(
+            "--lectoro-ai-sentence-term-font-size",
+            `${sentenceTermSize}px`,
+        );
+        overlay.style.setProperty(
+            "--lectoro-ai-sentence-meaning-font-size",
+            `${sentenceMeaningSize}px`,
+        );
     }
 
     function createOverlay(layout = null) {
@@ -3052,6 +3141,9 @@
         ariaLabel = "Sentence analysis",
     ) {
         const overlay = translationOverlay || createOverlay(layout);
+        applyTranslationFontSize(overlay, layout, {
+            fallbackPx: TRANSLATION_FONT_FALLBACK_PX,
+        });
         overlay.classList.add(AI_EXPLAIN_OVERLAY_CLASS);
         overlay.setAttribute("role", "dialog");
         overlay.setAttribute("aria-live", "off");
@@ -3417,6 +3509,7 @@
         closeSubTooltip,
         handleAIExplain,
         closeAiTooltip,
+        saveCurrentAiExplainItem,
         isAiTooltipActive: () => aiTooltipActive,
         navigateAiExplain,
         nextAiExplainItem,

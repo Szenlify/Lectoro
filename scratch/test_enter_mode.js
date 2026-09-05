@@ -293,4 +293,96 @@ assert(
 );
 console.log("✓ Test 11 Passed: Tailored hover, pill sync, and video player event interception verified successfully.");
 
-console.log("\nALL ENTER MODE & SETTING IMPROVEMENTS VERIFIED! 🚀");
+// 12. Verify Task 17 Part 1: styles.css hidden ribbon pills, centered layout & CSS variables
+assert(
+    stylesContent.includes(".__qt_ai-queue-ribbon") &&
+    stylesContent.includes("display: none !important;"),
+    "styles.css must hide ribbon pills in top corner with display: none !important",
+);
+assert(
+    stylesContent.includes(".__qt_ai-term-card") &&
+    stylesContent.includes("align-items: center !important;") &&
+    stylesContent.includes("text-align: center !important;"),
+    "styles.css must center .__qt_ai-term-card horizontally",
+);
+assert(
+    stylesContent.includes(".__qt_ai-term-header") &&
+    stylesContent.includes("justify-content: center !important;") &&
+    stylesContent.includes("text-align: center !important;"),
+    "styles.css must center .__qt_ai-term-header content",
+);
+assert(
+    stylesContent.includes("var(--lectoro-ai-term-font-size") &&
+    stylesContent.includes("var(--lectoro-ai-meaning-font-size") &&
+    stylesContent.includes("var(--lectoro-ai-explanation-font-size"),
+    "styles.css must use proportional CSS variables for AI explanation typography",
+);
+assert(
+    stylesContent.includes(".__qt_body") &&
+    stylesContent.includes("text-align: center !important;") &&
+    stylesContent.includes("align-items: center !important;") &&
+    stylesContent.includes("padding: 14px 22px 18px !important;"),
+    "styles.css must provide spacious centered .__qt_body layout and text",
+);
+assert(
+    stylesContent.includes(".__qt_header") &&
+    stylesContent.includes("justify-content: flex-end !important;"),
+    "styles.css must align header navigation stepper to the upper right corner",
+);
+assert(
+    stylesContent.includes("var(--lectoro-ai-badge-font-size") &&
+    stylesContent.includes("--lectoro-ai-badge-font-size: 8px;"),
+    "styles.css must define and use very small --lectoro-ai-badge-font-size for badges",
+);
+console.log("✓ Test 12 Passed: styles.css hidden ribbon pills, upper right stepper, centered layout, micro-badge & proportional CSS variables verified.");
+
+// 13. Verify Task 17 Part 2: subtitle-overlay.js proportional font size calculations & badge above term
+const fontOverlayJs = fs.readFileSync(jsPath, "utf-8").replace(/\r\n/g, "\n");
+assert(
+    fontOverlayJs.includes("--lectoro-ai-term-font-size") &&
+    fontOverlayJs.includes("--lectoro-ai-meaning-font-size") &&
+    fontOverlayJs.includes("--lectoro-ai-explanation-font-size") &&
+    fontOverlayJs.includes("--lectoro-ai-badge-font-size") &&
+    fontOverlayJs.includes("--lectoro-ai-meta-font-size") &&
+    fontOverlayJs.includes("--lectoro-ai-sentence-term-font-size") &&
+    fontOverlayJs.includes("--lectoro-ai-sentence-meaning-font-size"),
+    "subtitle-overlay.js applyTranslationFontSize must set all proportional font variables",
+);
+assert(
+    fontOverlayJs.includes("effectiveSource * 0.62") &&
+    fontOverlayJs.includes("effectiveSource * 0.54") &&
+    fontOverlayJs.includes("effectiveSource * 0.46"),
+    "subtitle-overlay.js must calculate compact typography proportionally from effective subtitle source size",
+);
+assert(
+    fontOverlayJs.includes("${item.badge ? `<span class=\"${PREFIX}ai-badge\">${QT.escapeHtml(item.badge)}</span>` : \"\"}\n                        <div class=\"${PREFIX}ai-term-title-wrap\">"),
+    "subtitle-overlay.js must place badge above the main term",
+);
+assert(
+    fontOverlayJs.includes("applyTranslationFontSize(overlay, layout, {\n            fallbackPx: TRANSLATION_FONT_FALLBACK_PX,\n        });"),
+    "subtitle-overlay.js applyAiExplanation must invoke applyTranslationFontSize on overlay",
+);
+console.log("✓ Test 13 Passed: subtitle-overlay.js badge above term & proportional font size calculations verified.");
+
+// 14. Verify Task 17 Part 3: Flashcard native language translation on save in AI mode
+assert(
+    fontOverlayJs.includes("if (aiExplainMode === \"simple_target\")") &&
+    fontOverlayJs.includes("await QT.translate(\n                            cleanedTerm,\n                            targetNativeLang,\n                        );"),
+    "wireAiExplainSaveButton must translate cleanedTerm to targetNativeLang in simple_target mode",
+);
+assert(
+    fontOverlayJs.includes("await QT.translate(\n                                contextSentence,\n                                targetNativeLang,\n                            );"),
+    "wireAiExplainSaveButton must translate contextSentence to targetNativeLang in simple_target mode",
+);
+assert(
+    fontOverlayJs.includes("const resolvedAiSentence = [aiDefinition, cleanedExplanation]\n                    .filter(Boolean)\n                    .join(\" — \");"),
+    "wireAiExplainSaveButton must preserve simple target definition and explanation in aiSentence",
+);
+assert(
+    fontOverlayJs.includes("tgtLang: targetNativeLang,"),
+    "wireAiExplainSaveButton must save card with targetNativeLang",
+);
+console.log("✓ Test 14 Passed: Flashcard native language translation on save in AI mode verified.");
+
+console.log("\nALL ENTER MODE, UI/UX & SETTING IMPROVEMENTS VERIFIED! 🚀");
+

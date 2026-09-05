@@ -158,18 +158,6 @@
             return _x.map((c) => String.fromCharCode(c ^ 0x5a)).join("");
         }
 
-        const PIXABAY_SUPPORTED_LANGS = new Set([
-            "cs", "da", "de", "en", "es", "fr", "id", "it", "hu", "nl",
-            "no", "pl", "pt", "ro", "sk", "fi", "sv", "tr", "vi", "th",
-            "bg", "ru", "el", "ja", "ko", "zh",
-        ]);
-
-        function resolvePixabayLang(lang) {
-            if (!lang || typeof lang !== "string") return "en";
-            const code = lang.toLowerCase().split(/[-_]/)[0];
-            return PIXABAY_SUPPORTED_LANGS.has(code) ? code : "en";
-        }
-
         async function fetchWithTimeout(url, opts = {}, ms = REQUEST_TIMEOUT_MS) {
             const controller = new AbortController();
             const id = setTimeout(() => controller.abort(), ms);

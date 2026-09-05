@@ -600,13 +600,10 @@
         return captureVisibleTabCrop(media.getBoundingClientRect());
     }
 
-    function captureVideoScreenshot(videoOverride = null) {
-        if (!videoOverride || videoOverride.readyState < 2) return null;
-        const screenshot = drawMediaToDataUrl(videoOverride);
-        if (!screenshot) {
-            console.warn("[Lectoro] Video screenshot capture failed.");
-        }
-        return screenshot;
+    async function captureVideoScreenshot(videoOverride = null) {
+        const video = videoOverride || getVideo();
+        if (!video) return null;
+        return captureMediaScreenshot(video);
     }
 
     async function captureContextScreenshot() {

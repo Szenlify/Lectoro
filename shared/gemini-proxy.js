@@ -432,7 +432,11 @@
                         contentType,
                     });
                     return response?.result || null;
-                } catch (_) {
+                } catch (error) {
+                    console.warn(
+                        "[GeminiProxy] R2 uploadCardImage message error:",
+                        error?.message || error,
+                    );
                     return null;
                 }
             }

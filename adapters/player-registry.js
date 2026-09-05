@@ -1101,7 +1101,7 @@
             return (await globalThis.LectoroNetflixAdapter.captureReviewImage(video)) || "";
         }
         if (typeof QT !== "undefined" && QT.captureVideoScreenshot) {
-            return QT.captureVideoScreenshot(video) || "";
+            return (await QT.captureVideoScreenshot(video)) || "";
         }
         return "";
     }
