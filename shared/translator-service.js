@@ -146,6 +146,17 @@
         }
 
         /**
+         * Get preferred AI explanation language mode from storage ("native" | "simple_target").
+         */
+        async function getAiExplanationLanguage() {
+            if (!chrome?.storage?.local) return "native";
+            const data = await chrome.storage.local.get({
+                aiExplanationLanguage: "native",
+            });
+            return data.aiExplanationLanguage || "native";
+        }
+
+        /**
          * Google Translate (client=gtx, no API key needed).
          * Content scripts delegate to the background so the host page's CSP can't block the request.
          */
@@ -222,14 +233,23 @@
         /**
          * AI Deep Sentence explanation.
          */
-        async function explainSentence(sentence, targetLang, context = null) {
+        async function explainSentence(
+            sentence,
+            targetLang,
+            context = null,
+            options = {},
+        ) {
             if (typeof AIPrompts === "undefined") {
                 throw new Error("AIPrompts is unavailable.");
             }
+            const aiExplanationLanguage =
+                options?.aiExplanationLanguage ||
+                (await getAiExplanationLanguage());
             const prompt = AIPrompts.explainSentence(
                 sentence,
                 targetLang,
                 context,
+                { ...options, aiExplanationLanguage },
             );
             const parsed = await geminiRequest(prompt, {
                 temperature: 0.7,
@@ -284,6 +304,7 @@
             translate: googleTranslate,
             createTranslateCache,
             getTargetLang,
+            getAiExplanationLanguage,
             geminiRequest,
             generateSentence,
             explainSentence,

@@ -67,9 +67,11 @@
     let aiExplainIndex = 0;
     let aiExplainSourceLang = "en";
     let aiExplainTargetLang = "pl";
+    let aiExplainMode = "native";
     let aiExplainLayout = null;
     let aiExplainSpeechToken = 0;
     let aiAutoAdvanceTimer = null;
+    let aiAutoAdvanceDisabled = false;
     const aiSavedIndices = new Set();
 
     let speedOverlayEl = null;
@@ -1100,6 +1102,7 @@
         aiTooltipActive = false;
         clearTimeout(aiAutoAdvanceTimer);
         aiAutoAdvanceTimer = null;
+        aiAutoAdvanceDisabled = false;
         aiExplainSpeechToken++;
         aiExplainQueue = [];
         aiExplainIndex = 0;
@@ -1463,14 +1466,27 @@
                 </div>`;
         }
 
-        const formattedExplanation = QT.formatSpeechMarkup(
-            item.explanation || "",
-            aiExplainTargetLang,
-            markupOptions,
-        );
-        const speechParts = [item.term, item.meaning, item.explanation]
-            .filter(Boolean)
-            .join(". ");
+        const isSentenceWithBreakdown = totalItems > 1 && item.type === "sentence";
+        const explanationLang =
+            aiExplainMode === "simple_target"
+                ? aiExplainSourceLang
+                : aiExplainTargetLang;
+        const formattedExplanation = isSentenceWithBreakdown
+            ? ""
+            : QT.formatSpeechMarkup(
+                  item.explanation || "",
+                  explanationLang,
+                  markupOptions,
+              );
+        const speechParts = isSentenceWithBreakdown
+            ? item.meaning
+            : [
+                  item.type === "sentence" ? "" : item.term,
+                  item.meaning,
+                  item.explanation,
+              ]
+                  .filter(Boolean)
+                  .join(". ");
 
         const bodyHtml = `
             <div class="${PREFIX}body">
@@ -1478,10 +1494,10 @@
                     <div class="${PREFIX}ai-term-header">
                         <div class="${PREFIX}ai-term-title-wrap">
                             <span class="${PREFIX}ai-term">${QT.escapeHtml(item.term)}</span>
-                            <span class="${PREFIX}ai-badge">${QT.escapeHtml(item.badge || item.type)}</span>
+                            ${item.badge ? `<span class="${PREFIX}ai-badge">${QT.escapeHtml(item.badge)}</span>` : ""}
                         </div>
                         <span class="${PREFIX}word-actions">
-                            <button class="${PREFIX}speak" data-text="${QT.escapeAttr(speechParts)}" data-lang="${QT.escapeAttr(aiExplainTargetLang)}" data-source-lang="${QT.escapeAttr(aiExplainSourceLang)}" data-original-text="${QT.escapeAttr(item.term)}" title="Odtwórz wymowę i wyjaśnienie" aria-label="Odtwórz wymowę i wyjaśnienie">${SVG.SPEAKER}</button>
+                            <button class="${PREFIX}speak" data-text="${QT.escapeAttr(speechParts)}" data-lang="${QT.escapeAttr(aiExplainTargetLang)}" data-source-lang="${QT.escapeAttr(aiExplainSourceLang)}" data-original-text="${QT.escapeAttr(item.term)}" title="Odtwórz wymowę" aria-label="Odtwórz wymowę">${SVG.SPEAKER}</button>
                         </span>
                     </div>
                     ${
@@ -1493,7 +1509,7 @@
                             : ""
                     }
                     ${
-                        item.explanation
+                        formattedExplanation
                             ? `
                     <div class="${PREFIX}ai-term-explanation">
                         ${formattedExplanation}
@@ -1514,27 +1530,128 @@
         return (headerHtml ? headerHtml : "") + bodyHtml + footerHtml;
     }
 
+    function speakUntilFinished(text, lang, opts = {}) {
+        return new Promise(async (resolve) => {
+            if (!text || opts?.isCancelled?.()) {
+                resolve();
+                return;
+            }
+            try {
+                const utteranceOrAudio = await QT.speak(text, lang, opts);
+                if (!utteranceOrAudio || opts?.isCancelled?.()) {
+                    resolve();
+                    return;
+                }
+
+                let finished = false;
+                const finish = () => {
+                    if (finished) return;
+                    finished = true;
+                    clearTimeout(safetyTimer);
+                    resolve();
+                };
+
+                const safetyTimeout =
+                    typeof SharedTtsService?.getSafetyTimeout === "function"
+                        ? SharedTtsService.getSafetyTimeout(text)
+                        : 8000;
+                const safetyTimer = setTimeout(
+                    finish,
+                    Math.min(30000, safetyTimeout),
+                );
+
+                if (utteranceOrAudio instanceof HTMLAudioElement) {
+                    utteranceOrAudio.addEventListener("ended", finish, {
+                        once: true,
+                    });
+                    utteranceOrAudio.addEventListener("error", finish, {
+                        once: true,
+                    });
+                } else if (
+                    typeof utteranceOrAudio.addEventListener === "function"
+                ) {
+                    utteranceOrAudio.addEventListener("end", finish, {
+                        once: true,
+                    });
+                    utteranceOrAudio.addEventListener("error", finish, {
+                        once: true,
+                    });
+                } else {
+                    const prevEnd = utteranceOrAudio.onend;
+                    const prevErr = utteranceOrAudio.onerror;
+                    utteranceOrAudio.onend = (...args) => {
+                        try {
+                            prevEnd?.(...args);
+                        } finally {
+                            finish();
+                        }
+                    };
+                    utteranceOrAudio.onerror = (...args) => {
+                        try {
+                            prevErr?.(...args);
+                        } finally {
+                            finish();
+                        }
+                    };
+                }
+            } catch (_) {
+                resolve();
+            }
+        });
+    }
+
     async function speakAiExplainItem(item, speechToken) {
         if (!aiTooltipActive || speechToken !== aiExplainSpeechToken || !item) return;
 
         const isCancelled = () =>
             !aiTooltipActive || speechToken !== aiExplainSpeechToken;
 
+        const speakBtn = translationOverlay?.querySelector(`.${PREFIX}speak`);
+        if (speakBtn) {
+            speakBtn.classList.add("speaking");
+            speakBtn.setAttribute(
+                "aria-label",
+                "Playing translation and explanation",
+            );
+        }
+
         try {
             if (item.type === "sentence") {
-                const aiSpeechText = [item.meaning, item.explanation]
-                    .filter(Boolean)
-                    .join(". ");
-                if (aiSpeechText) {
-                    await QT.speak(aiSpeechText, aiExplainTargetLang, {
-                        sourceLang: aiExplainSourceLang,
-                        originalText: item.term,
-                        isCancelled,
-                    });
+                // If it is 1/1, explain the sentence (meaning + explanation).
+                // If there are breakdown items (1/N, where N > 1), only speak the translation!
+                const isSingleSentence = aiExplainQueue.length <= 1;
+                if (isSingleSentence) {
+                    if (item.meaning) {
+                        await speakUntilFinished(item.meaning, aiExplainTargetLang, {
+                            sourceLang: aiExplainSourceLang,
+                            originalText: item.term,
+                            isCancelled,
+                        });
+                    }
+                    if (isCancelled()) return;
+                    if (item.explanation) {
+                        const expLang =
+                            aiExplainMode === "simple_target"
+                                ? aiExplainSourceLang
+                                : aiExplainTargetLang;
+                        await speakUntilFinished(item.explanation, expLang, {
+                            sourceLang: aiExplainSourceLang,
+                            originalText: item.term,
+                            isCancelled,
+                        });
+                    }
+                } else {
+                    if (item.meaning) {
+                        await speakUntilFinished(item.meaning, aiExplainTargetLang, {
+                            sourceLang: aiExplainSourceLang,
+                            originalText: item.term,
+                            isCancelled,
+                        });
+                    }
                 }
             } else {
                 if (item.term) {
-                    await QT.speak(item.term, aiExplainSourceLang, {
+                    await speakUntilFinished(item.term, aiExplainSourceLang, {
                         sourceLang: aiExplainSourceLang,
                         originalText: item.term,
                         isCancelled,
@@ -1542,24 +1659,68 @@
                 }
                 if (isCancelled()) return;
 
-                const explanationSpeech = [item.meaning, item.explanation]
-                    .filter(Boolean)
-                    .join(". ");
-                if (explanationSpeech) {
-                    await QT.speak(explanationSpeech, aiExplainTargetLang, {
-                        sourceLang: aiExplainSourceLang,
-                        originalText: item.term,
-                        isCancelled,
-                    });
+                if (aiExplainMode === "simple_target") {
+                    if (item.meaning) {
+                        await speakUntilFinished(item.meaning, aiExplainTargetLang, {
+                            sourceLang: aiExplainSourceLang,
+                            originalText: item.term,
+                            isCancelled,
+                        });
+                    }
+                    if (isCancelled()) return;
+                    if (item.explanation) {
+                        await speakUntilFinished(item.explanation, aiExplainSourceLang, {
+                            sourceLang: aiExplainSourceLang,
+                            originalText: item.term,
+                            isCancelled,
+                        });
+                    }
+                } else {
+                    const explanationSpeech = [item.meaning, item.explanation]
+                        .filter(Boolean)
+                        .join(". ");
+                    if (explanationSpeech) {
+                        await speakUntilFinished(
+                            explanationSpeech,
+                            aiExplainTargetLang,
+                            {
+                                sourceLang: aiExplainSourceLang,
+                                originalText: item.term,
+                                isCancelled,
+                            },
+                        );
+                    }
                 }
+            }
+
+            if (isCancelled()) return;
+
+            // Sequential advance: only advance if not manually disabled by user interaction!
+            if (!aiAutoAdvanceDisabled && aiExplainIndex + 1 < aiExplainQueue.length) {
+                clearTimeout(aiAutoAdvanceTimer);
+                aiAutoAdvanceTimer = setTimeout(() => {
+                    if (isCancelled() || aiAutoAdvanceDisabled) return;
+                    showAiExplainItem(aiExplainIndex + 1);
+                }, 500);
             }
         } catch (_) {
             // Speech cancellation or error is handled gracefully
+        } finally {
+            if (speakBtn && speakBtn.isConnected && !aiAutoAdvanceTimer) {
+                speakBtn.classList.remove("speaking");
+                speakBtn.setAttribute(
+                    "aria-label",
+                    "Play translation and explanation",
+                );
+            }
         }
     }
 
-    function showAiExplainItem(index) {
+    function showAiExplainItem(index, { manual = false } = {}) {
         if (!aiTooltipActive || !aiExplainQueue.length) return;
+        if (manual) {
+            aiAutoAdvanceDisabled = true;
+        }
         const clampedIndex = Math.max(
             0,
             Math.min(aiExplainQueue.length - 1, index),
@@ -1586,7 +1747,7 @@
                 e.stopPropagation();
                 const targetIdx = parseInt(pill.dataset.index, 10);
                 if (!isNaN(targetIdx) && targetIdx !== aiExplainIndex) {
-                    showAiExplainItem(targetIdx);
+                    showAiExplainItem(targetIdx, { manual: true });
                 }
             });
         });
@@ -1597,7 +1758,7 @@
             (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                navigateAiExplain(-1);
+                navigateAiExplain(-1, { manual: true });
             },
         );
         copy.querySelector(`.${PREFIX}ai-next-btn`)?.addEventListener(
@@ -1605,7 +1766,7 @@
             (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                navigateAiExplain(1);
+                navigateAiExplain(1, { manual: true });
             },
         );
 
@@ -1617,22 +1778,22 @@
         }
     }
 
-    function navigateAiExplain(delta) {
+    function navigateAiExplain(delta, { manual = false } = {}) {
         if (!aiTooltipActive || !aiExplainQueue.length) return false;
         const target = aiExplainIndex + delta;
         if (target < 0 || target >= aiExplainQueue.length) {
             return true;
         }
-        showAiExplainItem(target);
+        showAiExplainItem(target, { manual });
         return true;
     }
 
-    function nextAiExplainItem() {
-        return navigateAiExplain(1);
+    function nextAiExplainItem(options = { manual: true }) {
+        return navigateAiExplain(1, options);
     }
 
-    function prevAiExplainItem() {
-        return navigateAiExplain(-1);
+    function prevAiExplainItem(options = { manual: true }) {
+        return navigateAiExplain(-1, options);
     }
 
     function wireAiExplainSaveButton(
@@ -1705,8 +1866,18 @@
                     currentItem.translation ||
                     cleanedTerm;
                 const cleanedExplanation = cleanCardText(currentItem.explanation);
-                const contextSentence =
-                    cleanCardText(currentItem.originalText) || "";
+                const isSentenceCard = currentItem.type === "sentence";
+                const contextSentence = isSentenceCard
+                    ? ""
+                    : cleanCardText(currentItem.originalText) || "";
+                const rawSentenceTr =
+                    currentItem.sentenceTranslated ||
+                    aiExplainQueue.find((q) => q.sentenceTranslated)?.sentenceTranslated ||
+                    aiExplainQueue.find((q) => q.type === "sentence")?.meaning ||
+                    "";
+                const contextSentenceTranslated = isSentenceCard
+                    ? ""
+                    : cleanCardText(rawSentenceTr) || "";
 
                 await QT.saveWord({
                     original: cleanedTerm,
@@ -1714,9 +1885,9 @@
                     srcLang: aiExplainSourceLang,
                     tgtLang: aiExplainTargetLang,
                     sentence: contextSentence,
-                    sentenceTranslated: "",
+                    sentenceTranslated: contextSentenceTranslated,
                     aiSentence: cleanedExplanation || "",
-                    aiSentenceTranslated: "",
+                    aiSentenceTranslated: contextSentenceTranslated,
                     screenshot,
                     url: window.location.href,
                     timestamp: Date.now(),
@@ -1774,7 +1945,7 @@
                     ev.preventDefault();
                     ev.stopPropagation();
                     ev.stopImmediatePropagation();
-                    navigateAiExplain(1);
+                    navigateAiExplain(1, { manual: true });
                 }
                 return;
             }
@@ -1784,7 +1955,7 @@
                     ev.preventDefault();
                     ev.stopPropagation();
                     ev.stopImmediatePropagation();
-                    navigateAiExplain(-1);
+                    navigateAiExplain(-1, { manual: true });
                 }
                 return;
             }
@@ -1798,6 +1969,18 @@
         speakBtn.addEventListener("click", async (event) => {
             event.preventDefault();
             event.stopPropagation();
+            if (speakBtn.classList.contains("speaking")) {
+                clearTimeout(aiAutoAdvanceTimer);
+                aiAutoAdvanceTimer = null;
+                aiExplainSpeechToken++;
+                SharedTtsService.cancel();
+                speakBtn.classList.remove("speaking");
+                speakBtn.setAttribute(
+                    "aria-label",
+                    "Play translation and explanation",
+                );
+                return;
+            }
             clearTimeout(aiAutoAdvanceTimer);
             aiAutoAdvanceTimer = null;
             const currentToken = ++aiExplainSpeechToken;
@@ -1897,11 +2080,15 @@
         showAiShimmer(aiExplainLayout);
         try {
             const targetLang = await QT.getTargetLang();
+            const aiExplanationLanguage =
+                (await QT.getAiExplanationLanguage?.()) || "native";
+            aiExplainMode = aiExplanationLanguage;
             const context = getActiveSubtitleContext(video, text);
             const res = await QT.geminiExplainSentence(
                 text,
                 targetLang,
                 context,
+                { aiExplanationLanguage },
             );
             if (!aiTooltipActive) return;
 
@@ -1927,6 +2114,7 @@
                 meaning: translation,
                 explanation: explanation,
                 originalText: text,
+                sentenceTranslated: translation,
                 badge: "",
             };
 
@@ -1939,6 +2127,7 @@
                     meaning: item.meaning || "",
                     explanation: item.explanation || "",
                     originalText: text,
+                    sentenceTranslated: translation,
                     badge:
                         item.type === "idiom"
                             ? "Idiom"
@@ -1955,6 +2144,7 @@
             // Always start queue with full sentence translation, followed by breakdown items
             aiExplainQueue = [sentenceItem, ...breakdownItems];
 
+            aiAutoAdvanceDisabled = false;
             aiExplainIndex = 0;
             showAiExplainItem(0);
         } catch (err) {

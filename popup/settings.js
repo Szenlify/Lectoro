@@ -34,11 +34,25 @@ whenPopupReady((data) => {
 
     if (subtitleTTSToggle) subtitleTTSToggle.checked = !!data.subtitleTTS;
     if (wordCloudModeToggle) wordCloudModeToggle.checked = !!data.wordCloudMode;
+    const aiExpLangEl = document.getElementById("aiExplanationLanguage");
+    if (aiExpLangEl) {
+        aiExpLangEl.value = data.aiExplanationLanguage || "native";
+    }
 });
 
 select.addEventListener("change", () => {
     chrome.storage.local.set({ targetLang: select.value }, flashSaved);
 });
+
+const aiExpLangSelect = document.getElementById("aiExplanationLanguage");
+if (aiExpLangSelect) {
+    aiExpLangSelect.addEventListener("change", () => {
+        chrome.storage.local.set(
+            { aiExplanationLanguage: aiExpLangSelect.value },
+            flashSaved,
+        );
+    });
+}
 
 // ── Subtitle reading modes ───────────────────────────────────────
 const subtitleTTSToggle = document.getElementById("subtitleTTS");
@@ -195,9 +209,9 @@ function renderSubscriptionPlans(subscription, signedIn = true) {
                 limits.priceMonthly.amount === 0
                     ? "$0"
                     : new Intl.NumberFormat("en-US", {
-                          style: "currency",
-                          currency: limits.priceMonthly.currency || "USD",
-                      }).format(limits.priceMonthly.amount);
+                        style: "currency",
+                        currency: limits.priceMonthly.currency || "USD",
+                    }).format(limits.priceMonthly.amount);
             const tts = limits.elevenLabs.enabled
                 ? `${limits.elevenLabs.charactersPerMonth.toLocaleString("en-US")} ElevenLabs characters`
                 : "Basic voice";
@@ -224,15 +238,14 @@ function renderSubscriptionPlans(subscription, signedIn = true) {
             return `<article class="subscription-plan-card ${isCurrent ? "is-current" : ""} ${isRecommended ? "is-recommended" : ""} ${hasTrialOffer ? "has-trial-offer" : ""}">
                 <div class="subscription-plan-topline">
                     <strong>${limits.displayName}</strong>
-                    ${
-                        isCurrent && isTrialing
-                            ? '<span class="subscription-plan-badge is-trialing">Trial</span>'
-                            : isCurrent
-                              ? '<span class="subscription-plan-badge is-active">Active</span>'
-                              : isRecommended
-                                ? '<span class="subscription-plan-badge">Popular</span>'
-                                : ""
-                    }
+                    ${isCurrent && isTrialing
+                    ? '<span class="subscription-plan-badge is-trialing">Trial</span>'
+                    : isCurrent
+                        ? '<span class="subscription-plan-badge is-active">Active</span>'
+                        : isRecommended
+                            ? '<span class="subscription-plan-badge">Popular</span>'
+                            : ""
+                }
                 </div>
                 ${hasTrialOffer ? `<div class="subscription-plan-trial-kicker">3 days free</div>` : ""}
                 <div class="subscription-plan-price"><b>${price}</b><span>${limits.priceMonthly.amount === 0 ? "forever" : "/ month"}</span></div>
@@ -248,16 +261,14 @@ function renderSubscriptionPlans(subscription, signedIn = true) {
 </span>
                     <span><i aria-hidden="true">✓</i><b>${limits.srs.maxSavedCards.toLocaleString("en-US")}</b> SRS flashcards</span>
                     <span><i aria-hidden="true">✓</i><b>${planId === SubscriptionConfig.SUBSCRIPTION_PLANS.FREE ? "3/mo" : "Unlimited"}</b> Anki & Excel export</span>
-                    ${
-                        limits.elevenLabs.enabled
-                            ? '<span><i aria-hidden="true">✓</i><b>Natural voices</b></span>'
-                            : ""
-                    }
-                    ${
-                        limits.elevenLabs.enabled
-                            ? '<span><i aria-hidden="true">✓</i><b>Unlimited AI practice</b></span>'
-                            : ""
-                    }
+                    ${limits.elevenLabs.enabled
+                    ? '<span><i aria-hidden="true">✓</i><b>Natural voices</b></span>'
+                    : ""
+                }
+                    ${limits.elevenLabs.enabled
+                    ? '<span><i aria-hidden="true">✓</i><b>Unlimited AI practice</b></span>'
+                    : ""
+                }
                     <span class="${limits.elevenLabs.enabled ? "" : "is-muted"}"><i aria-hidden="true">${limits.elevenLabs.enabled ? "✓" : "—"}</i>${tts}</span>
                 </div>
                 <div class="subscription-plan-action">${action}${billingNote}</div>
@@ -368,7 +379,7 @@ async function refreshAiUsageUI() {
     if (
         usage &&
         SubscriptionConfig.normalizePlan(usage.plan) !==
-            SubscriptionConfig.normalizePlan(subscription.plan)
+        SubscriptionConfig.normalizePlan(subscription.plan)
     ) {
         usage = await GeminiProxy.refreshUsage(true).catch(() => usage);
     }
@@ -568,8 +579,8 @@ document
                 status.textContent = result?.redirectedToPortal
                     ? "You already have a subscription — opened plan management."
                     : result?.trialDays > 0
-                      ? "On Stripe add your card — $0 charged today."
-                      : "Stripe opened in a new tab.";
+                        ? "On Stripe add your card — $0 charged today."
+                        : "Stripe opened in a new tab.";
             }
             startBillingPolling();
         } catch (error) {
@@ -620,7 +631,7 @@ function startBillingPolling() {
                     status.textContent = `Plan updated: ${SubscriptionConfig.getPlanLimits(updated.plan).displayName}!`;
                 }
             }
-        } catch (_) {}
+        } catch (_) { }
     }, 3000);
 }
 

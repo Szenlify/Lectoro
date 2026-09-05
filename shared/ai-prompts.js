@@ -85,12 +85,39 @@ Respond ONLY with JSON:
              * Used by core.js (geminiExplainSentence) when the user asks the
              * extension to explain/translate a subtitle sentence they didn't understand.
              */
-            explainSentence(sentence, targetLang, context = null) {
+            explainSentence(
+                sentence,
+                targetLang,
+                context = null,
+                options = {},
+            ) {
                 const tgtName = AIPrompts.getLangName(targetLang);
                 const contextBlock = AIPrompts.formatSubtitleContext(context);
                 const hasContext = !!contextBlock;
+                const isSimpleTarget =
+                    options?.aiExplanationLanguage === "simple_target";
 
-                return `Explain this video subtitle sentence in ${targetLang}:
+                const mainInstruction = isSimpleTarget
+                    ? `Explain this video subtitle sentence in simple language (CEFR A2-B1 in original language for explanations, and ${tgtName} (${targetLang}) for translations):`
+                    : `Explain this video subtitle sentence in ${targetLang}:`;
+
+                const explanationRule = isSimpleTarget
+                    ? `3. "explanation": Concise, high-value learning breakdown written in SIMPLE, clear words in the sentence's original language (CEFR A2-B1 level, 1-2 short sentences with basic vocabulary so a language learner can easily understand it). Explain idioms, phrasal verbs, key vocabulary, or grammatical nuances simply.${
+                        hasContext
+                            ? " If the dialogue context clarifies an ambiguous phrase or tone, briefly mention it."
+                            : ""
+                    }`
+                    : `3. "explanation": Concise, high-value learning breakdown in ${tgtName} (1-2 short sentences). Explain idioms, phrasal verbs, key vocabulary, or grammatical nuances accurately and to the point.${
+                        hasContext
+                            ? " If the dialogue context clarifies an ambiguous phrase or tone, briefly mention it."
+                            : ""
+                    }`;
+
+                const itemExplanationRule = isSimpleTarget
+                    ? `   - "explanation": 1 concise sentence explaining its meaning in this context, written in simple original language (CEFR A2-B1 level).`
+                    : `   - "explanation": 1 concise sentence explaining its meaning in this context in ${tgtName}.`;
+
+                return `${mainInstruction}
 "${sentence}"
 ${hasContext ? `${contextBlock}\n` : ""}
 Instructions for language learner assistance:
@@ -100,16 +127,12 @@ Instructions for language learner assistance:
                         ? `\n   CRITICAL: Translate ONLY the target sentence ("${sentence}"). DO NOT translate the previous or following dialogue. Use the dialogue context strictly to resolve speaker gender, pronouns, tone, slang, and situational meaning.`
                         : ""
                 }
-3. "explanation": Concise, high-value learning breakdown in ${tgtName} (1-2 short sentences). Explain idioms, phrasal verbs, key vocabulary, or grammatical nuances accurately and to the point.${
-                    hasContext
-                        ? " If the dialogue context clarifies an ambiguous phrase or tone, briefly mention it."
-                        : ""
-                }
+${explanationRule}
 4. "items": Array of specific idioms, phrasal verbs, slang, or difficult words in this sentence (max 4, ordered as they appear in the sentence):
    - "term": the exact idiom, phrasal verb, or word from the sentence.
    - "type": "idiom" | "phrasal_verb" | "slang" | "vocabulary".
    - "meaning": brief translation or core meaning in ${tgtName}.
-   - "explanation": 1 concise sentence explaining its meaning in this context.
+${itemExplanationRule}
    (If the sentence contains no idioms or difficult words, return []).
 
 Respond ONLY with JSON:

@@ -3,6 +3,7 @@ const { escapeHtml, escapeAttr, isDueForReview, countDueWords, dateTag } = Share
 // ── Centralized Initial Popup State (Batch Read) ──────────────────
 const POPUP_INIT_KEYS = Object.freeze({
     targetLang: "pl",
+    aiExplanationLanguage: "native",
     speechVoice: "",
     speechRate: 1.1,
     ttsVolume: 1,
@@ -234,7 +235,7 @@ function autoSpeakReviewCard(w, answerVisible = false) {
             ...cacheOptions,
             forceBrowser: !isSpeakingOriginal,
         },
-    ).catch(() => {});
+    ).catch(() => { });
 }
 
 // ── Keyboard shortcuts for review — flashcard-style controls ──────

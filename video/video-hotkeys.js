@@ -123,12 +123,12 @@
             // AI Explanation Queue Navigation: ArrowRight / ArrowLeft / A / D
             if (aiTooltipOpen) {
                 if (key === "ArrowRight" || key === "d" || key === "D") {
-                    if (overlay?.nextAiExplainItem?.()) {
+                    if (overlay?.nextAiExplainItem?.({ manual: true })) {
                         return;
                     }
                 }
                 if (key === "ArrowLeft" || key === "a" || key === "A") {
-                    if (overlay?.prevAiExplainItem?.()) {
+                    if (overlay?.prevAiExplainItem?.({ manual: true })) {
                         return;
                     }
                 }
