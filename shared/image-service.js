@@ -63,6 +63,9 @@
         const PERSISTENT_CACHE_KEY =
             Constants?.STORAGE_KEYS?.PERSISTENT_IMAGE_CACHE ||
             "persistentImageCache";
+        const OPENVERSE_ENDPOINT =
+            Constants?.ENDPOINTS?.OPENVERSE ||
+            "https://api.openverse.org/v1/images/";
 
         /** In-memory LRU cache for visual associations */
         const memoryCache = new Map();
@@ -197,23 +200,50 @@
         }
 
         /**
-         * Cleans Pixabay tag lists into concise, capitalized visual descriptions.
-         * Example: "apple, fruit, red apple, food, apple" -> "Apple, Fruit, Red apple"
+         * Cleans Openverse/Wikimedia/Openclipart titles into concise, capitalized visual descriptions.
+         */
+        function cleanOpenverseTitle(title, fallback = "") {
+            if (!title || typeof title !== "string") return fallback;
+            let cleaned = title
+                .replace(/^File:\s*/i, "")
+                .replace(/\.(svg|png|jpe?g|webp|gif)$/i, "")
+                .replace(/https?:\/\/\S+/gi, "")
+                .replace(/\s+[-–—|•]\s+.*$/, "")
+                .replace(/\s*\(.*?\)/g, "")
+                .replace(
+                    /\b(?:vector\s+art|vector\s+illustration|stock\s+vector|stock\s+photo|stock\s+illustration|free\s+vector|premium\s+vector|royalty-free|royalty\s+free|licensable|clipart|clip\s+art|transparent\s+png|images?|hd\s+png|free\s+download|vector|pictogram|icon|drawing|illustration|symbol)\b/gi,
+                    "",
+                )
+                .replace(/\b\d{4,}\b/g, "")
+                .replace(/[#\d+]+/gi, "")
+                .replace(/\s+/g, " ")
+                .trim();
+
+            cleaned = cleaned.replace(/^[\s,.:;!?-]+|[\s,.:;!?-]+$/g, "").trim();
+
+            if (cleaned.includes(",")) {
+                const parts = cleaned.split(",").map((p) => p.trim()).filter(Boolean);
+                const seen = new Set();
+                const unique = [];
+                for (const p of parts) {
+                    const lower = p.toLowerCase();
+                    if (!seen.has(lower) && lower.length >= 2) {
+                        seen.add(lower);
+                        unique.push(p.charAt(0).toUpperCase() + p.slice(1));
+                    }
+                }
+                cleaned = unique.slice(0, 3).join(", ");
+            }
+
+            if (!cleaned || cleaned.length < 2) return fallback;
+            return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+        }
+
+        /**
+         * Cleans Pixabay tag lists into concise, capitalized visual descriptions (backward compatibility).
          */
         function cleanPixabayTitle(tags, fallback = "") {
-            if (!tags || typeof tags !== "string") return fallback;
-            const parts = tags.split(",").map((t) => t.trim()).filter(Boolean);
-            const seen = new Set();
-            const unique = [];
-            for (const p of parts) {
-                const lower = p.toLowerCase();
-                if (!seen.has(lower)) {
-                    seen.add(lower);
-                    unique.push(p.charAt(0).toUpperCase() + p.slice(1));
-                }
-            }
-            const result = unique.slice(0, 3).join(", ");
-            return result || fallback;
+            return cleanOpenverseTitle(tags, fallback);
         }
 
         /**
@@ -303,66 +333,104 @@
         }
 
         /**
-         * Converts thumbnail URL to base64 data URI to bypass host page CSP restrictions.
+         * Converts thumbnail or image URL to base64 data URI to bypass host page CSP restrictions.
+         * Tries primaryUrl first; falls back to fallbackUrl on network or HTTP errors (e.g. Openverse SVG 424 thumbnail).
          */
-        async function toDataUrl(url) {
-            if (!isValidHttpsUrl(url)) return url;
-            try {
-                const res = await fetchWithTimeout(url, {}, 2500);
-                if (!res.ok) return url;
-                const buffer = await res.arrayBuffer();
-                const mime = res.headers.get("content-type") || "image/jpeg";
-                let base64 = "";
-                if (typeof Buffer !== "undefined") {
-                    base64 = Buffer.from(buffer).toString("base64");
-                } else {
-                    const bytes = new Uint8Array(buffer);
-                    let binary = "";
-                    const chunkSize = 8192;
-                    for (let i = 0; i < bytes.length; i += chunkSize) {
-                        const chunk = bytes.subarray(i, i + chunkSize);
-                        binary += String.fromCharCode.apply(null, chunk);
+        async function toDataUrl(primaryUrl, fallbackUrl = null) {
+            const urlsToTry = [primaryUrl, fallbackUrl].filter(isValidHttpsUrl);
+            if (urlsToTry.length === 0) return primaryUrl || "";
+
+            const userAgent =
+                "LectoroExtension/1.0 (Language Learning Assistant; contact@lectoro.app)";
+
+            for (const url of urlsToTry) {
+                try {
+                    const res = await fetchWithTimeout(
+                        url,
+                        {
+                            headers: {
+                                "User-Agent": userAgent,
+                                Accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+                            },
+                        },
+                        3500,
+                    );
+                    if (!res || !res.ok) continue;
+
+                    const buffer = await res.arrayBuffer();
+                    if (!buffer || buffer.byteLength === 0) continue;
+
+                    let mime = res.headers.get("content-type");
+                    if (!mime || !mime.startsWith("image/")) {
+                        if (/\.svg($|\?)/i.test(url)) mime = "image/svg+xml";
+                        else if (/\.png($|\?)/i.test(url)) mime = "image/png";
+                        else if (/\.jpe?g($|\?)/i.test(url)) mime = "image/jpeg";
+                        else if (/\.webp($|\?)/i.test(url)) mime = "image/webp";
+                        else mime = "image/jpeg";
                     }
-                    base64 = btoa(binary);
+
+                    let base64 = "";
+                    if (typeof Buffer !== "undefined") {
+                        base64 = Buffer.from(buffer).toString("base64");
+                    } else {
+                        const bytes = new Uint8Array(buffer);
+                        let binary = "";
+                        const chunkSize = 8192;
+                        for (let i = 0; i < bytes.length; i += chunkSize) {
+                            const chunk = bytes.subarray(i, i + chunkSize);
+                            binary += String.fromCharCode.apply(null, chunk);
+                        }
+                        base64 = btoa(binary);
+                    }
+                    return `data:${mime};base64,${base64}`;
+                } catch (_) {
+                    // Try next URL in fallback list
                 }
-                return `data:${mime};base64,${base64}`;
-            } catch (_) {
-                return url;
             }
+            return primaryUrl || fallbackUrl || "";
         }
 
+        const UNSUPPORTED_IMAGE_EXTS = /\.(psd|ai|eps|tif|tiff|raw)($|\?)/i;
+
         /**
-         * Primary Provider: Pixabay High-Quality Educational Vector & Illustration API.
-         * Enforces strict vector/clipart filters, popular community ranking, and safe search.
+         * Primary Provider: Openverse.org Open Educational Media API (WordPress.org).
+         * Free, open Creative Commons & CC0 repository. Enforces vector illustrations, safe search, and CC licensing.
          */
-        async function searchPixabay(searchQuery, fallbackLabel, lang = "en") {
+        async function searchOpenverse(searchQuery, fallbackLabel) {
             try {
-                const apiKey = getPixabayKey();
-                if (!apiKey || !searchQuery) return [];
-
+                if (!searchQuery) return [];
                 const queryParam = encodeURIComponent(searchQuery.trim());
-                const pixabayLang = resolvePixabayLang(lang);
+                const userAgent =
+                    "LectoroExtension/1.0 (Language Learning Assistant; contact@lectoro.app)";
+                const headers = {
+                    "User-Agent": userAgent,
+                    Accept: "application/json",
+                };
 
-                // Pass 1: Strict vector graphics (clipart/SVG sticker style)
-                let apiUrl = `https://pixabay.com/api/?key=${apiKey}&q=${queryParam}&image_type=vector&order=popular&safesearch=true&per_page=${MAX_RESULTS}&lang=${pixabayLang}`;
-                let res = await fetchWithTimeout(apiUrl, { headers: { Accept: "application/json" } }, REQUEST_TIMEOUT_MS);
+                // Pass 1: Strict illustration category (SVG, clipart, vector drawings)
+                let apiUrl = `${OPENVERSE_ENDPOINT}?q=${queryParam}&category=illustration&mature=false&page_size=${MAX_RESULTS}`;
+                let res = await fetchWithTimeout(apiUrl, { headers }, REQUEST_TIMEOUT_MS);
                 let data = res && res.ok ? await res.json() : null;
 
-                // Pass 2: Fallback to illustration if vector yields fewer than 2 hits
-                if (!data?.hits || data.hits.length < 2) {
-                    const fallbackUrl = `https://pixabay.com/api/?key=${apiKey}&q=${queryParam}&image_type=illustration&order=popular&safesearch=true&per_page=${MAX_RESULTS}&lang=${pixabayLang}`;
-                    const fbRes = await fetchWithTimeout(fallbackUrl, { headers: { Accept: "application/json" } }, REQUEST_TIMEOUT_MS);
+                // Pass 2: Fallback without category filter if fewer than 2 hits found
+                if (!data?.results || data.results.length < 2) {
+                    const fallbackUrl = `${OPENVERSE_ENDPOINT}?q=${queryParam}&mature=false&page_size=${MAX_RESULTS}`;
+                    const fbRes = await fetchWithTimeout(fallbackUrl, { headers }, REQUEST_TIMEOUT_MS);
                     if (fbRes && fbRes.ok) {
                         const fbData = await fbRes.json();
-                        if (fbData?.hits && fbData.hits.length > 0) {
+                        if (fbData?.results && fbData.results.length > 0) {
                             data = fbData;
                         }
                     }
                 }
 
-                const rawHits = Array.isArray(data?.hits) ? data.hits : [];
+                const rawHits = Array.isArray(data?.results) ? data.results : [];
                 const validHits = rawHits
-                    .filter((hit) => isValidHttpsUrl(hit.previewURL) || isValidHttpsUrl(hit.webformatURL))
+                    .filter((hit) => {
+                        const url = hit.url || "";
+                        if (UNSUPPORTED_IMAGE_EXTS.test(url)) return false;
+                        return isValidHttpsUrl(hit.thumbnail) || isValidHttpsUrl(hit.url);
+                    })
                     .slice(0, MAX_RESULTS);
 
                 if (validHits.length === 0) return [];
@@ -370,24 +438,36 @@
                 // Convert thumbnails to data URIs in parallel so host page CSP never blocks them
                 const results = await Promise.all(
                     validHits.map(async (hit, idx) => {
-                        const description = cleanPixabayTitle(hit.tags, fallbackLabel);
-                        const thumbUrl = hit.previewURL || hit.webformatURL;
-                        const fullUrl = hit.largeImageURL || hit.webformatURL || thumbUrl;
-                        const dataThumb = await toDataUrl(thumbUrl);
+                        const description = cleanOpenverseTitle(hit.title, fallbackLabel);
+                        const isSvg =
+                            hit.filetype === "svg" ||
+                            /\.svg($|\?)/i.test(hit.url || "");
+                        // For SVGs, Openverse thumbnail resizer returns 424, so use direct url as primary
+                        const primaryThumb = isSvg ? hit.url : (hit.thumbnail || hit.url);
+                        const fallbackThumb = isSvg ? hit.thumbnail : hit.url;
+                        const fullUrl = hit.url || hit.thumbnail || primaryThumb;
+                        const dataThumb = await toDataUrl(primaryThumb, fallbackThumb);
 
                         return {
-                            id: `pixabay_${hit.id || idx}`,
+                            id: `openverse_${hit.id || idx}`,
                             title: description,
                             thumbnail: dataThumb,
                             fullUrl: fullUrl,
-                            source: "pixabay",
+                            source: "openverse",
                         };
-                    })
+                    }),
                 );
                 return results;
-            } catch (err) {
+            } catch (_) {
                 return [];
             }
+        }
+
+        /**
+         * Backward compatibility alias for searchPixabay -> searchOpenverse.
+         */
+        async function searchPixabay(searchQuery, fallbackLabel, lang = "en") {
+            return searchOpenverse(searchQuery, fallbackLabel);
         }
 
         /**
@@ -448,7 +528,7 @@
 
         /**
          * Search visual associations for a given word or phrase with semantic accuracy.
-         * Primary: Pixabay API (vector/illustration, 5,000 req/h, popular archetypes)
+         * Primary: Openverse.org API (vector/illustration, Creative Commons / CC0)
          * Secondary Fallback: DuckDuckGo Clipart
          *
          * @param {string|Object} query - The word or sentence to look up
@@ -477,13 +557,13 @@
 
             let results = [];
 
-            // 3. Primary Provider: Pixabay API with resolved semantic queries
+            // 3. Primary Provider: Openverse.org API with resolved semantic queries
             for (const q of queries) {
-                results = await searchPixabay(q.text, cleaned, q.lang || lang);
+                results = await searchOpenverse(q.text, cleaned);
                 if (results && results.length >= 2) break;
             }
 
-            // 4. Secondary Fallback: DuckDuckGo Clipart (only if Pixabay had 0 results)
+            // 4. Secondary Fallback: DuckDuckGo Clipart (only if Openverse had 0 results)
             if (!results || results.length === 0) {
                 const ddgQuery = `${anchor} clipart`;
                 results = await searchDuckDuckGo(ddgQuery, cleaned);
@@ -499,10 +579,12 @@
 
         return Object.freeze({
             search,
+            searchOpenverse,
             searchPixabay,
             searchDuckDuckGo,
             cleanQuery,
             cleanTitle,
+            cleanOpenverseTitle,
             cleanPixabayTitle,
             resolveSearchQueries,
             getPixabayKey,

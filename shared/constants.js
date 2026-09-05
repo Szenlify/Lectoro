@@ -156,7 +156,8 @@
             GOOGLE_TRANSLATE:
                 "https://translate.googleapis.com/translate_a/single",
             GOOGLE_TTS: "https://translate.google.com/translate_tts",
-            PIXABAY: "https://pixabay.com/api/",
+            OPENVERSE: "https://api.openverse.org/v1/images/",
+            PIXABAY: "https://api.openverse.org/v1/images/",
         });
 
         /**

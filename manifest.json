@@ -29,6 +29,11 @@
         "https://*.nflxext.com/*",
         "https://duckduckgo.com/*",
         "https://*.bing.net/*",
+        "https://api.openverse.org/*",
+        "https://*.openverse.org/*",
+        "https://openverse.org/*",
+        "https://upload.wikimedia.org/*",
+        "https://*.wikimedia.org/*",
         "https://pixabay.com/*",
         "https://*.pixabay.com/*"
     ],

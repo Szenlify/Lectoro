@@ -251,7 +251,24 @@ Ostatnia aktualizacja: 2026-09-04
          - Harmonijne ikony w opcjach dropdownu (`🌐 Native language` oraz `✨ Simple studied (A2-B1)`), idealnie współgrające z flagami w liście języków ojczystych.
       3. Potwierdzono 100% zgodności ze wszystkimi testami automatycznymi w `scratch/test_enter_mode.js` (11/11 PASS) oraz testem poprawności składniowej `scratch/check_syntax.js`.
 
+## Faza 18: Zastąpienie Pixabay przez Openverse.org jako Głównego Dostawcę Obrazów Edukacyjnych
 
-
-
-
+- [x] 18.1. Integracja Openverse.org API (`https://api.openverse.org/v1/images/`) jako głównego źródła skojarzeń wizualnych.
+    - Log:
+      1. W `shared/constants.js` dodano `OPENVERSE: "https://api.openverse.org/v1/images/"` w słowniku `ENDPOINTS` oraz zaktualizowano wpis `PIXABAY` jako alias wskazujący na ten sam punkt końcowy.
+      2. W `manifest.json` dodano uprawnienia hosta `https://api.openverse.org/*`, `https://*.openverse.org/*`, `https://openverse.org/*`, `https://upload.wikimedia.org/*` oraz `https://*.wikimedia.org/*` do `host_permissions`.
+      3. W `shared/image-service.js` zaimplementowano funkcję `searchOpenverse(searchQuery, fallbackLabel)`:
+         - Wyszukiwanie z parametrami `category=illustration`, `mature=false`, `page_size=6`.
+         - Inteligentny fallback: w przypadku uzyskania mniej niż 2 wyników w kategorii ilustracji, wykonywane jest drugie zapytanie ogólne z `mature=false`.
+         - Filtrowanie nieobsługiwanych formatów binarnych/edycyjnych (`.psd`, `.ai`, `.eps`, `.tif`, `.tiff`, `.raw`).
+         - Obsługa specyfiki miniatur Openverse i SVG: usługa resizera Openverse zwraca kod 424 dla plików wektorowych SVG, dlatego dla plików SVG jako główny adres miniatury pobierany jest bezpośredni adres `hit.url` (z Wikimedia Commons/Openclipart) z zapasowym fallbackiem na `hit.thumbnail`.
+      4. Zaktualizowano `toDataUrl(primaryUrl, fallbackUrl)`:
+         - Dodano nagłówek `User-Agent: LectoroExtension/1.0 (Language Learning Assistant; contact@lectoro.app)`, zapobiegający odrzucaniu żądań przez serwery Wikimedia.
+         - Wprowadzono automatyczną próbę pobrania adresu zapasowego w przypadku błędu sieciowego lub statusu HTTP >= 400.
+         - Zwiększono limit czasu żądania do 3500 ms, gwarantując konwersję do Base64 Data URI nawet przy równoległym pobieraniu wielu grafik i pełną odporność na restrykcje CSP serwisów Netflix i YouTube.
+      5. Zaimplementowano `cleanOpenverseTitle(title, fallback)`:
+         - Oczyszczanie przedrostków systemowych (`File:`), rozszerzeń plików (`.svg`, `.png`, `.jpg`), adresów URL, znaków separatorów (`-`, `|`, `•`), szumu słownikowego stocków (`vector art`, `clipart`, `icon`, `pictogram`, `drawing`, `symbol`, `licensable`) oraz nawiasów.
+         - Formatowanie haseł rozdzielonych przecinkami na estetyczne, skapitalizowane etykiety.
+      6. Zachowano pełną wsteczną kompatybilność: wyeksportowano aliasy `searchPixabay: searchOpenverse` oraz `cleanPixabayTitle: cleanOpenverseTitle`.
+      7. W `search(query, context)` jako podstawowego dostawcę ustawiono Openverse API z zapytaniami semantycznymi, a DuckDuckGo Clipart pozostawiono jako wtórny fallback w razie awarii.
+      8. Zweryfikowano działanie testem integracyjnym `scratch/test_openverse_integration.js` dla słów `apple`, `dog`, `house`, `run` (100% poprawnych wyników Data URI, źródło `openverse`), testami składniowymi `scratch/check_syntax.js` oraz kompletnym pakietem testów Enter mode `scratch/test_enter_mode.js` (11/11 PASS).
