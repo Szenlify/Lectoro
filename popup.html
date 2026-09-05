@@ -41,51 +41,60 @@
                 </div>
             </div>
 
-            <div style="display: flex; gap: 8px; justify-content: space-between;">
+            <div class="settings-dual-row">
                 <div class="setting-group">
-                    <label for="targetLang">Native language</label>
-                    <select id="targetLang">
-                        <option value="ar">🇸🇦 Arabic</option>
-                        <option value="pt-br">🇧🇷 Brazil</option>
-                        <option value="bg">🇧🇬 Bulgarian</option>
-                        <option value="zh">🇨🇳 Chinese</option>
-                        <option value="hr">🇭🇷 Croatian</option>
-                        <option value="cs">🇨🇿 Czech</option>
-                        <option value="da">🇩🇰 Danish</option>
-                        <option value="nl">🇳🇱 Dutch</option>
-                        <option value="en">🇬🇧 English</option>
-                        <option value="fr">🇫🇷 French</option>
-                        <option value="de">🇩🇪 German</option>
-                        <option value="el">🇬🇷 Greek</option>
-                        <option value="he">🇮🇱 Hebrew</option>
-                        <option value="hi">🇮🇳 Hindi</option>
-                        <option value="hu">🇭🇺 Hungarian</option>
-                        <option value="id">🇮🇩 Indonesian</option>
-                        <option value="it">🇮🇹 Italian</option>
-                        <option value="ja">🇯🇵 Japanese</option>
-                        <option value="ko">🇰🇷 Korean</option>
-                        <option value="pl">🇵🇱 Polish</option>
-                        <option value="pt">🇵🇹 Portuguese</option>
-                        <option value="ro">🇷🇴 Romanian</option>
-                        <option value="ru">🇷🇺 Russian</option>
-                        <option value="sk">🇸🇰 Slovak</option>
-                        <option value="es">🇪🇸 Spanish</option>
-                        <option value="sv">🇸🇪 Swedish</option>
-                        <option value="th">🇹🇭 Thai</option>
-                        <option value="tr">🇹🇷 Turkish</option>
-                        <option value="uk">🇺🇦 Ukrainian</option>
-                        <option value="vi">🇻🇳 Vietnamese</option>
-                    </select>
+                    <label for="targetLang">
+                        <span class="label-icon">🌐</span>
+                        <span>Native language</span>
+                    </label>
+                    <div class="select-wrap">
+                        <select id="targetLang" title="Select your native language">
+                            <option value="ar">🇸🇦 Arabic</option>
+                            <option value="pt-br">🇧🇷 Brazil</option>
+                            <option value="bg">🇧🇬 Bulgarian</option>
+                            <option value="zh">🇨🇳 Chinese</option>
+                            <option value="hr">🇭🇷 Croatian</option>
+                            <option value="cs">🇨🇿 Czech</option>
+                            <option value="da">🇩🇰 Danish</option>
+                            <option value="nl">🇳🇱 Dutch</option>
+                            <option value="en">🇬🇧 English</option>
+                            <option value="fr">🇫🇷 French</option>
+                            <option value="de">🇩🇪 German</option>
+                            <option value="el">🇬🇷 Greek</option>
+                            <option value="he">🇮🇱 Hebrew</option>
+                            <option value="hi">🇮🇳 Hindi</option>
+                            <option value="hu">🇭🇺 Hungarian</option>
+                            <option value="id">🇮🇩 Indonesian</option>
+                            <option value="it">🇮🇹 Italian</option>
+                            <option value="ja">🇯🇵 Japanese</option>
+                            <option value="ko">🇰🇷 Korean</option>
+                            <option value="pl">🇵🇱 Polish</option>
+                            <option value="pt">🇵🇹 Portuguese</option>
+                            <option value="ro">🇷🇴 Romanian</option>
+                            <option value="ru">🇷🇺 Russian</option>
+                            <option value="sk">🇸🇰 Slovak</option>
+                            <option value="es">🇪🇸 Spanish</option>
+                            <option value="sv">🇸🇪 Swedish</option>
+                            <option value="th">🇹🇭 Thai</option>
+                            <option value="tr">🇹🇷 Turkish</option>
+                            <option value="uk">🇺🇦 Ukrainian</option>
+                            <option value="vi">🇻🇳 Vietnamese</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="setting-group">
-                    <label for="aiExplanationLanguage">AI Explanation language</label>
-                    <select id="aiExplanationLanguage">
-                        <option value="native">Native language</option>
-                        <option value="simple_target">Simple studied language (A2-B1)</option>
-                    </select>
+                    <label for="aiExplanationLanguage">
+                        <span class="label-icon">✨</span>
+                        <span>AI Explanation</span>
+                    </label>
+                    <div class="select-wrap">
+                        <select id="aiExplanationLanguage" title="Choose explanation language style">
+                            <option value="native">Native language</option>
+                            <option value="simple_target">Simple studied language (A2-B1)</option>
+                        </select>
+                    </div>
                 </div>
-
             </div>
 
 

@@ -238,6 +238,19 @@ Ostatnia aktualizacja: 2026-09-04
       2. W nasłuchiwaczu `click` dodano wywołanie `e.stopImmediatePropagation()`, zapobiegając propagacji zdarzenia do innych skryptów odtwarzacza.
       3. Kliknięcie w podświetlone słowo w oryginalnych napisach natychmiast wywołuje `showAiExplainItem(targetIdx, { manual: true })`, płynnie centrując chmurkę wyjaśnień nad klikniętym słowem i wyłączając automatyczne zamykanie dymka.
 
+## Faza 17: Udoskonalenie UI/UX Konfiguracji Języków w Okienku Popup (Sekcja Side-by-Side)
+
+- [x] 17.1. Implementacja responsywnego, dwukolumnowego układu `.settings-dual-row` dla wyboru języka ojczystego i trybu wyjaśnień AI.
+    - Log:
+      1. W `popup.html` zastąpiono inline `display: flex` nowoczesnym kontenerem `.settings-dual-row` z dwoma zbalansowanymi kolumnami `.setting-group` o równym podziale 50/50 (`grid-template-columns: 1fr 1fr; gap: 12px`).
+      2. W `popup.css` dodano kompleksowe reguły dla `.settings-dual-row`:
+         - Precyzyjne wyrównanie pionowe etykiet z ikonami emoji (`🌐 Native language` oraz `✨ AI Explanation`) z jednakową wysokością linii, eliminując rozjeżdżanie się kontrolek.
+         - Nowoczesny, minimalistyczny wskaźnik chevron SVG w kolorze akcentu rozszerzenia (`#818cf8`) zamiast przestarzałego szarego trójkąta.
+         - Dopracowana mikrointerakcja hover i focus: uniesienie `translateY(-1px)`, miękkie rozświetlenie krawędzi (`box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.2), 0 4px 14px rgba(0, 0, 0, 0.18)`), zaokrąglenie `var(--radius-md)` oraz płynne przejście `transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1)`.
+         - Zabezpieczenie przed ucinaniem tekstu i łamaniem wierszy (`text-overflow: ellipsis; white-space: nowrap; overflow: hidden`).
+         - Harmonijne ikony w opcjach dropdownu (`🌐 Native language` oraz `✨ Simple studied (A2-B1)`), idealnie współgrające z flagami w liście języków ojczystych.
+      3. Potwierdzono 100% zgodności ze wszystkimi testami automatycznymi w `scratch/test_enter_mode.js` (11/11 PASS) oraz testem poprawności składniowej `scratch/check_syntax.js`.
+
 
 
 
