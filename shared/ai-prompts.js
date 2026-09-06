@@ -120,34 +120,38 @@ Sentence:
 ${hasContext ? `${contextBlock}\n` : ""}
 Instructions:
 1. "source_language": Detect the sentence language and return only its lowercase ISO 639-1 code (for example "en", "es", "de").
-2. "translation": Provide a simplified rewrite/paraphrase of the sentence in clear, simple words in ${targetLangDesc} (CEFR A2-B1 level using basic vocabulary and straightforward grammar, preserving conversational meaning so a learner easily understands it). DO NOT translate to ${tgtName} - write it in simple ${targetLangDesc}.${
+2. "badge": Short category label for the whole sentence in ${targetLangDesc} (e.g. "Sentence").
+3. "translation": Provide a simplified rewrite/paraphrase of the sentence in clear, simple words in ${targetLangDesc} (CEFR A2-B1 level using basic vocabulary and straightforward grammar, preserving conversational meaning so a learner easily understands it). DO NOT translate to ${tgtName} - write it in simple ${targetLangDesc}.${
     hasContext
         ? " Use the dialogue context strictly to resolve ambiguous phrasing, pronouns, tone, slang, and situational meaning."
         : ""
 }
-3. "explanation": Concise, high-value learning breakdown written in SIMPLE, clear words in ${targetLangDesc} (CEFR A2-B1 level, 1-2 short sentences with basic vocabulary so a language learner can easily understand it). Explain idioms, phrasal verbs, key vocabulary, or grammatical nuances simply.${
+4. "explanation": Concise, high-value learning breakdown written in SIMPLE, clear words in ${targetLangDesc} (CEFR A2-B1 level, 1-2 short sentences with basic vocabulary so a language learner can easily understand it). Explain idioms, phrasal verbs, key vocabulary, or grammatical nuances simply.${
     hasContext
         ? " If the dialogue context clarifies an ambiguous phrase or tone, briefly mention it."
         : ""
 }
-4. "items": Array of specific idioms, phrasal verbs, slang, or difficult words in this sentence (max 4, ordered as they appear in the sentence):
+5. "items": Array of specific idioms, phrasal verbs, slang, or difficult words in this sentence (max 4, ordered as they appear in the sentence):
    - "term": the exact idiom, phrasal verb, or word from the sentence.
    - "type": "idiom" | "phrasal_verb" | "slang" | "vocabulary".
+   - "badge": short category label in ${targetLangDesc} (e.g. "Idiom", "Phrasal Verb", "Slang", "Word").
    - "meaning": a simple synonym or short, basic definition (1-4 words) in simple ${targetLangDesc} (e.g. "turn down" -> "refuse", "under the weather" -> "sick or unwell"). DO NOT use ${tgtName} or any native language.
    - "explanation": 1 concise sentence explaining its meaning in this context, written in simple ${targetLangDesc} (CEFR A2-B1 level).
    (If the sentence contains no idioms or difficult words, return []).
 
-MANDATORY: Every single field (translation, explanation, meaning) MUST be in ${targetLangDesc}. Absolutely NO translations into ${tgtName} or other languages.
+MANDATORY: Every single field (translation, explanation, meaning, badge) MUST be in ${targetLangDesc}. Absolutely NO translations into ${tgtName} or other languages.
 
 Respond ONLY with JSON:
 {
   "source_language": "en",
+  "badge": "Sentence",
   "translation": "...",
   "explanation": "...",
   "items": [
-    {"term": "...", "type": "idiom", "meaning": "...", "explanation": "..."}
+    {"term": "...", "type": "idiom", "badge": "Idiom", "meaning": "...", "explanation": "..."}
   ]
-}`;
+}
+`;
                 }
 
                 return `Explain this video subtitle sentence in ${targetLang}:
@@ -155,19 +159,21 @@ Respond ONLY with JSON:
 ${hasContext ? `${contextBlock}\n` : ""}
 Instructions for language learner assistance:
 1. "source_language": Detect the sentence language and return only its lowercase ISO 639-1 code (for example "en", "es", "de").
-2. "translation": Accurate, natural, context-aware translation in ${tgtName} (${targetLang}), preserving spoken conversational nuances.${
+2. "badge": Short category label for the whole sentence in ${tgtName} (e.g. for Polish: "Zdanie").
+3. "translation": Accurate, natural, context-aware translation in ${tgtName} (${targetLang}), preserving spoken conversational nuances.${
     hasContext
         ? `\n   CRITICAL: Translate ONLY the target sentence ("${sentence}"). DO NOT translate the previous or following dialogue. Use the dialogue context strictly to resolve speaker gender, pronouns, tone, slang, and situational meaning.`
         : ""
 }
-3. "explanation": Concise, high-value learning breakdown in ${tgtName} (1-2 short sentences). Explain idioms, phrasal verbs, key vocabulary, or grammatical nuances accurately and to the point.${
+4. "explanation": Concise, high-value learning breakdown in ${tgtName} (1-2 short sentences). Explain idioms, phrasal verbs, key vocabulary, or grammatical nuances accurately and to the point.${
     hasContext
         ? " If the dialogue context clarifies an ambiguous phrase or tone, briefly mention it."
         : ""
 }
-4. "items": Array of specific idioms, phrasal verbs, slang, or difficult words in this sentence (max 4, ordered as they appear in the sentence):
+5. "items": Array of specific idioms, phrasal verbs, slang, or difficult words in this sentence (max 4, ordered as they appear in the sentence):
    - "term": the exact idiom, phrasal verb, or word from the sentence.
    - "type": "idiom" | "phrasal_verb" | "slang" | "vocabulary".
+   - "badge": short category label in ${tgtName} (e.g. for Polish: "Idiom", "Czasownik złożony", "Slang", "Słówko").
    - "meaning": brief translation or core meaning in ${tgtName}.
    - "explanation": 1 concise sentence explaining its meaning in this context in ${tgtName}.
    (If the sentence contains no idioms or difficult words, return []).
@@ -175,10 +181,11 @@ Instructions for language learner assistance:
 Respond ONLY with JSON:
 {
   "source_language": "en",
+  "badge": "...",
   "translation": "...",
   "explanation": "...",
   "items": [
-    {"term": "...", "type": "idiom", "meaning": "...", "explanation": "..."}
+    {"term": "...", "type": "idiom", "badge": "...", "meaning": "...", "explanation": "..."}
   ]
 }`;
             },

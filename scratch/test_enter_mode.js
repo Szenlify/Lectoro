@@ -417,5 +417,66 @@ assert(
 );
 console.log("✓ Test 15 Passed: No bubble pointer arrows/squares, dead arrow calculations eliminated & TTS meaning included.");
 
+// 16. Verify Phase 20: AI badge generation & assignment in the configured language
+const aiPromptsJs = fs.readFileSync(path.join(__dirname, "..", "shared", "ai-prompts.js"), "utf-8");
+assert(
+    aiPromptsJs.includes('2. "badge": Short category label for the whole sentence in ${targetLangDesc} (e.g. "Sentence").') &&
+    aiPromptsJs.includes('\"badge\": short category label in ${targetLangDesc} (e.g. "Idiom", "Phrasal Verb", "Slang", "Word").') &&
+    aiPromptsJs.includes('2. "badge": Short category label for the whole sentence in ${tgtName} (e.g. for Polish: "Zdanie").') &&
+    aiPromptsJs.includes('\"badge\": short category label in ${tgtName} (e.g. for Polish: "Idiom", "Czasownik złożony", "Slang", "Słówko").'),
+    "ai-prompts.js must include badge instructions for both sentence and items in simple_target and native modes",
+);
+
+assert(
+    fontOverlayJs.includes("resolveAiBadge") &&
+    fontOverlayJs.includes("resolveAiBadge,\n        isSubtitleUiOpen:"),
+    "subtitle-overlay.js must define and export resolveAiBadge",
+);
+
+// Unit test resolveAiBadge logic in Node sandbox
+const vm = require("vm");
+const sandbox = {
+    window: {},
+    document: { addEventListener: () => {} },
+    navigator: { userAgent: "" },
+    chrome: { runtime: { id: "test" }, storage: { local: { get: () => {} } } },
+    LectoroConstants: {
+        PREFIX: "__qt_",
+        UI_CLASSES: {},
+        DEFAULT_SUBTITLE_SETTINGS: {},
+    },
+    SharedUtils: {
+        escapeHtml: (s) => s,
+        cleanTextForTTS: (s) => s,
+    },
+    QT: {
+        escapeHtml: (s) => s,
+        escapeAttr: (s) => s,
+        addDismissHandler: () => {},
+        formatSpeechMarkup: (s) => s,
+    },
+    SharedTtsService: { cancel: () => {} },
+    SharedSubtitleService: {},
+};
+// Extract and evaluate resolveAiBadge function directly from subtitle-overlay.js
+const badgeFnMatch = fontOverlayJs.match(/function resolveAiBadge\([\s\S]*?\n    \}/);
+assert(badgeFnMatch, "resolveAiBadge function regex must match in subtitle-overlay.js");
+vm.runInNewContext(badgeFnMatch[0] + "; this.resolveAiBadge = resolveAiBadge;", sandbox);
+const { resolveAiBadge } = sandbox;
+
+assert.strictEqual(resolveAiBadge("Custom Badge", "idiom", true, "en"), "Custom Badge");
+assert.strictEqual(resolveAiBadge("", "sentence", true, "en"), "Sentence");
+assert.strictEqual(resolveAiBadge("", "sentence", false, "pl"), "Zdanie");
+assert.strictEqual(resolveAiBadge("", "sentence", false, "es"), "Oración");
+assert.strictEqual(resolveAiBadge("", "idiom", true, "en"), "Idiom");
+assert.strictEqual(resolveAiBadge("", "phrasal_verb", true, "en"), "Phrasal Verb");
+assert.strictEqual(resolveAiBadge("", "phrasal_verb", false, "pl"), "Czasownik złożony");
+assert.strictEqual(resolveAiBadge("", "vocabulary", true, "en"), "Word");
+assert.strictEqual(resolveAiBadge("", "vocabulary", false, "pl"), "Słówko");
+assert.strictEqual(resolveAiBadge("", "idiom", false, "es"), "Modismo");
+assert.strictEqual(resolveAiBadge("", "vocabulary", false, "es"), "Palabra");
+console.log("✓ Test 16 Passed: AI badge generation in prompt & multilingual resolveAiBadge verified successfully.");
+
 console.log("\nALL ENTER MODE, UI/UX & SETTING IMPROVEMENTS VERIFIED! 🚀");
+
 

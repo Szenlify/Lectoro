@@ -2188,6 +2188,151 @@
         return context;
     }
 
+    function resolveAiBadge(
+        badgeCandidate,
+        type,
+        isSimpleTargetMode,
+        targetLangCode,
+    ) {
+        if (typeof badgeCandidate === "string" && badgeCandidate.trim()) {
+            return badgeCandidate.trim();
+        }
+        const lang = isSimpleTargetMode
+            ? "en"
+            : (targetLangCode || "pl").toLowerCase().slice(0, 2);
+        const normType = String(type || "").toLowerCase().trim();
+
+        const BADGE_MAP = {
+            pl: {
+                sentence: "Zdanie",
+                idiom: "Idiom",
+                phrasal_verb: "Czasownik złożony",
+                slang: "Slang",
+                vocabulary: "Słówko",
+                word: "Słówko",
+                expression: "Wyrażenie",
+                collocation: "Kolokacja",
+            },
+            en: {
+                sentence: "Sentence",
+                idiom: "Idiom",
+                phrasal_verb: "Phrasal Verb",
+                slang: "Slang",
+                vocabulary: "Word",
+                word: "Word",
+                expression: "Expression",
+                collocation: "Collocation",
+            },
+            es: {
+                sentence: "Oración",
+                idiom: "Modismo",
+                phrasal_verb: "Verbo frasal",
+                slang: "Slang",
+                vocabulary: "Palabra",
+                word: "Palabra",
+                expression: "Expresión",
+                collocation: "Colocación",
+            },
+            de: {
+                sentence: "Satz",
+                idiom: "Redewendung",
+                phrasal_verb: "Phrasal Verb",
+                slang: "Slang",
+                vocabulary: "Wort",
+                word: "Wort",
+                expression: "Ausdruck",
+                collocation: "Kollokation",
+            },
+            fr: {
+                sentence: "Phrase",
+                idiom: "Idiome",
+                phrasal_verb: "Verbe à particule",
+                slang: "Argot",
+                vocabulary: "Mot",
+                word: "Mot",
+                expression: "Expression",
+                collocation: "Collocation",
+            },
+            it: {
+                sentence: "Frase",
+                idiom: "Modo di dire",
+                phrasal_verb: "Verbo frasale",
+                slang: "Slang",
+                vocabulary: "Parola",
+                word: "Parola",
+                expression: "Espressione",
+                collocation: "Collocazione",
+            },
+            uk: {
+                sentence: "Речення",
+                idiom: "Ідіома",
+                phrasal_verb: "Фразове дієслово",
+                slang: "Сленг",
+                vocabulary: "Слово",
+                word: "Слово",
+                expression: "Вираз",
+                collocation: "Колокація",
+            },
+            ru: {
+                sentence: "Предложение",
+                idiom: "Идиома",
+                phrasal_verb: "Фразовый глагол",
+                slang: "Сленг",
+                vocabulary: "Слово",
+                word: "Слово",
+                expression: "Выражение",
+                collocation: "Коллокация",
+            },
+            pt: {
+                sentence: "Frase",
+                idiom: "Expressão idiomática",
+                phrasal_verb: "Phrasal Verb",
+                slang: "Gíria",
+                vocabulary: "Palavra",
+                word: "Palavra",
+                expression: "Expressão",
+                collocation: "Colocação",
+            },
+            zh: {
+                sentence: "句子",
+                idiom: "成语/习语",
+                phrasal_verb: "短语动词",
+                slang: "俚语",
+                vocabulary: "生词",
+                word: "生词",
+                expression: "短语",
+                collocation: "搭配",
+            },
+            ja: {
+                sentence: "文",
+                idiom: "慣用句",
+                phrasal_verb: "句動詞",
+                slang: "スラング",
+                vocabulary: "単語",
+                word: "単語",
+                expression: "表現",
+                collocation: "連語",
+            },
+            ko: {
+                sentence: "문장",
+                idiom: "관용구",
+                phrasal_verb: "구동사",
+                slang: "속어",
+                vocabulary: "단어",
+                word: "단어",
+                expression: "표현",
+                collocation: "연어",
+            },
+        };
+
+        const dict = BADGE_MAP[lang] || BADGE_MAP.en;
+        return (
+            dict[normType] ||
+            dict.expression ||
+            (isSimpleTargetMode ? "Word" : "Wyrażenie")
+        );
+    }
+
     async function handleAIExplain(video) {
         const registry = getPlayerRegistry();
         const text = activeText || registry?.getCurrentText();
@@ -2252,6 +2397,7 @@
             const explanation =
                 res?.explanation || (typeof res === "string" ? res : "");
 
+            const isSimpleTarget = aiExplainMode === "simple_target";
             const sentenceItem = {
                 type: "sentence",
                 title: "sentence",
@@ -2260,7 +2406,12 @@
                 explanation: explanation,
                 originalText: text,
                 sentenceTranslated: translation,
-                badge: "",
+                badge: resolveAiBadge(
+                    res?.badge,
+                    "sentence",
+                    isSimpleTarget,
+                    aiExplainTargetLang,
+                ),
             };
 
             let breakdownItems = [];
@@ -2273,16 +2424,12 @@
                     explanation: item.explanation || "",
                     originalText: text,
                     sentenceTranslated: translation,
-                    badge:
-                        item.type === "idiom"
-                            ? "Idiom"
-                            : item.type === "phrasal_verb"
-                              ? "Phrasal Verb"
-                              : item.type === "slang"
-                                ? "Slang"
-                                : item.type === "vocabulary"
-                                  ? "Słówko"
-                                  : item.type || "Wyrażenie",
+                    badge: resolveAiBadge(
+                        item.badge,
+                        item.type,
+                        isSimpleTarget,
+                        aiExplainTargetLang,
+                    ),
                 }));
             }
 
@@ -3519,6 +3666,7 @@
         nextAiExplainItem,
         prevAiExplainItem,
         replayCurrentAiExplainTts,
+        resolveAiBadge,
         isSubtitleUiOpen: () =>
             eTranslateActive ||
             wordCloudActive ||

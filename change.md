@@ -295,4 +295,27 @@ Ostatnia aktualizacja: 2026-09-04
       3. `node scratch/test_subtitles.js`, `node scratch/test-srs.js`, `node scratch/test_anki_export.js` – wszystkie testy integralności napisów i algorytmu SRS zakończone sukcesem (PASS).
       4. Audyt CSS: 0 martwych klas w `popup.css`, 0 martwych klas w `quiz.css`, a w `styles.css` wszystkie klasy `__qt_*` są w 100% powiązane i używane (zarówno statycznie, jak i przez szablony dynamiczne `${PREFIX}tb-${kind}` i `${P}ai_limit_*`).
 
+## Faza 20: Generowanie i Przydzielanie Badge przez AI w Skonfigurowanym Języku (Sentence, Idiom, Word, Phrasal Verb, Slang)
+
+- [x] 20.1. Aktualizacja promptów Gemini w `shared/ai-prompts.js` o generowanie pola `badge` dla zdania i poszczególnych elementów w wybranym języku (`simple_target` vs `native`).
+    - Log:
+      1. W `shared/ai-prompts.js` w funkcji `explainSentence` zaktualizowano instrukcje promptu dla wariantu `simple_target`: dodano punkt 2 wymagający wygenerowania `"badge": "Sentence"` dla całego zdania oraz punkt 5 dla `items` wymagający `"badge"` w prostym języku docelowym (np. `"Idiom"`, `"Phrasal Verb"`, `"Slang"`, `"Word"`). Zaktualizowano schemat JSON szablonu odpowiedzi.
+      2. W wariancie `native` (np. język polski, hiszpański itp.) zaktualizowano instrukcje: model generuje pole `"badge"` dla zdania (np. dla polskiego: `"Zdanie"`) oraz dla każdego elementu `items` (np. `"Idiom"`, `"Czasownik złożony"`, `"Slang"`, `"Słówko"`).
+- [x] 20.2. Obsługa `item.badge` i `res.badge` w `video/subtitle-overlay.js` wraz z wielojęzycznym fallbackiem `resolveAiBadge(badgeCandidate, type, isSimpleTarget, targetLangCode)`.
+    - Log:
+      1. Zaimplementowano scentralizowaną funkcję `resolveAiBadge` obsługującą:
+         - Priorytet etykiety wygenerowanej przez model AI (`badgeCandidate`),
+         - Dynamiczny fallback w języku docelowym (gdy `isSimpleTarget` -> angielski: *Sentence*, *Idiom*, *Phrasal Verb*, *Slang*, *Word*, *Expression*, *Collocation*),
+         - Pełną matrycę słownikową dla języków ojczystych (`pl`, `en`, `es`, `de`, `fr`, `it`, `uk`, `ru`, `pt`, `zh`, `ja`, `ko`).
+      2. W `sentenceItem` usunięto dotychczasowy pusty ciąg (`badge: ""`), przypisując `badge: resolveAiBadge(res?.badge, "sentence", isSimpleTarget, aiExplainTargetLang)`. Karta całego zdania zyskała estetyczną etykietę kategorii (np. *ZDANIE* lub *SENTENCE*).
+      3. W mapowaniu `breakdownItems` usunięto sztywne literały językowe, przypisując `badge: resolveAiBadge(item.badge, item.type, isSimpleTarget, aiExplainTargetLang)`.
+      4. Wyeksportowano `resolveAiBadge` w obiekcie `SubtitleOverlay`.
+- [x] 20.3. Weryfikacja testami automatycznymi (`test_enter_mode.js`, `check_syntax.js`).
+    - Log:
+      1. `node scratch/test_enter_mode.js` – 16/16 testów zakończonych sukcesem (PASS), w tym nowy Test 16 weryfikujący instrukcje promptów, eksport `resolveAiBadge` oraz ewaluację jednostkową w piaskownicy Node.js dla języków EN, PL, ES.
+      2. `node scratch/check_syntax.js` – 100% plików JS w repozytorium przeszło test składniowy bez błędów (PASS).
+      3. `node scratch/test_subtitles.js`, `node scratch/test-srs.js`, `node scratch/test_anki_export.js` – PASS.
+
+
+
 
