@@ -63,6 +63,9 @@
         const PERSISTENT_CACHE_KEY =
             Constants?.STORAGE_KEYS?.PERSISTENT_IMAGE_CACHE ||
             "persistentImageCache";
+        const COMMONS_ENDPOINT =
+            Constants?.ENDPOINTS?.WIKIMEDIA_COMMONS ||
+            "https://commons.wikimedia.org/w/api.php";
         const OPENVERSE_ENDPOINT =
             Constants?.ENDPOINTS?.OPENVERSE ||
             "https://api.openverse.org/v1/images/";
@@ -142,22 +145,6 @@
             loadPersistentCache().catch(() => {});
         }
 
-        /**
-         * Resolves the Pixabay API key from Constants or built-in obfuscated fallback.
-         */
-        function getPixabayKey() {
-            if (Constants?.API_KEYS?.PIXABAY) {
-                return Constants.API_KEYS.PIXABAY;
-            }
-            // Obfuscated key: 57435186-f7a69b9d5541aea7ed5f2e318
-            const _x = [
-                111, 109, 110, 105, 111, 107, 98, 108, 119, 60, 109, 59,
-                108, 99, 56, 99, 62, 111, 111, 110, 107, 59, 63, 59, 109,
-                63, 62, 111, 60, 104, 63, 105, 107, 98,
-            ];
-            return _x.map((c) => String.fromCharCode(c ^ 0x5a)).join("");
-        }
-
         async function fetchWithTimeout(url, opts = {}, ms = REQUEST_TIMEOUT_MS) {
             const controller = new AbortController();
             const id = setTimeout(() => controller.abort(), ms);
@@ -188,26 +175,31 @@
         }
 
         /**
-         * Cleans Openverse/Wikimedia/Openclipart titles into concise, capitalized visual descriptions.
+         * Cleans Wikimedia Commons/Openverse titles into concise, capitalized visual descriptions.
+         * Single Source of Truth for visual concept captions.
          */
-        function cleanOpenverseTitle(title, fallback = "") {
+        function cleanMediaTitle(title, fallback = "") {
             if (!title || typeof title !== "string") return fallback;
             let cleaned = title
                 .replace(/^File:\s*/i, "")
-                .replace(/\.(svg|png|jpe?g|webp|gif)$/i, "")
+                .replace(/\.(svg|png|jpe?g|webp|gif|avif)$/i, "")
+                .replace(/_/g, " ")
                 .replace(/https?:\/\/\S+/gi, "")
                 .replace(/\s+[-–—|•]\s+.*$/, "")
                 .replace(/\s*\(.*?\)/g, "")
                 .replace(
                     /\b(?:vector\s+art|vector\s+illustration|stock\s+vector|stock\s+photo|stock\s+illustration|free\s+vector|premium\s+vector|royalty-free|royalty\s+free|licensable|clipart|clip\s+art|transparent\s+png|images?|hd\s+png|free\s+download|vector|pictogram|icon|drawing|illustration|symbol)\b/gi,
-                    "",
+                    ""
                 )
+                .replace(/\bat\s+[a-z0-9\s-]+\bblog\b/gi, "")
+                .replace(/\b(?:at\s+)?(?:vecteezy|freepik|shutterstock|alamy|depositphotos|dreamstime|istock|clipartmag|clipartpanda|clipground|clipart-library|pngtree|pngplay|openclipart|cliparts\.co)\b.*?$/gi, "")
                 .replace(/\b\d{4,}\b/g, "")
-                .replace(/[#\d+]+/gi, "")
+                .replace(/[#\d+]+(?:\s+Vector\s+Art)?/gi, "")
                 .replace(/\s+/g, " ")
                 .trim();
 
             cleaned = cleaned.replace(/^[\s,.:;!?-]+|[\s,.:;!?-]+$/g, "").trim();
+            cleaned = cleaned.replace(/\s+(?:at|by|in|on|with|for)$/i, "").trim();
 
             if (cleaned.includes(",")) {
                 const parts = cleaned.split(",").map((p) => p.trim()).filter(Boolean);
@@ -227,37 +219,10 @@
             return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
         }
 
-        /**
-         * Cleans Pixabay tag lists into concise, capitalized visual descriptions (backward compatibility).
-         */
-        function cleanPixabayTitle(tags, fallback = "") {
-            return cleanOpenverseTitle(tags, fallback);
-        }
-
-        /**
-         * Cleans noisy stock site titles into human-readable visual context descriptions.
-         */
-        function cleanTitle(title, fallback = "") {
-            if (!title || typeof title !== "string") return fallback;
-            let cleaned = title
-                .replace(/https?:\/\/\S+/gi, "")
-                .replace(/[-|•–].*$/, "")
-                .replace(/\bat\s+[a-z0-9\s-]+\bblog\b/gi, "")
-                .replace(/\b(?:at\s+)?(?:vecteezy|freepik|shutterstock|alamy|depositphotos|dreamstime|istock|clipartmag|clipartpanda|clipground|clipart-library|pngtree|pngplay|openclipart|cliparts\.co)\b.*?$/gi, "")
-                .replace(/\b\d+\s+free\s+cliparts?\b.*?$/gi, "")
-                .replace(/\b(?:vector\s+art|vector\s+illustration|stock\s+vector|stock\s+photo|stock\s+illustration|free\s+vector|premium\s+vector|royalty-free|royalty\s+free|licensable|clipart|clip\s+art|transparent\s+png|images?|hd\s+png|free\s+download|vector)\b/gi, "")
-                .replace(/\b\d{4,}\b/g, "")
-                .replace(/[#\d+]+(?:\s+Vector\s+Art)?/gi, "")
-                .replace(/\s+/g, " ")
-                .trim();
-
-            cleaned = cleaned.replace(/^[\s,.:;!?-]+|[\s,.:;!?-]+$/g, "").trim();
-            cleaned = cleaned.replace(/\s+(?:at|by|in|on|with|for)$/i, "").trim();
-            cleaned = cleaned.replace(/\s*\(.*$/, "").trim();
-
-            if (!cleaned || cleaned.length < 2) return fallback;
-            return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
-        }
+        // Backward compatibility aliases
+        const cleanOpenverseTitle = cleanMediaTitle;
+        const cleanPixabayTitle = cleanMediaTitle;
+        const cleanTitle = cleanMediaTitle;
 
         /**
          * Resolves the most accurate educational semantic visual search queries.
@@ -378,11 +343,79 @@
             return primaryUrl || fallbackUrl || "";
         }
 
-        const UNSUPPORTED_IMAGE_EXTS = /\.(psd|ai|eps|tif|tiff|raw)($|\?)/i;
+        const UNSUPPORTED_IMAGE_EXTS =
+            /\.(psd|ai|eps|tif|tiff|raw|pdf|djvu|ogg|oga|ogv|mp4|webm|mid|midi|wav|flac|opus)($|\?)/i;
+        const VALID_IMAGE_MIMES =
+            /^image\/(jpeg|png|webp|svg\+xml|gif|avif)$/i;
 
         /**
-         * Primary Provider: Openverse.org Open Educational Media API (WordPress.org).
-         * Free, open Creative Commons & CC0 repository. Enforces vector illustrations, safe search, and CC licensing.
+         * Primary Provider: Wikimedia Commons Open Media Repository (commons.wikimedia.org).
+         * Direct MediaWiki API query in File namespace (6).
+         * Supports ALL image file types (JPG, PNG, WEBP, SVG, GIF, AVIF).
+         * Wikimedia automatically generates pre-rendered 320px PNG thumbnails for SVGs
+         * and 320px JPG thumbnails for bitmaps.
+         */
+        async function searchWikimediaCommons(searchQuery, fallbackLabel) {
+            try {
+                if (!searchQuery) return [];
+                const queryParam = encodeURIComponent(searchQuery.trim());
+                const userAgent =
+                    "LectoroExtension/1.0 (Language Learning Assistant; contact@lectoro.app)";
+                const headers = {
+                    "User-Agent": userAgent,
+                    Accept: "application/json",
+                };
+
+                const apiUrl = `${COMMONS_ENDPOINT}?action=query&generator=search&gsrnamespace=6&gsrsearch=${queryParam}&gsrlimit=${MAX_RESULTS}&prop=imageinfo&iiprop=url|mime|size&iiurlwidth=320&format=json&origin=*`;
+                const res = await fetchWithTimeout(apiUrl, { headers }, REQUEST_TIMEOUT_MS);
+                if (!res || !res.ok) return [];
+
+                const data = await res.json();
+                const rawPages = Object.values(data?.query?.pages || {});
+                if (!Array.isArray(rawPages) || rawPages.length === 0) return [];
+
+                // Filter valid, browser-renderable image files
+                const validHits = rawPages
+                    .filter((page) => {
+                        const info = page.imageinfo?.[0];
+                        if (!info) return false;
+                        const mime = info.mime || "";
+                        if (!VALID_IMAGE_MIMES.test(mime)) return false;
+                        const fullUrl = info.url || "";
+                        if (UNSUPPORTED_IMAGE_EXTS.test(fullUrl)) return false;
+                        return isValidHttpsUrl(info.thumburl) || isValidHttpsUrl(fullUrl);
+                    })
+                    .slice(0, MAX_RESULTS);
+
+                if (validHits.length === 0) return [];
+
+                // Convert thumbnails to data URIs in parallel so host page CSP never blocks them
+                const results = await Promise.all(
+                    validHits.map(async (page, idx) => {
+                        const info = page.imageinfo?.[0] || {};
+                        const description = cleanMediaTitle(page.title, fallbackLabel);
+                        const primaryThumb = info.thumburl || info.url;
+                        const fallbackThumb = info.url || info.thumburl;
+                        const dataThumb = await toDataUrl(primaryThumb, fallbackThumb);
+
+                        return {
+                            id: `commons_${page.pageid || idx}`,
+                            title: description,
+                            thumbnail: dataThumb,
+                            fullUrl: info.url || primaryThumb,
+                            source: "wikimedia",
+                        };
+                    })
+                );
+                return results;
+            } catch (_) {
+                return [];
+            }
+        }
+
+        /**
+         * Secondary Provider: Openverse.org Open Educational Media API (WordPress.org).
+         * Free, open Creative Commons & CC0 repository.
          */
         async function searchOpenverse(searchQuery, fallbackLabel) {
             try {
@@ -426,7 +459,7 @@
                 // Convert thumbnails to data URIs in parallel so host page CSP never blocks them
                 const results = await Promise.all(
                     validHits.map(async (hit, idx) => {
-                        const description = cleanOpenverseTitle(hit.title, fallbackLabel);
+                        const description = cleanMediaTitle(hit.title, fallbackLabel);
                         const isSvg =
                             hit.filetype === "svg" ||
                             /\.svg($|\?)/i.test(hit.url || "");
@@ -452,15 +485,14 @@
         }
 
         /**
-         * Backward compatibility alias for searchPixabay -> searchOpenverse.
+         * Backward compatibility alias for searchPixabay -> searchWikimediaCommons.
          */
         async function searchPixabay(searchQuery, fallbackLabel, lang = "en") {
-            return searchOpenverse(searchQuery, fallbackLabel);
+            return searchWikimediaCommons(searchQuery, fallbackLabel);
         }
 
         /**
-         * Secondary Fallback Provider: DuckDuckGo Educational Clipart Search.
-         * Only invoked if Pixabay returns no results or encounters an outage.
+         * Tertiary Fallback Provider: DuckDuckGo Educational Clipart Search.
          */
         async function searchDuckDuckGo(searchQuery, fallbackLabel) {
             try {
@@ -497,7 +529,7 @@
 
                 const results = await Promise.all(
                     validItems.map(async (item, idx) => {
-                        const description = cleanTitle(item.title, fallbackLabel);
+                        const description = cleanMediaTitle(item.title, fallbackLabel);
                         const dataThumb = await toDataUrl(item.thumbnail);
                         return {
                             id: `ddg_${idx}_${item.thumbnail.slice(-10)}`,
@@ -516,8 +548,9 @@
 
         /**
          * Search visual associations for a given word or phrase with semantic accuracy.
-         * Primary: Openverse.org API (vector/illustration, Creative Commons / CC0)
-         * Secondary Fallback: DuckDuckGo Clipart
+         * Primary: Wikimedia Commons API (ALL file types: JPG, PNG, WEBP, SVG, GIF)
+         * Secondary Fallback: Openverse API
+         * Tertiary Fallback: DuckDuckGo Clipart
          *
          * @param {string|Object} query - The word or sentence to look up
          * @param {Object} [context={}] - Optional translation context { original, translated, srcLang, targetLang }
@@ -545,19 +578,27 @@
 
             let results = [];
 
-            // 3. Primary Provider: Openverse.org API with resolved semantic queries
+            // 3. Primary Provider: Wikimedia Commons API with resolved semantic queries (ALL file types)
             for (const q of queries) {
-                results = await searchOpenverse(q.text, cleaned);
+                results = await searchWikimediaCommons(q.text, cleaned);
                 if (results && results.length >= 2) break;
             }
 
-            // 4. Secondary Fallback: DuckDuckGo Clipart (only if Openverse had 0 results)
+            // 4. Secondary Fallback: Openverse API (if Wikimedia Commons had 0 results)
+            if (!results || results.length === 0) {
+                for (const q of queries) {
+                    results = await searchOpenverse(q.text, cleaned);
+                    if (results && results.length >= 2) break;
+                }
+            }
+
+            // 5. Tertiary Fallback: DuckDuckGo Clipart (if both returned 0 results)
             if (!results || results.length === 0) {
                 const ddgQuery = `${anchor} clipart`;
                 results = await searchDuckDuckGo(ddgQuery, cleaned);
             }
 
-            // 5. Store in LRU cache & schedule persistent sync
+            // 6. Store in LRU cache & schedule persistent sync
             if (results && results.length > 0) {
                 results = results.slice(0, MAX_RESULTS);
                 setCache(cacheKey, results);
@@ -567,15 +608,16 @@
 
         return Object.freeze({
             search,
+            searchWikimediaCommons,
             searchOpenverse,
             searchPixabay,
             searchDuckDuckGo,
             cleanQuery,
-            cleanTitle,
-            cleanOpenverseTitle,
-            cleanPixabayTitle,
+            cleanMediaTitle,
+            cleanTitle: cleanMediaTitle,
+            cleanOpenverseTitle: cleanMediaTitle,
+            cleanPixabayTitle: cleanMediaTitle,
             resolveSearchQueries,
-            getPixabayKey,
             isSingleWord,
             isSimpleWord,
             clearCache: () => {

@@ -303,25 +303,18 @@
                 markupOptions,
             );
 
-            const showVisualConcept = isSingleWord(text) && !isSimpleWord(text);
-            const imageSectionHtml = showVisualConcept
-                ? `
-                    <div class="${PREFIX}image-section">
-                        <div class="${PREFIX}image-header">
-                            <span class="${PREFIX}image-label">${SVG.IMAGE_SEARCH} Visual Concept</span>
-                            <a class="${PREFIX}image-ext-link" href="https://www.google.com/search?q=${encodeURIComponent(`${text} clipart`)}&udm=2" target="_blank" rel="noopener noreferrer" title="Search Google Images">
-                                Google Images ${SVG.EXTERNAL_LINK}
-                            </a>
-                        </div>
-                        <div class="${PREFIX}image-strip ${PREFIX}image-strip-loading" data-query="${escapeAttr(text)}" data-translated="${escapeAttr(translation)}" data-src-lang="${escapeAttr(srcLang)}" data-tgt-lang="${escapeAttr(targetLang)}">
-                            <div class="${PREFIX}image-card ${PREFIX}image-skeleton"></div>
-                            <div class="${PREFIX}image-card ${PREFIX}image-skeleton"></div>
-                            <div class="${PREFIX}image-card ${PREFIX}image-skeleton"></div>
-                            <div class="${PREFIX}image-card ${PREFIX}image-skeleton"></div>
-                            <div class="${PREFIX}image-card ${PREFIX}image-skeleton"></div>
-                        </div>
-                    </div>`
-                : "";
+            const imageSectionHtml = QT.buildVisualConceptHtml({
+                query: text,
+                translated: translation,
+                srcLang,
+                targetLang,
+            });
+
+            const saveFooterHtml = QT.buildSaveFooterHtml(saveDataAttrs, {
+                aiLabel: "AI",
+                saveTitle: "Save word with AI translation for review",
+                aiTitle: "Save with smart AI sentence (Gemini)",
+            });
 
             const html = `
                 <div class="${PREFIX}header"><span>AI Translation</span></div>
@@ -342,16 +335,9 @@
                         <button class="${PREFIX}speak" data-text="${escapeAttr(explanation)}" data-lang="${escapeAttr(targetLang)}" data-source-lang="${escapeAttr(srcLang)}" data-original-text="${escapeAttr(text)}" title="Play explanation" style="margin-top:6px;">${SVG.SPEAKER}</button>
                     </div>
                     ${imageSectionHtml}
-                    <div class="${PREFIX}ai-result" id="${PREFIX}ai-result" style="display:none;"></div>
+                    <div class="${PREFIX}ai-result" id="${C.UI_IDS.AI_RESULT}" style="display:none;"></div>
                 </div>
-                <div class="${PREFIX}save-footer">
-                    <button class="${PREFIX}save-word-btn ${PREFIX}save-footer-btn" ${saveDataAttrs} title="Save word with AI translation for review">
-                        ${SVG.SAVE} <span>Save</span>
-                    </button>
-                    <button class="${PREFIX}save-ai-btn ${PREFIX}save-footer-btn" ${saveDataAttrs} title="Save with smart AI sentence (Gemini)">
-                        ${SVG.SAVE_AI} <span>AI</span>
-                    </button>
-                </div>`;
+                ${saveFooterHtml}`;
             showTooltip(html, rect, "top", anchorEl);
             attachTooltipHandlers();
             await QT.speak(explanation, targetLang, {

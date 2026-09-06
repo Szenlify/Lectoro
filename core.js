@@ -640,25 +640,18 @@
         const P = PREFIX;
         const dataAttrs = `data-src="${escapeAttr(original)}" data-translated="${escapeAttr(translated)}" data-src-lang="${escapeAttr(srcLang)}" data-tgt-lang="${escapeAttr(targetLang)}"`;
 
-        const showVisualConcept = isSingleWord(original) && !isSimpleWord(original);
-        const imageSectionHtml = showVisualConcept
-            ? `
-                <div class="${P}image-section">
-                    <div class="${P}image-header">
-                        <span class="${P}image-label">${SVG.IMAGE_SEARCH} Visual Concept</span>
-                        <a class="${P}image-ext-link" href="https://www.google.com/search?q=${encodeURIComponent(`${original} clipart`)}&udm=2" target="_blank" rel="noopener noreferrer" title="Search Google Images">
-                            Google Images ${SVG.EXTERNAL_LINK}
-                        </a>
-                    </div>
-                    <div class="${P}image-strip ${P}image-strip-loading" data-query="${escapeAttr(original)}" data-translated="${escapeAttr(translated)}" data-src-lang="${escapeAttr(srcLang)}" data-tgt-lang="${escapeAttr(targetLang)}">
-                        <div class="${P}image-card ${P}image-skeleton"></div>
-                        <div class="${P}image-card ${P}image-skeleton"></div>
-                        <div class="${P}image-card ${P}image-skeleton"></div>
-                        <div class="${P}image-card ${P}image-skeleton"></div>
-                        <div class="${P}image-card ${P}image-skeleton"></div>
-                    </div>
-                </div>`
-            : "";
+        const imageSectionHtml = buildVisualConceptHtml({
+            query: original,
+            translated,
+            srcLang,
+            targetLang,
+        });
+
+        const saveFooterHtml = buildSaveFooterHtml(dataAttrs, {
+            aiLabel: "AI Sentence",
+            saveTitle: "Save word",
+            aiTitle: "Generate AI sentence (Gemini)",
+        });
 
         return `
             <div class="${P}header">
@@ -682,13 +675,85 @@
                 ${imageSectionHtml}
             </div>
             <div class="${P}ai-result" id="${C.UI_IDS.AI_RESULT}" style="display:none;"></div>
-            <div class="${P}save-footer">
-                <button class="${P}save-word-btn ${P}save-footer-btn" ${dataAttrs} title="Save word">
-                    ${SVG.SAVE} <span>Save</span>
+            ${saveFooterHtml}`;
+    }
+
+    /**
+     * Builds Visual Concept strip HTML (SSOT).
+     * Reusable across basic tooltip and AI explanation tooltip.
+     */
+    function buildVisualConceptHtml({
+        query,
+        translated = "",
+        srcLang = "",
+        targetLang = "",
+    } = {}) {
+        if (!query || !isSingleWord(query) || isSimpleWord(query)) return "";
+        const P = PREFIX;
+        const commonsSearchUrl = `https://commons.wikimedia.org/w/index.php?search=${encodeURIComponent(query)}&title=Special:MediaSearch&go=Go&type=image`;
+        return `
+            <div class="${P}image-section">
+                <div class="${P}image-header">
+                    <span class="${P}image-label">${SVG.IMAGE_SEARCH} Visual Concept</span>
+                    <a class="${P}image-ext-link" href="${commonsSearchUrl}" target="_blank" rel="noopener noreferrer" title="Search Wikimedia Commons">
+                        Commons ${SVG.EXTERNAL_LINK}
+                    </a>
+                </div>
+                <div class="${P}image-strip ${P}image-strip-loading" data-query="${escapeAttr(query)}" data-translated="${escapeAttr(translated)}" data-src-lang="${escapeAttr(srcLang)}" data-tgt-lang="${escapeAttr(targetLang)}">
+                    <div class="${P}image-card ${P}image-skeleton"></div>
+                    <div class="${P}image-card ${P}image-skeleton"></div>
+                    <div class="${P}image-card ${P}image-skeleton"></div>
+                    <div class="${P}image-card ${P}image-skeleton"></div>
+                    <div class="${P}image-card ${P}image-skeleton"></div>
+                </div>
+            </div>`;
+    }
+
+    /**
+     * Builds Save Word & AI Sentence button footer HTML (SSOT).
+     * Reusable across basic tooltip, AI explanation tooltip, and video Enter mode card.
+     */
+    function buildSaveFooterHtml(
+        dataAttrs = "",
+        {
+            saveLabel = "Save",
+            saveTitle = "Save word",
+            saveKeyHint = "",
+            isSaved = false,
+            showAi = true,
+            aiLabel = "AI Sentence",
+            aiTitle = "Generate AI sentence (Gemini)",
+            aiKeyHint = "",
+            isAiSaved = false,
+            extraClass = "",
+        } = {}
+    ) {
+        const P = PREFIX;
+        const saveKeyHtml = saveKeyHint ? `<kbd class="${P}key-hint">${escapeHtml(saveKeyHint)}</kbd>` : "";
+        const aiKeyHtml = aiKeyHint ? `<kbd class="${P}key-hint">${escapeHtml(aiKeyHint)}</kbd>` : "";
+
+        const saveBtnContent = isSaved
+            ? `${SVG.SAVE_CHECK} <span>Saved!</span>`
+            : `${SVG.SAVE} <span>${escapeHtml(saveLabel)}</span>${saveKeyHtml}`;
+
+        const aiBtnContent = isAiSaved
+            ? `${SVG.SAVE_AI_CHECK} <span>Saved to Review!</span>`
+            : `${SVG.SAVE_AI} <span>${escapeHtml(aiLabel)}</span>${aiKeyHtml}`;
+
+        const aiBtnHtml = showAi
+            ? `<button class="${P}save-ai-btn ${P}save-footer-btn ${isAiSaved ? "saved" : ""}" ${dataAttrs} ${isAiSaved ? "disabled" : ""} title="${escapeAttr(aiTitle)}">
+                    ${aiBtnContent}
+                </button>`
+            : "";
+
+        const extraClassAttr = extraClass ? ` ${escapeAttr(extraClass)}` : "";
+
+        return `
+            <div class="${P}save-footer${extraClassAttr}">
+                <button class="${P}save-word-btn ${P}save-footer-btn ${isSaved ? "saved" : ""}" ${dataAttrs} ${isSaved ? "disabled" : ""} title="${escapeAttr(saveTitle)}">
+                    ${saveBtnContent}
                 </button>
-                <button class="${P}save-ai-btn ${P}save-footer-btn" ${dataAttrs} title="Generate AI sentence (Gemini)">
-                    ${SVG.SAVE_AI} <span>AI Sentence</span>
-                </button>
+                ${aiBtnHtml}
             </div>`;
     }
 
@@ -1177,6 +1242,8 @@
         rememberScreenshotContext,
 
         buildTooltipHtml,
+        buildVisualConceptHtml,
+        buildSaveFooterHtml,
         attachTooltipHandlers,
         loadTooltipImages,
         searchImages: (query) =>

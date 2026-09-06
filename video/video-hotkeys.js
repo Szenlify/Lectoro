@@ -60,6 +60,7 @@
 
             const registry = getRegistry();
             const overlay = getOverlay();
+
             const video = registry?.getVideo({ requireNearbyMouse: true });
             if (!video) return;
 

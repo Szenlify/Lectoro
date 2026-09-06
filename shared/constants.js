@@ -156,24 +156,15 @@
             GOOGLE_TRANSLATE:
                 "https://translate.googleapis.com/translate_a/single",
             GOOGLE_TTS: "https://translate.google.com/translate_tts",
+            WIKIMEDIA_COMMONS: "https://commons.wikimedia.org/w/api.php",
             OPENVERSE: "https://api.openverse.org/v1/images/",
-            PIXABAY: "https://api.openverse.org/v1/images/",
+            PIXABAY: "https://commons.wikimedia.org/w/api.php",
         });
 
         /**
-         * Obfuscated external API credentials to protect against plain-text scraping.
+         * External API credentials (no keys required for Wikimedia Commons).
          */
-        const API_KEYS = Object.freeze({
-            get PIXABAY() {
-                // Obfuscated key: 57435186-f7a69b9d5541aea7ed5f2e318
-                const _x = [
-                    111, 109, 110, 105, 111, 107, 98, 108, 119, 60, 109, 59,
-                    108, 99, 56, 99, 62, 111, 111, 110, 107, 59, 63, 59, 109,
-                    63, 62, 111, 60, 104, 63, 105, 107, 98,
-                ];
-                return _x.map((c) => String.fromCharCode(c ^ 0x5a)).join("");
-            },
-        });
+        const API_KEYS = Object.freeze({});
 
         const SVG_ICONS = Object.freeze({
             TRANSLATE: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/></svg>`,

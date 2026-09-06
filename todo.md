@@ -1,4 +1,2 @@
-1. poprawic visual concept 
-2. zrobic komponenty reuzywane przyciski do zapisywania słów i generowania zdań.niech wygladaja tak samo tylko w chmurkach zawsze pojawiaja sie w prawym dolnym rogu, oraz kiedy mysli zawsze ma byc animacja __qt_ai_shimmer
-
-3. ikone na video do wlaczania napisow 
+1. [x] poprawic visual concept (commons.wikimedia.org MediaWiki API z obsługą wszystkich formatów plików: JPG, PNG, WEBP, SVG, GIF; automatyczne miniatury PNG dla SVG z thumb.wikimedia.org bez błędów 424; konwersja do Data URI; link do Commons MediaSearch)
+2. [x] zrobic komponenty reuzywane przyciski do zapisywania słów i generowania zdań (centralizacja w QT.buildSaveFooterHtml i QT.buildVisualConceptHtml; prawy dolny róg justify-content: flex-end; animacja __qt_ai_shimmer na .ai-loader-label)

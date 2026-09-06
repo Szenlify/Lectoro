@@ -424,9 +424,9 @@
 }
 
 #__qt_tooltip .__qt_image-ext-link:hover {
-    color: #ffd54f;
-    background: rgba(255, 183, 77, 0.12);
-    border-color: rgba(255, 183, 77, 0.25);
+    color: #4ecdc4;
+    background: rgba(78, 205, 196, 0.12);
+    border-color: rgba(78, 205, 196, 0.25);
 }
 
 #__qt_tooltip .__qt_image-ext-link svg {
@@ -476,23 +476,25 @@
     height: 70px !important;
     flex-shrink: 0 !important;
     border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     background: rgba(255, 255, 255, 0.04);
     overflow: hidden;
     scroll-snap-align: start;
     cursor: pointer;
     box-sizing: border-box;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    transition: border-color 0.22s ease, box-shadow 0.22s ease, transform 0.22s ease;
 }
 
 #__qt_tooltip .__qt_image-card:hover {
-    border-color: rgba(78, 205, 196, 0.4);
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    border-color: rgba(78, 205, 196, 0.5);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.38);
+    transform: translateY(-2px);
 }
 
 #__qt_tooltip .__qt_image-card.selected {
     border-color: #4ecdc4 !important;
     box-shadow: 0 0 0 1.5px #4ecdc4, 0 4px 14px rgba(78, 205, 196, 0.35) !important;
+    transform: translateY(-1px);
 }
 
 #__qt_tooltip .__qt_image-card .__qt_check-badge {
@@ -512,6 +514,7 @@
     pointer-events: none;
     transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    z-index: 2;
 }
 
 #__qt_tooltip .__qt_image-card.selected .__qt_check-badge {
@@ -532,13 +535,14 @@
 
 #__qt_tooltip .__qt_image-card.is-loaded {
     animation: none;
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.05);
 }
 
 #__qt_tooltip .__qt_image-thumb {
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: cover;
+    object-position: center;
     display: block;
     opacity: 0;
     transition: opacity 0.25s ease;
@@ -558,7 +562,7 @@
     gap: 6px;
     padding: 6px 10px 8px;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
-    justify-content: center;
+    justify-content: flex-end !important;
 }
 
 #__qt_tooltip .__qt_save-footer-btn {
@@ -1874,7 +1878,7 @@ video::cue {
     gap: 8px !important;
     padding: 10px 16px 12px !important;
     border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
-    justify-content: center !important;
+    justify-content: flex-end !important;
     width: 100% !important;
     box-sizing: border-box !important;
 }
@@ -1912,10 +1916,42 @@ video::cue {
     pointer-events: none !important;
 }
 
+#__qt_sentence_translation .__qt_save-footer-btn.loading {
+    cursor: wait !important;
+    pointer-events: none !important;
+    opacity: 0.95 !important;
+}
+
 #__qt_sentence_translation .__qt_save-footer-btn svg {
     width: 14px;
     height: 14px;
     flex: 0 0 auto;
+}
+
+#__qt_sentence_translation .__qt_save-ai-btn {
+    border-color: rgba(168, 85, 247, 0.3) !important;
+    background: rgba(168, 85, 247, 0.08) !important;
+    color: rgba(200, 160, 255, 0.85) !important;
+}
+
+#__qt_sentence_translation .__qt_save-ai-btn:hover {
+    background: rgba(168, 85, 247, 0.16) !important;
+    border-color: rgba(168, 85, 247, 0.5) !important;
+    color: #fff !important;
+}
+
+.__qt_save-footer-btn .__qt_key-hint,
+.__qt_save-footer-btn kbd {
+    margin-left: 3px !important;
+    padding: 1px 4px !important;
+    font-size: 9px !important;
+    line-height: 1 !important;
+    font-weight: 600 !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 4px !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: rgba(255, 255, 255, 0.6) !important;
+    font-family: inherit !important;
 }
 
 #__qt_sentence_translation .__qt_error {

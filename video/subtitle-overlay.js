@@ -74,6 +74,7 @@
     let aiAutoAdvanceTimer = null;
     let aiAutoAdvanceDisabled = false;
     const aiSavedIndices = new Set();
+    const aiAiSavedIndices = new Set();
 
     let speedOverlayEl = null;
     let speedOverlayTimer = null;
@@ -252,6 +253,9 @@
             }
             if (document.body) {
                 document.body.setAttribute("data-lectoro-platform", platform);
+            }
+            if (customSubLayerEl) {
+                customSubLayerEl.style.removeProperty("display");
             }
             return { layer: customSubLayerEl, box: customSubBoxEl };
         }
@@ -1163,6 +1167,7 @@
         aiExplainIndex = 0;
         aiExplainLayout = null;
         aiSavedIndices.clear();
+        aiAiSavedIndices.clear();
         activeAiVideo = null;
         clearSubtitleVideoHighlights();
         QT.hideTooltip();
@@ -1585,12 +1590,19 @@
             </div>`;
 
         const isSaved = aiSavedIndices.has(index);
-        const footerHtml = `
-            <div class="${PREFIX}save-footer">
-                <button class="${PREFIX}ai-explain-save-btn ${PREFIX}save-footer-btn ${isSaved ? "saved" : ""}" ${isSaved ? "disabled" : ""} title="Save for review (Z)">
-                    ${isSaved ? "<span>Saved!</span>" : `${SVG.SAVE} <span>Save</span><kbd class="${PREFIX}key-hint">Z</kbd>`}
-                </button>
-            </div>`;
+        const isAiSaved = aiAiSavedIndices.has(index);
+        const dataAttrs = `data-src="${QT.escapeAttr(item.term || item.originalText || "")}" data-translated="${QT.escapeAttr(item.meaning || item.translation || "")}" data-src-lang="${QT.escapeAttr(aiExplainSourceLang || "")}" data-tgt-lang="${QT.escapeAttr(aiExplainTargetLang || "")}"`;
+
+        const footerHtml = QT.buildSaveFooterHtml(dataAttrs, {
+            saveLabel: "Save",
+            saveTitle: "Save for review (Z)",
+            saveKeyHint: "Z",
+            isSaved,
+            showAi: true,
+            aiLabel: "AI Sentence",
+            aiTitle: "Generate smart AI sentence (Gemini)",
+            isAiSaved,
+        });
 
         return (headerHtml ? headerHtml : "") + bodyHtml + footerHtml;
     }
@@ -1871,7 +1883,7 @@
     function saveCurrentAiExplainItem() {
         if (!aiTooltipActive) return false;
         const currentSaveBtn = translationOverlay?.querySelector(
-            `.${PREFIX}ai-explain-save-btn`,
+            `.${PREFIX}save-word-btn, .${PREFIX}ai-explain-save-btn`,
         );
         if (currentSaveBtn && document.contains(currentSaveBtn)) {
             currentSaveBtn.click();
@@ -1880,10 +1892,118 @@
         return false;
     }
 
+    function wireAiSentenceSaveButton(saveAiBtn, tooltipNode, item) {
+        if (!saveAiBtn) return;
+        const currentItem = item || aiExplainQueue[aiExplainIndex] || {};
+
+        if (aiAiSavedIndices.has(aiExplainIndex)) {
+            saveAiBtn.innerHTML = `${SVG.SAVE_AI_CHECK} <span>Saved to Review!</span>`;
+            saveAiBtn.classList.add("saved");
+            saveAiBtn.disabled = true;
+        }
+
+        saveAiBtn.addEventListener("click", async (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            if (
+                saveAiBtn.classList.contains("saved") ||
+                saveAiBtn.classList.contains("loading")
+            ) {
+                return;
+            }
+
+            saveAiBtn.classList.add("loading");
+            saveAiBtn.disabled = true;
+            saveAiBtn.innerHTML = `<span class="ai-loader-label">✨ Generating…</span>`;
+
+            try {
+                const targetVideo =
+                    activeAiVideo ||
+                    trackedVideo ||
+                    getPlayerRegistry()?.getVideo();
+                const screenshot =
+                    await getPlayerRegistry()?.captureVideoReviewScreenshot(
+                        targetVideo,
+                    );
+
+                const cleanedTerm =
+                    cleanCardText(currentItem.term) || currentItem.term;
+                let cleanedMeaning =
+                    cleanCardText(currentItem.meaning || currentItem.translation) ||
+                    currentItem.meaning ||
+                    currentItem.translation ||
+                    cleanedTerm;
+
+                const targetNativeLang =
+                    aiExplainTargetLang || (await QT.getTargetLang?.()) || "pl";
+
+                const result = await QT.geminiGenerateSentence(
+                    cleanedTerm,
+                    cleanedMeaning,
+                    aiExplainSourceLang,
+                    targetNativeLang,
+                );
+
+                const genSentence =
+                    cleanCardText(result?.sentence) || result?.sentence || "";
+                const genTranslation =
+                    cleanCardText(result?.translation) || result?.translation || "";
+
+                await QT.saveWord({
+                    original: cleanedTerm,
+                    translated: cleanedMeaning,
+                    srcLang: aiExplainSourceLang,
+                    tgtLang: targetNativeLang,
+                    sentence: genSentence,
+                    sentenceTranslated: genTranslation,
+                    aiSentence: genSentence,
+                    aiSentenceTranslated: genTranslation,
+                    screenshot,
+                    url: window.location.href,
+                    timestamp: Date.now(),
+                    downloaded: false,
+                });
+
+                aiAiSavedIndices.add(aiExplainIndex);
+                saveAiBtn.classList.remove("loading");
+                saveAiBtn.classList.add("saved");
+                saveAiBtn.innerHTML = `${SVG.SAVE_AI_CHECK} <span>Saved to Review!</span>`;
+
+                const termCard = tooltipNode?.querySelector(`.${PREFIX}ai-term-card`);
+                if (termCard && genSentence) {
+                    let aiResultWrap = termCard.querySelector(`.${PREFIX}ai-gen-result`);
+                    if (!aiResultWrap) {
+                        aiResultWrap = document.createElement("div");
+                        aiResultWrap.className = `${PREFIX}ai-gen-result`;
+                        aiResultWrap.style.cssText =
+                            "margin-top:10px;padding:8px 12px;background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.25);border-radius:8px;font-size:12px;";
+                        termCard.appendChild(aiResultWrap);
+                    }
+                    aiResultWrap.innerHTML = `<div style="color:#c084fc;font-weight:600;margin-bottom:3px;">✨ AI Sentence:</div><div style="color:#fff;margin-bottom:2px;">${QT.escapeHtml(genSentence)}</div><div style="color:rgba(255,255,255,0.7);font-size:11px;">${QT.escapeHtml(genTranslation)}</div>`;
+                }
+            } catch (err) {
+                console.error("[Lectoro] Video card AI sentence error:", err);
+                saveAiBtn.classList.remove("loading");
+                saveAiBtn.disabled = false;
+                saveAiBtn.innerHTML = `${SVG.SAVE_AI} <span style="color:#f87171;">Error</span>`;
+                setTimeout(() => {
+                    if (!saveAiBtn.classList.contains("saved")) {
+                        saveAiBtn.innerHTML = `${SVG.SAVE_AI} <span>AI Sentence</span>`;
+                    }
+                }, 3000);
+            }
+        });
+    }
+
     function wireAiExplainSaveButton(item) {
         const tooltipNode = translationOverlay || QT.getTooltipEl();
+        const saveAiBtn = tooltipNode?.querySelector(`.${PREFIX}save-ai-btn`);
+        if (saveAiBtn) {
+            wireAiSentenceSaveButton(saveAiBtn, tooltipNode, item);
+        }
+
         const saveBtn = tooltipNode?.querySelector(
-            `.${PREFIX}ai-explain-save-btn`,
+            `.${PREFIX}save-word-btn, .${PREFIX}ai-explain-save-btn`,
         );
         if (!saveBtn) return;
 
@@ -1912,7 +2032,7 @@
 
             saveBtn.classList.add("saving");
             saveBtn.disabled = true;
-            saveBtn.innerHTML = `${SVG.SAVE_SENTENCE} <span>Saving…</span><kbd class="${PREFIX}key-hint">Z</kbd>`;
+            saveBtn.innerHTML = `${SVG.SAVE} <span>Saving…</span><kbd class="${PREFIX}key-hint">Z</kbd>`;
 
             try {
                 const targetVideo =
@@ -2020,13 +2140,13 @@
                 });
 
                 aiSavedIndices.add(aiExplainIndex);
-                saveBtn.innerHTML = `<span>Saved!</span>`;
+                saveBtn.innerHTML = `${SVG.SAVE_CHECK} <span>Saved!</span>`;
                 saveBtn.classList.remove("saving");
                 saveBtn.classList.add("saved");
             } catch (error) {
                 saveBtn.disabled = false;
                 saveBtn.classList.remove("saving");
-                saveBtn.innerHTML = `${SVG.SAVE_SENTENCE} <span>Could not save</span><kbd class="${PREFIX}key-hint">Z</kbd>`;
+                saveBtn.innerHTML = `${SVG.SAVE} <span>Could not save</span><kbd class="${PREFIX}key-hint">Z</kbd>`;
                 saveBtn.title = error.message;
             }
         });
@@ -2056,7 +2176,7 @@
 
             if (ev.key === "z" || ev.key === "Z") {
                 const currentSaveBtn = translationOverlay?.querySelector(
-                    `.${PREFIX}ai-explain-save-btn`,
+                    `.${PREFIX}save-word-btn, .${PREFIX}ai-explain-save-btn`,
                 );
                 if (currentSaveBtn && document.contains(currentSaveBtn)) {
                     ev.preventDefault();
@@ -2391,6 +2511,7 @@
             aiExplainSourceLang = sourceLang;
             aiExplainTargetLang = targetLang;
             aiSavedIndices.clear();
+            aiAiSavedIndices.clear();
 
             const translation =
                 res?.translation || res?.simple_sentence || "";

@@ -34,8 +34,7 @@
         "https://openverse.org/*",
         "https://upload.wikimedia.org/*",
         "https://*.wikimedia.org/*",
-        "https://pixabay.com/*",
-        "https://*.pixabay.com/*"
+        "https://commons.wikimedia.org/*"
     ],
     "background": {
         "service_worker": "background.js"
