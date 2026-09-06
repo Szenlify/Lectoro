@@ -44,6 +44,9 @@
     let customSubBoxEl = null;
     let currentSubPosition = C.DEFAULT_SUBTITLE_SETTINGS.POSITION;
     let currentSubBgOpacity = C.DEFAULT_SUBTITLE_SETTINGS.BG_OPACITY;
+    let currentSubBottomPx = 0;
+    let aiSubTranslationEl = null;
+    let aiSubTranslationText = "";
     let activeLines = [];
     let activeText = "";
     let activeWordSpans = [];
@@ -406,12 +409,106 @@
                 );
             }
 
+            currentSubBottomPx = baseBottomPx;
             layer.style.setProperty(
                 "--lectoro-sub-bottom",
                 `${baseBottomPx}px`,
             );
             box.style.marginBottom = `${baseBottomPx}px`;
+
+            if (aiSubTranslationEl && aiSubTranslationText) {
+                adjustSubtitlePositionForTranslation();
+            }
         });
+    }
+
+    function adjustSubtitlePositionForTranslation() {
+        if (!customSubBoxEl || !aiSubTranslationEl || !aiSubTranslationText) {
+            if (customSubBoxEl) {
+                customSubBoxEl.style.transform = "";
+                customSubBoxEl.classList.remove(`${PREFIX}custom-sub-lifted`);
+            }
+            return;
+        }
+
+        const transHeight =
+            aiSubTranslationEl.offsetHeight ||
+            aiSubTranslationEl.getBoundingClientRect?.().height ||
+            28;
+        const gapPx = 6;
+        const bottomSafetyPadding = 12;
+        const requiredBottom = transHeight + gapPx + bottomSafetyPadding;
+
+        if (currentSubBottomPx < requiredBottom) {
+            const liftPx = Math.ceil(requiredBottom - currentSubBottomPx);
+            customSubBoxEl.style.transform = `translateY(-${liftPx}px)`;
+            customSubBoxEl.classList.add(`${PREFIX}custom-sub-lifted`);
+        } else {
+            customSubBoxEl.style.transform = "";
+            customSubBoxEl.classList.remove(`${PREFIX}custom-sub-lifted`);
+        }
+    }
+
+    function showSubtitleTranslationUnderOriginal(translationText) {
+        if (!translationText) return;
+        aiSubTranslationText = translationText;
+
+        const { box } = ensureCustomSubtitlesLayer();
+        if (!box) return;
+
+        if (!aiSubTranslationEl) {
+            aiSubTranslationEl = document.createElement("div");
+            aiSubTranslationEl.className = `${PREFIX}custom-sub-translation`;
+            aiSubTranslationEl.setAttribute("dir", "auto");
+        }
+
+        aiSubTranslationEl.textContent = translationText;
+
+        if (!aiSubTranslationEl._hasAiClickHandler) {
+            aiSubTranslationEl._hasAiClickHandler = true;
+            aiSubTranslationEl.addEventListener("click", (e) => {
+                if (!aiTooltipActive) return;
+                e.preventDefault();
+                e.stopPropagation();
+                if (aiExplainQueue.length > 1) {
+                    const sentenceIdx = aiExplainQueue.findIndex(
+                        (it) => it.type === "sentence",
+                    );
+                    if (sentenceIdx !== -1) {
+                        if (aiExplainIndex === sentenceIdx) {
+                            replayCurrentAiExplainTts();
+                        } else {
+                            showAiExplainItem(sentenceIdx, { manual: true });
+                        }
+                    }
+                } else {
+                    replayCurrentAiExplainTts();
+                }
+            });
+        }
+
+        if (aiSubTranslationEl.parentElement !== box) {
+            box.appendChild(aiSubTranslationEl);
+        }
+
+        adjustSubtitlePositionForTranslation();
+    }
+
+    function removeSubtitleTranslationUnderOriginal() {
+        aiSubTranslationText = "";
+        if (aiSubTranslationEl) {
+            aiSubTranslationEl.classList.remove(
+                C.UI_CLASSES.CUSTOM_SUB_TRANSLATION_ACTIVE,
+                `${PREFIX}speaking`,
+            );
+            aiSubTranslationEl.removeAttribute("data-step");
+            aiSubTranslationEl.remove();
+            aiSubTranslationEl = null;
+        }
+        if (customSubBoxEl) {
+            customSubBoxEl.style.transform = "";
+            customSubBoxEl.classList.remove(`${PREFIX}custom-sub-lifted`);
+        }
     }
 
     let measureCanvas = null;
@@ -619,6 +716,20 @@
                 }
             }
             box.appendChild(lineEl);
+        }
+
+        if (aiTooltipActive && aiSubTranslationText) {
+            showSubtitleTranslationUnderOriginal(aiSubTranslationText);
+            const currentItem = aiExplainQueue[aiExplainIndex];
+            if (currentItem?.type === "sentence" && aiExplainQueue.length > 1) {
+                aiSubTranslationEl?.classList.add(
+                    C.UI_CLASSES.CUSTOM_SUB_TRANSLATION_ACTIVE,
+                );
+                aiSubTranslationEl?.setAttribute(
+                    "data-step",
+                    `${aiExplainIndex + 1}/${aiExplainQueue.length}`,
+                );
+            }
         }
 
         box.style.setProperty("opacity", "1", "important");
@@ -1172,6 +1283,7 @@
         clearSubtitleVideoHighlights();
         QT.hideTooltip();
         removeAiShimmer();
+        removeSubtitleTranslationUnderOriginal();
         cleanupReading();
         SharedTtsService.cancel();
 
@@ -1498,7 +1610,7 @@
                 .map((qItem, idx) => {
                     const isActive = idx === index;
                     const isQueued = idx !== index;
-                    const icon = "✨";
+                    const icon = qItem.type === "sentence" ? "💬" : "✨";
                     const classes = [
                         `${PREFIX}ai-queue-pill`,
                         isActive ? "active" : "",
@@ -1691,6 +1803,9 @@
                 "Playing translation and explanation",
             );
         }
+        if (aiSubTranslationEl && item.type === "sentence") {
+            aiSubTranslationEl.classList.add(`${PREFIX}speaking`);
+        }
 
         try {
             if (item.type === "sentence") {
@@ -1782,7 +1897,69 @@
                     "Play translation and explanation",
                 );
             }
+            if (aiSubTranslationEl && !aiAutoAdvanceTimer) {
+                aiSubTranslationEl.classList.remove(`${PREFIX}speaking`);
+            }
         }
+    }
+
+    function ensureAiExplainKeydownListener() {
+        if (aiExplainKeydownHandler) return;
+        aiExplainKeydownHandler = (ev) => {
+            const isTyping =
+                ["INPUT", "TEXTAREA"].includes(ev.target?.tagName) ||
+                ev.target?.isContentEditable;
+            if (isTyping) return;
+
+            if (ev.key === "w" || ev.key === "W") {
+                if (aiTooltipActive) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    ev.stopImmediatePropagation();
+                    replayCurrentAiExplainTts();
+                }
+                return;
+            }
+
+            if (ev.key === "z" || ev.key === "Z") {
+                if (aiTooltipActive) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    ev.stopImmediatePropagation();
+                    saveCurrentAiExplainItem();
+                }
+                return;
+            }
+
+            if (ev.key === "Escape") {
+                ev.preventDefault();
+                ev.stopPropagation();
+                ev.stopImmediatePropagation();
+                closeAiTooltip({ resumeVideo: true });
+                return;
+            }
+
+            if (ev.key === "ArrowRight" || ev.key === "d" || ev.key === "D") {
+                if (aiTooltipActive && aiExplainQueue.length > 1) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    ev.stopImmediatePropagation();
+                    navigateAiExplain(1, { manual: true });
+                }
+                return;
+            }
+
+            if (ev.key === "ArrowLeft" || ev.key === "a" || ev.key === "A") {
+                if (aiTooltipActive && aiExplainQueue.length > 1) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    ev.stopImmediatePropagation();
+                    navigateAiExplain(-1, { manual: true });
+                }
+                return;
+            }
+        };
+        window.addEventListener("keydown", aiExplainKeydownHandler, true);
     }
 
     function showAiExplainItem(index, { manual = false } = {}) {
@@ -1801,6 +1978,48 @@
         aiAutoAdvanceTimer = null;
         const speechToken = ++aiExplainSpeechToken;
         SharedTtsService.cancel();
+
+        ensureAiExplainKeydownListener();
+
+        const isSentenceWithBreakdown =
+            aiExplainQueue.length > 1 && item.type === "sentence";
+
+        if (isSentenceWithBreakdown) {
+            // Stage 4/4 (full sentence translation under original subtitles):
+            // The floating tooltip bubble is hidden. Subtitle translation element
+            // is highlighted with active AI styling, step badge and read by TTS.
+            removeOverlay();
+
+            if (aiSubTranslationText) {
+                showSubtitleTranslationUnderOriginal(aiSubTranslationText);
+            }
+            if (aiSubTranslationEl) {
+                aiSubTranslationEl.classList.add(
+                    C.UI_CLASSES.CUSTOM_SUB_TRANSLATION_ACTIVE,
+                );
+                aiSubTranslationEl.setAttribute(
+                    "data-step",
+                    `${clampedIndex + 1}/${aiExplainQueue.length}`,
+                );
+            }
+
+            // Subtitle video highlights: clear active term cyan glow, focus on translation
+            updateSubtitleVideoHighlights();
+
+            if (aiTooltipActive) {
+                speakAiExplainItem(item, speechToken);
+            }
+            return;
+        }
+
+        // When displaying an idiom/word card, clear active highlight from subtitle translation
+        if (aiSubTranslationEl) {
+            aiSubTranslationEl.classList.remove(
+                C.UI_CLASSES.CUSTOM_SUB_TRANSLATION_ACTIVE,
+                `${PREFIX}speaking`,
+            );
+            aiSubTranslationEl.removeAttribute("data-step");
+        }
 
         // 1. Highlight active and upcoming terms on the film subtitle!
         updateSubtitleVideoHighlights();
@@ -1888,6 +2107,25 @@
         if (currentSaveBtn && document.contains(currentSaveBtn)) {
             currentSaveBtn.click();
             return true;
+        }
+        const currentItem = aiExplainQueue[aiExplainIndex];
+        if (currentItem && currentItem.type === "sentence") {
+            const text =
+                currentItem.term || currentItem.originalText || activeText;
+            const translated =
+                currentItem.meaning ||
+                currentItem.sentenceTranslated ||
+                aiSubTranslationText;
+            if (text && translated) {
+                QT.saveSentence?.(
+                    text,
+                    translated,
+                    aiExplainSourceLang,
+                    aiExplainTargetLang,
+                );
+                aiSavedIndices.add(aiExplainIndex);
+                return true;
+            }
         }
         return false;
     }
@@ -2151,71 +2389,7 @@
             }
         });
 
-        if (aiExplainKeydownHandler) {
-            window.removeEventListener(
-                "keydown",
-                aiExplainKeydownHandler,
-                true,
-            );
-        }
-        aiExplainKeydownHandler = (ev) => {
-            const isTyping =
-                ["INPUT", "TEXTAREA"].includes(ev.target?.tagName) ||
-                ev.target?.isContentEditable;
-            if (isTyping) return;
-
-            if (ev.key === "w" || ev.key === "W") {
-                if (aiTooltipActive) {
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                    ev.stopImmediatePropagation();
-                    replayCurrentAiExplainTts();
-                }
-                return;
-            }
-
-            if (ev.key === "z" || ev.key === "Z") {
-                const currentSaveBtn = translationOverlay?.querySelector(
-                    `.${PREFIX}save-word-btn, .${PREFIX}ai-explain-save-btn`,
-                );
-                if (currentSaveBtn && document.contains(currentSaveBtn)) {
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                    ev.stopImmediatePropagation();
-                    currentSaveBtn.click();
-                }
-                return;
-            }
-
-            if (ev.key === "Escape") {
-                ev.preventDefault();
-                ev.stopPropagation();
-                ev.stopImmediatePropagation();
-                closeAiTooltip({ resumeVideo: true });
-                return;
-            }
-
-            if (ev.key === "ArrowRight" || ev.key === "d" || ev.key === "D") {
-                if (aiTooltipActive && aiExplainQueue.length > 1) {
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                    ev.stopImmediatePropagation();
-                    navigateAiExplain(1, { manual: true });
-                }
-                return;
-            }
-
-            if (ev.key === "ArrowLeft" || ev.key === "a" || ev.key === "A") {
-                if (aiTooltipActive && aiExplainQueue.length > 1) {
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                    ev.stopImmediatePropagation();
-                    navigateAiExplain(-1, { manual: true });
-                }
-                return;
-            }
-        };
-        window.addEventListener("keydown", aiExplainKeydownHandler, true);
+        ensureAiExplainKeydownListener();
     }
 
     function wireAiExplainSpeakButton(item) {
@@ -2518,21 +2692,26 @@
             const explanation =
                 res?.explanation || (typeof res === "string" ? res : "");
 
+            if (translation) {
+                showSubtitleTranslationUnderOriginal(translation);
+            }
+
             const isSimpleTarget = aiExplainMode === "simple_target";
+            const sentenceBadge = resolveAiBadge(
+                res?.badge,
+                "sentence",
+                isSimpleTarget,
+                aiExplainTargetLang,
+            );
             const sentenceItem = {
                 type: "sentence",
-                title: "sentence",
+                title: sentenceBadge || (isSimpleTarget ? "Sentence" : "Zdanie"),
                 term: text,
                 meaning: translation,
                 explanation: explanation,
                 originalText: text,
                 sentenceTranslated: translation,
-                badge: resolveAiBadge(
-                    res?.badge,
-                    "sentence",
-                    isSimpleTarget,
-                    aiExplainTargetLang,
-                ),
+                badge: sentenceBadge,
             };
 
             let breakdownItems = [];
@@ -2554,11 +2733,14 @@
                 }));
             }
 
-            // In simple_target mode, skip the full sentence card if breakdown items exist
-            if (aiExplainMode === "simple_target" && breakdownItems.length > 0) {
-                aiExplainQueue = breakdownItems;
+            // In Enter mode, include the full sentence translation under original subtitles
+            // as the final stage (e.g. 4/4) in the queue. On this final stage, the speech bubble
+            // is omitted, while the translation under original subtitles is highlighted with
+            // active AI styling and read by TTS.
+            if (breakdownItems.length > 0) {
+                aiExplainQueue = [...breakdownItems, sentenceItem];
             } else {
-                aiExplainQueue = [sentenceItem, ...breakdownItems];
+                aiExplainQueue = [sentenceItem];
             }
 
             aiAutoAdvanceDisabled = false;
@@ -3175,14 +3357,6 @@
     }
 
     function removeOverlay() {
-        if (aiExplainKeydownHandler) {
-            window.removeEventListener(
-                "keydown",
-                aiExplainKeydownHandler,
-                true,
-            );
-            aiExplainKeydownHandler = null;
-        }
         if (translationOverlay) {
             translationOverlay.remove();
             translationOverlay = null;
@@ -3527,6 +3701,7 @@
         eTranslateActive = false;
         wordCloudActive = false;
         cleanupReading();
+        removeSubtitleTranslationUnderOriginal();
         SharedTtsService.cancel();
 
         if (customSubBoxEl && activeLines.length > 0) {
@@ -3804,6 +3979,11 @@
         createSubtitleTranslationTask,
         getSubtitleRect,
         syncCustomSubtitlePosition,
+        showSubtitleTranslationUnderOriginal,
+        removeSubtitleTranslationUnderOriginal,
+        adjustSubtitlePositionForTranslation,
+        getAiSubTranslationElement: () => aiSubTranslationEl,
+        getCurrentSubBottomPx: () => currentSubBottomPx,
         get subtitleModeRevision() {
             return subtitleModeRevision;
         },

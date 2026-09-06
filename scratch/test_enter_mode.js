@@ -477,6 +477,217 @@ assert.strictEqual(resolveAiBadge("", "idiom", false, "es"), "Modismo");
 assert.strictEqual(resolveAiBadge("", "vocabulary", false, "es"), "Palabra");
 console.log("✓ Test 16 Passed: AI badge generation in prompt & multilingual resolveAiBadge verified successfully.");
 
+// 17. Verify Phase 21 Part 1: styles.css and constants for subtitle translation under original
+const updatedCss = fs.readFileSync(cssPath, "utf-8");
+const subTransMatch = updatedCss.match(/#__qt_custom_subtitles_layer\s+\.__qt_custom-sub-translation\s*\{([^}]+)\}/);
+assert(subTransMatch, ".__qt_custom-sub-translation rule must exist in styles.css");
+assert(
+    subTransMatch[1].includes("font-size: calc(var(--lectoro-sub-font-size, 26px) * 0.5) !important;"),
+    `Subtitle translation must have 50% font size. Got: ${subTransMatch[1]}`,
+);
+assert(
+    subTransMatch[1].includes("color: #cbd5e1 !important;"),
+    `Subtitle translation must have soft gray color (#cbd5e1). Got: ${subTransMatch[1]}`,
+);
+assert(
+    subTransMatch[1].includes("position: absolute !important;") && subTransMatch[1].includes("top: calc(100% + 6px) !important;"),
+    `Subtitle translation must be positioned directly under original text without disrupting flow. Got: ${subTransMatch[1]}`,
+);
+assert(
+    subTransMatch[1].includes("animation: qtSubTranslationFadeIn 0.28s"),
+    `Subtitle translation must animate with qtSubTranslationFadeIn. Got: ${subTransMatch[1]}`,
+);
+assert(
+    updatedCss.includes("@keyframes qtSubTranslationFadeIn"),
+    "@keyframes qtSubTranslationFadeIn must be defined in styles.css",
+);
+const subBoxMatch = updatedCss.match(/#__qt_custom_subtitles_layer\s+\.__qt_custom-subtitles-box\s*\{([^}]+)\}/);
+assert(
+    subBoxMatch && subBoxMatch[1].includes("position: relative !important;"),
+    "custom-subtitles-box must have position: relative !important",
+);
+
+const constantsPath = path.join(__dirname, "../shared/constants.js");
+const constantsContent = fs.readFileSync(constantsPath, "utf-8");
+assert(
+    constantsContent.includes("CUSTOM_SUB_TRANSLATION: `${PREFIX}custom-sub-translation`"),
+    "shared/constants.js must define CUSTOM_SUB_TRANSLATION",
+);
+console.log("✓ Test 17 Passed: Subtitle translation styles (50% font size, soft gray, animation, relative box) & constants verified.");
+
+// 18. Verify Phase 21 Part 2: subtitle-overlay.js translation logic, auto-lift, and native stage 1 omission
+const latestOverlayJs = fs.readFileSync(jsPath, "utf-8").replace(/\r\n/g, "\n");
+assert(
+    latestOverlayJs.includes("function showSubtitleTranslationUnderOriginal(translationText)"),
+    "subtitle-overlay.js must define showSubtitleTranslationUnderOriginal",
+);
+assert(
+    latestOverlayJs.includes("function removeSubtitleTranslationUnderOriginal()"),
+    "subtitle-overlay.js must define removeSubtitleTranslationUnderOriginal",
+);
+assert(
+    latestOverlayJs.includes("function adjustSubtitlePositionForTranslation()"),
+    "subtitle-overlay.js must define adjustSubtitlePositionForTranslation",
+);
+assert(
+    latestOverlayJs.includes("showSubtitleTranslationUnderOriginal(translation);"),
+    "handleAIExplain must call showSubtitleTranslationUnderOriginal(translation)",
+);
+assert(
+    latestOverlayJs.includes("if (breakdownItems.length > 0) {\n                aiExplainQueue = [...breakdownItems, sentenceItem];\n            } else {\n                aiExplainQueue = [sentenceItem];\n            }"),
+    "handleAIExplain must append full sentence translation as final stage when breakdown items exist",
+);
+assert(
+    latestOverlayJs.includes("showSubtitleTranslationUnderOriginal,") &&
+    latestOverlayJs.includes("removeSubtitleTranslationUnderOriginal,") &&
+    latestOverlayJs.includes("adjustSubtitlePositionForTranslation,"),
+    "SubtitleOverlay must export subtitle translation functions",
+);
+
+// Verify auto-lift logic mathematically in sandboxed unit test
+let simulatedBoxTransform = "";
+let simulatedBoxClassList = new Set();
+const liftSandbox = {
+    customSubBoxEl: {
+        style: {
+            get transform() { return simulatedBoxTransform; },
+            set transform(v) { simulatedBoxTransform = v; }
+        },
+        classList: {
+            add: (c) => simulatedBoxClassList.add(c),
+            remove: (c) => simulatedBoxClassList.delete(c),
+        }
+    },
+    aiSubTranslationEl: { offsetHeight: 28 },
+    aiSubTranslationText: "Przetłumaczone zdanie testowe",
+    PREFIX: "__qt_",
+    currentSubBottomPx: 0,
+};
+const liftFnMatch = latestOverlayJs.match(/function adjustSubtitlePositionForTranslation\(\)[\s\S]*?\n    \}/);
+assert(liftFnMatch, "adjustSubtitlePositionForTranslation regex must match in subtitle-overlay.js");
+vm.runInNewContext(liftFnMatch[0] + "; this.adjustSubtitlePositionForTranslation = adjustSubtitlePositionForTranslation;", liftSandbox);
+
+// Case 1: Subtitle is very low (currentSubBottomPx = 0) -> Must lift up!
+liftSandbox.currentSubBottomPx = 0;
+liftSandbox.adjustSubtitlePositionForTranslation();
+assert.strictEqual(simulatedBoxTransform, "translateY(-46px)", "Subtitles at 0px bottom must be lifted by 46px (28 + 6 + 12)");
+assert(simulatedBoxClassList.has("__qt_custom-sub-lifted"), "custom-sub-lifted class must be added");
+
+// Case 2: Subtitle is at normal position (currentSubBottomPx = 80px) -> Structure must NOT be disturbed!
+liftSandbox.currentSubBottomPx = 80;
+liftSandbox.adjustSubtitlePositionForTranslation();
+assert.strictEqual(simulatedBoxTransform, "", "Subtitles at 80px bottom must NOT be lifted (transform cleared)");
+assert(!simulatedBoxClassList.has("__qt_custom-sub-lifted"), "custom-sub-lifted class must be removed");
+console.log("✓ Test 18 Passed: Subtitle translation under original, vertical position auto-lift & final stage append verified successfully.");
+
+// 19. Verify Phase 22: Stage 4/4 without bubble, visual highlight, step badge, TTS and hotkeys
+assert(
+    constantsContent.includes("CUSTOM_SUB_TRANSLATION_ACTIVE: `${PREFIX}custom-sub-translation-active`"),
+    "shared/constants.js must define CUSTOM_SUB_TRANSLATION_ACTIVE",
+);
+const activeTransMatch = updatedCss.match(/#__qt_custom_subtitles_layer\s+\.__qt_custom-sub-translation\.__qt_custom-sub-translation-active\s*\{([^}]+)\}/);
+assert(activeTransMatch, ".__qt_custom-sub-translation.__qt_custom-sub-translation-active rule must exist in styles.css");
+assert(
+    activeTransMatch[1].includes("color: #ffffff !important;"),
+    "Active subtitle translation must have crisp white color (#ffffff)",
+);
+assert(
+    activeTransMatch[1].includes("linear-gradient"),
+    "Active subtitle translation must have AI gradient background",
+);
+assert(
+    activeTransMatch[1].includes("box-shadow"),
+    "Active subtitle translation must have glowing box-shadow",
+);
+assert(
+    updatedCss.includes(".__qt_custom-sub-translation.__qt_custom-sub-translation-active[data-step]::before"),
+    "Micro step indicator data-step::before must be styled in styles.css",
+);
+assert(
+    updatedCss.includes("@keyframes qtSubTranslationActivePulse"),
+    "@keyframes qtSubTranslationActivePulse must be defined in styles.css",
+);
+
+// Verify logic in subtitle-overlay.js:
+assert(
+    latestOverlayJs.includes("const isSentenceWithBreakdown =\n            aiExplainQueue.length > 1 && item.type === \"sentence\";"),
+    "showAiExplainItem must detect isSentenceWithBreakdown (stage 4/4)",
+);
+assert(
+    latestOverlayJs.includes("removeOverlay();") &&
+    latestOverlayJs.includes("aiSubTranslationEl.classList.add(\n                    C.UI_CLASSES.CUSTOM_SUB_TRANSLATION_ACTIVE,\n                );"),
+    "Stage 4/4 must call removeOverlay and add CUSTOM_SUB_TRANSLATION_ACTIVE class",
+);
+assert(
+    latestOverlayJs.includes("data-step") &&
+    latestOverlayJs.includes("`${clampedIndex + 1}/${aiExplainQueue.length}`"),
+    "Stage 4/4 must set data-step badge attribute",
+);
+assert(
+    latestOverlayJs.includes("function ensureAiExplainKeydownListener()"),
+    "subtitle-overlay.js must define ensureAiExplainKeydownListener for seamless hotkeys",
+);
+
+// Sandbox simulation of showAiExplainItem for 4/4 stage
+let overlayRemoved = false;
+let subTransClasses = new Set();
+let subTransAttributes = {};
+let spokenItem = null;
+const showSandbox = {
+    aiTooltipActive: true,
+    aiExplainQueue: [
+        { type: "idiom", term: "break a leg", meaning: "powodzenia" },
+        { type: "idiom", term: "piece of cake", meaning: "bułka z masłem" },
+        { type: "word", term: "curious", meaning: "ciekawy" },
+        { type: "sentence", term: "It is a piece of cake", meaning: "To bułka z masłem" },
+    ],
+    aiAutoAdvanceDisabled: false,
+    aiExplainIndex: 0,
+    aiAutoAdvanceTimer: null,
+    aiExplainSpeechToken: 0,
+    aiExplainLayout: { rect: { top: 0, left: 0 } },
+    clearTimeout: () => {},
+    SharedTtsService: { cancel: () => {} },
+    ensureAiExplainKeydownListener: () => {},
+    removeOverlay: () => { overlayRemoved = true; },
+    showSubtitleTranslationUnderOriginal: () => {},
+    aiSubTranslationText: "To bułka z masłem",
+    aiSubTranslationEl: {
+        classList: {
+            add: (c) => subTransClasses.add(c),
+            remove: (c) => subTransClasses.delete(c),
+        },
+        setAttribute: (k, v) => { subTransAttributes[k] = v; },
+        removeAttribute: (k) => { delete subTransAttributes[k]; },
+    },
+    updateSubtitleVideoHighlights: () => {},
+    speakAiExplainItem: (item) => { spokenItem = item; },
+    C: { UI_CLASSES: { CUSTOM_SUB_TRANSLATION_ACTIVE: "__qt_custom-sub-translation-active" } },
+    renderAiExplainContent: () => "<div>Card</div>",
+    applyAiExplanation: () => ({ querySelectorAll: () => [], querySelector: () => null }),
+    wireAiExplainSpeakButton: () => {},
+    wireAiExplainSaveButton: () => {},
+    PREFIX: "__qt_",
+};
+
+const showFnMatch = latestOverlayJs.match(/function showAiExplainItem\(index, \{ manual = false \} = \{\}\)[\s\S]*?\n    \}/);
+assert(showFnMatch, "showAiExplainItem regex must match in subtitle-overlay.js");
+vm.runInNewContext(showFnMatch[0] + "; this.showAiExplainItem = showAiExplainItem;", showSandbox);
+
+// Run step 4/4 (index 3)
+showSandbox.showAiExplainItem(3);
+assert.strictEqual(overlayRemoved, true, "Overlay bubble must be removed on stage 4/4");
+assert.strictEqual(subTransClasses.has("__qt_custom-sub-translation-active"), true, "CUSTOM_SUB_TRANSLATION_ACTIVE must be added to translation");
+assert.strictEqual(subTransAttributes["data-step"], "4/4", "data-step attribute must be '4/4'");
+assert.strictEqual(spokenItem.meaning, "To bułka z masłem", "TTS must read translation text");
+
+// Run step 3/4 (index 2 - navigating back)
+showSandbox.showAiExplainItem(2, { manual: true });
+assert.strictEqual(subTransClasses.has("__qt_custom-sub-translation-active"), false, "CUSTOM_SUB_TRANSLATION_ACTIVE must be removed when returning to word card");
+assert.strictEqual(subTransAttributes["data-step"], undefined, "data-step attribute must be removed when returning to word card");
+assert.strictEqual(spokenItem.term, "curious", "TTS must read the word on stage 3/4");
+console.log("✓ Test 19 Passed: Phase 22 Stage 4/4 without bubble, visual highlight, step badge, TTS and hotkeys verified successfully.");
+
 console.log("\nALL ENTER MODE, UI/UX & SETTING IMPROVEMENTS VERIFIED! 🚀");
 
 

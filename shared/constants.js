@@ -33,6 +33,8 @@
             TOAST_VISIBLE: `${PREFIX}toast_visible`,
             CUSTOM_SUBTITLES_LAYER: `${PREFIX}custom-subtitles-layer`,
             CUSTOM_SUBTITLES_BOX: `${PREFIX}custom-subtitles-box`,
+            CUSTOM_SUB_TRANSLATION: `${PREFIX}custom-sub-translation`,
+            CUSTOM_SUB_TRANSLATION_ACTIVE: `${PREFIX}custom-sub-translation-active`,
             HIDE_CONTROLS: `${PREFIX}hide-controls`,
             NETFLIX_HIDE_CONTROLS: `${PREFIX}netflix-hide-controls`,
             NETFLIX_HIDDEN: `${PREFIX}netflix-subtitles-hidden`,

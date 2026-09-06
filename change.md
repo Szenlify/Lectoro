@@ -316,6 +316,88 @@ Ostatnia aktualizacja: 2026-09-04
       2. `node scratch/check_syntax.js` – 100% plików JS w repozytorium przeszło test składniowy bez błędów (PASS).
       3. `node scratch/test_subtitles.js`, `node scratch/test-srs.js`, `node scratch/test_anki_export.js` – PASS.
 
+## Faza 21: Wyświetlanie Tłumaczenia pod Oryginalnymi Napisami w Trybie Enter, Inteligentne Podnoszenie Bardzo Niskich Napisów oraz Pominięcie Pierwszego Etapu Całego Zdania w Trybie Native
 
+- [x] 21.1. Rozszerzenie `shared/constants.js` oraz `styles.css` o style tłumaczenia pod napisami (`CUSTOM_SUB_TRANSLATION`, 50% wielkości, kolor lekko szary `#cbd5e1`, obrys tekstu, mikroanimacja `@keyframes qtSubTranslationFadeIn`).
+    - Log:
+      1. W `shared/constants.js` w słowniku `UI_CLASSES` dodano stałą `CUSTOM_SUB_TRANSLATION: `${PREFIX}custom-sub-translation``.
+      2. W `styles.css` dla kontenera `#__qt_custom_subtitles_layer .__qt_custom-subtitles-box` dodano właściwość `position: relative !important;` oraz zaktualizowano płynną tranzycję `transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0s ease !important;`.
+      3. W `styles.css` zdefiniowano reguły dla `#__qt_custom_subtitles_layer .__qt_custom-sub-translation`:
+         - Pozycjonowanie absolutne względem boksu napisów: `position: absolute !important; top: calc(100% + 6px) !important; left: 50% !important; transform: translateX(-50%) !important;` (gwarantuje idealne wycentrowanie pod napisami bez naruszania ich pionowego przepływu flexbox).
+         - Skala fontu: dokładnie 50% oryginalnego tekstu (`font-size: calc(var(--lectoro-sub-font-size, 26px) * 0.5) !important;`).
+         - Kolorystyka: czytelny lekki szary `#cbd5e1 !important;` ze starannie dobranym cieniem `text-shadow` dla bezkompromisowego kontrastu na jasnych tłach wideo.
+         - Mikroanimacja: `@keyframes qtSubTranslationFadeIn` (płynny fade-in i delikatny zjazd z `translate(-50%, -6px)` do `translate(-50%, 0)` w 0.28s).
+- [x] 21.2. Implementacja w `video/subtitle-overlay.js` mechanizmu `showSubtitleTranslationUnderOriginal`, `removeSubtitleTranslationUnderOriginal` oraz dynamicznego unoszenia napisów `adjustSubtitlePositionForTranslation` przy niskim vertical position.
+    - Log:
+      1. Dodano zmienne stanu: `currentSubBottomPx`, `aiSubTranslationEl`, `aiSubTranslationText`.
+      2. W `syncCustomSubtitlePosition()` zapisywany jest bieżący margines dolny `currentSubBottomPx = baseBottomPx;` oraz wywoływana korekta pozycji `adjustSubtitlePositionForTranslation()`.
+      3. Zaimplementowano funkcję `adjustSubtitlePositionForTranslation()`:
+         - Mierzy wysokość elementu tłumaczenia (`offsetHeight`) i oblicza minimalny wymagany margines dolny (`requiredBottom = transHeight + 6px + 12px_safety`).
+         - Gdy pozycja napisów jest bardzo niska (`currentSubBottomPx < requiredBottom`), płynnie unosi napisy o brakujący offset: `box.style.transform = translateY(-${liftPx}px);` (dodając klasę `__qt_custom-sub-lifted`).
+         - Gdy pozycja napisów jest na bezpiecznej wysokości, obecna struktura i pozycja napisów oryginalnych pozostają nienaruszone (`box.style.transform = ""`).
+      4. Zaimplementowano funkcje `showSubtitleTranslationUnderOriginal(translationText)` oraz `removeSubtitleTranslationUnderOriginal()`.
+      5. Podpięto czyszczenie tłumaczenia i reset transformacji w `closeAiTooltip()`, `restoreOriginal()` oraz zachowanie tłumaczenia w `renderCustomSubtitles` podczas pauzy.
+      6. Wyeksportowano metody w obiekcie `SubtitleOverlay`.
+- [x] 21.3. Pominięcie pierwszego etapu całego zdania w `aiExplainQueue` w trybie `native` przy obecności elementów breakdown (`breakdownItems.length > 0`).
+    - Log:
+      1. W `handleAIExplain(video)` w `video/subtitle-overlay.js` po odebraniu `res` zaktualizowano logikę budowania kolejki `aiExplainQueue`:
+         - Ponieważ tłumaczenie całego zdania jest od razu wyświetlane bezpośrednio pod oryginalnymi napisami filmowymi, karta całego zdania w chmurce staje się zbędna.
+         - Gdy model AI zwróci elementy breakdown (`breakdownItems.length > 0`), zarówno w trybie `native`, jak i `simple_target`, `aiExplainQueue` pomija kartę `sentenceItem` i rozpoczyna się od pierwszego idiomu/trudnego słówka.
+         - W przypadku braku elementów analitycznych (0 breakdown items), zachowano bezpieczny fallback na kartę zdania `[sentenceItem]`.
+- [x] 21.4. Weryfikacja automatyczna (`test_enter_mode.js`, `check_syntax.js`, `test_subtitles.js`, `test_video_sub_toggle.js`) i audyt integralności.
+    - Log:
+      1. W `scratch/test_enter_mode.js` dodano Test 17 (weryfikacja stylów tłumaczenia, 50% skali fontu, animacji, `position: relative` i stałej) oraz Test 18 (weryfikacja logiki wstrzykiwania, eksportów `SubtitleOverlay`, pomijania etapu zdania w trybie native oraz matematycznej symulacji auto-liftu w piaskownicy dla dolnego offsetu 0px vs 80px).
+      2. Wynik `node scratch/test_enter_mode.js`: 18/18 testów zakończonych sukcesem (PASS).
+      3. Wynik `node scratch/check_syntax.js`: 100% plików JS w repozytorium przechodzi kontrolę składniową bez błędów (PASS).
+      4. Wyniki `test_subtitles.js`, `test_video_sub_toggle.js`, `test-srs.js`, `test_anki_export.js`, `check_dead_css.js`: wszystkie testy przeszły pomyślnie z kodem 0 (PASS).
 
+## Faza 22: Integracja Etapu Tłumaczenia (4/4 itp.) pod Napisami Oryginalnymi z Zaznaczeniem Wizualnym, Odtwarzaniem TTS i Ukryciem Dymka
+
+- [x] 22.1. Rozszerzenie `shared/constants.js` oraz `styles.css` o tokeny i reguły aktywnego zaznaczenia tłumaczenia pod napisami (`CUSTOM_SUB_TRANSLATION_ACTIVE`, gradient cyan-fiolet, ramka glow, mikro-wskaźnik kroku `data-step`, stan speaking, animacja pulsowania).
+    - Log:
+      1. W `shared/constants.js` w `UI_CLASSES` dodano stałą `CUSTOM_SUB_TRANSLATION_ACTIVE: `${PREFIX}custom-sub-translation-active``.
+      2. W `styles.css` dodano obsługę `pointer-events: auto !important; cursor: pointer !important;` dla tłumaczenia pod napisami w aktywnym trybie Enter (`body[data-lectoro-ai-active="true"]`).
+      3. W `styles.css` zdefiniowano styl `#__qt_custom_subtitles_layer .__qt_custom-sub-translation.__qt_custom-sub-translation-active`:
+         - Kolor tekstu: czysta biel `#ffffff` z poświatą `text-shadow: 0 0 10px rgba(78, 205, 196, 0.85)`.
+         - Tło i ramka: delikatny gradient AI cyan-fiolet `linear-gradient(135deg, rgba(78, 205, 196, 0.28), rgba(168, 85, 247, 0.32))` oraz `box-shadow: inset 0 0 0 1.5px #4ecdc4, 0 0 16px rgba(78, 205, 196, 0.5), 0 0 24px rgba(168, 85, 247, 0.35)`.
+         - Mikro-wskaźnik kroku: `.__qt_custom-sub-translation-active[data-step]::before` wyświetlający estetyczną pigułkę z numerem kroku (np. `4/4`) z ramką cyan.
+         - Animacja pulsowania blasku: `@keyframes qtSubTranslationActivePulse` (2.4s alternate).
+         - Stan odczytu TTS: klasa `.__qt_speaking` ze wzmocnionym blaskiem podczas mowy lektora.
+- [x] 22.2. Aktualizacja kolejki `aiExplainQueue` w `video/subtitle-overlay.js` o etap tłumaczenia zdania na końcu breakdownu (`[...breakdownItems, sentenceItem]`), z tytułem "Zdanie" / badge i pominięciem dymka na tym etapie (`translationOverlay` null/ukryty).
+    - Log:
+      1. W `handleAIExplain(video)` w `video/subtitle-overlay.js` po odebraniu `res` zaktualizowano konstrukcję kolejki:
+         - Gdy obecne są pozycje analityczne (`breakdownItems.length > 0`), obiekt `sentenceItem` jest dołączany jako ostatni etap: `aiExplainQueue = [...breakdownItems, sentenceItem];`.
+         - `sentenceItem.title` ustawiane jest na czytelną etykietę kategorii (np. `"Zdanie"` w języku polskim lub `"Sentence"` w angielskim pobierane z `resolveAiBadge`).
+         - We wstążce zakładek (`renderAiExplainContent`) krok zdania otrzymuje ikonę `💬`, a idiomy zachowują `✨`.
+      2. W `showAiExplainItem(index)` wprowadzono detekcję `isSentenceWithBreakdown` (indeks kroku zdania w kolejce wieloelementowej, np. 4/4):
+         - Na tym kroku wywoływane jest `removeOverlay()`, co całkowicie ukrywa dymek / chmurkę nad napisami.
+         - W `removeOverlay()` usunięto przedwczesne odpinanie `aiExplainKeydownHandler`, dzięki czemu nawigacja klawiaturowa działa nieprzerwanie bez dymka.
+- [x] 22.3. Aktywacja podświetlenia tekstu tłumaczenia (`__qt_custom-sub-translation-active`), wskaźnika kroku `data-step` ("4/4" itp.), lektora TTS (`speakAiExplainItem`), zachowanie zatrzymania filmu oraz pełnej obsługi nawigacji klawiszowej (`←`, `→`, `W`, `Z`, `Enter`, `Escape`) i klikania.
+    - Log:
+      1. W `showAiExplainItem`:
+         - Na etapie zdania dodawana jest klasa `__qt_custom-sub-translation-active` oraz atrybut `data-step` (np. `"4/4"`) do `aiSubTranslationEl`.
+         - Przy przejściu wstecz na wcześniejszą kartę słówka (np. 3/4) klasa aktywności oraz `data-step` są usuwane, a dymek ze słówkiem jest natychmiast przywracany.
+         - Na etapie zdania `updateSubtitleVideoHighlights()` wygasza aktywne podświetlenie pojedynczego słowa, skupiając uwagę użytkownika na całym przetłumaczonym zdaniu.
+      2. W `speakAiExplainItem`:
+         - Podczas mówienia zdania na elemencie `aiSubTranslationEl` ustawiana jest klasa `__qt_speaking` (usuwana w bloku `finally`).
+         - TTS odczytuje treść tłumaczenia w języku docelowym (`aiExplainTargetLang`) w trybie native lub w języku źródłowym (`aiExplainSourceLang`) w trybie `simple_target`.
+         - Po zakończeniu odczytu timer auto-advance nie jest uruchamiany (`aiExplainIndex + 1 < aiExplainQueue.length` jest fałszem), dzięki czemu wideo pozostaje bezpiecznie zapauzowane.
+      3. Zaimplementowano funkcję `ensureAiExplainKeydownListener()`, gwarantującą niezawodne działanie skrótów:
+         - `←` / `A`: powrót do poprzedniego etapu (np. 3/4) z ponownym otwarciem dymka.
+         - `→` / `D`: przejście do kolejnego etapu.
+         - `W`: ponowne odtworzenie wymowy lektora (`replayCurrentAiExplainTts`).
+         - `Z`: zapisanie zdania do fiszek / SRS (`saveCurrentAiExplainItem` z bezpośrednim fallbackiem do `QT.saveSentence` gdy brak przycisku w dymku).
+         - `Enter` / `Escape`: zamknięcie trybu Enter i wznowienie odtwarzania wideo.
+      4. W `showSubtitleTranslationUnderOriginal`:
+         - Dodano listener kliknięcia na tekst tłumaczenia: kliknięcie na wcześniejszych etapach (1..3) natychmiast przenosi na krok 4/4, a kliknięcie na kroku 4/4 powtarza odczyt TTS.
+- [x] 22.4. Weryfikacja testami automatycznymi (`test_enter_mode.js`, `check_syntax.js`, `test_subtitles.js`, `test-srs.js`, `test_anki_export.js`).
+    - Log:
+      1. W `scratch/test_enter_mode.js` zaktualizowano Test 18 (weryfikacja dodania `[...breakdownItems, sentenceItem]`) oraz dodano Test 19:
+         - Weryfikacja stylów CSS, tokenu `CUSTOM_SUB_TRANSLATION_ACTIVE`, gradientu, mikro-wskaźnika `data-step` i animacji pulsowania.
+         - Weryfikacja usunięcia dymka na kroku 4/4 (`overlayRemoved: true`).
+         - Weryfikacja dodania i usunięcia klasy aktywnej oraz atrybutu `data-step` w symulacji dwukierunkowej nawigacji (4/4 -> 3/4).
+         - Weryfikacja odczytu TTS dla `item.meaning`.
+      2. Wynik `node scratch/test_enter_mode.js`: 19/19 testów zakończonych sukcesem (PASS).
+      3. Wynik `node scratch/check_syntax.js`: 100% plików JS przechodzi kontrolę składniową (PASS).
+      4. Wyniki `test_subtitles.js`, `test-srs.js`, `test_anki_export.js`, `test_video_sub_toggle.js`, `check_dead_css.js`: wszystkie testy zaliczone z kodem 0 (PASS).
 

@@ -854,6 +854,7 @@ video::cue {
 }
 
 #__qt_custom_subtitles_layer .__qt_custom-subtitles-box {
+    position: relative !important;
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
@@ -872,7 +873,7 @@ video::cue {
     letter-spacing: inherit !important;
     text-transform: none !important;
     white-space: normal !important;
-    transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), opacity 0s ease !important;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0s ease !important;
 }
 
 #__qt_custom_subtitles_layer .__qt_custom-sub-line {
@@ -913,6 +914,117 @@ video::cue {
     overflow-wrap: break-word !important;
     text-wrap: balance !important;
     hyphens: none !important;
+}
+
+#__qt_custom_subtitles_layer .__qt_custom-sub-translation {
+    position: absolute !important;
+    top: calc(100% + 6px) !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: max-content !important;
+    max-width: min(84vw, 850px) !important;
+    box-sizing: border-box !important;
+    margin: 0 auto !important;
+    padding: var(--lectoro-sub-bg-padding, 1px 6px) !important;
+    border-radius: 4px !important;
+    background-color: var(--lectoro-sub-bg-color, transparent) !important;
+    box-decoration-break: clone !important;
+    -webkit-box-decoration-break: clone !important;
+    color: #cbd5e1 !important;
+    font-family: "Netflix Sans Variable", "Netflix Sans", "Helvetica Neue", "Segoe UI", Roboto, Arial, sans-serif !important;
+    font-size: calc(var(--lectoro-sub-font-size, 26px) * 0.5) !important;
+    font-style: normal !important;
+    font-weight: 500 !important;
+    line-height: 1.35 !important;
+    letter-spacing: 0.015em !important;
+    text-align: center !important;
+    text-shadow:
+        -0.06em -0.06em 0 #000,
+        0.06em -0.06em 0 #000,
+        -0.06em 0.06em 0 #000,
+        0.06em 0.06em 0 #000,
+        -0.06em 0px 0 #000,
+        0.06em 0px 0 #000,
+        0px -0.06em 0 #000,
+        0px 0.06em 0 #000,
+        0 0.12em 0.3em rgba(0, 0, 0, 0.95) !important;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+    text-wrap: balance !important;
+    pointer-events: none !important;
+    user-select: text !important;
+    z-index: 10 !important;
+    animation: qtSubTranslationFadeIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+@keyframes qtSubTranslationFadeIn {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -6px);
+    }
+    100% {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
+
+/* W trybie Enter tłumaczenie pod napisami reaguje na kursor myszy */
+body[data-lectoro-ai-active="true"] #__qt_custom_subtitles_layer .__qt_custom-sub-translation {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+}
+
+/* Aktywny etap analizy całego zdania pod napisami filmowymi (np. 4/4) */
+#__qt_custom_subtitles_layer .__qt_custom-sub-translation.__qt_custom-sub-translation-active {
+    color: #ffffff !important;
+    background: linear-gradient(135deg, rgba(78, 205, 196, 0.28), rgba(168, 85, 247, 0.32)) !important;
+    box-shadow: inset 0 0 0 1.5px #4ecdc4, 0 0 16px rgba(78, 205, 196, 0.5), 0 0 24px rgba(168, 85, 247, 0.35) !important;
+    border-radius: 6px !important;
+    padding: 3px 12px !important;
+    text-shadow: 0 0 10px rgba(78, 205, 196, 0.85), 0 1px 2px rgba(0, 0, 0, 0.95) !important;
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    animation: qtSubTranslationActivePulse 2.4s ease-in-out infinite alternate !important;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+#__qt_custom_subtitles_layer .__qt_custom-sub-translation.__qt_custom-sub-translation-active:hover {
+    background: linear-gradient(135deg, rgba(78, 205, 196, 0.42), rgba(168, 85, 247, 0.45)) !important;
+    box-shadow: inset 0 0 0 2px #00ffea, 0 0 20px rgba(78, 205, 196, 0.7) !important;
+    filter: brightness(1.1) !important;
+}
+
+#__qt_custom_subtitles_layer .__qt_custom-sub-translation.__qt_custom-sub-translation-active.__qt_speaking {
+    box-shadow: inset 0 0 0 2px #00ffea, 0 0 22px rgba(78, 205, 196, 0.75), 0 0 30px rgba(168, 85, 247, 0.5) !important;
+}
+
+#__qt_custom_subtitles_layer .__qt_custom-sub-translation.__qt_custom-sub-translation-active[data-step]::before {
+    content: attr(data-step);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78em;
+    font-weight: 700;
+    line-height: 1;
+    color: #4ecdc4;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(78, 205, 196, 0.55);
+    border-radius: 9999px;
+    padding: 2px 7px;
+    margin-right: 8px;
+    vertical-align: middle;
+    letter-spacing: 0.04em;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes qtSubTranslationActivePulse {
+    0% {
+        box-shadow: inset 0 0 0 1.5px rgba(78, 205, 196, 0.85), 0 0 12px rgba(78, 205, 196, 0.4), 0 0 20px rgba(168, 85, 247, 0.25);
+    }
+    100% {
+        box-shadow: inset 0 0 0 1.5px rgba(168, 85, 247, 0.85), 0 0 18px rgba(78, 205, 196, 0.55), 0 0 28px rgba(168, 85, 247, 0.45);
+    }
 }
 
 #__qt_custom_subtitles_layer .__qt_sub-word {
@@ -2366,4 +2478,4 @@ body[data-lectoro-ai-active="true"] #__qt_custom_subtitles_layer .__qt_sub-word:
         box-shadow: inset 0 0 0 1px rgba(168, 85, 247, 0.4);
         opacity: 1;
     }
-}
+} 
