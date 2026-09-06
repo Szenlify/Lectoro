@@ -272,3 +272,27 @@ Ostatnia aktualizacja: 2026-09-04
       6. Zachowano pełną wsteczną kompatybilność: wyeksportowano aliasy `searchPixabay: searchOpenverse` oraz `cleanPixabayTitle: cleanOpenverseTitle`.
       7. W `search(query, context)` jako podstawowego dostawcę ustawiono Openverse API z zapytaniami semantycznymi, a DuckDuckGo Clipart pozostawiono jako wtórny fallback w razie awarii.
       8. Zweryfikowano działanie testem integracyjnym `scratch/test_openverse_integration.js` dla słów `apple`, `dog`, `house`, `run` (100% poprawnych wyników Data URI, źródło `openverse`), testami składniowymi `scratch/check_syntax.js` oraz kompletnym pakietem testów Enter mode `scratch/test_enter_mode.js` (11/11 PASS).
+
+## Faza 19: Udoskonalenie Trybu Enter (Stop Auto-Close 4/4, Odczyt Meaning w TTS, Usunięcie Strzałki/Kwadratu z Chmurek) & Audyt Kodu
+
+- [x] 19.1. Usunięcie automatycznego zamykania chmurki i wznawiania wideo po zakończeniu kolejki (4/4 lub 1/1) oraz obsługa klawisza `W` (replay TTS).
+    - Log:
+      1. W `video/subtitle-overlay.js` w funkcji `speakAiExplainItem` usunięto gałąź `else if (!aiAutoAdvanceDisabled && aiExplainIndex + 1 >= aiExplainQueue.length)`, która po 800 ms wywoływała `closeAiTooltip({ resumeVideo: true })`. Po zakończeniu odczytu ostatniego elementu (np. 4/4 lub pojedynczego zdania 1/1) dymek pozostaje stale widoczny, odtwarzacz wideo pozostaje zapauzowany, a przycisk odsłuchu płynnie wraca do stanu spoczynku (usunięcie klasy `.speaking`).
+      2. Zaimplementowano i wyeksportowano w obiekcie `SubtitleOverlay` funkcję `replayCurrentAiExplainTts()`, która po naciśnięciu klawisza `W` resetuje timery, anuluje ewentualne trwające odtwarzanie i natychmiast odczytuje bieżącą kartę od nowa.
+      3. W `video/video-hotkeys.js` dodano obsługę klawisza `W` (odtwórz ponownie TTS aktywnej karty) oraz klawisza `Escape` (zamknięcie dymka i wznowienie odtwarzacza wideo).
+- [x] 19.2. Wprowadzenie odczytu `meaning` przez TTS w trybie `simple_target` (SSOT / DRY dla speechParts i speakAiExplainItem).
+    - Log:
+      1. W `video/subtitle-overlay.js` w `speakAiExplainItem` dla elementów breakdown (`item.type !== "sentence"`) zunifikowano odczyt lektora TTS: zmienna `detailLang` przyjmuje `aiExplainSourceLang` w trybie `simple_target` oraz `aiExplainTargetLang` w trybie `native`. W obu trybach syntezator odczytuje `[item.meaning, item.explanation].filter(Boolean).join(". ")`, dzięki czemu uproszczone definicje i synonimy (`meaning`) są w 100% poprawnie odczytywane głosem języka docelowego.
+      2. W `renderAiExplainContent` usunięto pomijanie znaczenia (`aiExplainMode === "simple_target" ? "" : item.meaning`), zapewniając, że atrybut `speechParts` na przycisku odsłuchu zawiera pełne znaczenie i objaśnienie bez rozbieżności.
+- [x] 19.3. Usunięcie wskaźników strzałki / obróconego kwadratu z chmurek w `styles.css` oraz wyczyszczenie powiązanego martwego kodu w `video/subtitle-overlay.js`.
+    - Log:
+      1. W `styles.css` usunięto reguły pseudo-elementów `::after`: obrócony o 45° kwadrat `#__qt_sentence_translation.__qt_sub-overlay::after`, `#__qt_sentence_translation.__qt_sub-overlay.__qt_bubble-below::after` oraz trójkątny wskaźnik `.__qt_word-cloud::after`. Wszystkie chmurki posiadają teraz czysty, minimalistyczny, nowoczesny kształt bez wystających elementów.
+      2. W `video/subtitle-overlay.js` w `positionOverlay` usunięto kalkulacje `arrowInset`, `arrowX` oraz przypisanie właściwości `--lectoro-bubble-arrow-x` do stylów overlay, likwidując martwy kod i zbędne operacje na DOM.
+- [x] 19.4. Weryfikacja testami automatycznymi (`test_enter_mode.js`, `check_syntax.js`, Cloud Functions) i audyt martwego kodu / CSS.
+    - Log:
+      1. `node scratch/test_enter_mode.js` – 15/15 testów automatycznych zakończonych sukcesem (PASS), w tym weryfikacja braku auto-zamykania na 4/4, odczytu znaczenia w TTS, obsługi klawisza W oraz usunięcia strzałek z arkusza stylów.
+      2. `node scratch/check_syntax.js` – 100% plików JS w repozytorium przechodzi kontrolę składniową (PASS).
+      3. `node scratch/test_subtitles.js`, `node scratch/test-srs.js`, `node scratch/test_anki_export.js` – wszystkie testy integralności napisów i algorytmu SRS zakończone sukcesem (PASS).
+      4. Audyt CSS: 0 martwych klas w `popup.css`, 0 martwych klas w `quiz.css`, a w `styles.css` wszystkie klasy `__qt_*` są w 100% powiązane i używane (zarówno statycznie, jak i przez szablony dynamiczne `${PREFIX}tb-${kind}` i `${P}ai_limit_*`).
+
+

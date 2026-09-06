@@ -1290,33 +1290,7 @@ video::cue {
         top 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
 }
 
-/* Visual pointer arrow connecting the bubble directly to the highlighted text */
-#__qt_sentence_translation.__qt_sub-overlay::after {
-    content: "" !important;
-    position: absolute !important;
-    bottom: -6px !important;
-    left: var(--lectoro-bubble-arrow-x, 50%) !important;
-    transform: translateX(-50%) rotate(45deg) !important;
-    width: 12px !important;
-    height: 12px !important;
-    background: #0f0f23 !important;
-    border-right: 1px solid rgba(255, 255, 255, 0.12) !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
-    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.35) !important;
-    pointer-events: none !important;
-    transition: left 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
-    z-index: 1 !important;
-}
 
-#__qt_sentence_translation.__qt_sub-overlay.__qt_bubble-below::after {
-    bottom: auto !important;
-    top: -6px !important;
-    border-right: none !important;
-    border-bottom: none !important;
-    border-left: 1px solid rgba(255, 255, 255, 0.12) !important;
-    border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
-    box-shadow: -2px -2px 5px rgba(0, 0, 0, 0.35) !important;
-}
 
 #__qt_sentence_translation[data-state="measuring"] {
     width: max-content !important;
@@ -2202,19 +2176,7 @@ html.__qt_netflix-capturing [id^="__qt_"] {
     animation: __qt_cloud-in 0.3s cubic-bezier(0.34, 1.3, 0.64, 1) forwards;
 }
 
-/* Downward-pointing arrow */
-.__qt_word-cloud::after {
-    content: "";
-    position: absolute;
-    bottom: -6px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 0;
-    height: 0;
-    border-left: 6px solid transparent;
-    border-right: 6px solid transparent;
-    border-top: 6px solid rgba(15, 15, 35, 0.3);
-}
+
 
 @keyframes __qt_cloud-in {
     0% {

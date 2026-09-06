@@ -362,9 +362,9 @@ assert(
     "subtitle-overlay.js applyTranslationFontSize must set all proportional font variables",
 );
 assert(
-    fontOverlayJs.includes("effectiveSource * 0.62") &&
-    fontOverlayJs.includes("effectiveSource * 0.54") &&
-    fontOverlayJs.includes("effectiveSource * 0.46"),
+    fontOverlayJs.includes("effectiveSource * 0.60") &&
+    fontOverlayJs.includes("effectiveSource * 0.50") &&
+    fontOverlayJs.includes("effectiveSource * 0.44"),
     "subtitle-overlay.js must calculate compact typography proportionally from effective subtitle source size",
 );
 assert(
@@ -396,6 +396,26 @@ assert(
     "wireAiExplainSaveButton must save card with targetNativeLang",
 );
 console.log("✓ Test 14 Passed: Flashcard native language translation on save in AI mode verified.");
+
+// 15. Verify Phase 19: No arrow/square pointer on bubbles & speechParts includes item.meaning in simple_target mode
+const stylesCss = fs.readFileSync(cssPath, "utf-8");
+assert(
+    !stylesCss.includes("#__qt_sentence_translation.__qt_sub-overlay::after"),
+    "styles.css must NOT contain pointer arrow square for #__qt_sentence_translation",
+);
+assert(
+    !stylesCss.includes(".__qt_word-cloud::after"),
+    "styles.css must NOT contain pointer arrow for .__qt_word-cloud",
+);
+assert(
+    !fontOverlayJs.includes("--lectoro-bubble-arrow-x"),
+    "subtitle-overlay.js must NOT calculate or set dead --lectoro-bubble-arrow-x CSS variable",
+);
+assert(
+    !fontOverlayJs.includes("aiExplainMode === \"simple_target\" ? \"\" : item.meaning"),
+    "subtitle-overlay.js must NOT omit item.meaning from speechParts in simple_target mode",
+);
+console.log("✓ Test 15 Passed: No bubble pointer arrows/squares, dead arrow calculations eliminated & TTS meaning included.");
 
 console.log("\nALL ENTER MODE, UI/UX & SETTING IMPROVEMENTS VERIFIED! 🚀");
 

@@ -13,6 +13,7 @@
         "e", "E",
         "Enter", "NumpadEnter",
         "q", "Q",
+        "Escape",
         "z", "Z",
         "[", "{", "]", "}",
         "Home", "PageUp",
@@ -120,8 +121,13 @@
                 return;
             }
 
-            // AI Explanation Queue Navigation: ArrowRight / ArrowLeft / A / D / Z (save active card)
+            // AI Explanation Queue Navigation & Controls: W (replay TTS) / ArrowRight / ArrowLeft / A / D / Z (save active card) / Escape
             if (aiTooltipOpen) {
+                if (key === "w" || key === "W") {
+                    if (overlay?.replayCurrentAiExplainTts?.()) {
+                        return;
+                    }
+                }
                 if (key === "ArrowRight" || key === "d" || key === "D") {
                     if (overlay?.nextAiExplainItem?.({ manual: true })) {
                         return;
@@ -136,6 +142,10 @@
                     if (overlay?.saveCurrentAiExplainItem?.()) {
                         return;
                     }
+                }
+                if (key === "Escape") {
+                    overlay?.closeAiTooltip?.({ resumeVideo: true });
+                    return;
                 }
                 overlay?.closeAiTooltip?.({
                     resumeVideo: !isHorizontalSubtitleNavigation,
