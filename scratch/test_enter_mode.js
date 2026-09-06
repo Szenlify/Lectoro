@@ -229,10 +229,10 @@ assert(
 );
 console.log("✓ Test 8 Passed: subtitle-overlay.js simple_target TTS voice verified successfully.");
 
-// 9. Verify Phase 14: Auto-close after queue completion & simple_target TTS refinement
+// 9. Verify Phase 14 & New Requirements: No auto-close, W key TTS replay & simple_target TTS translation
 assert(
-    updatedJsContent.includes("closeAiTooltip({ resumeVideo: true });"),
-    "subtitle-overlay.js must auto-close tooltip and resume video at queue end",
+    !updatedJsContent.includes("aiExplainIndex + 1 >= aiExplainQueue.length"),
+    "subtitle-overlay.js must NOT auto-close tooltip or resume video at queue end (cloud stays open)",
 );
 const normalizedJs = updatedJsContent.replace(/\r\n/g, "\n");
 assert(
@@ -240,14 +240,27 @@ assert(
     "subtitle-overlay.js must speak simplified sentence in sourceLang when in simple_target mode",
 );
 assert(
-    !normalizedJs.includes("if (aiExplainMode === \"simple_target\") {\n                    if (item.meaning) {"),
-    "subtitle-overlay.js must not speak native language meaning in simple_target mode breakdown items",
+    normalizedJs.includes("const detailLang =\n                    aiExplainMode === \"simple_target\"\n                        ? aiExplainSourceLang\n                        : aiExplainTargetLang;"),
+    "subtitle-overlay.js must speak breakdown items (meaning + explanation) in sourceLang when in simple_target mode",
 );
 assert(
-    normalizedJs.includes("if (aiExplainMode === \"simple_target\" && breakdownItems.length > 0) {\n                aiExplainQueue = breakdownItems;"),
-    "subtitle-overlay.js must skip sentence card in simple_target mode when breakdown items exist",
+    normalizedJs.includes("const explanationSpeech = [item.meaning, item.explanation]\n                    .filter(Boolean)\n                    .join(\". \");"),
+    "subtitle-overlay.js must speak item.meaning and item.explanation together",
 );
-console.log("✓ Test 9 Passed: Auto-close & simple_target TTS enhancements verified successfully.");
+assert(
+    updatedJsContent.includes("function replayCurrentAiExplainTts()"),
+    "subtitle-overlay.js must define replayCurrentAiExplainTts function",
+);
+assert(
+    updatedJsContent.includes("replayCurrentAiExplainTts,"),
+    "subtitle-overlay.js must export replayCurrentAiExplainTts in SubtitleOverlay",
+);
+const hotkeysJs = fs.readFileSync(path.join(__dirname, "..", "video", "video-hotkeys.js"), "utf-8");
+assert(
+    hotkeysJs.includes("overlay?.replayCurrentAiExplainTts?.()"),
+    "video-hotkeys.js must call replayCurrentAiExplainTts when W key is pressed in Enter mode",
+);
+console.log("✓ Test 9 Passed: No auto-close, W key TTS replay & simple_target translation verified successfully.");
 
 // 10. Verify Phase 15: Subtitle word hover suppression & click-to-scroll navigation in Enter mode
 const latestJs = fs.readFileSync(jsPath, "utf-8").replace(/\r\n/g, "\n");

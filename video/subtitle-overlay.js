@@ -1542,7 +1542,7 @@
             ? item.meaning
             : [
                   item.type === "sentence" ? "" : item.term,
-                  aiExplainMode === "simple_target" ? "" : item.meaning,
+                  item.meaning,
                   item.explanation,
               ]
                   .filter(Boolean)
@@ -1729,29 +1729,24 @@
                 }
                 if (isCancelled()) return;
 
-                if (aiExplainMode === "simple_target") {
-                    if (item.explanation) {
-                        await speakUntilFinished(item.explanation, aiExplainSourceLang, {
+                const detailLang =
+                    aiExplainMode === "simple_target"
+                        ? aiExplainSourceLang
+                        : aiExplainTargetLang;
+
+                const explanationSpeech = [item.meaning, item.explanation]
+                    .filter(Boolean)
+                    .join(". ");
+                if (explanationSpeech) {
+                    await speakUntilFinished(
+                        explanationSpeech,
+                        detailLang,
+                        {
                             sourceLang: aiExplainSourceLang,
                             originalText: item.term,
                             isCancelled,
-                        });
-                    }
-                } else {
-                    const explanationSpeech = [item.meaning, item.explanation]
-                        .filter(Boolean)
-                        .join(". ");
-                    if (explanationSpeech) {
-                        await speakUntilFinished(
-                            explanationSpeech,
-                            aiExplainTargetLang,
-                            {
-                                sourceLang: aiExplainSourceLang,
-                                originalText: item.term,
-                                isCancelled,
-                            },
-                        );
-                    }
+                        },
+                    );
                 }
             }
 
@@ -1764,12 +1759,6 @@
                     if (isCancelled() || aiAutoAdvanceDisabled) return;
                     showAiExplainItem(aiExplainIndex + 1);
                 }, 500);
-            } else if (!aiAutoAdvanceDisabled && aiExplainIndex + 1 >= aiExplainQueue.length) {
-                clearTimeout(aiAutoAdvanceTimer);
-                aiAutoAdvanceTimer = setTimeout(() => {
-                    if (isCancelled() || aiAutoAdvanceDisabled) return;
-                    closeAiTooltip({ resumeVideo: true });
-                }, 800);
             }
         } catch (_) {
             // Speech cancellation or error is handled gracefully
@@ -1862,6 +1851,21 @@
 
     function prevAiExplainItem(options = { manual: true }) {
         return navigateAiExplain(-1, options);
+    }
+
+    function replayCurrentAiExplainTts() {
+        if (!aiTooltipActive || !aiExplainQueue.length) return false;
+        const item = aiExplainQueue[aiExplainIndex];
+        if (!item) return false;
+
+        clearTimeout(aiAutoAdvanceTimer);
+        aiAutoAdvanceTimer = null;
+        aiAutoAdvanceDisabled = true;
+
+        SharedTtsService.cancel();
+        const speechToken = ++aiExplainSpeechToken;
+        speakAiExplainItem(item, speechToken);
+        return true;
     }
 
     function saveCurrentAiExplainItem() {
@@ -2039,6 +2043,16 @@
                 ["INPUT", "TEXTAREA"].includes(ev.target?.tagName) ||
                 ev.target?.isContentEditable;
             if (isTyping) return;
+
+            if (ev.key === "w" || ev.key === "W") {
+                if (aiTooltipActive) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    ev.stopImmediatePropagation();
+                    replayCurrentAiExplainTts();
+                }
+                return;
+            }
 
             if (ev.key === "z" || ev.key === "Z") {
                 const currentSaveBtn = translationOverlay?.querySelector(
@@ -3514,6 +3528,7 @@
         navigateAiExplain,
         nextAiExplainItem,
         prevAiExplainItem,
+        replayCurrentAiExplainTts,
         isSubtitleUiOpen: () =>
             eTranslateActive ||
             wordCloudActive ||
