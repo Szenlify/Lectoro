@@ -1542,7 +1542,7 @@
             ? item.meaning
             : [
                   item.type === "sentence" ? "" : item.term,
-                  item.meaning,
+                  aiExplainMode === "simple_target" ? "" : item.meaning,
                   item.explanation,
               ]
                   .filter(Boolean)
@@ -1729,24 +1729,29 @@
                 }
                 if (isCancelled()) return;
 
-                const detailLang =
-                    aiExplainMode === "simple_target"
-                        ? aiExplainSourceLang
-                        : aiExplainTargetLang;
-
-                const explanationSpeech = [item.meaning, item.explanation]
-                    .filter(Boolean)
-                    .join(". ");
-                if (explanationSpeech) {
-                    await speakUntilFinished(
-                        explanationSpeech,
-                        detailLang,
-                        {
+                if (aiExplainMode === "simple_target") {
+                    if (item.explanation) {
+                        await speakUntilFinished(item.explanation, aiExplainSourceLang, {
                             sourceLang: aiExplainSourceLang,
                             originalText: item.term,
                             isCancelled,
-                        },
-                    );
+                        });
+                    }
+                } else {
+                    const explanationSpeech = [item.meaning, item.explanation]
+                        .filter(Boolean)
+                        .join(". ");
+                    if (explanationSpeech) {
+                        await speakUntilFinished(
+                            explanationSpeech,
+                            aiExplainTargetLang,
+                            {
+                                sourceLang: aiExplainSourceLang,
+                                originalText: item.term,
+                                isCancelled,
+                            },
+                        );
+                    }
                 }
             }
 
@@ -1759,6 +1764,12 @@
                     if (isCancelled() || aiAutoAdvanceDisabled) return;
                     showAiExplainItem(aiExplainIndex + 1);
                 }, 500);
+            } else if (!aiAutoAdvanceDisabled && aiExplainIndex + 1 >= aiExplainQueue.length) {
+                clearTimeout(aiAutoAdvanceTimer);
+                aiAutoAdvanceTimer = setTimeout(() => {
+                    if (isCancelled() || aiAutoAdvanceDisabled) return;
+                    closeAiTooltip({ resumeVideo: true });
+                }, 800);
             }
         } catch (_) {
             // Speech cancellation or error is handled gracefully
@@ -1851,21 +1862,6 @@
 
     function prevAiExplainItem(options = { manual: true }) {
         return navigateAiExplain(-1, options);
-    }
-
-    function replayCurrentAiExplainTts() {
-        if (!aiTooltipActive || !aiExplainQueue.length) return false;
-        const item = aiExplainQueue[aiExplainIndex];
-        if (!item) return false;
-
-        clearTimeout(aiAutoAdvanceTimer);
-        aiAutoAdvanceTimer = null;
-        aiAutoAdvanceDisabled = true;
-
-        SharedTtsService.cancel();
-        const speechToken = ++aiExplainSpeechToken;
-        speakAiExplainItem(item, speechToken);
-        return true;
     }
 
     function saveCurrentAiExplainItem() {
@@ -2043,16 +2039,6 @@
                 ["INPUT", "TEXTAREA"].includes(ev.target?.tagName) ||
                 ev.target?.isContentEditable;
             if (isTyping) return;
-
-            if (ev.key === "w" || ev.key === "W") {
-                if (aiTooltipActive) {
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                    ev.stopImmediatePropagation();
-                    replayCurrentAiExplainTts();
-                }
-                return;
-            }
 
             if (ev.key === "z" || ev.key === "Z") {
                 const currentSaveBtn = translationOverlay?.querySelector(
@@ -2833,11 +2819,11 @@
 
         // Enter AI explanation proportional font sizes (scaled percentage-wise to subtitle text, slightly more compact)
         const termSize =
-            Math.round(Math.max(13, Math.min(30, effectiveSource * 0.62)) * 10) / 10;
+            Math.round(Math.max(13, Math.min(30, effectiveSource * 0.60)) * 10) / 10;
         const meaningSize =
-            Math.round(Math.max(12, Math.min(26, effectiveSource * 0.54)) * 10) / 10;
+            Math.round(Math.max(12, Math.min(26, effectiveSource * 0.50)) * 10) / 10;
         const explanationSize =
-            Math.round(Math.max(11, Math.min(20, effectiveSource * 0.46)) * 10) / 10;
+            Math.round(Math.max(11, Math.min(20, effectiveSource * 0.44)) * 10) / 10;
         const metaSize =
             Math.round(Math.max(9, Math.min(15, effectiveSource * 0.38)) * 10) / 10;
         const sentenceTermSize =
@@ -3528,7 +3514,6 @@
         navigateAiExplain,
         nextAiExplainItem,
         prevAiExplainItem,
-        replayCurrentAiExplainTts,
         isSubtitleUiOpen: () =>
             eTranslateActive ||
             wordCloudActive ||

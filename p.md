@@ -55,3 +55,23 @@ jak klikne Enter wszystko w animacji tak jak teraz jest powiekszajace sie dymki 
 
 Nie przepisuj całego projektu i nie wykonuj zmian w ciemno.
 pamietaj o zasadzie (Zasada DRY - Don't Repeat Yourself) oraz Centralizacja Logiki (Single Source of Truth)
+
+
+
+
+
+
+
+
+
+
+
+Jesteś ekspertem od Chrome Extensions, Manifest V3 oraz UI/UX
+
+## WAŻNE
+
+w finkcji "Enter" niech jak bedzie 4/4 to zeby chmurka nei znikala i nie wznawiala filmu oraz w trybie simple language tlumaczenia AI to meaning tlumaczenie tez ma byc czytanie przez TTS
+
+
+pamietaj o zasadzie (Zasada DRY - Don't Repeat Yourself) oraz Centralizacja Logiki (Single Source of Truth)
+i wskarz co trzeba przepisac aby uczytelnic kod aby zeby funkcjonalnosci zostaly takie same sprawdz rowniez css czy nie ma martwych klass i w kodzie czy nie ma martwego kodu lub starych nie uzywanych funkcji
