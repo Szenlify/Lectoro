@@ -456,6 +456,9 @@
         const { box } = ensureCustomSubtitlesLayer();
         if (!box) return;
 
+        box.style.setProperty("opacity", "1", "important");
+        box.style.setProperty("pointer-events", "auto", "important");
+
         if (!aiSubTranslationEl) {
             aiSubTranslationEl = document.createElement("div");
             aiSubTranslationEl.className = `${PREFIX}custom-sub-translation`;
@@ -467,22 +470,34 @@
         if (!aiSubTranslationEl._hasAiClickHandler) {
             aiSubTranslationEl._hasAiClickHandler = true;
             aiSubTranslationEl.addEventListener("click", (e) => {
-                if (!aiTooltipActive) return;
-                e.preventDefault();
-                e.stopPropagation();
-                if (aiExplainQueue.length > 1) {
-                    const sentenceIdx = aiExplainQueue.findIndex(
-                        (it) => it.type === "sentence",
-                    );
-                    if (sentenceIdx !== -1) {
-                        if (aiExplainIndex === sentenceIdx) {
-                            replayCurrentAiExplainTts();
-                        } else {
-                            showAiExplainItem(sentenceIdx, { manual: true });
+                if (aiTooltipActive) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (aiExplainQueue.length > 1) {
+                        const sentenceIdx = aiExplainQueue.findIndex(
+                            (it) => it.type === "sentence",
+                        );
+                        if (sentenceIdx !== -1) {
+                            if (aiExplainIndex === sentenceIdx) {
+                                replayCurrentAiExplainTts();
+                            } else {
+                                showAiExplainItem(sentenceIdx, { manual: true });
+                            }
                         }
+                    } else {
+                        replayCurrentAiExplainTts();
                     }
-                } else {
-                    replayCurrentAiExplainTts();
+                } else if (eTranslateActive) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (aiSubTranslationText) {
+                        aiSubTranslationEl?.classList.add(`${PREFIX}speaking`);
+                        QT.speak(aiSubTranslationText, "auto", {
+                            isCancelled: () => !eTranslateActive,
+                        }).finally(() => {
+                            aiSubTranslationEl?.classList.remove(`${PREFIX}speaking`);
+                        });
+                    }
                 }
             });
         }
@@ -496,6 +511,9 @@
 
     function removeSubtitleTranslationUnderOriginal() {
         aiSubTranslationText = "";
+        try {
+            document.body?.removeAttribute("data-lectoro-sub-translate-active");
+        } catch (_) {}
         if (aiSubTranslationEl) {
             aiSubTranslationEl.classList.remove(
                 C.UI_CLASSES.CUSTOM_SUB_TRANSLATION_ACTIVE,
@@ -508,6 +526,14 @@
         if (customSubBoxEl) {
             customSubBoxEl.style.transform = "";
             customSubBoxEl.classList.remove(`${PREFIX}custom-sub-lifted`);
+            if (activeLines.length === 0) {
+                customSubBoxEl.style.setProperty("opacity", "0", "important");
+                customSubBoxEl.style.setProperty(
+                    "pointer-events",
+                    "none",
+                    "important",
+                );
+            }
         }
     }
 
@@ -718,17 +744,19 @@
             box.appendChild(lineEl);
         }
 
-        if (aiTooltipActive && aiSubTranslationText) {
+        if ((aiTooltipActive || eTranslateActive) && aiSubTranslationText) {
             showSubtitleTranslationUnderOriginal(aiSubTranslationText);
-            const currentItem = aiExplainQueue[aiExplainIndex];
-            if (currentItem?.type === "sentence" && aiExplainQueue.length > 1) {
-                aiSubTranslationEl?.classList.add(
-                    C.UI_CLASSES.CUSTOM_SUB_TRANSLATION_ACTIVE,
-                );
-                aiSubTranslationEl?.setAttribute(
-                    "data-step",
-                    `${aiExplainIndex + 1}/${aiExplainQueue.length}`,
-                );
+            if (aiTooltipActive) {
+                const currentItem = aiExplainQueue[aiExplainIndex];
+                if (currentItem?.type === "sentence" && aiExplainQueue.length > 1) {
+                    aiSubTranslationEl?.classList.add(
+                        C.UI_CLASSES.CUSTOM_SUB_TRANSLATION_ACTIVE,
+                    );
+                    aiSubTranslationEl?.setAttribute(
+                        "data-step",
+                        `${aiExplainIndex + 1}/${aiExplainQueue.length}`,
+                    );
+                }
             }
         }
 
@@ -3431,13 +3459,6 @@
         translationOverlay.style.setProperty("right", "auto", "important");
     }
 
-    function showSubLoading(layout = null) {
-        return showSubtitleOverlayLoader(layout, {
-            text: "✨ Translating…",
-            ariaLabel: "Translating sentence...",
-        });
-    }
-
     function revealOverlayContent(
         content,
         layout = translationAnchorLayout,
@@ -3507,77 +3528,6 @@
             }, OVERLAY_REVEAL_MS);
         });
         return overlay;
-    }
-
-    function applySentenceTranslation(html, layout = translationAnchorLayout) {
-        const overlay = translationOverlay || createOverlay(layout);
-        overlay.classList.remove(AI_EXPLAIN_OVERLAY_CLASS);
-        overlay.classList.add(`${PREFIX}sentence-clean-overlay`);
-        overlay.setAttribute("role", "status");
-        overlay.setAttribute("aria-live", "polite");
-
-        const effectiveLayout = layout || translationAnchorLayout;
-        applyTranslationFontSize(overlay, effectiveLayout);
-
-        const originalRect = effectiveLayout?.rect || getSubtitleRect();
-        const originalWidth = originalRect?.width
-            ? Math.round(originalRect.width)
-            : 0;
-        if (originalWidth > 0) {
-            const maxSubWidth = Math.min(
-                window.innerWidth - 32,
-                Math.max(140, originalWidth),
-            );
-            overlay.style.setProperty(
-                "--lectoro-sentence-max-width",
-                `${maxSubWidth}px`,
-            );
-        } else {
-            overlay.style.removeProperty("--lectoro-sentence-max-width");
-        }
-        overlay.style.removeProperty("--lectoro-sentence-width");
-
-        const copy = document.createElement("div");
-        copy.className = `${PREFIX}translation-copy ${PREFIX}sentence-clean-copy`;
-        copy.setAttribute("dir", "auto");
-        copy.innerHTML = html;
-        revealOverlayContent(copy, layout, "Sentence translation");
-    }
-
-    function applyTranslation(
-        translatedText,
-        layout = translationAnchorLayout,
-        sourceText = null,
-        srcLang = null,
-        tgtLang = null,
-    ) {
-        const sentence = String(translatedText || "").trim();
-        const originalText = String(
-            sourceText ||
-                activeText ||
-                getPlayerRegistry()?.getCurrentText() ||
-                "",
-        ).trim();
-
-        const html = `
-            <div class="${PREFIX}sentence-clean-wrap">
-                <div class="${PREFIX}sentence-clean-text">${QT.escapeHtml(sentence)}</div>
-                <div class="${PREFIX}sentence-clean-footer">
-                    <button class="${PREFIX}ai-explain-save-btn ${PREFIX}sentence-clean-save-btn" title="Save sentence for review (Z)">
-                        <span>${SVG.SAVE}</span>
-                    </button>
-                </div>
-            </div>`;
-
-        applySentenceTranslation(html, layout);
-        wireAiExplainSaveButton(
-            originalText || sentence,
-            sentence,
-            "",
-            srcLang || "auto",
-            tgtLang || "pl",
-        );
-        eTranslateActive = true;
     }
 
     /** Render `html` in the AI-explain overlay variant; returns the content node for wiring buttons. */
@@ -3668,25 +3618,31 @@
         if (!text) return;
 
         eTranslateActive = true;
+        try {
+            document.body?.setAttribute(
+                "data-lectoro-sub-translate-active",
+                "true",
+            );
+        } catch (_) {}
         pauseIfPlaying(video);
 
         const layout = options.layout || captureSubtitleLayout();
-        showSubLoading(layout);
         const translation = await (options.translationTask ||
             createSubtitleTranslationTask(text, modeRevision, layout));
         if (!translation || modeRevision !== subtitleModeRevision) return;
         if (translation.limitReached) return;
-        applyTranslation(
-            translation.translatedText,
-            layout,
-            text,
-            translation.detectedLang,
-            translation.targetLang,
-        );
+
+        showSubtitleTranslationUnderOriginal(translation.translatedText);
+
         if (options.speakTranslated) {
-            await QT.speak(translation.translatedText, translation.targetLang, {
-                isCancelled: () => modeRevision !== subtitleModeRevision,
-            });
+            aiSubTranslationEl?.classList.add(`${PREFIX}speaking`);
+            try {
+                await QT.speak(translation.translatedText, translation.targetLang, {
+                    isCancelled: () => modeRevision !== subtitleModeRevision,
+                });
+            } finally {
+                aiSubTranslationEl?.classList.remove(`${PREFIX}speaking`);
+            }
         }
     }
 
@@ -3695,6 +3651,9 @@
         quotaCountdownTimer = null;
         subtitleModeRevision += 1;
         subtitleModeStarting = false;
+        try {
+            document.body?.removeAttribute("data-lectoro-sub-translate-active");
+        } catch (_) {}
         removeOverlay();
         removeWordClouds();
         globalThis.LectoroNetflixAdapter?.setOriginalSubtitlesHidden?.(false);

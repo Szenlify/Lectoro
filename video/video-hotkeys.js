@@ -225,10 +225,6 @@
                         modeRevision,
                     );
 
-                    if (registry.isNetflixPage() && !data.wordCloudMode) {
-                        globalThis.LectoroNetflixAdapter?.setOriginalSubtitlesHidden?.(true);
-                    }
-
                     if (data.wordCloudMode && data.subtitleTTS) {
                         overlay.showWordClouds(video, {
                             skipSpeech: true,

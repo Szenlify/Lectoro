@@ -401,3 +401,36 @@ Ostatnia aktualizacja: 2026-09-04
       3. Wynik `node scratch/check_syntax.js`: 100% plików JS przechodzi kontrolę składniową (PASS).
       4. Wyniki `test_subtitles.js`, `test-srs.js`, `test_anki_export.js`, `test_video_sub_toggle.js`, `check_dead_css.js`: wszystkie testy zaliczone z kodem 0 (PASS).
 
+## Faza 23: Ujednolicenie Trybu Translate Full Sentence z Wyglądem Trybu Enter (Brak Spinera, Szary Tekst 50% pod Napisami Oryginalnymi)
+
+- [x] 23.1. Aktualizacja `video/subtitle-overlay.js`: usunięcie spinera ładowania (`showSubLoading`), bezpośrednie użycie Single Source of Truth `showSubtitleTranslationUnderOriginal(translation.translatedText)` oraz zachowanie tłumaczenia przy rerenderze napisów (`eTranslateActive`).
+    - Log:
+      1. W `doSentenceTranslation` usunięto wywołanie `showSubLoading(layout)`, całkowicie eliminując spiner / loader podczas tłumaczenia pełnego zdania.
+      2. Zastąpiono dawne modalne `applyTranslation(...)` wywołaniem `showSubtitleTranslationUnderOriginal(translation.translatedText)`. Dzięki temu tłumaczenie pojawia się dokładnie pod oryginalnymi napisami z identycznym designem jak w trybie Enter (kolor szary `#cbd5e1`, 50% wielkości napisów oryginalnych, animacja `qtSubTranslationFadeIn`, automatyczne unoszenie warstwy napisów `adjustSubtitlePositionForTranslation`).
+      3. Do elementu tłumaczenia dodano klasę `.__qt_speaking` podczas odtwarzania TTS w `doSentenceTranslation` (usuwaną w bloku `finally`), gwarantując spójny z trybem Enter efekt wizualny mówienia.
+      4. W `showSubtitleTranslationUnderOriginal` dodano obsługę ponownego odczytania lektora TTS przy kliknięciu na szary tekst tłumaczenia w trybie `eTranslateActive`, a także zadbano o wymuszenie `box.style.opacity = '1'` oraz pointer-events.
+      5. W `renderCustomSubtitles` zaktualizowano warunek na `if ((aiTooltipActive || eTranslateActive) && aiSubTranslationText)`, co zapewnia trwałość szarego tłumaczenia pod napisami w przypadku odświeżenia lub repositioningu napisów w trakcie zatrzymania wideo.
+      6. W `removeSubtitleTranslationUnderOriginal` oraz `restoreOriginal` dodano czyszczenie atrybutu `data-lectoro-sub-translate-active` oraz przywracanie stanu widoczności `customSubBoxEl`.
+- [x] 23.2. Aktualizacja `video/video-hotkeys.js`: zachowanie widoczności oryginalnych napisów (usunięcie ukrywania napisów Netflixa w trybie `subtitleTTS`), umożliwiające wyświetlanie szarego tłumaczenia bezpośrednio pod nimi.
+    - Log:
+      1. W `video/video-hotkeys.js` usunięto blok `if (registry.isNetflixPage() && !data.wordCloudMode) { globalThis.LectoroNetflixAdapter?.setOriginalSubtitlesHidden?.(true); }`.
+      2. Oryginalne napisy (w tym natywne napisy Netflixa) pozostają w pełni widoczne podczas tłumaczenia zdania, a przetłumaczony szary tekst 50% renderuje się bezpośrednio pod nimi.
+- [x] 23.3. Usunięcie przestarzałego kodu i stylów CSS: usunięcie reguł `.__qt_sentence-clean-overlay` z `styles.css` oraz martwych metod `applyTranslation` / `applySentenceTranslation` z `video/subtitle-overlay.js`.
+    - Log:
+      1. W `video/subtitle-overlay.js` usunięto martwe metody `applySentenceTranslation`, `applyTranslation` oraz `showSubLoading`.
+      2. W `styles.css` usunięto przestarzały blok reguł `.__qt_sentence-clean-overlay`, `.__qt_sentence-clean-wrap`, `.__qt_sentence-clean-text`, `.__qt_sentence-clean-footer`, `.__qt_sentence-clean-save-btn` (dawna pływająca ciemna ramka).
+      3. W `styles.css` dodano selektor `body[data-lectoro-sub-translate-active="true"] #__qt_custom_subtitles_layer .__qt_custom-sub-translation { pointer-events: auto !important; cursor: pointer !important; }`.
+- [x] 23.4. Weryfikacja testami automatycznymi (`scratch/test_enter_mode.js`, `scratch/check_syntax.js` itp.).
+    - Log:
+      1. W `scratch/test_enter_mode.js` dodano kompleksowy Test 20 weryfikujący:
+         - Brak definicji i wywołań `showSubLoading` w `subtitle-overlay.js` (brak spinera).
+         - Wywołanie `showSubtitleTranslationUnderOriginal(translation.translatedText)` w `doSentenceTranslation`.
+         - Ustawianie atrybutu `data-lectoro-sub-translate-active` na `document.body`.
+         - Obsługę `eTranslateActive` w `renderCustomSubtitles`.
+         - Brak ukrywania napisów Netflixa w `video-hotkeys.js`.
+         - Czystość `styles.css` (brak reguł `.__qt_sentence-clean-overlay` oraz obecność styli kursora i pointer-events).
+         - Wykonanie symulacji w piaskownicy Node.js (sprawdzenie przekazania tekstu do `showSubtitleTranslationUnderOriginal`, wywołania `QT.speak` oraz przełączania klasy `.__qt_speaking`).
+      2. Wynik `node scratch/test_enter_mode.js`: 20/20 testów zakończonych sukcesem (PASS).
+      3. Wynik `node scratch/check_syntax.js`: 100% plików JS w repozytorium przechodzi kontrolę składniową bez błędów (PASS).
+      4. Wyniki `test_subtitles.js`, `test-srs.js`, `test_anki_export.js`, `test_video_sub_toggle.js`, `check_dead_css.js`: wszystkie testy zaliczone z kodem 0 (PASS).
+

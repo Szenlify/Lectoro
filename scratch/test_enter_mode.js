@@ -688,6 +688,105 @@ assert.strictEqual(subTransAttributes["data-step"], undefined, "data-step attrib
 assert.strictEqual(spokenItem.term, "curious", "TTS must read the word on stage 3/4");
 console.log("✓ Test 19 Passed: Phase 22 Stage 4/4 without bubble, visual highlight, step badge, TTS and hotkeys verified successfully.");
 
-console.log("\nALL ENTER MODE, UI/UX & SETTING IMPROVEMENTS VERIFIED! 🚀");
+// 20. Verify Phase 23: Translate Full Sentence Mode Unification with Enter Mode (No Spinner, 50% Grey Subtitles Under Original)
+const latestOverlayJsP23 = fs.readFileSync(path.join(__dirname, "../video/subtitle-overlay.js"), "utf-8").replace(/\r\n/g, "\n");
+const latestHotkeysJsP23 = fs.readFileSync(path.join(__dirname, "../video/video-hotkeys.js"), "utf-8").replace(/\r\n/g, "\n");
+const latestCssP23 = fs.readFileSync(path.join(__dirname, "../styles.css"), "utf-8").replace(/\r\n/g, "\n");
+
+// 20.1 Check no showSubLoading in subtitle-overlay.js (brak spinera)
+assert(!latestOverlayJsP23.includes("showSubLoading"), "showSubLoading must not exist in subtitle-overlay.js");
+
+// 20.2 Check doSentenceTranslation calls showSubtitleTranslationUnderOriginal
+const doSentMatch = latestOverlayJsP23.match(/async function doSentenceTranslation[\s\S]*?\n    \}/);
+assert(doSentMatch, "doSentenceTranslation function must exist in subtitle-overlay.js");
+assert(
+    doSentMatch[0].includes("showSubtitleTranslationUnderOriginal(translation.translatedText)"),
+    "doSentenceTranslation must call showSubtitleTranslationUnderOriginal(translation.translatedText)",
+);
+assert(
+    doSentMatch[0].includes("data-lectoro-sub-translate-active"),
+    "doSentenceTranslation must set data-lectoro-sub-translate-active on document.body",
+);
+
+// 20.3 Check renderCustomSubtitles supports eTranslateActive
+assert(
+    latestOverlayJsP23.includes("(aiTooltipActive || eTranslateActive) && aiSubTranslationText"),
+    "renderCustomSubtitles must keep translation visible if eTranslateActive is true",
+);
+
+// 20.4 Check video-hotkeys does NOT hide original subtitles on Netflix for sentence translation
+assert(
+    !latestHotkeysJsP23.includes("globalThis.LectoroNetflixAdapter?.setOriginalSubtitlesHidden?.(true)"),
+    "video-hotkeys.js must not hide Netflix original subtitles for subtitleTTS",
+);
+
+// 20.5 Check styles.css has active pointer events for data-lectoro-sub-translate-active and dead styles removed
+assert(
+    latestCssP23.includes('body[data-lectoro-sub-translate-active="true"] #__qt_custom_subtitles_layer .__qt_custom-sub-translation'),
+    "styles.css must allow pointer events for data-lectoro-sub-translate-active",
+);
+assert(
+    !latestCssP23.includes(".__qt_sentence-clean-overlay"),
+    "styles.css must have dead .__qt_sentence-clean-overlay styles removed",
+);
+
+// 20.6 Sandbox execution of doSentenceTranslation
+let p23UnderOriginalText = null;
+let p23TtsSpokenText = null;
+let p23TtsLang = null;
+let p23SpeakingClassAdded = false;
+let p23SpeakingClassRemoved = false;
+let p23Paused = false;
+const p23SubEl = {
+    classList: {
+        add: (c) => { if (c === "__qt_speaking") p23SpeakingClassAdded = true; },
+        remove: (c) => { if (c === "__qt_speaking") p23SpeakingClassRemoved = true; },
+    },
+};
+
+const p23Sandbox = {
+    subtitleModeRevision: 1,
+    activeText: "We need to go deeper into the forest.",
+    getPlayerRegistry: () => ({ getCurrentText: () => "We need to go deeper into the forest." }),
+    eTranslateActive: false,
+    document: {
+        body: {
+            setAttribute: () => {},
+            removeAttribute: () => {},
+        },
+    },
+    pauseIfPlaying: (v) => { p23Paused = true; },
+    captureSubtitleLayout: () => ({ rect: { top: 100, left: 200 } }),
+    createSubtitleTranslationTask: async () => ({
+        translatedText: "Musimy wejść głębiej w las.",
+        targetLang: "pl",
+    }),
+    showSubtitleTranslationUnderOriginal: (txt) => {
+        p23UnderOriginalText = txt;
+    },
+    aiSubTranslationEl: p23SubEl,
+    PREFIX: "__qt_",
+    QT: {
+        speak: async (text, lang) => {
+            p23TtsSpokenText = text;
+            p23TtsLang = lang;
+        },
+    },
+};
+
+vm.runInNewContext(doSentMatch[0] + "; this.doSentenceTranslation = doSentenceTranslation;", p23Sandbox);
+
+(async () => {
+    await p23Sandbox.doSentenceTranslation(null, null, { speakTranslated: true });
+    assert.strictEqual(p23Paused, true, "Video must be paused during sentence translation");
+    assert.strictEqual(p23UnderOriginalText, "Musimy wejść głębiej w las.", "Translation text must be passed to showSubtitleTranslationUnderOriginal");
+    assert.strictEqual(p23TtsSpokenText, "Musimy wejść głębiej w las.", "TTS must read translation aloud");
+    assert.strictEqual(p23TtsLang, "pl", "TTS language must match targetLang");
+    assert.strictEqual(p23SpeakingClassAdded, true, "Speaking glow class must be added during speech");
+    assert.strictEqual(p23SpeakingClassRemoved, true, "Speaking glow class must be removed after speech");
+    console.log("✓ Test 20 Passed: Phase 23 Translate full sentence mode unified with Enter mode (no spinner, 50% grey text under original subtitles, TTS) verified successfully.");
+
+    console.log("\nALL ENTER MODE, UI/UX & SETTING IMPROVEMENTS VERIFIED! 🚀");
+})();
 
 
