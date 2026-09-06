@@ -541,7 +541,7 @@
 #__qt_tooltip .__qt_image-thumb {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
     object-position: center;
     display: block;
     opacity: 0;
