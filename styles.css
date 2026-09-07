@@ -920,7 +920,7 @@ video::cue {
     top: calc(100% + 6px) !important;
     left: 50% !important;
     transform: translateX(-50%) !important;
-    width: max-content !important;
+    width: max-content;
     max-width: min(84vw, 850px) !important;
     box-sizing: border-box !important;
     margin: 0 auto !important;
@@ -929,7 +929,7 @@ video::cue {
     background-color: var(--lectoro-sub-bg-color, transparent) !important;
     box-decoration-break: clone !important;
     -webkit-box-decoration-break: clone !important;
-    color: #00ffea !important;
+    color: #dbdbdb !important;
     font-family: "Netflix Sans Variable", "Netflix Sans", "Helvetica Neue", "Segoe UI", Roboto, Arial, sans-serif !important;
     font-size: calc(var(--lectoro-sub-font-size, 26px) * 0.5) !important;
     font-style: normal !important;
@@ -955,6 +955,65 @@ video::cue {
     user-select: text !important;
     z-index: 10 !important;
     animation: qtSubTranslationFadeIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+#__qt_custom_subtitles_layer .__qt_custom-sub-translation[data-sentence-state] {
+    width: max-content;
+    animation: none !important;
+    overflow: hidden !important;
+}
+
+#__qt_custom_subtitles_layer .__qt_custom-sub-translation[data-sentence-state="loading"] {
+    width: 96px;
+    height: 12px;
+    margin-top: 4px !important;
+    border-radius: 6px !important;
+}
+
+#__qt_custom_subtitles_layer .__qt_custom-sub-translation[data-sentence-state]::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(105deg, rgba(255,255,255,0.07) 20%, rgba(255,255,255,0.2) 48%, rgba(255,255,255,0.10) 78%);
+    background-size: 240% 100%;
+    animation: __qt_sentence_shimmer 1.15s linear infinite;
+    transition: opacity 320ms ease;
+}
+
+#__qt_custom_subtitles_layer .__qt_sentence-copy {
+    display: block;
+    opacity: 0;
+    transform: translateY(4px);
+    filter: blur(3px);
+    transition: opacity 360ms ease, transform 360ms ease, filter 360ms ease;
+}
+
+#__qt_custom_subtitles_layer [data-sentence-state="ready"]::after {
+    opacity: 0;
+    animation: none;
+}
+
+#__qt_custom_subtitles_layer [data-sentence-state="ready"] .__qt_sentence-copy {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+
+@keyframes __qt_sentence_shimmer {
+    from { background-position: 150% 0; }
+    to { background-position: -90% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #__qt_custom_subtitles_layer .__qt_custom-sub-translation[data-sentence-state]::after {
+        animation: none;
+        transition: none;
+    }
+    #__qt_custom_subtitles_layer .__qt_sentence-copy {
+        transition: none;
+    }
 }
 
 @keyframes qtSubTranslationFadeIn {

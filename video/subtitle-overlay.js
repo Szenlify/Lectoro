@@ -449,7 +449,7 @@
         }
     }
 
-    function showSubtitleTranslationUnderOriginal(translationText) {
+    function showSubtitleTranslationUnderOriginal(translationText, { loading = false } = {}) {
         if (!translationText) return;
         aiSubTranslationText = translationText;
 
@@ -465,7 +465,41 @@
             aiSubTranslationEl.setAttribute("dir", "auto");
         }
 
-        aiSubTranslationEl.textContent = translationText;
+        const el = aiSubTranslationEl;
+        const wasLoading = el.dataset.sentenceState === "loading";
+        const previousRect = wasLoading ? el.getBoundingClientRect() : null;
+        if (loading) {
+            el.dataset.sentenceState = "loading";
+            el.setAttribute("aria-label", "Translating");
+            el.setAttribute("aria-busy", "true");
+            el.textContent = "";
+        } else if (wasLoading) {
+            el.dataset.sentenceState = "expanding";
+            const copy = document.createElement("span");
+            copy.className = `${PREFIX}sentence-copy`;
+            copy.textContent = translationText;
+            el.replaceChildren(copy);
+            const targetRect = el.getBoundingClientRect();
+            const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+            const finish = () => {
+                if (el !== aiSubTranslationEl || !el.isConnected) return;
+                el.dataset.sentenceState = "ready";
+                el.removeAttribute("aria-label");
+                el.setAttribute("aria-busy", "false");
+                adjustSubtitlePositionForTranslation();
+            };
+            if (!reducedMotion && el.animate) {
+                const growth = el.animate([
+                    { width: `${previousRect.width}px`, height: `${previousRect.height}px` },
+                    { width: `${targetRect.width}px`, height: `${targetRect.height}px` },
+                ], { duration: 420, easing: "cubic-bezier(0.22, 1, 0.36, 1)" });
+                growth.finished.then(finish, () => {});
+            } else {
+                finish();
+            }
+        } else if (el.textContent !== translationText) {
+            el.textContent = translationText;
+        }
 
         if (!aiSubTranslationEl._hasAiClickHandler) {
             aiSubTranslationEl._hasAiClickHandler = true;
@@ -745,7 +779,9 @@
         }
 
         if (!aiTooltipActive && eTranslateActive && aiSubTranslationText) {
-            showSubtitleTranslationUnderOriginal(aiSubTranslationText);
+            showSubtitleTranslationUnderOriginal(aiSubTranslationText, {
+                loading: aiSubTranslationEl?.dataset.sentenceState === "loading",
+            });
         }
 
         box.style.setProperty("opacity", "1", "important");
@@ -3583,10 +3619,22 @@
         pauseIfPlaying(video);
 
         const layout = options.layout || captureSubtitleLayout();
-        const translation = await (options.translationTask ||
-            createSubtitleTranslationTask(text, modeRevision, layout));
-        if (!translation || modeRevision !== subtitleModeRevision) return;
-        if (translation.limitReached) return;
+        showSubtitleTranslationUnderOriginal(text, { loading: true });
+        let translation;
+        try {
+            translation = await (options.translationTask ||
+                createSubtitleTranslationTask(text, modeRevision, layout));
+        } catch (error) {
+            if (modeRevision === subtitleModeRevision) {
+                removeSubtitleTranslationUnderOriginal();
+            }
+            throw error;
+        }
+        if (modeRevision !== subtitleModeRevision) return;
+        if (!translation || translation.limitReached) {
+            removeSubtitleTranslationUnderOriginal();
+            return;
+        }
 
         showSubtitleTranslationUnderOriginal(translation.translatedText);
 
