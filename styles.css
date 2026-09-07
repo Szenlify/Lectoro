@@ -1652,7 +1652,7 @@ body[data-lectoro-sub-translate-active="true"] #__qt_custom_subtitles_layer .__q
     flex-direction: column !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 6px !important;
+    gap: 2px !important;
     width: 100% !important;
     text-align: center !important;
 }
@@ -1694,11 +1694,11 @@ body[data-lectoro-sub-translate-active="true"] #__qt_custom_subtitles_layer .__q
     font-size: var(--lectoro-ai-meaning-font-size, 16px) !important;
     font-weight: 700 !important;
     color: rgba(255, 255, 255, 0.95) !important;
-    line-height: 1.45 !important;
+    /* line-height: 1.45 !important; */
     text-align: center !important;
     width: 100% !important;
     margin-top: 2px !important;
-    white-space: pre-line !important;
+    /* white-space: pre-line !important; */
 }
 
 #__qt_sentence_translation .__qt_ai-term-explanation {
@@ -1751,9 +1751,9 @@ body[data-lectoro-sub-translate-active="true"] #__qt_custom_subtitles_layer .__q
     font-size: var(--lectoro-ai-sentence-meaning-font-size, 16px) !important;
     font-weight: 700 !important;
     color: rgba(255, 255, 255, 0.95) !important;
-    line-height: 1.45 !important;
+    /* line-height: 1.45 !important; */
     text-align: center !important;
-    white-space: pre-line !important;
+    /* white-space: pre-line !important; */
     margin-top: 0 !important;
 }
 

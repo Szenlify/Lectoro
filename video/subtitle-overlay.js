@@ -3268,15 +3268,15 @@
 
         // Enter AI explanation proportional font sizes (scaled percentage-wise to subtitle text, slightly more compact)
         const termSize =
-            Math.round(Math.max(13, Math.min(30, effectiveSource * 0.60)) * 10) / 10;
+            Math.round(Math.max(13, Math.min(30, effectiveSource * 0.58)) * 10) / 10;
         const meaningSize =
-            Math.round(Math.max(12, Math.min(26, effectiveSource * 0.50)) * 10) / 10;
+            Math.round(Math.max(12, Math.min(26, effectiveSource * 0.48)) * 10) / 10;
         const explanationSize =
-            Math.round(Math.max(11, Math.min(20, effectiveSource * 0.44)) * 10) / 10;
+            Math.round(Math.max(11, Math.min(20, effectiveSource * 0.40)) * 10) / 10;
         const metaSize =
-            Math.round(Math.max(9, Math.min(15, effectiveSource * 0.32)) * 10) / 10;
+            Math.round(Math.max(9, Math.min(15, effectiveSource * 0.30)) * 10) / 10;
         const sentenceTermSize =
-            Math.round(Math.max(13, Math.min(26, effectiveSource * 0.56)) * 10) / 10;
+            Math.round(Math.max(13, Math.min(26, effectiveSource * 0.40)) * 10) / 10;
         const sentenceMeaningSize = meaningSize;
         const badgeSize =
             Math.round(Math.max(7.5, Math.min(10.5, effectiveSource * 0.28)) * 10) / 10;
