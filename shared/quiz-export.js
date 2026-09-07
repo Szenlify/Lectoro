@@ -86,7 +86,7 @@
                 multiple_choice: "Wielokrotny wybór",
                 fill_blank: "Uzupełnij luki",
                 matching: "Dopasuj pary",
-                translation: "Przetłumacz",
+
                 true_false: "Prawda czy fałsz",
                 correct_form: "Popraw formę słowa",
                 odd_one_out: "Który wyraz nie pasuje?",
@@ -133,7 +133,7 @@
                 multiple_choice: "Multiple Choice",
                 fill_blank: "Fill in the Blanks",
                 matching: "Match the Pairs",
-                translation: "Translate",
+
                 true_false: "True or False",
                 correct_form: "Correct Word Form",
                 odd_one_out: "Odd One Out",
@@ -180,7 +180,7 @@
                 multiple_choice: "Opción múltiple",
                 fill_blank: "Completa los espacios",
                 matching: "Une las parejas",
-                translation: "Traduce",
+
                 true_false: "Verdadero o falso",
                 correct_form: "Forma correcta de la palabra",
                 odd_one_out: "¿Cuál no encaja?",
@@ -227,7 +227,7 @@
                 multiple_choice: "Multiple-Choice",
                 fill_blank: "Lückentext",
                 matching: "Paare zuordnen",
-                translation: "Übersetzen",
+
                 true_false: "Richtig oder Falsch",
                 correct_form: "Richtige Wortform",
                 odd_one_out: "Was passt nicht?",
@@ -274,7 +274,7 @@
                 multiple_choice: "Choix multiple",
                 fill_blank: "Texte à trous",
                 matching: "Associer les paires",
-                translation: "Traduire",
+
                 true_false: "Vrai ou Faux",
                 correct_form: "Forme correcte du mot",
                 odd_one_out: "Trouvez l'intrus",
@@ -321,7 +321,7 @@
                 multiple_choice: "Scelta multipla",
                 fill_blank: "Riempi gli spazi",
                 matching: "Abbina le coppie",
-                translation: "Traduci",
+
                 true_false: "Vero o Falso",
                 correct_form: "Forma corretta della parola",
                 odd_one_out: "Trova l'intruso",
@@ -368,7 +368,7 @@
                 multiple_choice: "Múltipla escolha",
                 fill_blank: "Preencha as lacunas",
                 matching: "Associe os pares",
-                translation: "Traduza",
+
                 true_false: "Verdadeiro ou Falso",
                 correct_form: "Forma correta da palavra",
                 odd_one_out: "Qual não pertence?",
@@ -415,7 +415,7 @@
                 multiple_choice: "Вибір відповіді",
                 fill_blank: "Заповніть пропуски",
                 matching: "Знайдіть пари",
-                translation: "Перекладіть",
+
                 true_false: "Правда чи хибно",
                 correct_form: "Правильна форма слова",
                 odd_one_out: "Що зайве?",
@@ -462,7 +462,7 @@
                 multiple_choice: "Тест с вариантами",
                 fill_blank: "Вставьте пропущенное",
                 matching: "Сопоставьте пары",
-                translation: "Переведите",
+
                 true_false: "Правда или ложь",
                 correct_form: "Правильная форма слова",
                 odd_one_out: "Найдите лишнее",
@@ -509,7 +509,7 @@
                 multiple_choice: "Meerkeuze",
                 fill_blank: "Invuloefening",
                 matching: "Koppel de paren",
-                translation: "Vertalen",
+
                 true_false: "Waar of Niet waar",
                 correct_form: "Juiste woordvorm",
                 odd_one_out: "Welk woord hoort er niet bij?",
@@ -556,7 +556,7 @@
                 multiple_choice: "Flerval",
                 fill_blank: "Fyll i luckorna",
                 matching: "Para ihop",
-                translation: "Översätt",
+
                 true_false: "Sant eller Falskt",
                 correct_form: "Rätt ordform",
                 odd_one_out: "Vilket ord ska bort?",
@@ -603,7 +603,7 @@
                 multiple_choice: "Výběr z možností",
                 fill_blank: "Doplňte do textu",
                 matching: "Spojte dvojice",
-                translation: "Přeložte",
+
                 true_false: "Pravda nebo Nepravda",
                 correct_form: "Správný tvar slova",
                 odd_one_out: "Které slovo nepatří?",
@@ -650,7 +650,7 @@
                 multiple_choice: "Çoktan Seçmeli",
                 fill_blank: "Boşluk Doldurma",
                 matching: "Eşleştirme",
-                translation: "Çeviri",
+
                 true_false: "Doğru mu Yanlış mı?",
                 correct_form: "Doğru Kelime Hali",
                 odd_one_out: "Farklı Olanı Bul",
@@ -697,7 +697,7 @@
                 multiple_choice: "单项选择题",
                 fill_blank: "选词填空",
                 matching: "连线匹配",
-                translation: "句子翻译",
+
                 true_false: "正误判断",
                 correct_form: "词形填空",
                 odd_one_out: "找出不同类项",
@@ -744,7 +744,7 @@
                 multiple_choice: "選択問題",
                 fill_blank: "空欄補充",
                 matching: "マッチング",
-                translation: "翻訳問題",
+
                 true_false: "正誤判定",
                 correct_form: "適切な語形",
                 odd_one_out: "仲間外れ探し",
@@ -796,7 +796,7 @@
         multiple_choice: 1,
         fill_blank: 1,
         matching: 1,
-        translation: 2,
+
         true_false: 1,
         correct_form: 2,
         odd_one_out: 1,
@@ -903,7 +903,7 @@
             const answer = options.find((o) => key(o) === key(q.answer));
             return answer ? { options, answer } : null;
         };
-        const types = new Set(["multiple_choice", "fill_blank", "matching", "translation", "true_false", "correct_form", "odd_one_out"]);
+        const types = new Set(["multiple_choice", "fill_blank", "matching", "true_false", "correct_form", "odd_one_out"]);
         const sections = quiz.sections.map((sec) => {
             const type = cleanString(sec?.type).toLowerCase();
             if (!types.has(type) || seenSections.has(type)) return null;
@@ -920,10 +920,6 @@
             if (!Array.isArray(sec.questions)) return null;
             const questions = sec.questions.map((q) => {
                 if (!q || typeof q !== "object") return null;
-                if (type === "translation") {
-                    const prompt = cleanString(q.prompt), answer = cleanString(q.answer);
-                    return prompt && answer ? { prompt, answer, acceptable_answers: alternatives(q) } : null;
-                }
                 if (type === "fill_blank") {
                     const sentence = cleanString(q.sentence), answer = cleanString(q.answer), hint = cleanString(q.hint);
                     return oneBlank(sentence) && answer && hint ? { sentence, answer, hint, acceptable_answers: alternatives(q) } : null;
@@ -951,6 +947,8 @@
     }
 
     function buildQuizHtml(quiz, words, options = {}) {
+        quiz = { ...quiz, sections: (quiz.sections || []).filter((sec) =>
+            Object.prototype.hasOwnProperty.call(QUIZ_POINTS_PER_TYPE, sec?.type)) };
         const { escapeHtml } = (typeof SharedUtils !== "undefined" ? SharedUtils : {
             escapeHtml: (s) => (s || "").toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"),
         });
@@ -1009,13 +1007,6 @@
                         )
                         .join("");
                     body = `<div class="quiz-matching-box"><ol class="quiz-match-col">${aList}</ol><ol class="quiz-match-col" type="A">${bList}</ol></div>`;
-                } else if (sec.type === "translation") {
-                    body = (sec.questions || [])
-                        .map((q) => {
-                            qNum++;
-                            return `<div class="quiz-item"><p class="q-title"><b>${qNum}.</b> ${escapeHtml(q.prompt)}</p><div class="write-line"></div></div>`;
-                        })
-                        .join("");
                 } else if (sec.type === "true_false") {
                     body = (sec.questions || [])
                         .map((q) => {
@@ -1053,7 +1044,6 @@
             .map((sec) => {
                 if (
                     sec.type === "multiple_choice" ||
-                    sec.type === "translation" ||
                     sec.type === "fill_blank" ||
                     sec.type === "correct_form" ||
                     sec.type === "odd_one_out"
@@ -1181,6 +1171,8 @@
 
     // ── 4. Interactive, Gamified Quiz Engine ────────────────────────────
     function buildInteractiveQuizHtml(quiz, words, options = {}) {
+        quiz = { ...quiz, sections: (quiz.sections || []).filter((sec) =>
+            Object.prototype.hasOwnProperty.call(QUIZ_POINTS_PER_TYPE, sec?.type)) };
         const { escapeHtml, escapeAttr } = (typeof SharedUtils !== "undefined" ? SharedUtils : {
             escapeHtml: (s) => (s || "").toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"),
             escapeAttr: (s) => (s || "").toString().replace(/"/g, "&quot;").replace(/'/g, "&#39;"),
@@ -1282,24 +1274,6 @@
                             })
                             .join("") +
                         `</div>`;
-                } else if (sec.type === "translation") {
-                    body = (sec.questions || [])
-                        .map((q) => {
-                            qNum++;
-                            const alts = Array.isArray(q.acceptable_answers) && q.acceptable_answers.length
-                                ? q.acceptable_answers
-                                : (Array.isArray(q.alternatives) ? q.alternatives : []);
-                            return `<div class="q" data-qtype="text" data-qid="${qNum}" data-points="${secPoints}" data-answer="${escapeAttr(q.answer)}" data-alternatives="${escapeAttr(JSON.stringify(alts))}">
-                                <div class="q-text-row"><p class="q-text"><b>${qNum}.</b> ${escapeHtml(q.prompt)} <span class="pts-badge">${secPoints} ${escapeHtml(i18n.pointsSuffix)}</span></p>${ttsBtn(q.prompt, tgtLang)}</div>
-                                <div class="input-row">
-                                    <input type="text" class="q-input" placeholder="${escapeAttr(i18n.yourAnswerPlaceholder)}" onkeydown="if(event.key==='Enter'){event.preventDefault();gradeQuestion(this.closest('.q'));}">
-                                    <button type="button" class="btn-mini" onclick="gradeQuestion(this.closest('.q'))">✓</button>
-                                </div>
-                                <div class="q-match-bar"><div class="q-match-fill"></div><span class="q-match-label"></span></div>
-                                <div class="q-feedback"></div>
-                            </div>`;
-                        })
-                        .join("");
                 } else if (sec.type === "true_false") {
                     body = (sec.questions || [])
                         .map((q) => {
@@ -1337,7 +1311,7 @@
                 return `<section class="quiz-section">
                     <div class="sec-header">
                         <h2>${secNum}. ${escapeHtml(heading)}</h2>
-                        <span class="quiz-section-points">${secPoints} ${escapeHtml(i18n.pointsSuffix)}</span>
+                        <span class="quiz-section-points">${quizSectionPoints(sec)} ${escapeHtml(i18n.pointsSuffix)}</span>
                     </div>
                     <p class="instructions">${escapeHtml(sec.instructions || "")}</p>
                     ${body}
