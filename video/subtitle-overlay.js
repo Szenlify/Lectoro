@@ -208,7 +208,7 @@
         if (!layer) return;
         const opacity =
             typeof currentSubBgOpacity === "number" &&
-            !isNaN(currentSubBgOpacity)
+                !isNaN(currentSubBgOpacity)
                 ? Math.max(0, Math.min(100, currentSubBgOpacity))
                 : 0;
 
@@ -309,7 +309,7 @@
                 if (videoResizeObserver && trackedVideo) {
                     try {
                         videoResizeObserver.unobserve(trackedVideo);
-                    } catch (_) {}
+                    } catch (_) { }
                 }
                 trackedVideo = video;
                 if (typeof ResizeObserver !== "undefined") {
@@ -388,7 +388,7 @@
             const isNetflix = isNetflixPage();
             const posPercent =
                 typeof currentSubPosition === "number" &&
-                !isNaN(currentSubPosition)
+                    !isNaN(currentSubPosition)
                     ? Math.max(0, Math.min(100, currentSubPosition))
                     : 14;
 
@@ -513,7 +513,7 @@
         aiSubTranslationText = "";
         try {
             document.body?.removeAttribute("data-lectoro-sub-translate-active");
-        } catch (_) {}
+        } catch (_) { }
         if (aiSubTranslationEl) {
             aiSubTranslationEl.classList.remove(
                 C.UI_CLASSES.CUSTOM_SUB_TRANSLATION_ACTIVE,
@@ -551,7 +551,7 @@
                 measureCtx.font = `600 ${fontSizePx}px "Netflix Sans Variable", "Netflix Sans", "Helvetica Neue", "Segoe UI", Roboto, sans-serif`;
                 return measureCtx.measureText(text).width;
             }
-        } catch (_) {}
+        } catch (_) { }
         return text.length * fontSizePx * 0.55;
     }
 
@@ -704,7 +704,7 @@
             newText &&
             (!recentSubtitlesHistory.length ||
                 recentSubtitlesHistory[recentSubtitlesHistory.length - 1] !==
-                    newText)
+                newText)
         ) {
             recentSubtitlesHistory.push(newText);
             if (recentSubtitlesHistory.length > 10) {
@@ -838,9 +838,9 @@
         } else if (payload && typeof payload.fullText === "string") {
             const lines = payload.fullText
                 ? payload.fullText
-                      .split(/\r?\n/)
-                      .map((l) => l.trim())
-                      .filter(Boolean)
+                    .split(/\r?\n/)
+                    .map((l) => l.trim())
+                    .filter(Boolean)
                 : [];
             renderCustomSubtitles(lines);
         }
@@ -1285,7 +1285,7 @@
         aiTooltipActive = false;
         try {
             document.body?.removeAttribute("data-lectoro-ai-active");
-        } catch (_) {}
+        } catch (_) { }
         clearTimeout(aiAutoAdvanceTimer);
         aiAutoAdvanceTimer = null;
         aiAutoAdvanceDisabled = false;
@@ -1373,7 +1373,7 @@
             ribbonPills.forEach((p) =>
                 p.classList.remove(`${PREFIX}pill-highlight`),
             );
-        } catch (_) {}
+        } catch (_) { }
     }
 
     function normalizeWordForMatching(w) {
@@ -1667,10 +1667,10 @@
         const formattedExplanation =
             !isSentenceStage && item.explanation
                 ? QT.formatSpeechMarkup(
-                      item.explanation,
-                      explanationLang,
-                      markupOptions,
-                  )
+                    item.explanation,
+                    explanationLang,
+                    markupOptions,
+                )
                 : "";
 
         const speakLang =
@@ -1681,15 +1681,14 @@
         const speechText = isSentenceStage
             ? item.meaning || ""
             : [item.term, item.meaning, item.explanation]
-                  .filter(Boolean)
-                  .join(". ");
+                .filter(Boolean)
+                .join(". ");
 
         const bodyHtml = `
             <div class="${PREFIX}body">
                 <div class="${PREFIX}ai-term-card" data-type="${QT.escapeAttr(item.type || "")}">
-                    ${
-                        isSentenceStage
-                            ? `
+                    ${isSentenceStage
+                ? `
                     <div class="${PREFIX}ai-term-title-wrap ${PREFIX}ai-sentence-wrap">
                         <div class="${PREFIX}ai-term-meaning">
                             ${QT.escapeHtml(item.meaning || "")}
@@ -1698,7 +1697,7 @@
                             <button class="${PREFIX}speak" data-text="${QT.escapeAttr(speechText)}" data-lang="${QT.escapeAttr(speakLang)}" data-source-lang="${QT.escapeAttr(aiExplainSourceLang)}" data-original-text="${QT.escapeAttr(item.term)}" title="Odtwórz wymowę" aria-label="Odtwórz wymowę">${SVG.SPEAKER}</button>
                         </span>
                     </div>`
-                            : `
+                : `
                     <div class="${PREFIX}ai-term-header">
                         ${item.badge ? `<span class="${PREFIX}ai-badge">${QT.escapeHtml(item.badge)}</span>` : ""}
                         <div class="${PREFIX}ai-term-title-wrap">
@@ -1708,23 +1707,21 @@
                             </span>
                         </div>
                     </div>
-                    ${
-                        item.meaning
-                            ? `
+                    ${item.meaning
+                    ? `
                     <div class="${PREFIX}ai-term-meaning">
                         ${QT.escapeHtml(item.meaning)}
                     </div>`
-                            : ""
-                    }
-                    ${
-                        formattedExplanation
-                            ? `
+                    : ""
+                }
+                    ${formattedExplanation
+                    ? `
                     <div class="${PREFIX}ai-term-explanation">
                         ${formattedExplanation}
                     </div>`
-                            : ""
-                    }`
-                    }
+                    : ""
+                }`
+            }
                 </div>
             </div>`;
 
@@ -2296,7 +2293,7 @@
                                 cleanCardText(trTerm.translated) ||
                                 trTerm.translated;
                         }
-                    } catch (_) {}
+                    } catch (_) { }
 
                     if (contextSentence) {
                         try {
@@ -2309,7 +2306,7 @@
                                     cleanCardText(trSent.translated) ||
                                     trSent.translated;
                             }
-                        } catch (_) {}
+                        } catch (_) { }
                     }
                 } else if (
                     !cleanedMeaning ||
@@ -2325,7 +2322,7 @@
                                 cleanCardText(trTerm.translated) ||
                                 trTerm.translated;
                         }
-                    } catch (_) {}
+                    } catch (_) { }
                 }
 
                 const resolvedAiSentence = [aiDefinition, cleanedExplanation]
@@ -2422,9 +2419,9 @@
         const targetVideo = video || getPlayerRegistry()?.getVideo();
         const targetText = String(
             currentText ||
-                activeText ||
-                getPlayerRegistry()?.getCurrentText() ||
-                "",
+            activeText ||
+            getPlayerRegistry()?.getCurrentText() ||
+            "",
         ).trim();
         const registry = getPlayerRegistry();
 
@@ -2613,18 +2610,18 @@
         removeSubtitleTranslationUnderOriginal();
         try {
             document.body?.setAttribute("data-lectoro-ai-active", "true");
-        } catch (_) {}
+        } catch (_) { }
         pauseIfPlaying(video);
         QT.hideTooltip();
 
         const layout = captureSubtitleLayout();
         const rect = layout?.rect ||
             getSubtitleRect() || {
-                left: window.innerWidth / 2 - 100,
-                top: window.innerHeight - 150,
-                width: 200,
-                height: 50,
-            };
+            left: window.innerWidth / 2 - 100,
+            top: window.innerHeight - 150,
+            width: 200,
+            height: 50,
+        };
         aiExplainLayout = layout || { rect };
 
         showAiShimmer(aiExplainLayout);
@@ -2928,8 +2925,8 @@
             activeWordSpans.length > 0
                 ? activeWordSpans
                 : opts.sourceElements ||
-                  getPlayerRegistry()?.getSubtitleElements() ||
-                  [];
+                getPlayerRegistry()?.getSubtitleElements() ||
+                [];
 
         if (spans.length === 0) return;
         const fullText =
@@ -2970,7 +2967,7 @@
         if (!opts.skipSpeech && translatedFullText?.trim()) {
             QT.speak(translatedFullText, targetLang, {
                 isCancelled: () => modeRevision !== subtitleModeRevision,
-            }).catch(() => {});
+            }).catch(() => { });
         }
 
         const translatableSpans = wordSpans.filter((span) =>
@@ -3096,7 +3093,7 @@
                         detectedLang: cached.detectedLang || "en",
                     };
                 }
-            } catch (_) {}
+            } catch (_) { }
         }
 
         // 2. Check local quota before translation
@@ -3225,8 +3222,8 @@
         const liveFontSize = subtitleReference
             ? window.getComputedStyle(subtitleReference).fontSize
             : customSubLayerEl?.style?.getPropertyValue(
-                  "--lectoro-sub-font-size",
-              ) || "";
+                "--lectoro-sub-font-size",
+            ) || "";
         const sourceFontSize = Number.parseFloat(
             layout?.fontSize || liveFontSize,
         );
@@ -3400,9 +3397,9 @@
         const placeBelow = aboveTop < edgeGap;
         const top = placeBelow
             ? Math.min(
-                  rect.bottom + bubbleGap,
-                  viewportHeight - bubbleHeight - edgeGap,
-              )
+                rect.bottom + bubbleGap,
+                viewportHeight - bubbleHeight - edgeGap,
+            )
             : aboveTop;
         translationOverlay.classList.toggle(
             `${PREFIX}bubble-below`,
@@ -3582,7 +3579,7 @@
                 "data-lectoro-sub-translate-active",
                 "true",
             );
-        } catch (_) {}
+        } catch (_) { }
         pauseIfPlaying(video);
 
         const layout = options.layout || captureSubtitleLayout();
@@ -3612,7 +3609,7 @@
         subtitleModeStarting = false;
         try {
             document.body?.removeAttribute("data-lectoro-sub-translate-active");
-        } catch (_) {}
+        } catch (_) { }
         removeOverlay();
         removeWordClouds();
         globalThis.LectoroNetflixAdapter?.setOriginalSubtitlesHidden?.(false);
@@ -3747,10 +3744,9 @@
             title = "✔ Saved for review";
             bodyHtml = `
                 ${textHtml}
-                ${
-                    translated && translated !== text
-                        ? `<div class="${PREFIX}save_toast_sub">${QT.escapeHtml(translated)}</div>`
-                        : ""
+                ${translated && translated !== text
+                    ? `<div class="${PREFIX}save_toast_sub">${QT.escapeHtml(translated)}</div>`
+                    : ""
                 }
             `;
             if (thumb)

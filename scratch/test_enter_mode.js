@@ -437,9 +437,9 @@ assert(
 const vm = require("vm");
 const sandbox = {
     window: {},
-    document: { addEventListener: () => {} },
+    document: { addEventListener: () => { } },
     navigator: { userAgent: "" },
-    chrome: { runtime: { id: "test" }, storage: { local: { get: () => {} } } },
+    chrome: { runtime: { id: "test" }, storage: { local: { get: () => { } } } },
     LectoroConstants: {
         PREFIX: "__qt_",
         UI_CLASSES: {},
@@ -452,10 +452,10 @@ const sandbox = {
     QT: {
         escapeHtml: (s) => s,
         escapeAttr: (s) => s,
-        addDismissHandler: () => {},
+        addDismissHandler: () => { },
         formatSpeechMarkup: (s) => s,
     },
-    SharedTtsService: { cancel: () => {} },
+    SharedTtsService: { cancel: () => { } },
     SharedSubtitleService: {},
 };
 // Extract and evaluate resolveAiBadge function directly from subtitle-overlay.js
@@ -642,17 +642,17 @@ const showSandbox = {
     aiAutoAdvanceTimer: null,
     aiExplainSpeechToken: 0,
     aiExplainLayout: { rect: { top: 0, left: 0 } },
-    clearTimeout: () => {},
-    SharedTtsService: { cancel: () => {} },
-    ensureAiExplainKeydownListener: () => {},
+    clearTimeout: () => { },
+    SharedTtsService: { cancel: () => { } },
+    ensureAiExplainKeydownListener: () => { },
     removeOverlay: () => { overlayRemoved = true; },
     removeSubtitleTranslationUnderOriginal: () => { subTransRemoved = true; },
-    updateSubtitleVideoHighlights: () => {},
+    updateSubtitleVideoHighlights: () => { },
     speakAiExplainItem: (item) => { spokenItem = item; },
     renderAiExplainContent: (idx) => `<div>Card ${idx}</div>`,
     applyAiExplanation: (html) => { appliedHtml = html; return { querySelectorAll: () => [], querySelector: () => null }; },
-    wireAiExplainSpeakButton: () => {},
-    wireAiExplainSaveButton: () => {},
+    wireAiExplainSpeakButton: () => { },
+    wireAiExplainSaveButton: () => { },
     PREFIX: "__qt_",
 };
 
@@ -736,8 +736,8 @@ const p23Sandbox = {
     eTranslateActive: false,
     document: {
         body: {
-            setAttribute: () => {},
-            removeAttribute: () => {},
+            setAttribute: () => { },
+            removeAttribute: () => { },
         },
     },
     pauseIfPlaying: (v) => { p23Paused = true; },
