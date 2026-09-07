@@ -36,7 +36,8 @@ let reviewTargetLang = "pl";
 whenPopupReady((data) => {
     reviewDirection = data.reviewDirection || "normal";
     reviewTargetLang = data.targetLang || "pl";
-    reviewSystemVoice = data.speechVoice === "random" ? "" : (data.speechVoice || "");
+    reviewSystemVoice =
+        data.speechVoice === "random" ? "" : data.speechVoice || "";
     if (data.speechVoice === "random") {
         chrome.storage.local.set({ speechVoice: "" });
     }
@@ -60,9 +61,11 @@ function getActiveReviewLangs() {
     const card = reviewQueue?.[reviewIndex];
     const src = card?.srcLang || "en";
     const tgt = card?.tgtLang || reviewTargetLang || "pl";
-    const langTagFn = (typeof LectoroConstants !== "undefined" && typeof LectoroConstants.langTag === "function")
-        ? LectoroConstants.langTag
-        : (c) => String(c || "?").toUpperCase();
+    const langTagFn =
+        typeof LectoroConstants !== "undefined" &&
+        typeof LectoroConstants.langTag === "function"
+            ? LectoroConstants.langTag
+            : (c) => String(c || "?").toUpperCase();
     return {
         srcTag: langTagFn(src),
         tgtTag: langTagFn(tgt),
@@ -100,7 +103,6 @@ function setReviewVoiceStatus(message = "", type = "") {
     status.className = `review-voice-status${type ? ` ${type}` : ""}`;
 }
 
-
 function closeReviewVoiceMenu() {
     const menu = document.getElementById("reviewVoiceMenu");
     const btn = document.getElementById("reviewVoiceBtn");
@@ -128,18 +130,16 @@ function syncReviewVoiceButton() {
             .enabled;
     const voice = selectedReviewVoice();
     const usingElevenLabs =
-        enabled && ttsMode === "elevenlabs" && !!reviewElVoiceId && reviewElVoiceId !== "random";
+        enabled &&
+        ttsMode === "elevenlabs" &&
+        !!reviewElVoiceId &&
+        reviewElVoiceId !== "random";
 
     btn.classList.toggle("is-elevenlabs", usingElevenLabs);
-    systemOption?.classList.toggle(
-        "active",
-        !usingElevenLabs,
-    );
+    systemOption?.classList.toggle("active", !usingElevenLabs);
     badge.classList.toggle("is-locked", !enabled);
     badge.textContent = usingElevenLabs ? "EL" : "AI";
-    label.textContent = usingElevenLabs
-        ? voice?.name || "ElevenLabs"
-        : "Voice";
+    label.textContent = usingElevenLabs ? voice?.name || "ElevenLabs" : "Voice";
     btn.title = usingElevenLabs
         ? `ElevenLabs: ${voice?.name || "selected voice"}`
         : "Choose review voice";
@@ -174,8 +174,7 @@ function syncElevenLabsVoiceActiveState() {
     if (!list) return false;
     list.querySelectorAll(".review-voice-item").forEach((btn) => {
         const isActive =
-            ttsMode === "elevenlabs" &&
-            reviewElVoiceId === btn.dataset.voiceId;
+            ttsMode === "elevenlabs" && reviewElVoiceId === btn.dataset.voiceId;
         btn.classList.toggle("active", isActive);
     });
     return true;
@@ -258,14 +257,19 @@ async function loadReviewElevenLabsVoices() {
     reviewVoicesLoading = true;
     setReviewVoiceStatus("Loading voices…");
     try {
-        const rawVoices = await SubscriptionService.getElevenLabsVoices("review");
+        const rawVoices =
+            await SubscriptionService.getElevenLabsVoices("review");
         reviewElVoices = Array.isArray(rawVoices) ? rawVoices : [];
         if (reviewElVoices.length > 0) {
-            const currentValid = reviewElVoices.some((v) => v.voice_id === reviewElVoiceId);
+            const currentValid = reviewElVoices.some(
+                (v) => v.voice_id === reviewElVoiceId,
+            );
             if (!currentValid) {
                 reviewElVoiceId = reviewElVoices[0].voice_id;
                 if (ttsMode === "elevenlabs") {
-                    await chrome.storage.local.set({ elVoiceId: reviewElVoiceId });
+                    await chrome.storage.local.set({
+                        elVoiceId: reviewElVoiceId,
+                    });
                 }
             }
         }
@@ -292,10 +296,7 @@ async function updateReviewVoiceUI() {
         reviewVoiceProfile = await SubscriptionService.effectiveProfile(false);
     } catch (error) {
         reviewVoiceProfile = null;
-        setReviewVoiceStatus(
-            error.message || "Failed to check plan.",
-            "error",
-        );
+        setReviewVoiceStatus(error.message || "Failed to check plan.", "error");
     }
 
     const enabled =
@@ -336,7 +337,8 @@ document
             !!reviewVoiceProfile &&
             SubscriptionConfig.getPlanLimits(reviewVoiceProfile.plan).elevenLabs
                 .enabled;
-        if (enabled && !reviewElVoices.length) await loadReviewElevenLabsVoices();
+        if (enabled && !reviewElVoices.length)
+            await loadReviewElevenLabsVoices();
     });
 
 document
@@ -389,11 +391,18 @@ async function deleteReviewWord(w) {
     if (typeof stopPopupSpeak === "function") stopPopupSpeak();
     try {
         if (typeof SharedWordRepository !== "undefined") {
-            await SharedWordRepository.deleteWord(w.id || w.original, w.timestamp);
+            await SharedWordRepository.deleteWord(
+                w.id || w.original,
+                w.timestamp,
+            );
         } else {
             const data = await chrome.storage.local.get({ savedWords: [] });
             const words = (data.savedWords || []).filter(
-                (x) => !(x.original === w.original && x.translated === w.translated),
+                (x) =>
+                    !(
+                        x.original === w.original &&
+                        x.translated === w.translated
+                    ),
             );
             await chrome.storage.local.set({ savedWords: words });
         }
@@ -403,8 +412,7 @@ async function deleteReviewWord(w) {
     // Remove from current queue and continue
     reviewQueue.splice(reviewIndex, 1);
     reviewTotalDue = reviewQueue.length;
-    if (reviewIndex >= reviewQueue.length)
-        reviewIndex = reviewQueue.length - 1;
+    if (reviewIndex >= reviewQueue.length) reviewIndex = reviewQueue.length - 1;
     if (reviewIndex < 0) reviewIndex = 0;
     reviewAnswerShown = false;
     renderReview();
@@ -420,9 +428,13 @@ async function deleteAllReviews() {
             const data = await chrome.storage.local.get({ savedWords: [] });
             const allWords = data.savedWords || [];
             const now = Date.now();
-            const isDueFn = typeof isDueForReview === "function"
-                ? isDueForReview
-                : (typeof SharedUtils !== "undefined" && SharedUtils.isDueForReview ? SharedUtils.isDueForReview : () => false);
+            const isDueFn =
+                typeof isDueForReview === "function"
+                    ? isDueForReview
+                    : typeof SharedUtils !== "undefined" &&
+                        SharedUtils.isDueForReview
+                      ? SharedUtils.isDueForReview
+                      : () => false;
             const remaining = allWords.filter((w) => !isDueFn(w, now));
             await chrome.storage.local.set({ savedWords: remaining });
         }
@@ -605,40 +617,87 @@ function reviewControlsHtml(sr, answerShown) {
         (reviewDirection === "normal" && !answerShown) ||
         (reviewDirection === "reverse" && answerShown);
     return `
-        <button class="review-flip-btn" type="button">
-            <span class="review-flip-keys"><kbd>↓</kbd><kbd>S</kbd></span>
-            <span>${answerShown ? "Show question" : "Show answer"}</span>
+<button class="review-flip-btn" type="button">
+    <span class="review-flip-keys">
+        <kbd>↓</kbd>
+        <kbd>S</kbd>
+    </span>
+    <span>${answerShown ? "Show question" : "Show answer"}</span>
+</button>
+
+<div class="review-controls">
+    <div class="review-rating">
+        <div class="review-rating-label">Did you know the answer?</div>
+
+        <div class="review-rating-buttons review-rating-buttons-2">
+            <button class="review-rate-btn rate-no" data-grade="1" type="button">
+                <span class="rate-key-pair">
+                    <kbd>←</kbd>
+                    <kbd>A</kbd>
+                </span>
+
+                <span class="rate-copy">
+                    <span class="rate-label">Don't know</span>
+                    <span class="review-next-info">${labels[0]}</span>
+                </span>
+            </button>
+
+            <button class="review-rate-btn rate-yes" data-grade="2" type="button">
+                <span class="rate-key-pair">
+                    <kbd>→</kbd>
+                    <kbd>D</kbd>
+                </span>
+
+                <span class="rate-copy">
+                    <span class="rate-label">Know</span>
+                    <span class="review-next-info">${labels[1]}</span>
+                </span>
+            </button>
+        </div>
+    </div>
+
+    <div class="review-shortcuts" aria-label="Review keyboard shortcuts">
+        <span>
+            <span class="shortcut-keys">
+                <kbd>↑</kbd>
+                <kbd>W</kbd>
+            </span>
+            speak
+        </span>
+
+        <span>
+            <span class="shortcut-keys">
+                <kbd>↓</kbd>
+                <kbd>S</kbd>
+            </span>
+            flip
+        </span>
+
+        ${
+            originalSideShown
+                ? `
+                <span>
+                    <span class="shortcut-keys">
+                        <kbd>Enter</kbd>
+                    </span>
+                    AI explain & translate
+                </span>
+                `
+                : ""
+        }
+    </div>
+
+    <div class="review-actions-row">
+        <button class="review-edit-btn" type="button">
+            <span aria-hidden="true">✏️</span> Edit
         </button>
-        <div class="review-controls">
-            <div class="review-rating">
-                <div class="review-rating-label">Did you know the answer?</div>
-                <div class="review-rating-buttons review-rating-buttons-2">
-                    <button class="review-rate-btn rate-no" data-grade="1" type="button" title="Don't know (← or A)">
-                        <span class="rate-key-pair"><kbd>←</kbd><kbd>A</kbd></span>
-                        <span class="rate-copy">
-                            <span class="rate-label">Don't know</span>
-                            <span class="review-next-info">${labels[0]}</span>
-                        </span>
-                    </button>
-                    <button class="review-rate-btn rate-yes" data-grade="2" type="button" title="Know (→ or D)">
-                        <span class="rate-key-pair"><kbd>→</kbd><kbd>D</kbd></span>
-                        <span class="rate-copy">
-                            <span class="rate-label">Know</span>
-                            <span class="review-next-info">${labels[1]}</span>
-                        </span>
-                    </button>
-                </div>
-            </div>
-            <div class="review-shortcuts" aria-label="Review keyboard shortcuts">
-                <span><span class="shortcut-keys"><kbd>↑</kbd><kbd>W</kbd></span> speak</span>
-                <span><span class="shortcut-keys"><kbd>↓</kbd><kbd>S</kbd></span> flip</span>
-                ${originalSideShown ? '<span><span class="shortcut-keys"><kbd>Enter</kbd></span> AI explain & translate</span>' : ""}
-            </div>
-            <div class="review-actions-row">
-                <button class="review-edit-btn" type="button"><span aria-hidden="true">✏️</span> Edit</button>
-                <button class="review-delete-btn" type="button"><span aria-hidden="true">🗑</span> Delete</button>
-            </div>
-        </div>`;
+
+        <button class="review-delete-btn" type="button">
+            <span aria-hidden="true">🗑</span> Delete
+        </button>
+    </div>
+</div>
+`;
 }
 
 function attachReviewCardControls(card, w) {
@@ -656,11 +715,11 @@ function attachReviewCardControls(card, w) {
     });
 }
 
-
 function reviewScreenshotHtml(url) {
     if (!url) return "";
     const resolvedUrl =
-        typeof SharedUtils !== "undefined" && typeof SharedUtils.resolveImageUrl === "function"
+        typeof SharedUtils !== "undefined" &&
+        typeof SharedUtils.resolveImageUrl === "function"
             ? SharedUtils.resolveImageUrl(url)
             : url;
     return `
@@ -688,11 +747,16 @@ function renderQuestion(w) {
     const forceBrowserAttr = isReverse ? 'data-force-browser-tts="true"' : "";
     const cacheAttrs = `data-cache-first="true" data-cache-not-before="${Number(w.ttsCacheInvalidatedAt || 0)}"`;
     const sr = w.sr || { step: 0, interval: 0 };
-    const isRedundant = typeof SharedUtils !== "undefined" && typeof SharedUtils.isRedundantSentence === "function"
-        ? SharedUtils.isRedundantSentence(showSentence, showWord)
-        : (showSentence && showSentence.trim().toLowerCase() === showWord.trim().toLowerCase());
-    const sentenceHtml = (showSentence && !isRedundant)
-        ? `
+    const isRedundant =
+        typeof SharedUtils !== "undefined" &&
+        typeof SharedUtils.isRedundantSentence === "function"
+            ? SharedUtils.isRedundantSentence(showSentence, showWord)
+            : showSentence &&
+              showSentence.trim().toLowerCase() ===
+                  showWord.trim().toLowerCase();
+    const sentenceHtml =
+        showSentence && !isRedundant
+            ? `
                 <div class="review-context-row">
                     <span class="review-context">"${SharedUtils.highlightWordInSentence(
                         showSentence,
@@ -700,7 +764,7 @@ function renderQuestion(w) {
                         wordClass,
                     )}"</span>
                 </div>`
-        : "";
+            : "";
     card.innerHTML = `
             <div class="review-flashcard">
                 <div class="review-question">
@@ -733,7 +797,9 @@ function renderQuestion(w) {
     const qShotImg = card.querySelector(".review-screenshot-img");
     if (qShotImg) {
         const markLoaded = () => {
-            qShotImg.closest(".review-screenshot-box")?.classList.add("is-loaded");
+            qShotImg
+                .closest(".review-screenshot-box")
+                ?.classList.add("is-loaded");
             scrollToTop();
         };
         if (qShotImg.complete && qShotImg.naturalWidth > 0) {
@@ -879,9 +945,21 @@ async function aiTranslateReviewCard() {
                 maxOutputTokens: 500,
                 validate(result) {
                     AIPrompts.validateLanguage(result, tgtL);
-                    const required = ["word_translation", "explanation", ...(qSentence ? ["sentence_translation"] : [])];
-                    if (required.some((key) => typeof result[key] !== "string" || !result[key].trim())) {
-                        throw new Error("AI returned an incomplete translation.");
+                    const required = [
+                        "word_translation",
+                        "explanation",
+                        ...(qSentence ? ["sentence_translation"] : []),
+                    ];
+                    if (
+                        required.some(
+                            (key) =>
+                                typeof result[key] !== "string" ||
+                                !result[key].trim(),
+                        )
+                    ) {
+                        throw new Error(
+                            "AI returned an incomplete translation.",
+                        );
                     }
                 },
             });
@@ -993,7 +1071,7 @@ function renderReviewTranslationResult(panel, result) {
                 <span class="review-ai-actions">
                     ${
                         speakText
-                            ? `<button class="review-speak-btn review-speak-sm" data-text="${escapeAttr(speakText)}" data-lang="${escapeAttr(result.targetLang)}" data-source-lang="${escapeAttr(result.srcLang || 'en')}" data-original-text="${escapeAttr(result.wordTr || '')}" data-force-browser-tts="true" data-use-configured-rate="true" title="Read translation and explanation">${SPEAK_SVG}</button>`
+                            ? `<button class="review-speak-btn review-speak-sm" data-text="${escapeAttr(speakText)}" data-lang="${escapeAttr(result.targetLang)}" data-source-lang="${escapeAttr(result.srcLang || "en")}" data-original-text="${escapeAttr(result.wordTr || "")}" data-force-browser-tts="true" data-use-configured-rate="true" title="Read translation and explanation">${SPEAK_SVG}</button>`
                             : ""
                     }
                 </span>
@@ -1036,9 +1114,12 @@ function renderAnswer(w) {
     const aWord = isReverse ? w.original : w.translated;
     const aLang = isReverse ? srcL : tgtL;
     const aSentence = isReverse ? w.sentence || "" : w.sentenceTranslated || "";
-    const isRedundantA = typeof SharedUtils !== "undefined" && typeof SharedUtils.isRedundantSentence === "function"
-        ? SharedUtils.isRedundantSentence(aSentence, aWord)
-        : (aSentence && aSentence.trim().toLowerCase() === aWord.trim().toLowerCase());
+    const isRedundantA =
+        typeof SharedUtils !== "undefined" &&
+        typeof SharedUtils.isRedundantSentence === "function"
+            ? SharedUtils.isRedundantSentence(aSentence, aWord)
+            : aSentence &&
+              aSentence.trim().toLowerCase() === aWord.trim().toLowerCase();
     const aWordClass = isReverse ? "__qt_original" : "__qt_translated";
     const forceBrowserAttr = !isReverse ? 'data-force-browser-tts="true"' : "";
     const cacheAttrs = `data-cache-first="true" data-cache-not-before="${Number(w.ttsCacheInvalidatedAt || 0)}"`;
@@ -1057,7 +1138,7 @@ function renderAnswer(w) {
                     )}" data-lang="${escapeAttr(aLang)}" ${forceBrowserAttr} ${cacheAttrs} title="Listen">${SPEAK_SVG}</button>
                 </div>
                 ${
-                    (aSentence && !isRedundantA)
+                    aSentence && !isRedundantA
                         ? `
                 <div class="review-context-row">
                     <span class="review-context">"${SharedUtils.highlightWordInSentence(
@@ -1092,7 +1173,9 @@ function renderAnswer(w) {
     const shotImg = card.querySelector(".review-screenshot-img");
     if (shotImg) {
         const markLoaded = () => {
-            shotImg.closest(".review-screenshot-box")?.classList.add("is-loaded");
+            shotImg
+                .closest(".review-screenshot-box")
+                ?.classList.add("is-loaded");
             scrollToTop();
         };
         if (shotImg.complete && shotImg.naturalWidth > 0) {
@@ -1134,23 +1217,37 @@ function showReviewEditForm(w, returnToAnswer = reviewAnswerShown) {
     });
 
     document.getElementById("editSave").addEventListener("click", () => {
-        const clean = typeof SharedUtils !== "undefined" && typeof SharedUtils.cleanCardText === "function"
-            ? SharedUtils.cleanCardText
-            : (s) => String(s || "").trim();
+        const clean =
+            typeof SharedUtils !== "undefined" &&
+            typeof SharedUtils.cleanCardText === "function"
+                ? SharedUtils.cleanCardText
+                : (s) => String(s || "").trim();
 
-        const newOriginal = clean(document.getElementById("editOriginal").value);
-        const newTranslated = clean(document.getElementById("editTranslated").value);
-        const newSentence = clean(document.getElementById("editSentence").value);
-        const newSentenceTr = clean(document.getElementById("editSentenceTr").value);
+        const newOriginal = clean(
+            document.getElementById("editOriginal").value,
+        );
+        const newTranslated = clean(
+            document.getElementById("editTranslated").value,
+        );
+        const newSentence = clean(
+            document.getElementById("editSentence").value,
+        );
+        const newSentenceTr = clean(
+            document.getElementById("editSentenceTr").value,
+        );
         if (!newOriginal || !newTranslated) return;
 
         // Keep old keys for finding in storage
         const oldOriginal = w.original;
         const oldTranslated = w.translated;
 
-        const isRedundantOrig = typeof SharedUtils !== "undefined" && typeof SharedUtils.isRedundantSentence === "function"
-            ? SharedUtils.isRedundantSentence(newSentence, newOriginal)
-            : (newSentence && newSentence.trim().toLowerCase() === newOriginal.trim().toLowerCase());
+        const isRedundantOrig =
+            typeof SharedUtils !== "undefined" &&
+            typeof SharedUtils.isRedundantSentence === "function"
+                ? SharedUtils.isRedundantSentence(newSentence, newOriginal)
+                : newSentence &&
+                  newSentence.trim().toLowerCase() ===
+                      newOriginal.trim().toLowerCase();
         const finalSentence = isRedundantOrig ? "" : newSentence;
         const finalSentenceTr = isRedundantOrig ? "" : newSentenceTr;
 
@@ -1181,12 +1278,18 @@ function showReviewEditForm(w, returnToAnswer = reviewAnswerShown) {
                 (candidate) =>
                     w.id
                         ? candidate.id === w.id
-                        : (candidate.original === oldOriginal && candidate.translated === oldTranslated) ||
-                          (candidate.original === oldOriginal && candidate.timestamp === w.timestamp),
+                        : (candidate.original === oldOriginal &&
+                              candidate.translated === oldTranslated) ||
+                          (candidate.original === oldOriginal &&
+                              candidate.timestamp === w.timestamp),
                 (existing) => ({
                     ...existing,
                     ...updatePayload,
-                    id: existing.id || w.id || SharedUtils?.generateId?.() || String(editedAt),
+                    id:
+                        existing.id ||
+                        w.id ||
+                        SharedUtils?.generateId?.() ||
+                        String(editedAt),
                 }),
             )
                 .then((updated) => {
@@ -1194,7 +1297,10 @@ function showReviewEditForm(w, returnToAnswer = reviewAnswerShown) {
                     onDone();
                 })
                 .catch((err) => {
-                    console.error("[Lectoro] Failed to save review edits:", err);
+                    console.error(
+                        "[Lectoro] Failed to save review edits:",
+                        err,
+                    );
                     onDone();
                 });
         } else {
@@ -1203,11 +1309,15 @@ function showReviewEditForm(w, returnToAnswer = reviewAnswerShown) {
                 const idx = words.findIndex(
                     (x) =>
                         (w.id && x.id === w.id) ||
-                        (x.original === oldOriginal && x.translated === oldTranslated) ||
-                        (x.original === oldOriginal && x.timestamp === w.timestamp),
+                        (x.original === oldOriginal &&
+                            x.translated === oldTranslated) ||
+                        (x.original === oldOriginal &&
+                            x.timestamp === w.timestamp),
                 );
                 if (idx !== -1) {
-                    if (!words[idx].id) words[idx].id = SharedUtils?.generateId?.() || String(editedAt);
+                    if (!words[idx].id)
+                        words[idx].id =
+                            SharedUtils?.generateId?.() || String(editedAt);
                     words[idx] = { ...words[idx], ...updatePayload };
                     w.id = words[idx].id;
                     chrome.storage.local.set({ savedWords: words }, onDone);
@@ -1237,7 +1347,10 @@ async function rateWord(grade) {
 
     try {
         if (typeof SharedWordRepository !== "undefined") {
-            const updated = await SharedWordRepository.recordReviewRating(w, grade);
+            const updated = await SharedWordRepository.recordReviewRating(
+                w,
+                grade,
+            );
             if (updated?.sr) {
                 w.sr = updated.sr;
             } else {
@@ -1247,7 +1360,12 @@ async function rateWord(grade) {
             w.sr = srUpdate(w.sr, grade);
             const data = await chrome.storage.local.get({ savedWords: [] });
             const words = data.savedWords || [];
-            const idx = words.findIndex((x) => (w.id && x.id === w.id) || (x.original === w.original && x.translated === w.translated));
+            const idx = words.findIndex(
+                (x) =>
+                    (w.id && x.id === w.id) ||
+                    (x.original === w.original &&
+                        x.translated === w.translated),
+            );
             if (idx !== -1) {
                 words[idx].sr = w.sr;
                 words[idx].updatedAt = Date.now();

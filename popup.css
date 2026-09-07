@@ -366,21 +366,27 @@ body::before {
     background-color: rgba(255, 255, 255, 0.035);
     border: 1px solid rgba(255, 255, 255, 0.09);
     border-radius: var(--radius-md);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.03);
     transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .settings-dual-row select:hover {
     border-color: rgba(129, 140, 248, 0.4);
     background-color: rgba(255, 255, 255, 0.06);
-    box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.2), 0 4px 14px rgba(0, 0, 0, 0.18);
+    box-shadow:
+        0 0 0 1px rgba(129, 140, 248, 0.2),
+        0 4px 14px rgba(0, 0, 0, 0.18);
     transform: translateY(-1px);
 }
 
 .settings-dual-row select:focus {
     border-color: var(--accent);
     background-color: rgba(255, 255, 255, 0.07);
-    box-shadow: 0 0 0 3px var(--accent-glow), 0 4px 18px rgba(129, 140, 248, 0.18);
+    box-shadow:
+        0 0 0 3px var(--accent-glow),
+        0 4px 18px rgba(129, 140, 248, 0.18);
     transform: translateY(-1px);
 }
 
@@ -603,7 +609,6 @@ body::before {
     color: var(--text-ghost);
 }
 
-
 /* ── Toggle switch ── */
 .toggle-row {
     display: flex;
@@ -673,7 +678,6 @@ body::before {
     margin-top: 10px;
     line-height: 1.6;
 }
-
 
 /* ══════════════════════════════════════════
            WORDS PANEL
@@ -1201,8 +1205,6 @@ body::before {
     box-shadow: 0 2px 6px rgba(220, 38, 38, 0.4);
 }
 
-
-
 /* ══════════════════════════════════════════
            REVIEW PANEL
            ══════════════════════════════════════════ */
@@ -1222,7 +1224,6 @@ body::before {
     position: relative;
     z-index: 20;
 }
-
 
 .review-icon {
     font-size: 20px;
@@ -1500,7 +1501,6 @@ body::before {
     letter-spacing: 0.5px;
     text-transform: uppercase;
 }
-
 
 .review-voice-teaser {
     padding: 11px;
@@ -1957,8 +1957,12 @@ body::before {
 }
 
 @keyframes reviewScreenshotShimmer {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
 }
 
 .review-screenshot {
@@ -1977,7 +1981,12 @@ body::before {
     max-height: 250px;
     border-radius: 12px;
     border: 1px solid rgba(255, 255, 255, 0.12);
-    background: linear-gradient(90deg, rgba(255, 255, 255, 0.03) 25%, rgba(255, 255, 255, 0.09) 50%, rgba(255, 255, 255, 0.03) 75%);
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.03) 25%,
+        rgba(255, 255, 255, 0.09) 50%,
+        rgba(255, 255, 255, 0.03) 75%
+    );
     background-size: 200% 100%;
     animation: reviewScreenshotShimmer 1.8s infinite ease-in-out;
     overflow: hidden;
@@ -1985,7 +1994,9 @@ body::before {
     align-items: center;
     justify-content: center;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-    transition: border-color 0.3s ease, background 0.3s ease;
+    transition:
+        border-color 0.3s ease,
+        background 0.3s ease;
 }
 
 .review-screenshot-box.is-loaded {
@@ -2023,7 +2034,6 @@ body::before {
         transform: translateY(0) scale(1);
     }
 }
-
 
 /* ── Question side ── */
 .review-question {
@@ -2126,8 +2136,6 @@ body::before {
     font-weight: 700;
     text-decoration: underline;
 }
-
-
 
 /* ── Rating buttons ── */
 .review-rating {
@@ -2254,7 +2262,6 @@ body::before {
         transform: translateY(0);
     }
 }
-
 
 /* ── On-demand AI translate panel ('Enter' shortcut in review) ── */
 .review-ai-translate {
@@ -2515,29 +2522,30 @@ body::before {
     margin: 8px auto 0;
 }
 
-
-
-.review-flip-btn kbd,
-.rate-key-pair kbd,
-.review-shortcuts kbd {
+.review-panel kbd {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+
     min-width: 18px;
     height: 18px;
-    box-sizing: border-box;
     padding: 0 4px;
+
+    box-sizing: border-box;
+
+    background: rgba(255, 255, 255, 0.035);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-bottom-color: rgba(255, 255, 255, 0.16);
     border-radius: 5px;
-    background: rgba(255, 255, 255, 0.035);
+
     color: var(--text-primary);
+
     font-family: inherit;
-    font-size: 9px;
+    font-size: 9.5px;
     font-weight: 700;
     line-height: 1;
-    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.18);
 }
+
 
 .review-flip-btn {
     display: inline-flex;
@@ -2566,13 +2574,6 @@ body::before {
     background: rgba(255, 255, 255, 0.045);
 }
 
-.review-flip-keys,
-.rate-key-pair,
-.shortcut-keys {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-}
 
 .review-controls {
     width: 100%;
@@ -2676,13 +2677,6 @@ body::before {
     align-items: center;
     gap: 5px;
     white-space: nowrap;
-}
-
-.review-shortcuts kbd {
-    min-width: 17px;
-    height: 17px;
-    padding: 0 3px;
-    font-size: 8px;
 }
 
 .review-controls .review-actions-row {
@@ -2911,7 +2905,6 @@ html[data-lectoro-ai-limit-reached] #exportQuiz {
     width: 100%;
 }
 
-
 /* AI credits ----------------------------------------------------- */
 .ai-usage-card {
     position: relative;
@@ -2929,7 +2922,6 @@ html[data-lectoro-ai-limit-reached] #exportQuiz {
     justify-content: space-between;
     gap: 12px;
 }
-
 
 .ai-usage-title {
     color: var(--text-primary);
@@ -3018,7 +3010,6 @@ html[data-lectoro-ai-limit-reached] #exportQuiz {
     color: var(--text-muted);
     font-size: 10px;
 }
-
 
 .subscription-plans-grid {
     display: grid;
@@ -3350,7 +3341,6 @@ html[data-lectoro-ai-limit-reached] #exportQuiz {
     line-height: 1.35;
 }
 
-
 .subscription-plans-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 7px;
@@ -3620,7 +3610,6 @@ html[data-lectoro-ai-limit-reached] #exportQuiz {
     }
 }
 
-
 @keyframes ai-usage-sheen {
     0%,
     40% {
@@ -3642,7 +3631,6 @@ html[data-lectoro-ai-limit-reached] #exportQuiz {
         transform: translateX(300%);
     }
 }
-
 
 /* ══════════════════════════════════════════
            LIBRARY PANEL
@@ -3981,7 +3969,6 @@ html[data-lectoro-ai-limit-reached] #exportQuiz {
 .library-card:hover .library-poster-overlay span {
     transform: translateY(0) scale(1);
 }
-
 
 .library-empty {
     text-align: center;
