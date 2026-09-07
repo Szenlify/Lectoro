@@ -157,11 +157,9 @@
 #__qt_tooltip {
     position: absolute;
     z-index: 2147483647;
-    width: 360px !important;
-    min-width: 320px !important;
-    max-width: min(360px, calc(100vw - 20px)) !important;
+    max-width: min(500px, calc(100vw - 20px)) !important;
     height: auto !important;
-    max-height: min(560px, calc(100vh - 48px)) !important;
+    max-height: min(630px, calc(100vh - 48px)) !important;
     bottom: auto !important;
     right: auto !important;
     box-sizing: border-box;
