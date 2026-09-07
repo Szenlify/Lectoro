@@ -59,6 +59,12 @@ w finkcji "Enter" niech jak bedzie 4/4 to zeby chmurka nei znikala i nie wznawia
 pamietaj o zasadzie (Zasada DRY - Don't Repeat Yourself) oraz Centralizacja Logiki (Single Source of Truth)
 i wskarz co trzeba przepisac aby uczytelnic kod aby zeby funkcjonalnosci zostaly takie same sprawdz rowniez css czy nie ma martwych klass i w kodzie czy nie ma martwego kodu lub starych nie uzywanych funkcji
 
+
+
+
+
+
+
 Jesteś ekspertem Full-Stack JavaScript Developer
 
 zamiast uzywac niestabilnego nieoficialnego tlumaczenia
