@@ -2039,8 +2039,8 @@ body::before {
 }
 
 .review-word {
-    font-size: 28px;
-    font-weight: 800;
+    font-size: 24px;
+    font-weight: 700;
     letter-spacing: -0.5px;
     white-space: pre-line;
     line-height: 1.25;
@@ -2533,7 +2533,7 @@ body::before {
     background: rgba(255, 255, 255, 0.035);
     color: var(--text-primary);
     font-family: inherit;
-    font-size: 8.5px;
+    font-size: 9px;
     font-weight: 700;
     line-height: 1;
     box-shadow: 0 1px 0 rgba(0, 0, 0, 0.18);
