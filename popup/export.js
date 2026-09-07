@@ -1,10 +1,10 @@
-const { csvCell } =
+const {csvCell} =
   typeof SharedUtils !== "undefined"
     ? SharedUtils
-    : { csvCell: (s) => String(s ?? "") };
+    : {csvCell: (s) => String(s ?? "")};
 
 // ── Unified Audio Fetcher (SSOT with ElevenLabs, R2 CDN & AudioCache) ──
-async function fetchAudioBlob(text, lang, { allowFallback = true } = {}) {
+async function fetchAudioBlob(text, lang, {allowFallback = true} = {}) {
   if (
     typeof SharedTtsService !== "undefined" &&
     typeof SharedTtsService.getAudioBlob === "function"
@@ -24,7 +24,7 @@ async function fetchAudioBlob(text, lang, { allowFallback = true } = {}) {
     const res = await fetch(url);
     if (!res.ok) return null;
     const blob = await res.blob();
-    return { blob, provider: "google-tts", cached: false };
+    return {blob, provider: "google-tts", cached: false};
   } catch {
     return null;
   }
@@ -255,7 +255,7 @@ function findBestClozeWord(sentence) {
       score += 2;
     }
 
-    candidates.push({ word: rawWord, score });
+    candidates.push({word: rawWord, score});
   }
 
   if (candidates.length > 0) {
@@ -293,7 +293,7 @@ async function imageToJpeg(imageSource) {
           const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
           canvas.toBlob(
             (blob) => {
-              resolve({ dataUrl, blob });
+              resolve({dataUrl, blob});
             },
             "image/jpeg",
             0.85
@@ -414,9 +414,9 @@ function crc32(data) {
 // ── Unified Export Quota Management (SSOT with SubscriptionConfig & SubscriptionService) ──
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const EXPORT_TYPES_CONFIG = [
-  { type: "anki", badgeId: "ankiFreeBadge", title: "Free Anki exports" },
-  { type: "excel", badgeId: "excelFreeBadge", title: "Free Excel exports" },
-  { type: "quiz", badgeId: "quizFreeBadge", title: "Free quizzes" },
+  {type: "anki", badgeId: "ankiFreeBadge", title: "Free Anki exports"},
+  {type: "excel", badgeId: "excelFreeBadge", title: "Free Excel exports"},
+  {type: "quiz", badgeId: "quizFreeBadge", title: "Free quizzes"},
 ];
 
 async function getExportQuota(type) {
@@ -460,20 +460,20 @@ async function recordExportSuccess(type) {
     await SubscriptionService.recordExport(type);
   } else {
     const currentMonth = SharedUtils.currentMonth();
-    const data = await chrome.storage.local.get({ exportUsage: null });
+    const data = await chrome.storage.local.get({exportUsage: null});
     const usage =
       data.exportUsage && data.exportUsage.month === currentMonth
         ? data.exportUsage
-        : { month: currentMonth, anki: 0, excel: 0, quiz: 0 };
+        : {month: currentMonth, anki: 0, excel: 0, quiz: 0};
     usage[type] = (Number(usage[type]) || 0) + 1;
-    await chrome.storage.local.set({ exportUsage: usage });
+    await chrome.storage.local.set({exportUsage: usage});
   }
   await updateAllExportBadgesUI();
 }
 
 async function enforceExportQuota(type) {
   const quotaState = await getExportQuota(type);
-  const typeLabels = { anki: "Anki", excel: "Excel", quiz: "Quiz" };
+  const typeLabels = {anki: "Anki", excel: "Excel", quiz: "Quiz"};
   const label = typeLabels[type] || type;
 
   if (quotaState.isFree) {
@@ -577,7 +577,7 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
 
   try {
     const data = await new Promise((r) =>
-      chrome.storage.local.get({ savedWords: [] }, r)
+      chrome.storage.local.get({savedWords: []}, r)
     );
     const words = filterWords(data.savedWords || []);
     if (words.length === 0) {
@@ -717,7 +717,7 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
           if (jpegRes?.blob) {
             screenshotSrc = jpegRes.dataUrl;
             const imgBuffer = await jpegRes.blob.arrayBuffer();
-            files.push({ name: imgFile, data: new Uint8Array(imgBuffer) });
+            files.push({name: imgFile, data: new Uint8Array(imgBuffer)});
           } else if (rawSrc.startsWith("data:")) {
             screenshotSrc = rawSrc;
           } else {
@@ -788,7 +788,7 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
       if (audioRes?.blob && audioRes.blob.size > 0) {
         audioFile = candidateAudioFile;
         const audioBuffer = await audioRes.blob.arrayBuffer();
-        files.push({ name: audioFile, data: new Uint8Array(audioBuffer) });
+        files.push({name: audioFile, data: new Uint8Array(audioBuffer)});
 
         // Read blob as base64 data URI for instant playable in-card audio
         audioDataUri = await new Promise((resolve) => {
@@ -839,7 +839,7 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
     ];
     const txtContent = headerLines.join("\n") + "\n" + lines.join("\n");
     const txtData = new TextEncoder().encode(txtContent);
-    files.push({ name: `anki-cloze-${dt}.txt`, data: txtData });
+    files.push({name: `anki-cloze-${dt}.txt`, data: txtData});
 
     // Add helpful Anki Import Guide in ZIP (English)
     const readmeContent = [
@@ -891,7 +891,7 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
     // Build and download ZIP
     setBtnText("⏳ Packing ZIP…");
     const zipData = buildZip(files);
-    const blob = new Blob([zipData], { type: "application/zip" });
+    const blob = new Blob([zipData], {type: "application/zip"});
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -922,7 +922,7 @@ document.getElementById("exportCsv").addEventListener("click", async () => {
   }
 
   const data = await new Promise((r) =>
-    chrome.storage.local.get({ savedWords: [] }, r)
+    chrome.storage.local.get({savedWords: []}, r)
   );
   const words = filterWords(data.savedWords || []);
   if (words.length === 0) return;
@@ -1013,7 +1013,7 @@ if (exportQuizBtn) {
     }
 
     const data = await new Promise((r) =>
-      chrome.storage.local.get({ savedWords: [], targetLang: "pl" }, r)
+      chrome.storage.local.get({savedWords: [], targetLang: "pl"}, r)
     );
     const allWords = data.savedWords || [];
     const words = filterWords(allWords);
@@ -1080,7 +1080,7 @@ document.getElementById("clearAll").addEventListener("click", async () => {
   const words =
     typeof SharedWordRepository !== "undefined"
       ? await SharedWordRepository.getStoredWords()
-      : (await chrome.storage.local.get({ savedWords: [] })).savedWords || [];
+      : (await chrome.storage.local.get({savedWords: []})).savedWords || [];
   const visibleWords = filterWords(words);
   if (visibleWords.length === 0) return;
 
@@ -1093,7 +1093,7 @@ document.getElementById("clearAll").addEventListener("click", async () => {
     const remaining = words.filter(
       (w) => !toRemove.has(w.original + "|" + w.timestamp)
     );
-    await chrome.storage.local.set({ savedWords: remaining });
+    await chrome.storage.local.set({savedWords: remaining});
   }
   loadWords();
 });
@@ -1110,11 +1110,11 @@ async function markAsDownloaded(exportedWords, allWords) {
       const updated = (allWords || []).map((w) => {
         const key = w.id ? w.id : `${w.original}|${w.timestamp}`;
         if (exportedSet.has(key)) {
-          return { ...w, downloaded: true };
+          return {...w, downloaded: true};
         }
         return w;
       });
-      await chrome.storage.local.set({ savedWords: updated });
+      await chrome.storage.local.set({savedWords: updated});
     }
   } catch (err) {
     console.error("[Lectoro] Failed to mark downloaded words:", err);
