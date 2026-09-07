@@ -34,9 +34,17 @@
                 const srcName = AIPrompts.getLangName(srcLang);
                 const tgtName = AIPrompts.getLangName(tgtLang);
                 return `Create 1 natural everyday sentence (5-15 words) in ${srcName} using "${word}" (meaning: "${translated}").
-The sentence must be practical, authentic, and clearly demonstrate the word's meaning in context for language learners. Translate the sentence to ${tgtName}.
+The sentence must be practical, authentic, and clearly demonstrate the word's meaning in context for language learners.
+
+CRITICAL FLASHCARD TRANSLATION RULES FOR "translation":
+1. For "translation" into ${tgtName}, ALWAYS provide EXACTLY TWO natural, authentic colloquial expressions/phrases, separated by a newline (\\n).
+2. Both expressions must sound like authentic native spoken language (e.g. for "All right, you've cornered me", translations must be:
+"Dobra, przyparłeś mnie do muru\\nDobra, nie mam już wyjścia").
+3. NEVER provide literal, robotic, word-for-word machine translations (e.g. NEVER "wporządku, osaczyłeś mnie").
+4. ABSOLUTELY NO special characters: no slashes (/), no brackets or parentheses ((), []), no quotes, no asterisks (*), no dashes (-), no bullet points, no numbering ("1.", "2."), no prefix labels (like "tlumaczenie:"). Only clean, natural spoken phrases separated by \\n.
+
 Respond ONLY with JSON:
-{"sentence": "...", "translation": "..."}`;
+{"sentence": "...", "translation": "phrase 1\\nphrase 2"}`;
             },
 
             /** Helper to format surrounding movie dialogue context (before / after) */
@@ -160,7 +168,7 @@ ${hasContext ? `${contextBlock}\n` : ""}
 Instructions for language learner assistance:
 1. "source_language": Detect the sentence language and return only its lowercase ISO 639-1 code (for example "en", "es", "de").
 2. "badge": Short category label for the whole sentence in ${tgtName} (e.g. for Polish: "Zdanie").
-3. "translation": Accurate, natural, context-aware translation in ${tgtName} (${targetLang}), preserving spoken conversational nuances.${
+3. "translation": Accurate, natural, direct translation of the whole sentence into ${tgtName} (${targetLang}), preserving conversational meaning. ALWAYS provide EXACTLY ONE single sentence on a single line. NEVER duplicate lines, NEVER provide multiple alternatives separated by newlines, NEVER repeat the sentence twice. ABSOLUTELY NO special characters (no slashes, brackets, numbering, bullets).${
     hasContext
         ? `\n   CRITICAL: Translate ONLY the target sentence ("${sentence}"). DO NOT translate the previous or following dialogue. Use the dialogue context strictly to resolve speaker gender, pronouns, tone, slang, and situational meaning.`
         : ""
@@ -174,7 +182,7 @@ Instructions for language learner assistance:
    - "term": the exact idiom, phrasal verb, or word from the sentence.
    - "type": "idiom" | "phrasal_verb" | "slang" | "vocabulary".
    - "badge": short category label in ${tgtName} (e.g. for Polish: "Idiom", "Czasownik złożony", "Slang", "Słówko").
-   - "meaning": brief translation or core meaning in ${tgtName}.
+   - "meaning": brief, natural spoken translation or core meaning in ${tgtName}. If idiomatic or colloquial, provide natural spoken phrasing without robotic word-for-word translations or special characters.
    - "explanation": 1 concise sentence explaining its meaning in this context in ${tgtName}.
    (If the sentence contains no idioms or difficult words, return []).
 
@@ -250,10 +258,10 @@ Language: ${tgtName} (${targetLang})`;
 Your task is to explain the word clearly and naturally for a language learner.
 
 IMPORTANT RULES:
-1. "word_translation" must be the most accurate and natural ${tgtName} translation of "${word}".
+1. "word_translation" must be the most accurate and natural ${tgtName} translation of "${word}". If "${word}" is an idiom or colloquial expression, provide two natural spoken expressions separated by a newline (\\n).
 2. ALWAYS use the context sentence to determine the correct meaning when context is provided.
 3. If "${word}" has multiple meanings, choose only the meaning that best fits the context.
-4. "sentence_translation" must be a natural, fluent ${tgtName} translation of the context sentence, not a literal translation.
+4. "sentence_translation" must be a natural, fluent ${tgtName} translation of the context sentence, not a literal translation. Whenever translating idioms or conversational sentences, provide EXACTLY TWO natural, spoken ${tgtName} translations separated by a newline (\\n) (e.g. "Dobra, przyparłeś mnie do muru\\nDobra, nie mam już wyjścia"). NEVER provide literal or robotic machine translations (e.g. NEVER "wporządku, osaczyłeś mnie"). ABSOLUTELY NO special characters (no slashes, brackets, numbering, bullets).
 5. "explanation" MUST be written entirely in ${tgtName}.
 6. "explanation" must be exactly ONE short, useful sentence.
 7. Whenever you mention the original ${srcName} word or phrase in "explanation", ALWAYS put it in double quotation marks.

@@ -80,6 +80,29 @@
             },
 
             /**
+             * Checks whether a context sentence is identical or redundant to the target word/phrase
+             * (ignoring surrounding punctuation, quotes, symbols, case, and whitespace).
+             * When true, the context sentence should not be displayed or saved separately as a duplicate.
+             */
+            isRedundantSentence(sentence, word) {
+                if (!sentence || !word) return false;
+                const normalize = (str) => {
+                    const cleaned = typeof SharedUtils?.cleanCardText === "function"
+                        ? SharedUtils.cleanCardText(str)
+                        : String(str || "");
+                    return cleaned
+                        .replace(/^[\p{P}\p{S}\s]+|[\p{P}\p{S}\s]+$/gu, "")
+                        .replace(/\s+/g, " ")
+                        .trim()
+                        .toLowerCase();
+                };
+                const s = normalize(sentence);
+                const w = normalize(word);
+                if (!s || !w) return false;
+                return s === w;
+            },
+
+            /**
              * True when running inside a content script on a regular web page
              * (as opposed to the popup, quiz page or the background service worker).
              * Content scripts must proxy privileged network calls through the background.
@@ -418,27 +441,39 @@
              */
             cleanCardText(text) {
                 if (!text) return "";
-                let s = String(text)
-                    .replace(/\u00A0/g, " ")
-                    .replace(/<[^>]*>/g, " ")
-                    .replace(/[♪♫♬♩♭♮♯]/g, " ")
-                    .replace(/\[[^\]]*\]/g, " ")
-                    .replace(
-                        /\((?:music|applause|laughter|screaming|coughing|sighs|footsteps|sound|snorts|groans|chuckles|giggles|cheering|whispering|gasping|singing|sobbing|crying|instrumental|upbeat music|dramatic music|soft music|ambient sound)[^)]*\)/gi,
-                        " ",
-                    )
-                    .replace(/(?:^|\s)(?:>>+|<<+|»+|«+)(?:\s|$)/g, " ")
-                    .replace(
-                        /^(?:[A-Z0-9\s_-]{2,20}:|speaker\s*\d+:|narrator:|man:|woman:|boy:|girl:|person\s*\d+:)\s*/i,
-                        "",
-                    )
-                    .replace(/[<>~*^|\\@$%&=+]/g, " ")
-                    .replace(/[—–―‒]+/g, " ")
-                    .replace(/[\r\n\t]+/g, " ")
-                    .replace(/\s{2,}/g, " ")
-                    .trim();
-                s = s.replace(/^[,\s:;>«»<\\/|~*#—–-]+/, "").trim();
-                return s.replace(/[.,\s]+$/, "").trim();
+                const cleanLine = (line) => {
+                    let s = String(line)
+                        .replace(/\u00A0/g, " ")
+                        .replace(/<[^>]*>/g, " ")
+                        .replace(/[♪♫♬♩♭♮♯]/g, " ")
+                        .replace(/\[[^\]]*\]/g, " ")
+                        .replace(
+                            /\((?:music|applause|laughter|screaming|coughing|sighs|footsteps|sound|snorts|groans|chuckles|giggles|cheering|whispering|gasping|singing|sobbing|crying|instrumental|upbeat music|dramatic music|soft music|ambient sound)[^)]*\)/gi,
+                            " ",
+                        )
+                        .replace(/(?:^|\s)(?:>>+|<<+|»+|«+)(?:\s|$)/g, " ")
+                        .replace(
+                            /^(?:[A-Z0-9\s_-]{2,20}:|speaker\s*\d+:|narrator:|man:|woman:|boy:|girl:|person\s*\d+:)\s*/i,
+                            "",
+                        )
+                        .replace(/[<>~*^|\\@$%&=+]/g, " ")
+                        .replace(/[—–―‒]+/g, " ")
+                        .replace(/\t+/g, " ")
+                        .replace(/\s{2,}/g, " ")
+                        .trim();
+                    s = s.replace(/^[,\s:;>«»<\\/|~*#—–-]+/, "").trim();
+                    return s.replace(/[.,\s]+$/, "").trim();
+                };
+
+                const raw = String(text).replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+                if (!raw.includes("\n")) {
+                    return cleanLine(raw);
+                }
+                return raw
+                    .split("\n")
+                    .map(cleanLine)
+                    .filter(Boolean)
+                    .join("\n");
             },
 
             cleanTextForTTS(text) {

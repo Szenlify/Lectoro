@@ -9,7 +9,7 @@
     const C = LectoroConstants;
     const { PREFIX, isOwnUI } = C;
     const SVG = C.SVG_ICONS;
-    const { cleanCardText } = SharedUtils;
+    const { cleanCardText, isRedundantSentence } = SharedUtils;
     const SUB_WORD_CLASS = C.UI_CLASSES.SUB_WORD;
     const WORD_CLOUD_CLASS = C.UI_CLASSES.WORD_CLOUD;
     const WORD_HOVER_CLASS = `${PREFIX}word-hover`;
@@ -744,20 +744,8 @@
             box.appendChild(lineEl);
         }
 
-        if ((aiTooltipActive || eTranslateActive) && aiSubTranslationText) {
+        if (!aiTooltipActive && eTranslateActive && aiSubTranslationText) {
             showSubtitleTranslationUnderOriginal(aiSubTranslationText);
-            if (aiTooltipActive) {
-                const currentItem = aiExplainQueue[aiExplainIndex];
-                if (currentItem?.type === "sentence" && aiExplainQueue.length > 1) {
-                    aiSubTranslationEl?.classList.add(
-                        C.UI_CLASSES.CUSTOM_SUB_TRANSLATION_ACTIVE,
-                    );
-                    aiSubTranslationEl?.setAttribute(
-                        "data-step",
-                        `${aiExplainIndex + 1}/${aiExplainQueue.length}`,
-                    );
-                }
-            }
         }
 
         box.style.setProperty("opacity", "1", "important");
@@ -1671,42 +1659,52 @@
                 </div>`;
         }
 
-        const isSentenceWithBreakdown = totalItems > 1 && item.type === "sentence";
+        const isSentenceStage = item.type === "sentence";
         const explanationLang =
             aiExplainMode === "simple_target"
                 ? aiExplainSourceLang
                 : aiExplainTargetLang;
-        const formattedExplanation = isSentenceWithBreakdown
-            ? ""
-            : QT.formatSpeechMarkup(
-                  item.explanation || "",
-                  explanationLang,
-                  markupOptions,
-              );
-        const speechParts = isSentenceWithBreakdown
-            ? item.meaning
-            : [
-                  item.type === "sentence" ? "" : item.term,
-                  item.meaning,
-                  item.explanation,
-              ]
-                  .filter(Boolean)
-                  .join(". ");
+        const formattedExplanation =
+            !isSentenceStage && item.explanation
+                ? QT.formatSpeechMarkup(
+                      item.explanation,
+                      explanationLang,
+                      markupOptions,
+                  )
+                : "";
 
         const speakLang =
             aiExplainMode === "simple_target"
                 ? aiExplainSourceLang
                 : aiExplainTargetLang;
 
+        const speechText = isSentenceStage
+            ? item.meaning || ""
+            : [item.term, item.meaning, item.explanation]
+                  .filter(Boolean)
+                  .join(". ");
+
         const bodyHtml = `
             <div class="${PREFIX}body">
                 <div class="${PREFIX}ai-term-card" data-type="${QT.escapeAttr(item.type || "")}">
+                    ${
+                        isSentenceStage
+                            ? `
+                    <div class="${PREFIX}ai-term-title-wrap ${PREFIX}ai-sentence-wrap">
+                        <div class="${PREFIX}ai-term-meaning">
+                            ${QT.escapeHtml(item.meaning || "")}
+                        </div>
+                        <span class="${PREFIX}word-actions">
+                            <button class="${PREFIX}speak" data-text="${QT.escapeAttr(speechText)}" data-lang="${QT.escapeAttr(speakLang)}" data-source-lang="${QT.escapeAttr(aiExplainSourceLang)}" data-original-text="${QT.escapeAttr(item.term)}" title="Odtwórz wymowę" aria-label="Odtwórz wymowę">${SVG.SPEAKER}</button>
+                        </span>
+                    </div>`
+                            : `
                     <div class="${PREFIX}ai-term-header">
                         ${item.badge ? `<span class="${PREFIX}ai-badge">${QT.escapeHtml(item.badge)}</span>` : ""}
                         <div class="${PREFIX}ai-term-title-wrap">
-                            <span class="${PREFIX}ai-term">${QT.escapeHtml(item.term)}</span>
+                            ${!isSentenceStage ? `<span class="${PREFIX}ai-term">${QT.escapeHtml(item.term)}</span>` : ""}
                             <span class="${PREFIX}word-actions">
-                                <button class="${PREFIX}speak" data-text="${QT.escapeAttr(speechParts)}" data-lang="${QT.escapeAttr(speakLang)}" data-source-lang="${QT.escapeAttr(aiExplainSourceLang)}" data-original-text="${QT.escapeAttr(item.term)}" title="Odtwórz wymowę" aria-label="Odtwórz wymowę">${SVG.SPEAKER}</button>
+                                <button class="${PREFIX}speak" data-text="${QT.escapeAttr(speechText)}" data-lang="${QT.escapeAttr(speakLang)}" data-source-lang="${QT.escapeAttr(aiExplainSourceLang)}" data-original-text="${QT.escapeAttr(item.term)}" title="Odtwórz wymowę" aria-label="Odtwórz wymowę">${SVG.SPEAKER}</button>
                             </span>
                         </div>
                     </div>
@@ -1725,6 +1723,7 @@
                         ${formattedExplanation}
                     </div>`
                             : ""
+                    }`
                     }
                 </div>
             </div>`;
@@ -1828,51 +1827,23 @@
             speakBtn.classList.add("speaking");
             speakBtn.setAttribute(
                 "aria-label",
-                "Playing translation and explanation",
+                "Odtwarzanie tłumaczenia",
             );
-        }
-        if (aiSubTranslationEl && item.type === "sentence") {
-            aiSubTranslationEl.classList.add(`${PREFIX}speaking`);
         }
 
         try {
             if (item.type === "sentence") {
-                // If it is 1/1, explain the sentence (meaning + explanation).
-                // If there are breakdown items (1/N, where N > 1), only speak the translation/simplified sentence!
-                const isSingleSentence = aiExplainQueue.length <= 1;
                 const sentenceLang =
                     aiExplainMode === "simple_target"
                         ? aiExplainSourceLang
                         : aiExplainTargetLang;
 
-                if (isSingleSentence) {
-                    if (item.meaning) {
-                        await speakUntilFinished(item.meaning, sentenceLang, {
-                            sourceLang: aiExplainSourceLang,
-                            originalText: item.term,
-                            isCancelled,
-                        });
-                    }
-                    if (isCancelled()) return;
-                    if (item.explanation) {
-                        const expLang =
-                            aiExplainMode === "simple_target"
-                                ? aiExplainSourceLang
-                                : aiExplainTargetLang;
-                        await speakUntilFinished(item.explanation, expLang, {
-                            sourceLang: aiExplainSourceLang,
-                            originalText: item.term,
-                            isCancelled,
-                        });
-                    }
-                } else {
-                    if (item.meaning) {
-                        await speakUntilFinished(item.meaning, sentenceLang, {
-                            sourceLang: aiExplainSourceLang,
-                            originalText: item.term,
-                            isCancelled,
-                        });
-                    }
+                if (item.meaning) {
+                    await speakUntilFinished(item.meaning, sentenceLang, {
+                        sourceLang: aiExplainSourceLang,
+                        originalText: item.term,
+                        isCancelled,
+                    });
                 }
             } else {
                 if (item.term) {
@@ -1922,7 +1893,7 @@
                 speakBtn.classList.remove("speaking");
                 speakBtn.setAttribute(
                     "aria-label",
-                    "Play translation and explanation",
+                    "Odtwórz wymowę",
                 );
             }
             if (aiSubTranslationEl && !aiAutoAdvanceTimer) {
@@ -2009,45 +1980,7 @@
 
         ensureAiExplainKeydownListener();
 
-        const isSentenceWithBreakdown =
-            aiExplainQueue.length > 1 && item.type === "sentence";
-
-        if (isSentenceWithBreakdown) {
-            // Stage 4/4 (full sentence translation under original subtitles):
-            // The floating tooltip bubble is hidden. Subtitle translation element
-            // is highlighted with active AI styling, step badge and read by TTS.
-            removeOverlay();
-
-            if (aiSubTranslationText) {
-                showSubtitleTranslationUnderOriginal(aiSubTranslationText);
-            }
-            if (aiSubTranslationEl) {
-                aiSubTranslationEl.classList.add(
-                    C.UI_CLASSES.CUSTOM_SUB_TRANSLATION_ACTIVE,
-                );
-                aiSubTranslationEl.setAttribute(
-                    "data-step",
-                    `${clampedIndex + 1}/${aiExplainQueue.length}`,
-                );
-            }
-
-            // Subtitle video highlights: clear active term cyan glow, focus on translation
-            updateSubtitleVideoHighlights();
-
-            if (aiTooltipActive) {
-                speakAiExplainItem(item, speechToken);
-            }
-            return;
-        }
-
-        // When displaying an idiom/word card, clear active highlight from subtitle translation
-        if (aiSubTranslationEl) {
-            aiSubTranslationEl.classList.remove(
-                C.UI_CLASSES.CUSTOM_SUB_TRANSLATION_ACTIVE,
-                `${PREFIX}speaking`,
-            );
-            aiSubTranslationEl.removeAttribute("data-step");
-        }
+        removeSubtitleTranslationUnderOriginal();
 
         // 1. Highlight active and upcoming terms on the film subtitle!
         updateSubtitleVideoHighlights();
@@ -2210,10 +2143,15 @@
                     targetNativeLang,
                 );
 
-                const genSentence =
+                const rawGenSentence =
                     cleanCardText(result?.sentence) || result?.sentence || "";
-                const genTranslation =
-                    cleanCardText(result?.translation) || result?.translation || "";
+                const isRedundantGen = typeof isRedundantSentence === "function"
+                    ? isRedundantSentence(rawGenSentence, cleanedTerm)
+                    : rawGenSentence.trim().toLowerCase() === cleanedTerm.trim().toLowerCase();
+                const genSentence = isRedundantGen ? "" : rawGenSentence;
+                const genTranslation = isRedundantGen
+                    ? ""
+                    : cleanCardText(result?.translation) || result?.translation || "";
 
                 await QT.saveWord({
                     original: cleanedTerm,
@@ -2320,15 +2258,19 @@
                     cleanedTerm;
                 const cleanedExplanation = cleanCardText(currentItem.explanation);
                 const isSentenceCard = currentItem.type === "sentence";
-                const contextSentence = isSentenceCard
+                const rawContextSentence = isSentenceCard
                     ? ""
                     : cleanCardText(currentItem.originalText) || "";
+                const isRedundant = typeof isRedundantSentence === "function"
+                    ? isRedundantSentence(rawContextSentence, cleanedTerm)
+                    : rawContextSentence.trim().toLowerCase() === cleanedTerm.trim().toLowerCase();
+                const contextSentence = isRedundant ? "" : rawContextSentence;
                 const rawSentenceTr =
                     currentItem.sentenceTranslated ||
                     aiExplainQueue.find((q) => q.sentenceTranslated)?.sentenceTranslated ||
                     aiExplainQueue.find((q) => q.type === "sentence")?.meaning ||
                     "";
-                let contextSentenceTranslated = isSentenceCard
+                let contextSentenceTranslated = (isSentenceCard || isRedundant)
                     ? ""
                     : cleanCardText(rawSentenceTr) || "";
 
@@ -2668,6 +2610,7 @@
         }
 
         aiTooltipActive = true;
+        removeSubtitleTranslationUnderOriginal();
         try {
             document.body?.setAttribute("data-lectoro-ai-active", "true");
         } catch (_) {}
@@ -2715,14 +2658,32 @@
             aiSavedIndices.clear();
             aiAiSavedIndices.clear();
 
-            const translation =
+            const rawTranslation =
                 res?.translation || res?.simple_sentence || "";
+            let translation = typeof rawTranslation === "string"
+                ? rawTranslation.trim()
+                : String(rawTranslation || "").trim();
+
+            // In Enter mode, always provide exactly one direct single sentence translation (never duplicate lines or repeated phrases)
+            if (translation.includes("\n")) {
+                const lines = translation
+                    .split(/\r?\n/)
+                    .map((l) => l.trim())
+                    .filter(Boolean);
+                translation = lines[0] || "";
+            }
+            if (translation) {
+                const halfLen = Math.floor(translation.length / 2);
+                if (halfLen >= 4) {
+                    const firstHalf = translation.slice(0, halfLen).trim();
+                    const secondHalf = translation.slice(halfLen).trim();
+                    if (firstHalf.toLowerCase() === secondHalf.toLowerCase()) {
+                        translation = firstHalf;
+                    }
+                }
+            }
             const explanation =
                 res?.explanation || (typeof res === "string" ? res : "");
-
-            if (translation) {
-                showSubtitleTranslationUnderOriginal(translation);
-            }
 
             const isSimpleTarget = aiExplainMode === "simple_target";
             const sentenceBadge = resolveAiBadge(
@@ -2761,12 +2722,11 @@
                 }));
             }
 
-            // In Enter mode, include the full sentence translation under original subtitles
-            // as the final stage (e.g. 4/4) in the queue. On this final stage, the speech bubble
-            // is omitted, while the translation under original subtitles is highlighted with
-            // active AI styling and read by TTS.
+            // In Enter mode, the full sentence translation is ALWAYS the first stage (1/N)
+            // in the queue, followed by subsequent breakdown items (idioms, phrasal verbs, words),
+            // regardless of whether native or simple language mode is selected.
             if (breakdownItems.length > 0) {
-                aiExplainQueue = [...breakdownItems, sentenceItem];
+                aiExplainQueue = [sentenceItem, ...breakdownItems];
             } else {
                 aiExplainQueue = [sentenceItem];
             }
@@ -3317,11 +3277,10 @@
         const explanationSize =
             Math.round(Math.max(11, Math.min(20, effectiveSource * 0.44)) * 10) / 10;
         const metaSize =
-            Math.round(Math.max(9, Math.min(15, effectiveSource * 0.38)) * 10) / 10;
+            Math.round(Math.max(9, Math.min(15, effectiveSource * 0.32)) * 10) / 10;
         const sentenceTermSize =
             Math.round(Math.max(13, Math.min(26, effectiveSource * 0.56)) * 10) / 10;
-        const sentenceMeaningSize =
-            Math.round(Math.max(14, Math.min(28, effectiveSource * 0.60)) * 10) / 10;
+        const sentenceMeaningSize = meaningSize;
         const badgeSize =
             Math.round(Math.max(7.5, Math.min(10.5, effectiveSource * 0.28)) * 10) / 10;
 
