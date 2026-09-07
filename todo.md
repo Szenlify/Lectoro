@@ -4,6 +4,7 @@
 5. sprawdz api jak w cloud firebase to wyglada przed publikacją
 6. guzik sync co ile czasu sie samo synchronizuje
 7. zgodnosc z CWS
+8. Jesli plan płatny przycisk "Z" na video generuje tlumaczenie AI idealne pod nauke a nie zwykłe tłumaczenie
 
 4. sprawdz quizy
 
