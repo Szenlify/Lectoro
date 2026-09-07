@@ -649,23 +649,21 @@ exports.geminiProxy = onRequest(
             return res.status(500).json({ error: "Błąd konfiguracji serwera." });
         }
 
-        let geminiResponse;
+        let text;
         try {
+            const { generationConfig, readJsonResponse } = require("./ai-response");
             const geminiPayload = {
                 contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: {
-                    temperature: Math.min(Math.max(Number(temperature), 0), 2),
-                    maxOutputTokens: Math.min(Math.max(Number(maxOutputTokens), 1), 8192),
-                },
+                generationConfig: generationConfig(temperature, maxOutputTokens),
             };
-            geminiResponse = await fetchGeminiWithRetry(geminiKey, geminiPayload, 2);
+            const geminiResponse = await fetchGeminiWithRetry(geminiKey, geminiPayload, 2);
+            text = readJsonResponse(geminiResponse);
         } catch (error) {
             console.error("[geminiProxy] Gemini fetch error:", error);
             await rollbackAiReservation(db, userRef, month);
             return res.status(502).json({ error: error.message || "Błąd połączenia z Gemini API." });
         }
 
-        const text = geminiResponse?.candidates?.[0]?.content?.parts?.[0]?.text || "";
         const activeAiLimit = getPlanLimits(aiReservation.plan).ai.usesPerMonth;
         return res.status(200).json({
             text,

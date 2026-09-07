@@ -836,249 +836,120 @@
 
     // ── 1. Gemini AI Quiz Generator ─────────────────────────────────────
     async function generateQuizWithGemini(words, options = {}) {
-        const srcLang = (words[0]?.srcLang || "en").toLowerCase();
+        if (!Array.isArray(words) || !words.length) throw new Error("Choose vocabulary for the quiz first.");
+        const srcLocale = words[0]?.srcLang || "en";
+        const srcLang = AIPrompts.languageCode(srcLocale);
         let tgtLang = options.tgtLang;
         if (!tgtLang) {
-            const data = await new Promise((r) =>
-                chrome.storage.local.get({ targetLang: "pl" }, r),
-            );
-            tgtLang = data.targetLang || words[0]?.tgtLang || "pl";
+            const data = await new Promise((r) => chrome.storage.local.get({ targetLang: "pl" }, r));
+            tgtLang = data.targetLang;
         }
-        tgtLang = tgtLang.toLowerCase();
-
-        const srcLangName = getLangName(srcLang);
-        const tgtLangName = getLangName(tgtLang);
-
-        const wordsPool = (words || []).slice(0, 25);
-        const wordList = wordsPool
-            .map((w, i) => {
-                const orig = String(w.original || "").trim();
-                const trans = String(w.translated || "").trim();
-                const parts = [`${i + 1}. "${orig}" = "${trans}"`];
-                if (w.sentence) {
-                    const cleanSentence = String(w.sentence)
-                        .replace(/\s+/g, " ")
-                        .trim()
-                        .slice(0, 80);
-                    if (cleanSentence) {
-                        parts.push(`(example: ${cleanSentence})`);
-                    }
-                }
-                return parts.join(" ");
-            })
-            .join("\n");
-
-        const nonce = Math.random().toString(36).slice(2, 10);
-        const allTypes = [
-            "multiple_choice",
-            "fill_blank",
-            "matching",
-            "translation",
-            "true_false",
-            "correct_form",
-            "odd_one_out",
-        ];
-        const shuffledTypes = [...allTypes].sort(() => Math.random() - 0.5);
-        const sectionCount = Math.min(5 + Math.floor(Math.random() * 3), allTypes.length);
-        const chosenTypes = shuffledTypes.slice(0, sectionCount);
-
-        const prompt = AIPrompts.quiz({
-            srcLang,
-            tgtLang,
-            srcLangName,
-            tgtLangName,
-            wordList,
-            nonce,
-            chosenTypes,
-        });
-
-        if (typeof GeminiProxy === "undefined") {
-            throw new Error("GeminiProxy is unavailable – check extension configuration.");
+        const tgtLocale = tgtLang;
+        tgtLang = AIPrompts.languageCode(tgtLang);
+        if (words.some((word) => AIPrompts.languageCode(word?.srcLang || "en") !== srcLang)) {
+            throw new Error("Choose vocabulary from one source language per quiz.");
         }
-
-        const { text } = await GeminiProxy.request(prompt, {
-            temperature: 0.7,
-            maxOutputTokens: 8000,
+        const wordsPool = words.filter((w) => typeof w.original === "string" && w.original.trim()).slice(0, 25);
+        if (!wordsPool.length) throw new Error("Choose vocabulary for the quiz first.");
+        const wordList = wordsPool.map((w) => ({
+            word: w.original.trim().slice(0, 300),
+            // Saved translations may use a different language than the current setting.
+            ...(w.tgtLang && AIPrompts.languageCode(w.tgtLang) !== tgtLang ? {} :
+                { meaning: cleanString(w.translated).slice(0, 300) }),
+            ...(w.sentence ? { context: cleanString(w.sentence).slice(0, 400) } : {}),
+        }));
+        const chosenTypes = [...new Set(options.chosenTypes?.length ? options.chosenTypes : AIPrompts.DEFAULT_QUIZ_TYPES)]
+            .filter((type) => type !== "matching" || new Set(wordList.map((w) => w.word.toLowerCase())).size >= 2);
+        if (!chosenTypes.length) throw new Error("Not enough vocabulary for the selected sections.");
+        const prompt = AIPrompts.quiz({ srcLang: srcLocale, tgtLang: tgtLocale, wordList, chosenTypes });
+        if (typeof GeminiProxy === "undefined") throw new Error("GeminiProxy is unavailable.");
+        const parsed = await GeminiProxy.requestJSON(prompt, {
+            temperature: 0.3,
+            maxOutputTokens: Math.min(6000, 500 + chosenTypes.length * 700),
+            cache: false,
         });
-
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error("Gemini: invalid JSON response.");
-
-        const knownWords = new Set(
-            words
-                .map((w) =>
-                    (w.original || "")
-                        .toString()
-                        .trim()
-                        .toLowerCase()
-                        .replace(/[.,!?;:"'“”’]/g, ""),
-                )
-                .filter(Boolean),
-        );
-
-        return normalizeQuizData(JSON.parse(jsonMatch[0]), knownWords, tgtLang);
-    }
-
-    // ── 2. Data Normalization & Defensive Quality Filter ────────────────
-    function cleanString(str) {
-        return (str || "").toString().trim();
-    }
-
-    function isValidCorrectForm(sentence, options, answer) {
-        if (!sentence || !Array.isArray(options) || options.length < 2 || !answer)
-            return false;
-        if (!sentence.includes("___")) return false;
-        const norm = (s) => (s || "").toString().trim().toLowerCase();
-        return options.some((o) => norm(o) === norm(answer));
-    }
-
-    function normalizeQuizData(quiz, knownWords, tgtLang) {
-        if (!quiz || !Array.isArray(quiz.sections)) return quiz;
-        const i18n = getI18n(tgtLang);
-
-        quiz.sections = quiz.sections
-            .map((sec) => {
-                if (!sec || !sec.type) return null;
-                const secType = sec.type.toLowerCase().trim();
-                sec.type = secType;
-
-                if (!sec.instructions) {
-                    sec.instructions = i18n.sectionTitles[secType] || "";
-                }
-
-                if (secType === "matching") {
-                    const rawPairs = sec.pairs || sec.questions || sec.matches || [];
-                    const seen = new Set();
-                    const pairs = rawPairs
-                        .map((p) => ({
-                            a: cleanString(p.a ?? p.source ?? p.word ?? p.original ?? p.left),
-                            b: cleanString(p.b ?? p.translation ?? p.target ?? p.right),
-                        }))
-                        .filter((p) => {
-                            if (!p.a || !p.b) return false;
-                            const key = p.a.toLowerCase();
-                            if (seen.has(key)) return false;
-                            seen.add(key);
-                            return true;
-                        });
-                    if (pairs.length < 2) return null;
-                    sec.pairs = pairs;
-                    return sec;
-                }
-
-                if (secType === "translation") {
-                    const qs = (sec.questions || [])
-                        .map((q) => {
-                            let answer = cleanString(q.answer);
-                            answer = answer.replace(/^["'“‘](.*)["'”’]$/, "$1").trim();
-                            return {
-                                prompt: cleanString(q.prompt ?? q.question ?? q.text ?? q.instruction),
-                                answer,
-                            };
-                        })
-                        .filter((q) => q.prompt && q.answer);
-                    if (!qs.length) return null;
-                    sec.questions = qs;
-                    return sec;
-                }
-
-                if (secType === "fill_blank") {
-                    const qs = (sec.questions || [])
-                        .map((q) => {
-                            let sentence = cleanString(q.sentence ?? q.text);
-                            sentence = sentence.replace(/_{2,}/g, "___").replace(/\[\.\.\.\]/g, "___");
-                            return {
-                                sentence,
-                                hint: cleanString(q.hint ?? q.translation ?? q.meaning),
-                                answer: cleanString(q.answer),
-                            };
-                        })
-                        .filter((q) => q.sentence && q.sentence.includes("___") && q.answer);
-                    if (!qs.length) return null;
-                    sec.questions = qs;
-                    return sec;
-                }
-
-                if (secType === "true_false") {
-                    const qs = (sec.questions || [])
-                        .map((q) => {
-                            let ans = q.answer;
-                            if (typeof ans !== "boolean") {
-                                ans = /^(true|prawda|yes|tak|1)$/i.test(String(ans ?? "").trim());
-                            }
-                            return {
-                                statement: cleanString(q.statement ?? q.question),
-                                answer: ans,
-                            };
-                        })
-                        .filter((q) => q.statement);
-                    if (!qs.length) return null;
-                    sec.questions = qs;
-                    return sec;
-                }
-
-                if (secType === "correct_form") {
-                    const qs = (sec.questions || [])
-                        .map((q) => {
-                            let sentence = cleanString(q.sentence ?? q.text);
-                            sentence = sentence.replace(/_{2,}/g, "___");
-                            const rawOpts = Array.isArray(q.options)
-                                ? q.options.map(cleanString).filter(Boolean)
-                                : [];
-                            const uniqueOpts = Array.from(new Set(rawOpts));
-                            const answer = cleanString(q.answer);
-                            return {
-                                sentence,
-                                options: uniqueOpts,
-                                answer,
-                            };
-                        })
-                        .filter((q) => isValidCorrectForm(q.sentence, q.options, q.answer));
-                    if (!qs.length) return null;
-                    sec.questions = qs;
-                    return sec;
-                }
-
-                if (secType === "multiple_choice" || secType === "odd_one_out") {
-                    const qs = (sec.questions || [])
-                        .map((q) => {
-                            const question = cleanString(q.question ?? q.prompt);
-                            const rawOpts = Array.isArray(q.options)
-                                ? q.options.map(cleanString).filter(Boolean)
-                                : [];
-                            const uniqueOpts = Array.from(new Set(rawOpts));
-                            const answer = cleanString(q.answer);
-                            const hasAnswer = uniqueOpts.some(
-                                (o) => o.toLowerCase() === answer.toLowerCase(),
-                            );
-                            if (!hasAnswer && answer && uniqueOpts.length) {
-                                uniqueOpts[0] = answer;
-                            }
-                            return {
-                                question: secType === "multiple_choice" ? question : "",
-                                options: uniqueOpts,
-                                answer,
-                            };
-                        })
-                        .filter(
-                            (q) =>
-                                q.options.length >= 2 &&
-                                q.answer &&
-                                (secType !== "multiple_choice" || q.question),
-                        );
-                    if (!qs.length) return null;
-                    sec.questions = qs;
-                    return sec;
-                }
-
-                return sec;
-            })
-            .filter(Boolean);
-
+        if (AIPrompts.languageCode(parsed.source_language) !== srcLang ||
+            AIPrompts.languageCode(parsed.instruction_language) !== tgtLang) {
+            throw new Error("AI returned unexpected quiz languages.");
+        }
+        const knownWords = new Set(wordList.map((w) => w.word.toLowerCase()));
+        const quiz = normalizeQuizData(parsed, knownWords, tgtLang);
+        if (quiz.sections.length !== chosenTypes.length || chosenTypes.some((type) =>
+            !quiz.sections.some((section) => section.type === type && quizSectionQuestionCount(section) >= 2))) {
+            throw new Error("AI returned an incomplete quiz. Please generate it again.");
+        }
         return quiz;
     }
 
-    // ── 3. Printable School Exam Renderer (PDF format) ──────────────────
+    // Validate model data without inventing answers or repairing an answer key.
+    function cleanString(str) {
+        return typeof str === "string" ? str.trim() : "";
+    }
+
+    function normalizeQuizData(quiz, knownWords, tgtLang) {
+        if (!quiz || !Array.isArray(quiz.sections)) throw new Error("AI returned an invalid quiz.");
+        const i18n = getI18n(tgtLang);
+        const seenSections = new Set();
+        const key = (value) => cleanString(value).normalize("NFC").toLowerCase();
+        const alternatives = (q) => [...new Set([cleanString(q.answer),
+            ...(Array.isArray(q.acceptable_answers) ? q.acceptable_answers.map(cleanString) : []),
+        ].filter(Boolean))].slice(0, 4);
+        const oneBlank = (value) => (value.match(/___/g) || []).length === 1;
+        const choice = (q, min, max) => {
+            if (!Array.isArray(q.options)) return null;
+            const options = q.options.map(cleanString);
+            if (options.length < min || options.length > max || options.some((o) => !o) ||
+                new Set(options.map(key)).size !== options.length) return null;
+            const answer = options.find((o) => key(o) === key(q.answer));
+            return answer ? { options, answer } : null;
+        };
+        const types = new Set(["multiple_choice", "fill_blank", "matching", "translation", "true_false", "correct_form", "odd_one_out"]);
+        const sections = quiz.sections.map((sec) => {
+            const type = cleanString(sec?.type).toLowerCase();
+            if (!types.has(type) || seenSections.has(type)) return null;
+            seenSections.add(type);
+            const instructions = cleanString(sec.instructions) || i18n.sectionTitles[type] || "";
+            if (type === "matching") {
+                if (!Array.isArray(sec.pairs) || sec.pairs.length < 2 || sec.pairs.length > 6) return null;
+                const pairs = sec.pairs.map((p) => ({ a: cleanString(p?.a), b: cleanString(p?.b) }));
+                if (pairs.some((p) => !p.a || !p.b || (knownWords?.size && !knownWords.has(key(p.a)))) ||
+                    new Set(pairs.map((p) => key(p.a))).size !== pairs.length ||
+                    new Set(pairs.map((p) => key(p.b))).size !== pairs.length) return null;
+                return { type, instructions, pairs };
+            }
+            if (!Array.isArray(sec.questions)) return null;
+            const questions = sec.questions.map((q) => {
+                if (!q || typeof q !== "object") return null;
+                if (type === "translation") {
+                    const prompt = cleanString(q.prompt), answer = cleanString(q.answer);
+                    return prompt && answer ? { prompt, answer, acceptable_answers: alternatives(q) } : null;
+                }
+                if (type === "fill_blank") {
+                    const sentence = cleanString(q.sentence), answer = cleanString(q.answer), hint = cleanString(q.hint);
+                    return oneBlank(sentence) && answer && hint ? { sentence, answer, hint, acceptable_answers: alternatives(q) } : null;
+                }
+                if (type === "true_false") {
+                    const statement = cleanString(q.statement);
+                    return statement && typeof q.answer === "boolean" ? { statement, answer: q.answer } : null;
+                }
+                const valid = choice(q, type === "correct_form" ? 3 : 4, 4);
+                if (!valid) return null;
+                if (type === "correct_form") {
+                    const sentence = cleanString(q.sentence);
+                    return oneBlank(sentence) ? { sentence, ...valid } : null;
+                }
+                if (type === "multiple_choice") {
+                    const question = cleanString(q.question);
+                    return question ? { question, ...valid } : null;
+                }
+                return valid;
+            }).filter(Boolean);
+            return questions.length ? { type, instructions, questions } : null;
+        }).filter(Boolean);
+        if (!sections.length) throw new Error("AI returned no valid quiz questions.");
+        return { ...quiz, title: cleanString(quiz.title), sections };
+    }
+
     function buildQuizHtml(quiz, words, options = {}) {
         const { escapeHtml } = (typeof SharedUtils !== "undefined" ? SharedUtils : {
             escapeHtml: (s) => (s || "").toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"),
@@ -1773,7 +1644,7 @@
     <div id="scoreBox" class="score-box" style="display:none;"></div>
     <script>
     var I18N = ${JSON.stringify(i18n)};
-    var PASS_THRESHOLD = 85;
+    var PASS_THRESHOLD = 100;
 
     function selectOpt(btn) {
         var q = btn.closest('.q');
@@ -1899,7 +1770,10 @@
     }
 
     function normalize(s) {
-        return cleanForMatching(s);
+        return (s || '').toString().normalize('NFC').toLowerCase()
+            .replace(/['\u2019\u2018]/g, "'")
+            .replace(/\\s+/g, ' ').trim()
+            .replace(/[.!?]+$/g, '').trim();
     }
 
     function escapeHtmlClient(s) {
@@ -2214,13 +2088,6 @@
         if (rawAlts) {
             try { alternatives = JSON.parse(rawAlts); } catch (_) {}
         }
-        if (answer && (answer.indexOf('/') !== -1 || answer.indexOf(';') !== -1)) {
-            var splitAns = answer.split(/[\/;]/).map(function(s) { return s.trim(); }).filter(Boolean);
-            for (var s = 0; s < splitAns.length; s++) {
-                if (alternatives.indexOf(splitAns[s]) === -1) alternatives.push(splitAns[s]);
-            }
-        }
-
         var userVal = '';
         if (type === 'choice') {
             userVal = q.dataset.selected || '';
@@ -2240,7 +2107,12 @@
             var matchRes = matchPercentWithBest(userVal, answer, alternatives);
             pct = matchRes.pct;
             bestAnswer = matchRes.bestAnswer;
-            isCorrect = pct >= PASS_THRESHOLD;
+            isCorrect = [answer].concat(alternatives).some(function(candidate) {
+                return normalize(userVal) === normalize(candidate);
+            });
+            // Expanded contractions are useful for comparison, but can change meaning.
+            // Never show 100% agreement for an answer that failed the exact key.
+            pct = isCorrect ? 100 : Math.min(pct, 99);
         } else {
             isCorrect = normalize(userVal) === normalize(answer);
             if (!isCorrect && alternatives.length > 0) {

@@ -266,7 +266,17 @@
          * @returns {Promise<{text: string, usage: object, cached?: boolean}>}
          * @throws {Error} if user not signed in, limit reached, or server error
          */
-        async function request(
+        const pendingRequests = new Map();
+        function request(prompt, opts = {}) {
+            if (opts.cache === false) return performRequest(prompt, opts);
+            const key = getAiCacheKey(prompt, opts.temperature ?? 0.8, opts.maxOutputTokens ?? 500);
+            if (pendingRequests.has(key)) return pendingRequests.get(key);
+            const pending = performRequest(prompt, opts).finally(() => pendingRequests.delete(key));
+            pendingRequests.set(key, pending);
+            return pending;
+        }
+
+        async function performRequest(
             prompt,
             { temperature = 0.8, maxOutputTokens = 500, cache = true } = {},
         ) {
@@ -397,13 +407,29 @@
          * @param {object} [opts]
          * @returns {Promise<object>} - Parsed JSON object from response
          */
-        async function requestJSON(prompt, opts = {}) {
-            const { text } = await request(prompt, opts);
-            const jsonMatch = text.match(/\{[\s\S]*\}/);
-            if (!jsonMatch) {
-                throw new Error("Gemini: missing JSON response");
+        const rejectedJsonKeys = new Set();
+        async function requestJSON(prompt, { validate, ...opts } = {}) {
+            const key = getAiCacheKey(prompt, opts.temperature ?? 0.8, opts.maxOutputTokens ?? 500);
+            const { text } = await request(prompt, rejectedJsonKeys.has(key) ? { ...opts, cache: false } : opts);
+            // Accept legacy fenced JSON, but never salvage objects from broken prose.
+            const raw = String(text || "").trim().replace(/^```(?:json)?\s*([\s\S]*?)\s*```$/i, "$1");
+            try {
+                const parsed = JSON.parse(raw);
+                if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+                    throw new Error("Gemini: invalid response object");
+                }
+                if (validate) validate(parsed);
+                if (rejectedJsonKeys.has(key) && opts.cache !== false) rememberAiResponse(key, text);
+                rejectedJsonKeys.delete(key);
+                return parsed;
+            } catch (error) {
+                aiResponseCache.delete(key);
+                // A retry also bypasses the background worker's response cache.
+                rejectedJsonKeys.add(key);
+                if (rejectedJsonKeys.size > MAX_AI_CACHE_SIZE) rejectedJsonKeys.delete(rejectedJsonKeys.values().next().value);
+                if (error instanceof SyntaxError) throw new Error("Gemini: invalid JSON response");
+                throw error;
             }
-            return JSON.parse(jsonMatch[0]);
         }
 
         /**

@@ -194,7 +194,7 @@
          */
         async function geminiRequest(
             prompt,
-            { temperature = 0.8, maxOutputTokens = 250 } = {},
+            { temperature = 0.2, maxOutputTokens = 350, validate } = {},
         ) {
             if (typeof GeminiProxy === "undefined") {
                 throw new Error(
@@ -204,6 +204,7 @@
             return GeminiProxy.requestJSON(prompt, {
                 temperature,
                 maxOutputTokens,
+                validate,
             });
         }
 
@@ -221,8 +222,12 @@
                 tgtLang,
             );
             const parsed = await geminiRequest(prompt, {
-                temperature: 0.8,
-                maxOutputTokens: 200,
+                temperature: 0.4,
+                maxOutputTokens: 350,
+                validate(result) {
+                    AIPrompts.validateLanguage(result, tgtLang);
+                    requireTextFields(result, ["sentence", "translation"]);
+                },
             });
             return {
                 sentence: parsed.sentence || "",
@@ -252,30 +257,42 @@
                 { ...options, aiExplanationLanguage },
             );
             const parsed = await geminiRequest(prompt, {
-                temperature: 0.7,
-                maxOutputTokens: 600,
+                temperature: 0.2,
+                maxOutputTokens: 1000,
+                validate(result) {
+                    const detected = AIPrompts.languageCode(result?.source_language);
+                    AIPrompts.validateLanguage(result, aiExplanationLanguage === "simple_target" ? detected : targetLang);
+                    requireTextFields(result, ["translation", "explanation", "badge"]);
+                    if (!Array.isArray(result.items)) throw new Error("AI returned invalid explanation items.");
+                },
             });
-            const rawItems = Array.isArray(parsed?.items)
-                ? parsed.items
-                : Array.isArray(parsed?.breakdown)
-                  ? parsed.breakdown
-                  : [];
+            const detectedLang = AIPrompts.languageCode(parsed?.source_language);
+            const rawItems = parsed.items;
+            const seen = new Set();
+            const types = new Set(["idiom", "phrasal_verb", "slang", "vocabulary"]);
             const items = rawItems
-                .filter((item) => item && typeof item === "object" && item.term)
+                .filter((item) => {
+                    if (!item || typeof item.term !== "string" || !item.term.trim() ||
+                        !types.has(item.type) || typeof item.meaning !== "string" || !item.meaning.trim() ||
+                        typeof item.explanation !== "string" || !item.explanation.trim()) return false;
+                    const term = item.term.trim();
+                    if (!sentence.includes(term) || seen.has(term.toLowerCase())) return false;
+                    seen.add(term.toLowerCase());
+                    return true;
+                })
+                .sort((a, b) => sentence.indexOf(a.term.trim()) - sentence.indexOf(b.term.trim()))
+                .slice(0, 4)
                 .map((item) => ({
                     term: String(item.term || "").trim(),
                     type: String(item.type || "idiom").toLowerCase().trim(),
                     meaning: String(item.meaning || item.translation || "").trim(),
                     explanation: String(item.explanation || "").trim(),
+                    badge: typeof item.badge === "string" ? item.badge.trim() : "",
                 }));
 
             return {
-                detectedLang:
-                    parsed?.source_language ||
-                    parsed?.sourceLanguage ||
-                    parsed?.detected_language ||
-                    parsed?.detectedLang ||
-                    "",
+                detectedLang,
+                badge: parsed.badge.trim(),
                 translation: parsed?.translation || "",
                 explanation: parsed?.explanation || "",
                 items,
@@ -291,13 +308,23 @@
             }
             const prompt = AIPrompts.movieTranslate(text, targetLang, context);
             const parsed = await geminiRequest(prompt, {
-                temperature: 0.8,
+                temperature: 0.2,
                 maxOutputTokens: 350,
+                validate(result) {
+                    AIPrompts.validateLanguage(result, targetLang);
+                    requireTextFields(result, ["translation", "explanation"]);
+                },
             });
             return {
                 translation: parsed.translation || "",
                 explanation: parsed.explanation || "",
             };
+        }
+
+        function requireTextFields(result, fields) {
+            if (fields.some((key) => typeof result?.[key] !== "string" || !result[key].trim())) {
+                throw new Error("AI returned an incomplete response.");
+            }
         }
 
         return Object.freeze({

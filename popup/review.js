@@ -875,8 +875,15 @@ async function aiTranslateReviewCard() {
         let parsed;
         try {
             parsed = await GeminiProxy.requestJSON(prompt, {
-                temperature: 0.3,
-                maxOutputTokens: 300,
+                temperature: 0.2,
+                maxOutputTokens: 500,
+                validate(result) {
+                    AIPrompts.validateLanguage(result, tgtL);
+                    const required = ["word_translation", "explanation", ...(qSentence ? ["sentence_translation"] : [])];
+                    if (required.some((key) => typeof result[key] !== "string" || !result[key].trim())) {
+                        throw new Error("AI returned an incomplete translation.");
+                    }
+                },
             });
         } catch (aiErr) {
             const limitReached = GeminiProxy?.isLimitError?.(aiErr);

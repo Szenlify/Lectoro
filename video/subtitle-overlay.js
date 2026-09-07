@@ -70,6 +70,7 @@
     let aiExplainQueue = [];
     let aiExplainIndex = 0;
     let aiExplainSourceLang = "en";
+    let aiExplainRequestId = 0;
     let aiExplainTargetLang = "pl";
     let aiExplainMode = "native";
     let aiExplainLayout = null;
@@ -1309,6 +1310,7 @@
     QT.addCleanup(removeAiShimmer);
 
     function closeAiTooltip(options = {}) {
+        aiExplainRequestId++;
         if (aiExplainKeydownHandler) {
             window.removeEventListener(
                 "keydown",
@@ -2495,7 +2497,7 @@
             return badgeCandidate.trim();
         }
         const lang = isSimpleTargetMode
-            ? "en"
+            ? aiExplainSourceLang
             : (targetLangCode || "pl").toLowerCase().slice(0, 2);
         const normType = String(type || "").toLowerCase().trim();
 
@@ -2634,6 +2636,8 @@
         const registry = getPlayerRegistry();
         const text = activeText || registry?.getCurrentText();
         if (!text) return;
+        const requestId = ++aiExplainRequestId;
+        const isCurrent = () => aiTooltipActive && requestId === aiExplainRequestId;
         activeAiVideo = video || trackedVideo || registry?.getVideo?.() || null;
         cleanupReading();
         closeSubTooltip({ resumeVideo: false });
@@ -2665,6 +2669,7 @@
             const targetLang = await QT.getTargetLang();
             const aiExplanationLanguage =
                 (await QT.getAiExplanationLanguage?.()) || "native";
+            if (!isCurrent()) return;
             aiExplainMode = aiExplanationLanguage;
             const context = getActiveSubtitleContext(video, text);
             const knownSourceLang = normalizeLanguageCode(
@@ -2677,17 +2682,17 @@
                 context,
                 { aiExplanationLanguage, sourceLang: knownSourceLang },
             );
-            if (!aiTooltipActive) return;
+            if (!isCurrent()) return;
 
             const sourceLang = await detectSourceLanguage(
                 text,
                 targetLang,
                 res,
             );
-            if (!aiTooltipActive) return;
+            if (!isCurrent()) return;
 
             aiExplainSourceLang = sourceLang;
-            aiExplainTargetLang = targetLang;
+            aiExplainTargetLang = aiExplanationLanguage === "simple_target" ? sourceLang : targetLang;
             aiSavedIndices.clear();
             aiAiSavedIndices.clear();
 
@@ -2697,24 +2702,8 @@
                 ? rawTranslation.trim()
                 : String(rawTranslation || "").trim();
 
-            // In Enter mode, always provide exactly one direct single sentence translation (never duplicate lines or repeated phrases)
-            if (translation.includes("\n")) {
-                const lines = translation
-                    .split(/\r?\n/)
-                    .map((l) => l.trim())
-                    .filter(Boolean);
-                translation = lines[0] || "";
-            }
-            if (translation) {
-                const halfLen = Math.floor(translation.length / 2);
-                if (halfLen >= 4) {
-                    const firstHalf = translation.slice(0, halfLen).trim();
-                    const secondHalf = translation.slice(halfLen).trim();
-                    if (firstHalf.toLowerCase() === secondHalf.toLowerCase()) {
-                        translation = firstHalf;
-                    }
-                }
-            }
+            // Keep every clause and intentional repetition in the subtitle.
+            translation = translation.replace(/\s+/g, " ").trim();
             const explanation =
                 res?.explanation || (typeof res === "string" ? res : "");
 
@@ -2768,7 +2757,7 @@
             aiExplainIndex = 0;
             showAiExplainItem(0);
         } catch (err) {
-            if (aiTooltipActive) {
+            if (isCurrent()) {
                 if (GeminiProxy.isLimitError(err)) {
                     closeAiTooltip();
                 } else {
