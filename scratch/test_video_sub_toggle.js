@@ -35,7 +35,11 @@ console.log("✓ Test 2 Passed: Enter mode card button reuse & shimmer animation
 
 // 3. CSS Alignment & Glassmorphism styles
 console.log("Test 3: Verify CSS alignment and button styling");
-assert(stylesCss.includes("#__qt_sentence_translation .__qt_save-footer {\n    display: flex !important;\n    gap: 8px !important;\n    padding: 10px 16px 12px !important;\n    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;\n    justify-content: flex-end !important;"), "#__qt_sentence_translation .__qt_save-footer must be justify-content: flex-end !important;");
+const { cssRule } = require("../tests/helpers");
+const footer = cssRule("styles.css", "#__qt_sentence_translation .__qt_save-footer");
+assert.strictEqual(footer.display, "flex !important");
+assert.strictEqual(footer["justify-content"], "flex-end !important");
+assert.strictEqual(footer.gap, "8px !important");
 assert(stylesCss.includes("#__qt_sentence_translation .__qt_save-ai-btn"), "styles.css must have #__qt_sentence_translation .__qt_save-ai-btn purple styling");
 assert(stylesCss.includes(".ai-loader-label"), "styles.css must have .ai-loader-label styling");
 assert(stylesCss.includes("@keyframes __qt_ai_shimmer"), "styles.css must define @keyframes __qt_ai_shimmer");

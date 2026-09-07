@@ -1,6 +1,6 @@
 // ── Settings: load & save language ────────────────────────────────
 whenPopupReady((data) => {
-    select.value = data.targetLang || "pl";
+    select.value = data.targetLang || LectoroConstants.DEFAULT_READING_SETTINGS.targetLang;
     rateRange.value = data.speechRate || 1.1;
     rateValue.textContent = parseFloat(data.speechRate || 1.1).toFixed(2);
     if (data.ttsVolume !== undefined && volumeRange) {
@@ -57,16 +57,6 @@ if (aiExpLangSelect) {
 // ── Subtitle reading modes ───────────────────────────────────────
 const subtitleTTSToggle = document.getElementById("subtitleTTS");
 const wordCloudModeToggle = document.getElementById("wordCloudMode");
-
-function syncSubtitleModeUI() {
-    whenPopupReady((data) => {
-        if (subtitleTTSToggle) subtitleTTSToggle.checked = !!data.subtitleTTS;
-        if (wordCloudModeToggle)
-            wordCloudModeToggle.checked = !!data.wordCloudMode;
-    });
-}
-
-syncSubtitleModeUI();
 
 subtitleTTSToggle.addEventListener("change", () => {
     chrome.storage.local.set(

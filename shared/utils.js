@@ -101,6 +101,17 @@
                 return s === w;
             },
 
+            normalizeLanguageCode(value, fallback = "") {
+                const raw = String(value || "").trim().toLowerCase();
+                if (!raw) return fallback;
+                const code = raw.replace(/_/g, "-").split("-")[0];
+                if (/^[a-z]{2,3}$/.test(code)) return code;
+                const language = Object.values(C.SUPPORTED_LANGUAGES).find(
+                    (item) => [item.name.toLowerCase(), item.native.toLowerCase()].includes(raw),
+                );
+                return language?.code || fallback;
+            },
+
             /**
              * True when running inside a content script on a regular web page
              * (as opposed to the popup, quiz page or the background service worker).
@@ -137,6 +148,8 @@
                             if (response?.error) {
                                 const error = new Error(response.error);
                                 if (response.code) error.code = response.code;
+                                if (response.status) error.status = response.status;
+                                if (response.retryAt) error.retryAt = response.retryAt;
                                 if (response.validation)
                                     error.validation = response.validation;
                                 reject(error);

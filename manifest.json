@@ -108,6 +108,7 @@
                 "adapters/ted-adapter.js",
                 "adapters/player-registry.js",
                 "video/subtitle-overlay.js",
+                "video/reading-modes.js",
                 "video/video-hotkeys.js",
                 "content.js"
             ],

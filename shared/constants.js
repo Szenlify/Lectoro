@@ -34,7 +34,6 @@
             CUSTOM_SUBTITLES_LAYER: `${PREFIX}custom-subtitles-layer`,
             CUSTOM_SUBTITLES_BOX: `${PREFIX}custom-subtitles-box`,
             CUSTOM_SUB_TRANSLATION: `${PREFIX}custom-sub-translation`,
-            CUSTOM_SUB_TRANSLATION_ACTIVE: `${PREFIX}custom-sub-translation-active`,
             HIDE_CONTROLS: `${PREFIX}hide-controls`,
             NETFLIX_HIDE_CONTROLS: `${PREFIX}netflix-hide-controls`,
             NETFLIX_HIDDEN: `${PREFIX}netflix-subtitles-hidden`,
@@ -94,6 +93,7 @@
             GEMINI_DELETE_CARD_IMAGES: "QT_GEMINI_DELETE_CARD_IMAGES",
             GEMINI_DELETE_ALL_USER_IMAGES: "QT_GEMINI_DELETE_ALL_USER_IMAGES",
             GOOGLE_TRANSLATE: "QT_GOOGLE_TRANSLATE",
+            TRANSLATE_SUBTITLE: "QT_TRANSLATE_SUBTITLE",
             SUBSCRIPTION_REFRESH_PROFILE: "QT_SUBSCRIPTION_REFRESH_PROFILE",
             ELEVENLABS_SYNTHESIZE: "QT_ELEVENLABS_SYNTHESIZE",
             ELEVENLABS_VOICES: "QT_ELEVENLABS_VOICES",
@@ -102,6 +102,7 @@
         const STORAGE_KEYS = Object.freeze({
             SAVED_WORDS: "savedWords",
             TARGET_LANG: "targetLang",
+            TRANSLATE_RETRY_AT: "lectoro_translate_retry_at",
             SPEECH_VOICE: "speechVoice",
             SPEECH_RATE: "speechRate",
             TTS_VOLUME: "ttsVolume",
@@ -131,6 +132,13 @@
         const DEFAULT_SUBTITLE_SETTINGS = Object.freeze({
             POSITION: 14,
             BG_OPACITY: 0,
+        });
+
+        const DEFAULT_READING_SETTINGS = Object.freeze({
+            targetLang: "pl",
+            aiExplanationLanguage: "native",
+            subtitleTTS: false,
+            wordCloudMode: true,
         });
 
         /** Default TTS settings shared by popup, content scripts and SharedTtsService */
@@ -474,6 +482,7 @@
             STORAGE_KEYS,
             DEFAULT_SUBTITLE_SETTINGS,
             DEFAULT_TTS_SETTINGS,
+            DEFAULT_READING_SETTINGS,
             ENDPOINTS,
             SIMPLE_WORDS,
             SVG_ICONS,

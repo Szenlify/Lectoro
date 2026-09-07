@@ -469,6 +469,25 @@ Ostatnia aktualizacja: 2026-09-04
         3. Weryfikacja składniowa wszystkich plików JS w projekcie: 100% plików poprawnych składniowo (PASS).
         4. Audyt CSS (`scratch/audit_dead_code.js`): 0 martwych klas w `styles.css`, `popup.css`, `quiz.css`.
 
+## Naprawa Reading Modes — 2026-09-07
+
+- [x] Transport tłumaczeń: wspólna kolejka, cache trwających żądań, timeout i jawne błędy bez ponawiania HTTP 429 w content script.
+    - `shared/translator-service.js`, `background.js`, `shared/utils.js`: jedna kolejka backgroundu dla popupu i kart (maks. 2 żądania), współdzielenie identycznych żądań, hydratacja cache przed odczytem, timeout 12 s, utrwalone Retry-After. Błędy zachowują kod/status; nie ma dodatkowego fetch po błędzie backgroundu ani zapisywania pustych wyników.
+    - Testy obejmują współbieżność, osobny cache języków, niepoprawne odpowiedzi, timeout, restart workera podczas blokady i komunikację popup/content → background.
+- [x] Kontroler Reading Modes: wspólne ustawienia, język ojczysty, anulowanie, prezentacja błędów i rozliczanie tylko udanych tłumaczeń.
+    - Dodano `video/reading-modes.js` i `shared/subtitle-translation-service.js`. Klawiatura deleguje akcję, oba renderery współdzielą tłumaczenie. Background kolejkuje sprawdzenie limitu i nalicza znaki po sukcesie; ponowne odczytanie cache nie nalicza ich drugi raz.
+    - `video/subtitle-overlay.js`: usunięto fallback zwracający oryginał jako tłumaczenie; dodano komunikat i ponowienie. Częściowy błąd słów zachowuje udane chmurki. Zmiana języka odrzuca starszą odpowiedź, TTS używa języka tłumaczenia. Przytrzymanie S nie zamyka świeżo otwartego trybu.
+    - `manifest.json` ładuje nowy kontroler również w ścieżce wstrzykiwania skryptów do iframe; istniejące nazwy komunikatów i klucze ustawień pozostają zachowane.
+- [x] DRY i porządki: wspólne reguły językowe, usunięcie starego przepływu zdania AI oraz nieużywanych stylów.
+    - `shared/constants.js`, `popup/init.js`, `popup/settings.js`: wspólne domyślne ustawienia Reading Modes/TTS, aktualny stan popupu i usunięcie podwójnej inicjalizacji przełączników.
+    - `shared/utils.js`, `shared/ai-prompts.js`, `video/subtitle-overlay.js`: wspólna normalizacja kodów języków i reguły prostych słów; zachowano rozpoznawanie fraz i pomijanie liczb.
+    - Usunięto nieistniejące `QT.saveSentence` (skrót Z korzysta z rzeczywistego przycisku zapisu), stary click handler etapu zdania AI pod napisami, `CUSTOM_SUB_TRANSLATION_ACTIVE`, jego selektory i animację. Kwota limitu w komunikacie pochodzi z wyniku sprawdzenia limitu.
+    - Skrypty audytu uwzględniają dynamiczne klasy i odróżniają selektory odtwarzaczy od kodu rozszerzenia. Nie usuwano aktywnych klas Netflix/YouTube/Video.js ani dynamicznych klas popupu.
+- [x] Testy zachowania transportu, limitów, obu trybów oraz aktualizacja przestarzałych testów i kontrola składni.
+    - Dodano `tests/translator.test.js`, `tests/reading-modes.test.js` i wspólne narzędzia testowe. `scratch/test_enter_mode.js` sprawdza aktualne zachowanie zamiast dawnych promptów; test CSS stopki jest niezależny od formatowania. Test Anki korzysta z kontrolowanej odpowiedzi sieci i czeka na asercje asynchroniczne.
+    - `npm test`: 98/98 PASS. Testy napisów, SRS i eksportu Anki: PASS. Kontrola składni i `git diff --check`: PASS. Statyczny audyt: brak nierozpoznanych kandydatów CSS/funkcji (nie jest to formalny dowód pełnej osiągalności kodu).
+    - Chromium 124, osobny tymczasowy profil, lokalne wideo i kontrolowane odpowiedzi dostawcy: rzeczywisty skrót S uruchamia oba tryby po polsku mimo AI simple_target; zmiana ustawień przełącza oba na niemiecki; HTTP 429 wyświetla błąd bez oryginału udającego tłumaczenie i naliczenia znaków; przycisk ponowienia przywraca oba tryby po upływie symulowanej blokady. Test nie obejmował dostępności Google na żywo ani sesji zalogowanych Netflix/YouTube.
+
 ## Faza 24: Naturalne Fiszki AI (2 Zwroty, Brak Znaków Specjalnych), Tryb „Enter” (Zdanie jako 1/N, Trwałość Chmurki i Wideo w Pauzie, TTS Meaning) oraz Audyt Kodu i CSS
 
 - [x] 24.1. Naturalne generowanie zwrotów AI do fiszek (`shared/ai-prompts.js` & `shared/utils.js`).

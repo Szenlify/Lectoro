@@ -1,11 +1,13 @@
 const assert = require("assert");
+// Export tests must not depend on live CDN/audio availability.
+global.fetch = async () => ({ ok: false, status: 404 });
 
 // 1. Test SharedTtsService getAudioBlob export
 const SharedTtsService = require("../shared/tts-service.js");
 assert(typeof SharedTtsService.getAudioBlob === "function", "getAudioBlob must be a function on SharedTtsService");
 
 // Test that getAudioBlob with allowSynthesis: false returns null or google-tts fallback (does not throw or call ElevenLabs proxy)
-(async () => {
+const audioChecks = (async () => {
     // With allowFallback: false, should return null if not in cache/R2
     const miss = await SharedTtsService.getAudioBlob("nonexistent_rare_word_xyz_123", "en", { allowSynthesis: false, allowFallback: false });
     assert.strictEqual(miss, null, "Should return null when allowFallback is false and not in cache");
@@ -133,4 +135,9 @@ const frontCardHtmlZ = `<style>.lectoro-anki-card .cloze { color: #38bdf8 !impor
 assert(frontCardHtmlZ.includes("Nie musisz się tym martwić"), "Front card must include Polish sentence prompt");
 assert(frontCardHtmlZ.includes("{{c1::worry::w...}}"), "Front card must contain smart cloze with hint");
 
-console.log("All Anki export tests (Smart Cloze, Single File, Centering) passed successfully!");
+audioChecks.then(() => {
+    console.log("All Anki export tests (Smart Cloze, Single File, Centering) passed successfully!");
+}).catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+});

@@ -3,7 +3,6 @@ Jesteś Principal Chrome Extension Architectem (Google CWS Compliance & Manifest
 CEL PROJEKTU:
 Doprowadzenie kodu do stanu wzorcowej czytelności, modułowości, pełnej zgodności z zasadami DRY (Don't Repeat Yourself), SSOT (Single Source of Truth), bez martwego kodu i powtórzeń, przy ZACHOWANIU 100% DOTYCHCZASOWEJ FUNKCJONALNOŚCI dla użytkownika końcowego. Dopuszczalne są jedynie mikro-korekty UI/UX w celu unifikacji tokenów wizualnych i komponentyzacji.
 
-
 ŻELAZNE ZASADY BEZPIECZEŃSTWA I INTEGRALNOŚCI (ZERO-REGRESSION GUARDRAILS)
 
 1. ZERO TRUNCATION: Pod żadnym pozorem nie skracaj plików komentarzami w stylu "// ... rest of code remains unchanged ...". Każda edycja musi być kompletna, precyzyjna i działająca.
@@ -22,27 +21,18 @@ Doprowadzenie kodu do stanu wzorcowej czytelności, modułowości, pełnej zgodn
    - Żadnego `eval()`, żadnego `new Function()`, żadnego ładowania kodu z zewnętrznych serwerów CDN.
    - Wszelkie dynamiczne szablony HTML muszą być bezpiecznie escapowane (`SharedUtils.escapeHtml`).
 
-
 PROTOKÓŁ ZARZĄDZANIA STANEM: PLIK `change.md`
 
 Przed rozpoczęciem jakichkolwiek modyfikacji kodu w projekcie, Twoim PIERWSZYM KROKIEM jest utworzenie lub zaktualizowanie pliku `change.md` w głównym katalogu repozytorium.
 Plik `change.md` ma pełnić rolę nadrzędnego dziennika audytu i postępu prac.
 
 Wymogi dotyczące `change.md`:
+
 - Każdy podetap musi mieć checkbox: `[ ]` (niezrobione) lub `[x]` (ukończone i przetestowane).
 - Pod każdym ukończonym punktem należy dopisać zwięzły log: zmodyfikowane pliki, usunięty martwy kod, wyeliminowane duplikacje oraz wynik weryfikacji.
 - Checkbox `[x]` może zostać zaznaczony DOPIERO PO faktycznym zrealizowaniu i sprawdzeniu danego fragmentu kodu. Nigdy nie zaznaczaj zadań "na zapas".
 
-
-
-sprawdz i dokończ w wzorcowej czytelności [change.md](file;file:///c%3A/Users/FS/Documents/GitHub/Lectoro/change.md) 
-
-
-
-
-
-
-
+sprawdz i dokończ w wzorcowej czytelności [change.md](file;file:///c%3A/Users/FS/Documents/GitHub/Lectoro/change.md)
 
 Jesteś ekspertem od Chrome Extensions, Manifest V3 oraz zasad Chrome Web Store.
 
@@ -56,14 +46,6 @@ jak klikne Enter wszystko w animacji tak jak teraz jest powiekszajace sie dymki 
 Nie przepisuj całego projektu i nie wykonuj zmian w ciemno.
 pamietaj o zasadzie (Zasada DRY - Don't Repeat Yourself) oraz Centralizacja Logiki (Single Source of Truth)
 
-
-
-
-
-
-
-
-
 Jesteś ekspertem Software Engineer
 
 Jesteś ekspertem Full-Stack JavaScript Developer
@@ -74,6 +56,31 @@ Jesteś ekspertem od Chrome Extensions, Manifest V3 oraz UI/UX
 
 w finkcji "Enter" niech jak bedzie 4/4 to zeby chmurka nei znikala i nie wznawiala filmu oraz w trybie simple language tlumaczenia AI to meaning tlumaczenie tez ma byc czytanie przez TTS
 
-
 pamietaj o zasadzie (Zasada DRY - Don't Repeat Yourself) oraz Centralizacja Logiki (Single Source of Truth)
 i wskarz co trzeba przepisac aby uczytelnic kod aby zeby funkcjonalnosci zostaly takie same sprawdz rowniez css czy nie ma martwych klass i w kodzie czy nie ma martwego kodu lub starych nie uzywanych funkcji
+
+Jesteś ekspertem Full-Stack JavaScript Developer
+
+zamiast uzywac niestabilnego nieoficialnego tlumaczenia
+translate.googleapis.com/translate_a/single
+
+chociaz zostaw go dla uzytkownikow niezalogowanych i dla tych co skoncza im sie tokeny AI
+
+zrob lekkie zapytania do gemini 2.5 lite
+
+design ma wygladac zamiast szarych napisow pod orginalnymi napisami ma sie pojawiac chmurka nad napisami jak
+Translation unavailable
+Translation service is busy. Please try again shortly.
+Try again
+
+a kiedy sie laduje to showAiShimmer ✨ Analyzing…
+
+lekki prompt cos w stylu:
+
+Przetłumacz poniższy tekst (native lang ustawiony w ustawieniach) Zwróć wyłącznie przetłumaczony tekst, bez żadnego wstępu, podsumowania ani komentarzy
+
+temperature = 0
+
+wymysl jeszcze jakis sposob zeby klucz api byl bezpieczny ale jak tysiace uzytkownikow bedzie korzystac z tej wtyczki do chrome zeby mnie nie bolalo finansowo oplacac kazde polaczenie do firebase cloud itp
+
+i jesli ktos zaloguje sie wykorzysta tokeny AI to moze usunac konto i zalogowac sie ponownie i ma spowrotem 10 tokenow AI

@@ -19,7 +19,6 @@
     const SAVE_TOAST_ID = C.UI_IDS.SAVE_TOAST;
 
     const subCache = QT.createTranslateCache(300);
-    const sentenceSubCache = QT.createTranslateCache(150);
     const wordCloudCache = subCache;
     let quotaCountdownTimer = null;
 
@@ -47,6 +46,7 @@
     let currentSubBottomPx = 0;
     let aiSubTranslationEl = null;
     let aiSubTranslationText = "";
+    let subtitleTranslationLang = C.DEFAULT_READING_SETTINGS.targetLang;
     let activeLines = [];
     let activeText = "";
     let activeWordSpans = [];
@@ -100,8 +100,6 @@
     let saveResumeTimer = null;
     let pausedForSave = false;
     let wasPlayingBeforeSave = false;
-
-    const SIMPLE_WORDS = C.SIMPLE_WORDS;
 
     function isNetflixPage() {
         return !!globalThis.LectoroPlayerRegistry?.isNetflixPage?.();
@@ -505,31 +503,14 @@
         if (!aiSubTranslationEl._hasAiClickHandler) {
             aiSubTranslationEl._hasAiClickHandler = true;
             aiSubTranslationEl.addEventListener("click", (e) => {
-                if (aiTooltipActive) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (aiExplainQueue.length > 1) {
-                        const sentenceIdx = aiExplainQueue.findIndex(
-                            (it) => it.type === "sentence",
-                        );
-                        if (sentenceIdx !== -1) {
-                            if (aiExplainIndex === sentenceIdx) {
-                                replayCurrentAiExplainTts();
-                            } else {
-                                showAiExplainItem(sentenceIdx, { manual: true });
-                            }
-                        }
-                    } else {
-                        replayCurrentAiExplainTts();
-                    }
-                } else if (eTranslateActive) {
+                if (eTranslateActive) {
                     e.preventDefault();
                     e.stopPropagation();
                     if (aiSubTranslationText) {
                         aiSubTranslationEl?.classList.add(`${PREFIX}speaking`);
-                        QT.speak(aiSubTranslationText, "auto", {
+                        QT.speak(aiSubTranslationText, subtitleTranslationLang, {
                             isCancelled: () => !eTranslateActive,
-                        }).finally(() => {
+                        }).catch((error) => console.warn("[Lectoro] Subtitle speech failed:", error)).finally(() => {
                             aiSubTranslationEl?.classList.remove(`${PREFIX}speaking`);
                         });
                     }
@@ -550,11 +531,6 @@
             document.body?.removeAttribute("data-lectoro-sub-translate-active");
         } catch (_) { }
         if (aiSubTranslationEl) {
-            aiSubTranslationEl.classList.remove(
-                C.UI_CLASSES.CUSTOM_SUB_TRANSLATION_ACTIVE,
-                `${PREFIX}speaking`,
-            );
-            aiSubTranslationEl.removeAttribute("data-step");
             aiSubTranslationEl.remove();
             aiSubTranslationEl = null;
         }
@@ -1352,23 +1328,7 @@
     }
     QT.addDismissHandler(closeAiTooltip);
 
-    function normalizeLanguageCode(value, fallback = "") {
-        const raw = String(value || "")
-            .trim()
-            .toLowerCase();
-        if (!raw) return fallback;
-
-        const codeCandidate = raw.replace(/_/g, "-").split("-")[0];
-        if (/^[a-z]{2,3}$/.test(codeCandidate)) return codeCandidate;
-
-        for (const [code, language] of Object.entries(C.SUPPORTED_LANGUAGES)) {
-            const names = [language?.name, language?.native]
-                .filter(Boolean)
-                .map((name) => String(name).trim().toLowerCase());
-            if (names.includes(raw)) return code;
-        }
-        return fallback;
-    }
+    const normalizeLanguageCode = SharedUtils.normalizeLanguageCode;
 
     async function detectSourceLanguage(text, targetLang, aiResult) {
         const fromAi = normalizeLanguageCode(aiResult?.detectedLang);
@@ -1931,9 +1891,6 @@
                     "Odtwórz wymowę",
                 );
             }
-            if (aiSubTranslationEl && !aiAutoAdvanceTimer) {
-                aiSubTranslationEl.classList.remove(`${PREFIX}speaking`);
-            }
         }
     }
 
@@ -2103,25 +2060,6 @@
         if (currentSaveBtn && document.contains(currentSaveBtn)) {
             currentSaveBtn.click();
             return true;
-        }
-        const currentItem = aiExplainQueue[aiExplainIndex];
-        if (currentItem && currentItem.type === "sentence") {
-            const text =
-                currentItem.term || currentItem.originalText || activeText;
-            const translated =
-                currentItem.meaning ||
-                currentItem.sentenceTranslated ||
-                aiSubTranslationText;
-            if (text && translated) {
-                QT.saveSentence?.(
-                    text,
-                    translated,
-                    aiExplainSourceLang,
-                    aiExplainTargetLang,
-                );
-                aiSavedIndices.add(aiExplainIndex);
-                return true;
-            }
         }
         return false;
     }
@@ -2854,13 +2792,7 @@
             if (words.length >= 2) return true;
         }
 
-        const cleanWord = text.replace(/[^\p{L}']/gu, "").toLowerCase();
-        if (cleanWord.length <= 1) return false;
-        if (SIMPLE_WORDS.has(cleanWord)) return false;
-
-        const baseWord = cleanWord.replace(/(n't|'s|'ll|'d|'re|'ve|'m)$/, "");
-        if (baseWord.length <= 1) return false;
-        return !SIMPLE_WORDS.has(baseWord);
+        return !SharedUtils.isSimpleWord(text);
     }
 
     function removeWordClouds() {
@@ -3008,8 +2940,8 @@
                 try {
                     const result = await wordCloudCache.get(word, targetLang);
                     return result.translated;
-                } catch {
-                    return null;
+                } catch (error) {
+                    return { error };
                 }
             }),
         );
@@ -3024,7 +2956,7 @@
 
         translatableSpans.forEach((span, i) => {
             const translated = translations[i];
-            if (!translated) return;
+            if (!translated || typeof translated !== "string") return;
             let targetSpan = span;
             if (!targetSpan.isConnected) {
                 const liveSpans = Array.from(
@@ -3047,6 +2979,8 @@
             positionWordCloud(cloud, targetSpan);
         });
         ensureSubtitleUiTracking();
+        const failed = translations.find((result) => result?.error);
+        if (failed) throw failed.error;
     }
 
     function captureSubtitleLayout(elements = null) {
@@ -3093,75 +3027,8 @@
         };
     }
 
-    async function createSubtitleTranslationTask(
-        text,
-        modeRevision,
-        layout = null,
-    ) {
-        const targetLang = await QT.getTargetLang();
-        if (modeRevision !== subtitleModeRevision) return null;
-
-        const cleanText = String(text || "").trim();
-        if (!cleanText) return null;
-
-        // 1. Rewind Cache: avoid re-charging user quota if seeking backwards
-        if (sentenceSubCache && sentenceSubCache.has(cleanText, targetLang)) {
-            try {
-                const cached = await sentenceSubCache.get(
-                    cleanText,
-                    targetLang,
-                );
-                if (cached && modeRevision === subtitleModeRevision) {
-                    return {
-                        targetLang,
-                        translatedText: cached.translated || cleanText,
-                        detectedLang: cached.detectedLang || "en",
-                    };
-                }
-            } catch (_) { }
-        }
-
-        // 2. Check local quota before translation
-        const quota = await SubscriptionService.consumeSubtitleQuota(
-            cleanText.length,
-        );
-        if (!quota.allowed) {
-            if (modeRevision !== subtitleModeRevision) return null;
-            showSubtitleLimitOverlay(quota, layout);
-            return {
-                limitReached: true,
-                targetLang,
-                translatedText: cleanText,
-                detectedLang: "en",
-            };
-        }
-
-        try {
-            const { translated, detectedLang } = await QT.translate(
-                cleanText,
-                targetLang,
-            );
-            if (modeRevision !== subtitleModeRevision) return null;
-            const res = {
-                targetLang,
-                translatedText: translated || cleanText,
-                detectedLang: detectedLang || "en",
-            };
-            if (sentenceSubCache && translated) {
-                sentenceSubCache.set(cleanText, targetLang, {
-                    translated,
-                    detectedLang: res.detectedLang,
-                });
-            }
-            return res;
-        } catch (_) {
-            if (modeRevision !== subtitleModeRevision) return null;
-            return {
-                targetLang,
-                translatedText: cleanText,
-                detectedLang: "en",
-            };
-        }
+    function createSubtitleTranslationTask(text, modeRevision, layout = null) {
+        return globalThis.LectoroReadingModes.translate(text, modeRevision, layout);
     }
 
     function getSubtitleRect(elements = null) {
@@ -3532,6 +3399,27 @@
         return copy;
     }
 
+    function showReadingError(error, layout = translationAnchorLayout) {
+        const rateLimited = error?.code === "RATE_LIMITED" || error?.status === 429;
+        const message = rateLimited
+            ? "Translation service is busy. Please try again shortly."
+            : error?.runtimeError
+                ? "Extension connection lost. Refresh this video page and try again."
+                : "Could not translate subtitles. Please try again.";
+        console.warn("[Lectoro] Subtitle translation failed:", error);
+        const copy = applyAiExplanation(`
+            <div class="${PREFIX}header">Translation unavailable</div>
+            <div class="${PREFIX}body"><div class="${PREFIX}ai-text">${QT.escapeHtml(message)}</div></div>
+            <div class="${PREFIX}save-footer"><button type="button" class="${PREFIX}save-word-btn">Try again</button></div>
+        `, layout, "Translation unavailable");
+        eTranslateActive = true;
+        copy.querySelector(`.${PREFIX}save-word-btn`)?.addEventListener("click", () => {
+            const video = getPlayerRegistry()?.getVideo();
+            restoreOriginal();
+            void globalThis.LectoroReadingModes.start(video);
+        });
+    }
+
     function showSubtitleLimitOverlay(quota, layout = translationAnchorLayout) {
         clearTimeout(quotaCountdownTimer);
         const resetAt =
@@ -3552,7 +3440,7 @@
             </div>
             <div class="${PREFIX}body">
                 <div style="padding: 8px 4px; font-size: 13px; line-height: 1.5; color: #f1f5f9;">
-                    Wykorzystano darmowy limit <strong>15 000 znaków / godzinę</strong>.<br>
+                    Wykorzystano darmowy limit <strong>${QT.escapeHtml(Number(quota.limit).toLocaleString("pl-PL"))} znaków / godzinę</strong>.<br>
                     <span style="color: #94a3b8; font-size: 12px;">Nowa pula darmowych napisów za: <strong style="color: #38bdf8;" class="${PREFIX}countdown-text">${initialRemaining}</strong></span>
                 </div>
             </div>
@@ -3625,6 +3513,7 @@
             return;
         }
 
+        subtitleTranslationLang = translation.targetLang;
         showSubtitleTranslationUnderOriginal(translation.translatedText);
 
         if (options.speakTranslated) {
@@ -3633,8 +3522,10 @@
                 await QT.speak(translation.translatedText, translation.targetLang, {
                     isCancelled: () => modeRevision !== subtitleModeRevision,
                 });
+            } catch (error) {
+                console.warn("[Lectoro] Subtitle speech failed:", error);
             } finally {
-                aiSubTranslationEl?.classList.remove(`${PREFIX}speaking`);
+                if (modeRevision === subtitleModeRevision) aiSubTranslationEl?.classList.remove(`${PREFIX}speaking`);
             }
         }
     }
@@ -3928,6 +3819,8 @@
         showSpeedOverlay,
         captureSubtitleSnapshot,
         createSubtitleTranslationTask,
+        showSubtitleLimitOverlay,
+        showReadingError,
         getSubtitleRect,
         syncCustomSubtitlePosition,
         showSubtitleTranslationUnderOriginal,

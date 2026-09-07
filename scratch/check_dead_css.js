@@ -38,7 +38,7 @@ function getAllFiles(dir, exts = ['.js', '.html']) {
     let results = [];
     const list = fs.readdirSync(dir);
     list.forEach(file => {
-        if (file === 'node_modules' || file === '.git' || file === 'scratch' || file === 'dist') return;
+        if (file === 'node_modules' || file === '.git' || file === 'scratch' || file === 'tests' || file === 'functions' || file === 'dist') return;
         const fullPath = path.join(dir, file);
         const stat = fs.statSync(fullPath);
         if (stat && stat.isDirectory()) {
@@ -57,10 +57,19 @@ const allCodeFiles = getAllFiles(rootDir);
 const allCode = allCodeFiles.map(f => fs.readFileSync(f, 'utf8')).join('\n');
 
 const unusedClasses = [];
+const externalClasses = [];
+// These selectors target the host player's DOM, not elements created by this extension.
+const externalPlayerClass = /^(?:ytp-|watch-video--|vjs-|PlayerControlsNeo__)/;
 for (const cls of classMatches) {
+    if (externalPlayerClass.test(cls)) {
+        externalClasses.push(cls);
+        continue;
+    }
     const cleanCls = cls.replace(/^__qt_/, '');
     // Check if class exists directly, or dynamically prefixed (e.g. `${PREFIX}cls`), or in constants
     const found = allCode.includes(cls) ||
+                  (cls.startsWith('__qt_tb-') && allCode.includes('tb-${kind}') &&
+                   allCode.includes(`"${cls.slice('__qt_tb-'.length)}"`)) ||
                   allCode.includes(`"${cleanCls}"`) ||
                   allCode.includes(`'${cleanCls}'`) ||
                   allCode.includes(`\`${cleanCls}\``) ||
@@ -87,6 +96,8 @@ for (const id of idMatches) {
 }
 
 console.log(`Real classes in styles.css: ${classMatches.size}`);
-console.log(`Unused / Unreferenced classes (${unusedClasses.length}):`, unusedClasses);
+console.log(`Unresolved class candidates (verify dynamic generation) (${unusedClasses.length}):`, unusedClasses);
 console.log(`Real IDs in styles.css: ${idMatches.size}`);
-console.log(`Unused / Unreferenced IDs (${unusedIds.length}):`, unusedIds);
+console.log(`Unresolved ID candidates (${unusedIds.length}):`, unusedIds);
+
+console.log(`Host-player classes (not candidates for removal): ${externalClasses.length}`);

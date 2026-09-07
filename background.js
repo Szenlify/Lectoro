@@ -10,6 +10,7 @@ importScripts(
   "firebase/firebase-config.js",
   "firebase/firebase-sync.js",
   "shared/subscription-service.js",
+  "shared/subtitle-translation-service.js",
   "shared/gemini-proxy.js"
 );
 
@@ -782,6 +783,8 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 function serializeError(error) {
   const payload = { error: error?.message || String(error) };
   if (error?.code) payload.code = error.code;
+  if (error?.status) payload.status = error.status;
+  if (error?.retryAt) payload.retryAt = error.retryAt;
   if (error?.validation) payload.validation = error.validation;
   return payload;
 }
@@ -918,6 +921,11 @@ const MESSAGE_HANDLERS = Object.freeze({
       message.text,
       message.targetLang
     ),
+  }),
+
+  [MSG.TRANSLATE_SUBTITLE]: async (message) => ({
+    ok: true,
+    result: await SharedSubtitleTranslationService.translate(message.text, message.targetLang),
   }),
 
   [MSG.SUBSCRIPTION_REFRESH_PROFILE]: async (message) => ({

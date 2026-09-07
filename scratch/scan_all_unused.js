@@ -7,7 +7,7 @@ function getAllFiles(dir, exts = ['.js']) {
     let results = [];
     const list = fs.readdirSync(dir);
     list.forEach(file => {
-        if (file === 'node_modules' || file === '.git' || file === 'scratch' || file === 'dist' || file === 'functions') return;
+        if (file === 'node_modules' || file === '.git' || file === 'scratch' || file === 'tests' || file === 'dist' || file === 'functions') return;
         const fullPath = path.join(dir, file);
         const stat = fs.statSync(fullPath);
         if (stat && stat.isDirectory()) {
@@ -42,6 +42,9 @@ allFiles.forEach(file => {
     for (const fn of functionsInFile) {
         // Skip factory / UMD wrappers / standard callbacks / tests
         if (fn.startsWith('init') || fn.startsWith('create') || fn === 'factory') continue;
+        // Named function expressions are invoked through their assigned property.
+        const escaped = fn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        if (new RegExp(`=\\s*(?:async\\s+)?function\\s+${escaped}\\b`).test(file.content)) continue;
         const countInAll = (allCode.match(new RegExp(`\\b${fn}\\b`, 'g')) || []).length;
         if (countInAll <= 1) {
             dead.push(fn);
@@ -50,6 +53,6 @@ allFiles.forEach(file => {
 
     if (dead.length > 0) {
         console.log(`\nFile: ${file.relPath}`);
-        console.log('Unreferenced functions:', dead);
+        console.log('Unreferenced function candidates:', dead);
     }
 });

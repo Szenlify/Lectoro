@@ -92,6 +92,9 @@
             e.stopPropagation();
             e.stopImmediatePropagation();
 
+            // Holding S must not close the session just opened by the first keydown.
+            if (e.repeat && ["s", "S", "e", "E", "ArrowDown"].includes(key)) return;
+
             // Speed Control: [ and ]
             if (["[", "{", "]", "}"].includes(key)) {
                 let currentRate = video.playbackRate;
@@ -194,91 +197,7 @@
                 key === "e" ||
                 key === "E"
             ) {
-                if (typeof cleanupReading === "function") cleanupReading();
-                const modeRevision = overlay?.nextSubtitleModeRevision();
-                if (!modeRevision) return;
-
-                // Immediately pause video synchronously so subtitle state is frozen
-                if (video && !video.paused) {
-                    if (typeof registry?.pauseVideo === "function") {
-                        registry.pauseVideo(video);
-                    } else {
-                        video.pause();
-                    }
-                }
-
-                const handleSubtitleAction = (data) => {
-                    if (modeRevision !== overlay.subtitleModeRevision) return;
-                    overlay.resetSubtitleModeStarting();
-
-                    // If neither mode is enabled, do not translate anything
-                    if (!data.wordCloudMode && !data.subtitleTTS) {
-                        return;
-                    }
-
-                    const snapshot = overlay.captureSubtitleSnapshot();
-                    const { text, elements, layout } = snapshot;
-                    if (!text) return;
-
-                    const translationTask = overlay.createSubtitleTranslationTask(
-                        text,
-                        modeRevision,
-                    );
-
-                    if (data.wordCloudMode && data.subtitleTTS) {
-                        overlay.showWordClouds(video, {
-                            skipSpeech: true,
-                            revision: modeRevision,
-                            sourceText: text,
-                            sourceElements: elements,
-                            translationTask,
-                            keepOriginalHidden: true,
-                        }).catch((error) => {
-                            console.warn("[Lectoro] Word cloud mode failed:", error);
-                            overlay.removeWordClouds();
-                        });
-
-                        overlay.doSentenceTranslation(video, text, {
-                            speakTranslated: true,
-                            revision: modeRevision,
-                            layout,
-                            translationTask,
-                        });
-                    } else if (data.wordCloudMode) {
-                        overlay.showWordClouds(video, {
-                            skipSpeech: false,
-                            revision: modeRevision,
-                            sourceText: text,
-                            sourceElements: elements,
-                            translationTask,
-                            keepOriginalHidden: false,
-                        }).catch((error) => {
-                            console.warn("[Lectoro] Word cloud mode failed:", error);
-                            if (modeRevision !== overlay.subtitleModeRevision) return;
-                            overlay.removeWordClouds();
-                            globalThis.LectoroNetflixAdapter?.setOriginalSubtitlesHidden?.(false);
-                        });
-                    } else if (data.subtitleTTS) {
-                        overlay.doSentenceTranslation(video, text, {
-                            speakTranslated: true,
-                            revision: modeRevision,
-                            layout,
-                            translationTask,
-                        });
-                    }
-                };
-
-                if (chrome?.storage?.local) {
-                    chrome.storage.local.get(
-                        { wordCloudMode: true, subtitleTTS: false },
-                        handleSubtitleAction,
-                    );
-                } else {
-                    handleSubtitleAction({
-                        wordCloudMode: true,
-                        subtitleTTS: false,
-                    });
-                }
+                if (!e.repeat) void globalThis.LectoroReadingModes.start(video);
                 return;
             }
 

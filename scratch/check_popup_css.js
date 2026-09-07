@@ -20,13 +20,15 @@ function checkCssFile(cssFileName, htmlFileNames, jsFileNames) {
 
     const unused = [];
     for (const cls of classes) {
-        if (!code.includes(cls)) {
+        const dynamicLevel = cls.startsWith('lvl-') && code.includes('lvl-${item.level');
+        const dynamicSync = cls.startsWith('sync-status-') && code.includes('sync-status-${firebaseUiFeedback.type}');
+        if (!code.includes(cls) && !dynamicLevel && !dynamicSync) {
             unused.push(cls);
         }
     }
     console.log(`\n=== ${cssFileName} ===`);
     console.log(`Total classes: ${classes.size}`);
-    console.log(`Unused classes (${unused.length}):`, unused);
+    console.log(`Unresolved class candidates (${unused.length}):`, unused);
 }
 
 checkCssFile('popup.css', ['popup.html'], [

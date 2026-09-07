@@ -7,7 +7,7 @@ function getAllFiles(dir, exts = ['.js', '.html']) {
     let results = [];
     const list = fs.readdirSync(dir);
     list.forEach(file => {
-        if (file === 'node_modules' || file === '.git' || file === 'scratch' || file === 'dist') return;
+        if (file === 'node_modules' || file === '.git' || file === 'scratch' || file === 'tests' || file === 'dist') return;
         const fullPath = path.join(dir, file);
         const stat = fs.statSync(fullPath);
         if (stat && stat.isDirectory()) {

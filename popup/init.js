@@ -2,16 +2,9 @@ const { escapeHtml, escapeAttr, isDueForReview, countDueWords, dateTag } = Share
 
 // ── Centralized Initial Popup State (Batch Read) ──────────────────
 const POPUP_INIT_KEYS = Object.freeze({
-    targetLang: "pl",
-    aiExplanationLanguage: "native",
-    speechVoice: "",
-    speechRate: 1.1,
-    ttsVolume: 1,
-    subtitleTTS: false,
-    wordCloudMode: true,
+    ...LectoroConstants.DEFAULT_READING_SETTINGS,
+    ...LectoroConstants.DEFAULT_TTS_SETTINGS,
     reviewDirection: "normal",
-    ttsMode: "browser",
-    elVoiceId: "",
     savedWords: [],
     lastFirebaseSync: null,
     pendingFirebaseChanges: {},
@@ -167,7 +160,13 @@ whenPopupReady((state) => {
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === "local" && changes.savedWords) {
+    if (area !== "local") return;
+    for (const [key, change] of Object.entries(changes)) {
+        if (Object.hasOwn(POPUP_INIT_KEYS, key)) {
+            popupState[key] = change.newValue ?? POPUP_INIT_KEYS[key];
+        }
+    }
+    if (changes.savedWords) {
         updateInitialReviewBadge(changes.savedWords.newValue || []);
     }
 });

@@ -1,5 +1,11 @@
 {
   "devDependencies": {
     "prettier": "^3.9.6"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.js functions/*.test.js scratch/test_enter_mode.js scratch/test_video_sub_toggle.js",
+    "test:subtitles": "node scratch/test_subtitles.js",
+    "check:syntax": "node scratch/check_syntax.js",
+    "audit": "node scratch/check_dead_css.js && node scratch/check_popup_css.js && node scratch/scan_all_unused.js"
   }
 }
