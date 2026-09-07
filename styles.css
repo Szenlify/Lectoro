@@ -948,7 +948,7 @@ video::cue {
         0px -0.06em 0 #000,
         0px 0.06em 0 #000,
         0 0.12em 0.3em rgba(0, 0, 0, 0.95) !important;
-    white-space: normal !important;
+    white-space: pre-line !important;
     word-break: normal !important;
     overflow-wrap: break-word !important;
     text-wrap: balance !important;
@@ -1357,7 +1357,7 @@ body[data-lectoro-sub-translate-active="true"] #__qt_custom_subtitles_layer .__q
 
 #__qt_sentence_translation {
     --lectoro-ai-term-font-size: 15px;
-    --lectoro-ai-meaning-font-size: 13px;
+    --lectoro-ai-meaning-font-size: 15px;
     --lectoro-ai-explanation-font-size: 12px;
     --lectoro-ai-badge-font-size: 8px;
     --lectoro-ai-meta-font-size: 9.5px;
@@ -1639,14 +1639,14 @@ body[data-lectoro-sub-translate-active="true"] #__qt_custom_subtitles_layer .__q
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
-    justify-content: center !important;
+    justify-content: flex-start !important;
     text-align: center !important;
     gap: 10px !important;
     width: 100% !important;
 }
 
 #__qt_sentence_translation .__qt_ai-term-header {
-    display: flex !important;
+    display: inline-flex !important;
     flex-direction: column !important;
     align-items: center !important;
     justify-content: center !important;
@@ -1689,13 +1689,14 @@ body[data-lectoro-sub-translate-active="true"] #__qt_custom_subtitles_layer .__q
 }
 
 #__qt_sentence_translation .__qt_ai-term-meaning {
-    font-size: var(--lectoro-ai-meaning-font-size, 13px) !important;
-    font-weight: 600 !important;
+    font-size: var(--lectoro-ai-meaning-font-size, 16px) !important;
+    font-weight: 700 !important;
     color: rgba(255, 255, 255, 0.95) !important;
     line-height: 1.45 !important;
     text-align: center !important;
     width: 100% !important;
     margin-top: 2px !important;
+    white-space: pre-line !important;
 }
 
 #__qt_sentence_translation .__qt_ai-term-explanation {
@@ -1713,11 +1714,34 @@ body[data-lectoro-sub-translate-active="true"] #__qt_custom_subtitles_layer .__q
 }
 
 /* Dedykowana hierarchia wizualna dla tłumaczenia pełnego zdania */
+#__qt_sentence_translation .__qt_ai-term-card[data-type="sentence"] {
+    gap: 0 !important;
+    justify-content: flex-start !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+#__qt_sentence_translation .__qt_ai-sentence-wrap {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+#__qt_sentence_translation .__qt_ai-sentence-wrap .__qt_ai-term-meaning {
+    width: auto !important;
+    max-width: calc(100% - 36px) !important;
+    margin-top: 0 !important;
+}
+
 #__qt_sentence_translation .__qt_ai-term-card[data-type="sentence"] .__qt_ai-term {
     font-size: var(--lectoro-ai-sentence-term-font-size, 15px) !important;
     font-weight: 600 !important;
     color: #00ffea !important;
-    line-height: 1.4 !important;
+    line-height: 1.45 !important;
     text-align: center !important;
 }
 
@@ -1725,8 +1749,10 @@ body[data-lectoro-sub-translate-active="true"] #__qt_custom_subtitles_layer .__q
     font-size: var(--lectoro-ai-sentence-meaning-font-size, 16px) !important;
     font-weight: 700 !important;
     color: rgba(255, 255, 255, 0.95) !important;
-    line-height: 1.4 !important;
+    line-height: 1.45 !important;
     text-align: center !important;
+    white-space: pre-line !important;
+    margin-top: 0 !important;
 }
 
 /* Przyciski nawigacji krokowego przejścia */
@@ -1841,7 +1867,7 @@ body[data-lectoro-sub-translate-active="true"] #__qt_custom_subtitles_layer .__q
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
-    justify-content: center !important;
+    justify-content: flex-start !important;
     gap: 12px !important;
     text-align: center !important;
     width: 100% !important;

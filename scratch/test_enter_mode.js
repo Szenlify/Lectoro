@@ -42,14 +42,14 @@ assert(
     "speakUntilFinished helper must be defined in subtitle-overlay.js",
 );
 
-// Verify 1/1 condition for explanation:
+// Verify streamlined bubble (translation only, no original term, no explanation on sentence stage; full breakdown for subsequent stages):
 assert(
-    jsContent.includes("const isSentenceWithBreakdown = totalItems > 1 && item.type === \"sentence\";"),
-    "isSentenceWithBreakdown must check totalItems > 1",
+    jsContent.includes('!isSentenceStage ? `<span class="${PREFIX}ai-term">${QT.escapeHtml(item.term)}</span>` : ""'),
+    "renderAiExplainContent must omit original term on sentence stage",
 );
 assert(
-    jsContent.includes("const isSingleSentence = aiExplainQueue.length <= 1;"),
-    "isSingleSentence must check queue length <= 1",
+    jsContent.includes('!isSentenceStage && item.explanation'),
+    "renderAiExplainContent must omit explanation on sentence stage",
 );
 
 // Verify auto-advance disabling on manual navigation:
@@ -237,15 +237,15 @@ assert(
 const normalizedJs = updatedJsContent.replace(/\r\n/g, "\n");
 assert(
     normalizedJs.includes("const sentenceLang =\n                    aiExplainMode === \"simple_target\"\n                        ? aiExplainSourceLang\n                        : aiExplainTargetLang;"),
-    "subtitle-overlay.js must speak simplified sentence in sourceLang when in simple_target mode",
+    "subtitle-overlay.js must determine sentenceLang based on aiExplainMode",
 );
 assert(
-    normalizedJs.includes("const detailLang =\n                    aiExplainMode === \"simple_target\"\n                        ? aiExplainSourceLang\n                        : aiExplainTargetLang;"),
-    "subtitle-overlay.js must speak breakdown items (meaning + explanation) in sourceLang when in simple_target mode",
+    normalizedJs.includes("await speakUntilFinished(item.meaning, sentenceLang"),
+    "subtitle-overlay.js must speak item.meaning in sentenceLang on sentence stage",
 );
 assert(
-    normalizedJs.includes("const explanationSpeech = [item.meaning, item.explanation]\n                    .filter(Boolean)\n                    .join(\". \");"),
-    "subtitle-overlay.js must speak item.meaning and item.explanation together",
+    normalizedJs.includes("await speakUntilFinished(\n                        explanationSpeech,\n                        detailLang,"),
+    "subtitle-overlay.js must speak explanationSpeech in detailLang on breakdown stages",
 );
 assert(
     updatedJsContent.includes("function replayCurrentAiExplainTts()"),
@@ -530,12 +530,13 @@ assert(
     "subtitle-overlay.js must define adjustSubtitlePositionForTranslation",
 );
 assert(
-    latestOverlayJs.includes("showSubtitleTranslationUnderOriginal(translation);"),
-    "handleAIExplain must call showSubtitleTranslationUnderOriginal(translation)",
+    latestOverlayJs.includes("aiTooltipActive = true;\n        removeSubtitleTranslationUnderOriginal();") &&
+    !latestOverlayJs.includes("showSubtitleTranslationUnderOriginal(translation);"),
+    "handleAIExplain must remove subtitle translation and NOT call showSubtitleTranslationUnderOriginal",
 );
 assert(
-    latestOverlayJs.includes("if (breakdownItems.length > 0) {\n                aiExplainQueue = [...breakdownItems, sentenceItem];\n            } else {\n                aiExplainQueue = [sentenceItem];\n            }"),
-    "handleAIExplain must append full sentence translation as final stage when breakdown items exist",
+    latestOverlayJs.includes("if (breakdownItems.length > 0) {\n                aiExplainQueue = [sentenceItem, ...breakdownItems];\n            } else {\n                aiExplainQueue = [sentenceItem];\n            }"),
+    "handleAIExplain must prepend full sentence translation as first stage (1/N) when breakdown items exist",
 );
 assert(
     latestOverlayJs.includes("showSubtitleTranslationUnderOriginal,") &&
@@ -610,36 +611,31 @@ assert(
 
 // Verify logic in subtitle-overlay.js:
 assert(
-    latestOverlayJs.includes("const isSentenceWithBreakdown =\n            aiExplainQueue.length > 1 && item.type === \"sentence\";"),
-    "showAiExplainItem must detect isSentenceWithBreakdown (stage 4/4)",
+    latestOverlayJs.includes("ensureAiExplainKeydownListener();\n\n        removeSubtitleTranslationUnderOriginal();"),
+    "showAiExplainItem must keep subtitle translation removed in Enter mode",
 );
 assert(
-    latestOverlayJs.includes("removeOverlay();") &&
-    latestOverlayJs.includes("aiSubTranslationEl.classList.add(\n                    C.UI_CLASSES.CUSTOM_SUB_TRANSLATION_ACTIVE,\n                );"),
-    "Stage 4/4 must call removeOverlay and add CUSTOM_SUB_TRANSLATION_ACTIVE class",
-);
-assert(
-    latestOverlayJs.includes("data-step") &&
-    latestOverlayJs.includes("`${clampedIndex + 1}/${aiExplainQueue.length}`"),
-    "Stage 4/4 must set data-step badge attribute",
+    !latestOverlayJs.includes("isSentenceWithBreakdown") &&
+    !latestOverlayJs.includes("removeOverlay();\n\n            if (aiSubTranslationText)"),
+    "showAiExplainItem must NOT remove overlay bubble on sentence or final stage",
 );
 assert(
     latestOverlayJs.includes("function ensureAiExplainKeydownListener()"),
     "subtitle-overlay.js must define ensureAiExplainKeydownListener for seamless hotkeys",
 );
 
-// Sandbox simulation of showAiExplainItem for 4/4 stage
+// Sandbox simulation of showAiExplainItem for sentence stage (1/4) and idiom stage (4/4)
 let overlayRemoved = false;
-let subTransClasses = new Set();
-let subTransAttributes = {};
+let appliedHtml = null;
+let subTransRemoved = false;
 let spokenItem = null;
 const showSandbox = {
     aiTooltipActive: true,
     aiExplainQueue: [
+        { type: "sentence", term: "It is a piece of cake", meaning: "To bułka z masłem" },
         { type: "idiom", term: "break a leg", meaning: "powodzenia" },
         { type: "idiom", term: "piece of cake", meaning: "bułka z masłem" },
         { type: "word", term: "curious", meaning: "ciekawy" },
-        { type: "sentence", term: "It is a piece of cake", meaning: "To bułka z masłem" },
     ],
     aiAutoAdvanceDisabled: false,
     aiExplainIndex: 0,
@@ -650,21 +646,11 @@ const showSandbox = {
     SharedTtsService: { cancel: () => {} },
     ensureAiExplainKeydownListener: () => {},
     removeOverlay: () => { overlayRemoved = true; },
-    showSubtitleTranslationUnderOriginal: () => {},
-    aiSubTranslationText: "To bułka z masłem",
-    aiSubTranslationEl: {
-        classList: {
-            add: (c) => subTransClasses.add(c),
-            remove: (c) => subTransClasses.delete(c),
-        },
-        setAttribute: (k, v) => { subTransAttributes[k] = v; },
-        removeAttribute: (k) => { delete subTransAttributes[k]; },
-    },
+    removeSubtitleTranslationUnderOriginal: () => { subTransRemoved = true; },
     updateSubtitleVideoHighlights: () => {},
     speakAiExplainItem: (item) => { spokenItem = item; },
-    C: { UI_CLASSES: { CUSTOM_SUB_TRANSLATION_ACTIVE: "__qt_custom-sub-translation-active" } },
-    renderAiExplainContent: () => "<div>Card</div>",
-    applyAiExplanation: () => ({ querySelectorAll: () => [], querySelector: () => null }),
+    renderAiExplainContent: (idx) => `<div>Card ${idx}</div>`,
+    applyAiExplanation: (html) => { appliedHtml = html; return { querySelectorAll: () => [], querySelector: () => null }; },
     wireAiExplainSpeakButton: () => {},
     wireAiExplainSaveButton: () => {},
     PREFIX: "__qt_",
@@ -674,19 +660,18 @@ const showFnMatch = latestOverlayJs.match(/function showAiExplainItem\(index, \{
 assert(showFnMatch, "showAiExplainItem regex must match in subtitle-overlay.js");
 vm.runInNewContext(showFnMatch[0] + "; this.showAiExplainItem = showAiExplainItem;", showSandbox);
 
-// Run step 4/4 (index 3)
-showSandbox.showAiExplainItem(3);
-assert.strictEqual(overlayRemoved, true, "Overlay bubble must be removed on stage 4/4");
-assert.strictEqual(subTransClasses.has("__qt_custom-sub-translation-active"), true, "CUSTOM_SUB_TRANSLATION_ACTIVE must be added to translation");
-assert.strictEqual(subTransAttributes["data-step"], "4/4", "data-step attribute must be '4/4'");
-assert.strictEqual(spokenItem.meaning, "To bułka z masłem", "TTS must read translation text");
+// Run step 1/4 (index 0 - sentence)
+showSandbox.showAiExplainItem(0);
+assert.strictEqual(overlayRemoved, false, "Overlay bubble must NOT be removed on sentence stage 1/4");
+assert.strictEqual(appliedHtml, "<div>Card 0</div>", "Overlay bubble must be rendered for sentence");
+assert.strictEqual(subTransRemoved, true, "Subtitle translation under original must be removed in Enter mode");
 
-// Run step 3/4 (index 2 - navigating back)
-showSandbox.showAiExplainItem(2, { manual: true });
-assert.strictEqual(subTransClasses.has("__qt_custom-sub-translation-active"), false, "CUSTOM_SUB_TRANSLATION_ACTIVE must be removed when returning to word card");
-assert.strictEqual(subTransAttributes["data-step"], undefined, "data-step attribute must be removed when returning to word card");
-assert.strictEqual(spokenItem.term, "curious", "TTS must read the word on stage 3/4");
-console.log("✓ Test 19 Passed: Phase 22 Stage 4/4 without bubble, visual highlight, step badge, TTS and hotkeys verified successfully.");
+// Run step 4/4 (index 3 - last idiom/word stage)
+showSandbox.showAiExplainItem(3, { manual: true });
+assert.strictEqual(overlayRemoved, false, "Overlay bubble must NOT be removed on 4/4 stage");
+assert.strictEqual(appliedHtml, "<div>Card 3</div>", "Overlay bubble must be rendered for 4/4 item");
+assert.strictEqual(spokenItem.term, "curious", "TTS must read the word on stage 4/4");
+console.log("✓ Test 19 Passed: Bubble preserved on all stages (sentence 1/4 and final 4/4) and subtitle translation removed verified successfully.");
 
 // 20. Verify Phase 23: Translate Full Sentence Mode Unification with Enter Mode (No Spinner, 50% Grey Subtitles Under Original)
 const latestOverlayJsP23 = fs.readFileSync(path.join(__dirname, "../video/subtitle-overlay.js"), "utf-8").replace(/\r\n/g, "\n");
@@ -710,7 +695,7 @@ assert(
 
 // 20.3 Check renderCustomSubtitles supports eTranslateActive
 assert(
-    latestOverlayJsP23.includes("(aiTooltipActive || eTranslateActive) && aiSubTranslationText"),
+    latestOverlayJsP23.includes("!aiTooltipActive && eTranslateActive && aiSubTranslationText"),
     "renderCustomSubtitles must keep translation visible if eTranslateActive is true",
 );
 
@@ -785,6 +770,110 @@ vm.runInNewContext(doSentMatch[0] + "; this.doSentenceTranslation = doSentenceTr
     assert.strictEqual(p23SpeakingClassAdded, true, "Speaking glow class must be added during speech");
     assert.strictEqual(p23SpeakingClassRemoved, true, "Speaking glow class must be removed after speech");
     console.log("✓ Test 20 Passed: Phase 23 Translate full sentence mode unified with Enter mode (no spinner, 50% grey text under original subtitles, TTS) verified successfully.");
+
+    // 21. Verify Phase 24: Natural Flashcard AI Phrases, No Special Characters, 2 Translations, cleanCardText \n preservation, and CSS pre-line
+    const AIPrompts = require("../shared/ai-prompts");
+    const SharedUtils = require("../shared/utils");
+
+    // 21.1 sentenceExample rules
+    const promptSentence = AIPrompts.sentenceExample("cornered me", "przyparł mnie do muru", "en", "pl");
+    assert(promptSentence.includes("ALWAYS provide EXACTLY TWO natural"), "sentenceExample must instruct 2 natural expressions");
+    assert(promptSentence.includes("ABSOLUTELY NO special characters"), "sentenceExample must forbid special characters");
+    assert(promptSentence.includes("Dobra, przyparłeś mnie do muru"), "sentenceExample must include natural Polish phrasing example");
+
+    // 21.2 standardTranslate rules
+    const promptStandard = AIPrompts.standardTranslate("cornered me", "All right, you've cornered me", "en", "pl");
+    assert(promptStandard.includes("EXACTLY TWO natural"), "standardTranslate must instruct 2 natural expressions");
+    assert(promptStandard.includes("ABSOLUTELY NO special characters"), "standardTranslate must forbid special characters");
+
+    // 21.3 cleanCardText multi-line preservation & artifact removal
+    const multiLineInput = "  [music] >> Dobra, przyparłeś mnie do muru... \r\n  Dobra, nie mam już wyjścia,  ";
+    const cleaned = SharedUtils.cleanCardText(multiLineInput);
+    assert.strictEqual(
+        cleaned,
+        "Dobra, przyparłeś mnie do muru\nDobra, nie mam już wyjścia",
+        `cleanCardText must clean each line and preserve newline. Got: ${JSON.stringify(cleaned)}`,
+    );
+
+    // 21.4 CSS pre-line
+    const popupCssContent = fs.readFileSync(path.join(__dirname, "../popup.css"), "utf-8").replace(/\r\n/g, "\n");
+    const stylesCssContent = fs.readFileSync(path.join(__dirname, "../styles.css"), "utf-8").replace(/\r\n/g, "\n");
+    assert(popupCssContent.includes(".review-word {\n    font-size: 28px;\n    font-weight: 800;\n    letter-spacing: -0.5px;\n    white-space: pre-line;"), "popup.css must have white-space: pre-line for .review-word");
+    assert(stylesCssContent.includes("white-space: pre-line !important;"), "styles.css must have white-space: pre-line !important for translations");
+
+    // 21.5 speakAiExplainItem TTS reads meaning without explanation on sentence stage; reads term + explanationSpeech on breakdown stages
+    const latestOverlayJsP24 = fs.readFileSync(path.join(__dirname, "../video/subtitle-overlay.js"), "utf-8").replace(/\r\n/g, "\n");
+    assert(
+        latestOverlayJsP24.includes("await speakUntilFinished(item.meaning, sentenceLang") &&
+        latestOverlayJsP24.includes("await speakUntilFinished(\n                        explanationSpeech,\n                        detailLang,"),
+        "speakAiExplainItem must read item.meaning on sentence stage and term + explanationSpeech on breakdown stages",
+    );
+
+    console.log("✓ Test 21 Passed: Phase 24 Natural flashcards (2 translations, no special chars), cleanCardText \\n preservation, CSS pre-line, and Enter TTS verified successfully.");
+
+    // 22. Verify Phase 25: Flashcard Redundancy Elimination & Enter Mode UI Streamlining
+    // 22.1 SharedUtils.isRedundantSentence
+    assert.strictEqual(SharedUtils.isRedundantSentence("blessing in disguise", "blessing in disguise"), true, "Identical strings must be redundant");
+    assert.strictEqual(SharedUtils.isRedundantSentence('"blessing in disguise"', "blessing in disguise"), true, "Quoted sentence matching term must be redundant");
+    assert.strictEqual(SharedUtils.isRedundantSentence("Blessing in disguise.", "blessing in disguise"), true, "Punctuation/case variant must be redundant");
+    assert.strictEqual(SharedUtils.isRedundantSentence("  blessing in disguise! ", "blessing in disguise"), true, "Whitespace/exclamation variant must be redundant");
+    assert.strictEqual(SharedUtils.isRedundantSentence("It is a blessing in disguise", "blessing in disguise"), false, "Different sentence must NOT be redundant");
+    assert.strictEqual(SharedUtils.isRedundantSentence("", "blessing in disguise"), false, "Empty sentence must NOT be redundant");
+    assert.strictEqual(SharedUtils.isRedundantSentence(null, "blessing in disguise"), false, "Null sentence must NOT be redundant");
+
+    // 22.2 SharedWordRepository.sanitizeTextFields cleans redundant context sentence
+    const SharedWordRepository = require("../shared/word-repository");
+    let capturedWords = [];
+    global.chrome = {
+        storage: {
+            local: {
+                get: async () => ({ savedWords: capturedWords }),
+                set: async (obj) => { capturedWords = obj.savedWords; },
+            },
+        },
+    };
+    const saveRes = await SharedWordRepository.saveWord({
+        original: "blessing in disguise",
+        translated: "błogosławieństwo w nieszczęściu",
+        sentence: '"blessing in disguise."',
+        sentenceTranslated: "błogosławieństwo w nieszczęściu",
+        aiSentence: "blessing in disguise",
+        aiSentenceTranslated: "błogosławieństwo w nieszczęściu",
+    });
+    assert.strictEqual(saveRes.saved, true, "Word must be saved");
+    assert.strictEqual(saveRes.entry.sentence, "", "Redundant sentence must be sanitized to empty string");
+    assert.strictEqual(saveRes.entry.sentenceTranslated, "", "Redundant sentenceTranslated must be sanitized to empty string");
+    assert.strictEqual(saveRes.entry.aiSentence, "", "Redundant aiSentence must be sanitized to empty string");
+    assert.strictEqual(saveRes.entry.aiSentenceTranslated, "", "Redundant aiSentenceTranslated must be sanitized to empty string");
+
+    // 22.3 popup buildReviewSpeakText
+    const initJs = fs.readFileSync(path.join(__dirname, "../popup/init.js"), "utf-8");
+    const reviewJs = fs.readFileSync(path.join(__dirname, "../popup/review.js"), "utf-8");
+    assert(initJs.includes("isRedundantSentence(sentence, word)"), "buildReviewSpeakText must check isRedundantSentence");
+    assert(reviewJs.includes("isRedundantSentence(showSentence, showWord)"), "renderQuestion must check isRedundantSentence");
+    assert(reviewJs.includes("isRedundantSentence(aSentence, aWord)"), "renderAnswer must check isRedundantSentence");
+
+    // 22.4 video/subtitle-overlay.js Enter mode bubble: Stage 1 translation only, subsequent stages full breakdown, and no gray subtitle text
+    const overlayJsP25 = fs.readFileSync(path.join(__dirname, "../video/subtitle-overlay.js"), "utf-8").replace(/\r\n/g, "\n");
+    assert(overlayJsP25.includes('!isSentenceStage ? `<span class="${PREFIX}ai-term">${QT.escapeHtml(item.term)}</span>` : ""'), "Stage 1 must omit original term");
+    assert(overlayJsP25.includes('!isSentenceStage && item.explanation'), "Stage 1 must omit explanation");
+    // 22.5 Consistent height and no large top gap for __qt_ai-term-meaning
+    assert(overlayJsP25.includes('class="${PREFIX}ai-term-title-wrap ${PREFIX}ai-sentence-wrap"'), "Stage 1 must render ai-sentence-wrap at top of card");
+    assert(overlayJsP25.includes("const sentenceMeaningSize = meaningSize;"), "sentenceMeaningSize must be consistent with meaningSize");
+    const updatedStyles = fs.readFileSync(path.join(__dirname, "../styles.css"), "utf-8").replace(/\r\n/g, "\n");
+    assert(updatedStyles.includes(".__qt_ai-sentence-wrap"), "styles.css must style .__qt_ai-sentence-wrap");
+    assert(updatedStyles.includes(".__qt_ai-sentence-wrap .__qt_ai-term-meaning"), "styles.css must style meaning inside .__qt_ai-sentence-wrap");
+    assert(updatedStyles.includes(".__qt_ai-term-card[data-type=\"sentence\"] {\n    gap: 0 !important;\n    justify-content: flex-start !important;\n    margin: 0 !important;\n    padding: 0 !important;\n}"), "Sentence card must have gap: 0 and justify-content: flex-start");
+
+    // 22.6 Exactly one direct sentence translation in Enter mode (no duplicate lines or doubled repetition)
+    const explainPrompt = AIPrompts.explainSentence("Let's start with our day-to-day", "pl");
+    assert(explainPrompt.includes("ALWAYS provide EXACTLY ONE single sentence on a single line"), "explainSentence must instruct exactly one single sentence translation");
+    assert(explainPrompt.includes("NEVER duplicate lines"), "explainSentence must forbid duplicate lines");
+    assert(overlayJsP25.includes(".split(/\\r?\\n/)") || overlayJsP25.includes(".split"), "handleAIExplain must split multiple lines if present");
+    assert(overlayJsP25.includes("translation = lines[0] || \"\""), "handleAIExplain must take single first translation line");
+    assert(overlayJsP25.includes("firstHalf.toLowerCase() === secondHalf.toLowerCase()"), "handleAIExplain must deduplicate doubled repetition");
+
+    console.log("✓ Test 22 Passed: Phase 25 Flashcard redundancy elimination, Enter mode UI streamlining, consistent __qt_ai-term-meaning height & single sentence translation verified successfully.");
 
     console.log("\nALL ENTER MODE, UI/UX & SETTING IMPROVEMENTS VERIFIED! 🚀");
 })();

@@ -434,3 +434,62 @@ Ostatnia aktualizacja: 2026-09-04
       3. Wynik `node scratch/check_syntax.js`: 100% plików JS w repozytorium przechodzi kontrolę składniową bez błędów (PASS).
       4. Wyniki `test_subtitles.js`, `test-srs.js`, `test_anki_export.js`, `test_video_sub_toggle.js`, `check_dead_css.js`: wszystkie testy zaliczone z kodem 0 (PASS).
 
+## Faza 25: Wyeliminowanie Zduplikowanych Zdań Kontekstowych na Fiszkach oraz Streamline Chmurki Trybu „Enter” (Samo Tłumaczenie, Brak Szarego Tekstu pod Napisami)
+
+- [x] 25.1. Centralna eliminacja zduplikowanych zdań kontekstowych (`shared/utils.js`, `shared/word-repository.js`).
+    - Log:
+      1. W `shared/utils.js` zaimplementowano funkcję `isRedundantSentence(sentence, word)`: normalizuje zdanie i hasło (oczyszcza za pomocą `cleanCardText`, usuwa cudzysłowy `""`, `''`, `«»`, `“”`, znaki interpunkcyjne `.`, `!`, `?`, `,`, `:`, `;`, redukuje spacje i porównuje małe litery). Gdy zdanie kontekstowe jest identyczne z samym hasłem (np. *"blessing in disguise"* oraz *"'Blessing in disguise.'"*), funkcja zwraca `true`.
+      2. W `shared/word-repository.js` w `sanitizeTextFields` (Single Source of Truth) dodano automatyczne zerowanie `sentence = ""` oraz `sentenceTranslated = ""` (oraz `aiSentence` / `aiSentenceTranslated` jeśli były zduplikowane), gdy `isRedundantSentence` wykryje redundancję. Dzięki temu żadna fiszka zapisywana z dowolnego miejsca w rozszerzeniu nie zawiera powielonego zdania kontekstowego.
+      3. Zaktualizowano nagłówek UMD w `shared/word-repository.js`, wstrzykując zależności `SharedUtils` oraz `SRS`, co zapewnia bezbłędne działanie zarówno w środowisku przeglądarkowym, jak i w Node.js / testach jednostkowych.
+- [x] 25.2. Uproszczenie interfejsu chmurki trybu „Enter” (`video/subtitle-overlay.js` & `styles.css`).
+    - Log:
+      1. W `renderAiExplainContent` dostosowano dymek dla 1 etapu (całe zdanie, 1/N, `item.type === "sentence"`): w 1 etapie prezentowane jest **wyłącznie samo tłumaczenie** (`item.meaning`), bez oryginalnego tekstu zdania (`!isSentenceStage ? ai-term : ""`) oraz bez bloku objaśnień gramatycznych (`!isSentenceStage && item.explanation ? ... : ""`).
+      2. W kolejnych etapach (2..N: idiomy, phrasal verbs, trudne słówka) **reszta pozostaje bez zmian**: w dymku wyświetlane jest oryginalne hasło (`.__qt_ai-term`), znaczenie (`.__qt_ai-term-meaning`) oraz szczegółowe wyjaśnienie (`.__qt_ai-term-explanation`).
+      3. W `speakAiExplainItem`: na 1 etapie (zdanie) lektor TTS odczytuje wyłącznie samo tłumaczenie (`item.meaning`) w języku docelowym (lub uproszczonym angielskim w trybie `simple_target`). Na kolejnych etapach (2..N) lektor odczytuje najpierw oryginalny termin (`item.term`) w języku źródłowym, a następnie znaczenie i wyjaśnienie (`item.meaning` + `item.explanation`) w języku docelowym – bez zmian.
+      4. W `handleAIExplain` oraz `showAiExplainItem` wyeliminowano wywołania `showSubtitleTranslationUnderOriginal`: w trybie Enter pod napisami wideo nie pojawia się szary tekst tłumaczenia, a wywołanie `removeSubtitleTranslationUnderOriginal()` zapewnia czysty obraz filmu. Szary tekst pozostaje aktywny wyłącznie dla dedykowanego skrótu tłumaczenia napisów (`doSentenceTranslation` / `eTranslateActive`).
+      5. W `wireAiExplainSaveButton` oraz `wireAiSentenceSaveButton` zintegrowano `isRedundantSentence`: gdy zapisywany zwrot jest tożsamy z linijką napisów, `contextSentence` i `contextSentenceTranslated` są zerowane przed wysłaniem do repozytorium.
+      6. W `renderAiExplainContent` w 1 etapie (zdanie) wyeliminowano nadmiarowy nagłówek z etykietą i samotnym przyciskiem głośnika: tekst tłumaczenia `.__qt_ai-term-meaning` renderowany jest w `.__qt_ai-sentence-wrap` bezpośrednio u góry karty wraz z wyrównanym w linii przyciskiem odsłuchu (`speak`).
+      7. W `styles.css` oraz `video/subtitle-overlay.js`:
+         - Usunięto pustą przestrzeń od góry (`.__qt_ai-term-card[data-type="sentence"]` z `gap: 0`, `justify-content: flex-start`, `margin: 0`).
+         - Zapewniono pełną spójność wysokości i typografii `.__qt_ai-term-meaning`: ujednolicono `sentenceMeaningSize` z `meaningSize`, zastosowano spójny `line-height: 1.45 !important;`, wagę 700 oraz `margin-top: 0 !important;`.
+         - Zmieniono `justify-content` z `center` na `flex-start` w `.__qt_body`, dzięki czemu treść karty nie jest spychana w dół dymka przy zmiennej zawartości etapów.
+      8. W `shared/ai-prompts.js` (`explainSentence`) oraz `video/subtitle-overlay.js` (`handleAIExplain`):
+         - Zaktualizowano regułę promptu AI dla pola `translation`: wymóg ZAWSZE DOKŁADNIE JEDNEGO zdania w jednej linii, bez alternatywnych wariantów po `\n` i bez duplikatów.
+         - W `handleAIExplain` zabezpieczono wyodrębnianie tłumaczenia: jeśli odpowiedź API zawierała wiele linii, pobierana jest wyłącznie pierwsza linia, a powtórzone połówki są automatycznie deduplikowane. Dzięki temu w 1 etapie trybu Enter pojawia się zawsze tylko jedno, bezpośrednie tłumaczenie zdania.
+- [x] 25.3. Spójność widoku powtórek i lektora TTS w popupie (`popup/review.js` & `popup/init.js`).
+    - Log:
+      1. W `popup/review.js` w `renderQuestion` oraz `renderAnswer` dodano warunek `!isRedundantSentence(sentence, word)`. Jeśli użytkownik posiada w bazie wcześniej zapisane karty ze zduplikowanym zdaniem, widok powtórek nie wyświetla cudzysłowu ani drugiego wiersza z powtórzonym tekstem.
+      2. W formularzu edycji fiszki (`showReviewEditForm`) wyczyszczono redundancję przy zapisie edycji.
+      3. W `popup/init.js` w funkcji `buildReviewSpeakText(word, sentence)` dodano weryfikację `isRedundantSentence`: syntezator mowy podczas powtórek odczytuje hasło tylko raz, eliminując sztuczne powtórzenie *"blessing in disguise. blessing in disguise"*.
+- [x] 25.4. Weryfikacja testami automatycznymi (`test_enter_mode.js`, `functions/subscription-config.test.js`, audyt CSS/JS).
+    - Log:
+      1. `node scratch/test_enter_mode.js`: 22/22 testy zakończone sukcesem (PASS), w tym Test 2, Test 9, Test 21 oraz Test 22 weryfikujące: eliminację redundancji zdań, czyszczenie w repozytorium, odsłuch w popupie, samo tłumaczenie w 1 etapie trybu Enter, pełne elementy (hasło + znaczenie + wyjaśnienie) w etapach 2..N oraz brak szarego tekstu pod napisami.
+      2. `npm test --prefix functions`: 51/51 testów jednostkowych Cloud Functions zakończonych sukcesem (PASS).
+      3. Weryfikacja składniowa wszystkich plików JS w projekcie: 100% plików poprawnych składniowo (PASS).
+      4. Audyt CSS (`scratch/audit_dead_code.js`): 0 martwych klas w `styles.css`, `popup.css`, `quiz.css`.
+
+
+## Faza 24: Naturalne Fiszki AI (2 Zwroty, Brak Znaków Specjalnych), Tryb „Enter” (Zdanie jako 1/N, Trwałość Chmurki i Wideo w Pauzie, TTS Meaning) oraz Audyt Kodu i CSS
+
+- [x] 24.1. Naturalne generowanie zwrotów AI do fiszek (`shared/ai-prompts.js` & `shared/utils.js`).
+    - Log:
+      1. W `shared/ai-prompts.js` w funkcji `sentenceExample` wprowadzono restrykcyjne reguły: wymóg generowania ZAWSZE DWÓCH naturalnych, potocznych zwrotów oddzielonych znakiem `\n` (np. dla *"All right, you've cornered me"* -> *"Dobra, przyparłeś mnie do muru\nDobra, nie mam już wyjścia"*), zakaz sztucznych kalk dosłownych (*"wporządku, osaczyłeś mnie"*) oraz bezwzględny zakaz znaków specjalnych (brak ukośników `/`, nawiasów `()`, `[]`, cudzysłowów, punktorów, myślników i prefiksów).
+      2. W `standardTranslate` oraz `explainSentence` zsynchronizowano reguły promptów dla fiszek i trybu powtórek: wymóg 2 naturalnych zwrotów potocznych oddzielonych znakiem `\n` bez znaków specjalnych.
+      3. W `shared/utils.js` w `cleanCardText` zaimplementowano czyszczenie per-linia z zachowaniem znaku `\n`, dzięki czemu wieloliniowe zwroty nie są spłaszczane w jeden ciąg znaków, a jednocześnie każda linia jest dokładnie oczyszczana ze znaczników napisowych (`[music]`, `NARRATOR:`, `>>`, kropek i przecinków na końcach).
+- [x] 24.2. Uporządkowanie trybu „Enter” na wideo (`video/subtitle-overlay.js`).
+    - Log:
+      1. W `handleAIExplain` przestawiono kolejność kolejki: `aiExplainQueue = [sentenceItem, ...breakdownItems]`. Całe zdanie jest ZAWSZE pierwszym etapem (1/N) zarówno w trybie `native`, jak i `simple_target`, po czym następują kolejne idiomy i trudne słowa (2/N, 3/N, itd.).
+      2. W `showAiExplainItem` wyeliminowano wywołanie `removeOverlay()`. Chmurka (dymek) pozostaje w pełni widoczna na każdym etapie – od 1/N aż do 4/4 (ostatniego). Odtwarzacz wideo nie wznawia filmu samoczynnie i pozostaje bezpiecznie w pauzie dopóki użytkownik sam nie naciśnie `Escape` lub `Enter`/`Q`.
+      3. W `renderAiExplainContent` usunięto tłumienie `formattedExplanation` na etapie zdania – objaśnienia są teraz zawsze formatowane i widoczne w dymku.
+      4. W `speakAiExplainItem` zunifikowano odczyt TTS: dla zdania syntezator odczytuje `item.meaning` (uproszczone zdanie lub tłumaczenie), a następnie `item.explanation`. W trybie `simple_target` dla idiomów i słówek odczytywany jest `term`, po czym `meaning` (prosta definicja/synonim) oraz `explanation`.
+- [x] 24.3. Stylizacja wieloliniowych zwrotów i audyt CSS/JS (`popup.css` & `styles.css`).
+    - Log:
+      1. W `popup.css` dodano `white-space: pre-line;` do `.review-word`, `.review-context`, `.review-ai-text`, `.word-item .wi-translated` i `.word-item .wi-sentence`.
+      2. W `styles.css` dodano `white-space: pre-line !important;` do `.__qt_custom-sub-translation` oraz `.__qt_ai-term-meaning`.
+      3. Przeprowadzono audyt CSS i JS za pomocą dedykowanych skryptów audytujących: potwierdzono 0 martwych klas CSS w `styles.css`, `popup.css` i `quiz.css` oraz brak osieroconych funkcji w kodzie rozszerzenia.
+- [x] 24.4. Weryfikacja testami automatycznymi (`test_enter_mode.js`, `functions/subscription-config.test.js`, `functions/gemini-proxy-cache.test.js`, `check_syntax.js`).
+    - Log:
+      1. `node scratch/test_enter_mode.js`: 21/21 testów zakończonych sukcesem (PASS), w tym nowy Test 21 weryfikujący naturalne zwroty, `cleanCardText`, `white-space: pre-line` oraz odczyt TTS `meaning` i `explanation`.
+      2. `npm test --prefix functions`: 51/51 testów jednostkowych Cloud Functions zakończonych sukcesem (PASS).
+      3. `node scratch/check_syntax.js`: 100% plików JS przechodzi weryfikację składniową (PASS).
+      4. `test_subtitles.js`, `test-srs.js`, `test_anki_export.js`: wszystkie testy zakończone wynikiem PASS (kod 0).

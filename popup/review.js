@@ -688,7 +688,10 @@ function renderQuestion(w) {
     const forceBrowserAttr = isReverse ? 'data-force-browser-tts="true"' : "";
     const cacheAttrs = `data-cache-first="true" data-cache-not-before="${Number(w.ttsCacheInvalidatedAt || 0)}"`;
     const sr = w.sr || { step: 0, interval: 0 };
-    const sentenceHtml = showSentence
+    const isRedundant = typeof SharedUtils !== "undefined" && typeof SharedUtils.isRedundantSentence === "function"
+        ? SharedUtils.isRedundantSentence(showSentence, showWord)
+        : (showSentence && showSentence.trim().toLowerCase() === showWord.trim().toLowerCase());
+    const sentenceHtml = (showSentence && !isRedundant)
         ? `
                 <div class="review-context-row">
                     <span class="review-context">"${SharedUtils.highlightWordInSentence(
@@ -1026,6 +1029,9 @@ function renderAnswer(w) {
     const aWord = isReverse ? w.original : w.translated;
     const aLang = isReverse ? srcL : tgtL;
     const aSentence = isReverse ? w.sentence || "" : w.sentenceTranslated || "";
+    const isRedundantA = typeof SharedUtils !== "undefined" && typeof SharedUtils.isRedundantSentence === "function"
+        ? SharedUtils.isRedundantSentence(aSentence, aWord)
+        : (aSentence && aSentence.trim().toLowerCase() === aWord.trim().toLowerCase());
     const aWordClass = isReverse ? "__qt_original" : "__qt_translated";
     const forceBrowserAttr = !isReverse ? 'data-force-browser-tts="true"' : "";
     const cacheAttrs = `data-cache-first="true" data-cache-not-before="${Number(w.ttsCacheInvalidatedAt || 0)}"`;
@@ -1044,7 +1050,7 @@ function renderAnswer(w) {
                     )}" data-lang="${escapeAttr(aLang)}" ${forceBrowserAttr} ${cacheAttrs} title="Listen">${SPEAK_SVG}</button>
                 </div>
                 ${
-                    aSentence
+                    (aSentence && !isRedundantA)
                         ? `
                 <div class="review-context-row">
                     <span class="review-context">"${SharedUtils.highlightWordInSentence(
@@ -1135,11 +1141,17 @@ function showReviewEditForm(w, returnToAnswer = reviewAnswerShown) {
         const oldOriginal = w.original;
         const oldTranslated = w.translated;
 
+        const isRedundantOrig = typeof SharedUtils !== "undefined" && typeof SharedUtils.isRedundantSentence === "function"
+            ? SharedUtils.isRedundantSentence(newSentence, newOriginal)
+            : (newSentence && newSentence.trim().toLowerCase() === newOriginal.trim().toLowerCase());
+        const finalSentence = isRedundantOrig ? "" : newSentence;
+        const finalSentenceTr = isRedundantOrig ? "" : newSentenceTr;
+
         // Update queue object in-place
         w.original = newOriginal;
         w.translated = newTranslated;
-        w.sentence = newSentence;
-        w.sentenceTranslated = newSentenceTr;
+        w.sentence = finalSentence;
+        w.sentenceTranslated = finalSentenceTr;
         const editedAt = Date.now();
         w.ttsCacheInvalidatedAt = editedAt;
 
@@ -1147,8 +1159,8 @@ function showReviewEditForm(w, returnToAnswer = reviewAnswerShown) {
         const updatePayload = {
             original: newOriginal,
             translated: newTranslated,
-            sentence: newSentence,
-            sentenceTranslated: newSentenceTr,
+            sentence: finalSentence,
+            sentenceTranslated: finalSentenceTr,
             updatedAt: editedAt,
             ttsCacheInvalidatedAt: editedAt,
         };

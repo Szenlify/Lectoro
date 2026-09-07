@@ -4,15 +4,22 @@
  * filtering, deduplication, and subscription limit enforcement.
  */
 (function initWordRepository(root, factory) {
-    const api = factory();
-    if (typeof module !== "undefined" && module.exports) module.exports = api;
+    const isNode = typeof module !== "undefined" && !!module.exports;
+    const utils =
+        (root && root.SharedUtils) || (isNode ? require("./utils") : null);
+    const srs = (root && root.SRS) || (isNode ? require("./srs") : null);
+    const api = factory(utils, srs);
+    if (isNode) module.exports = api;
     if (root) root.SharedWordRepository = api;
 })(
     typeof globalThis !== "undefined" ? globalThis : this,
-    function createWordRepository() {
+    function createWordRepository(utils, srs) {
         "use strict";
 
-        const { generateId, wordKey, cleanCardText } = SharedUtils;
+        const U =
+            utils || (typeof SharedUtils !== "undefined" ? SharedUtils : {});
+        const S = srs || (typeof SRS !== "undefined" ? SRS : null);
+        const { generateId, wordKey, cleanCardText, isRedundantSentence } = U;
         const TEXT_FIELDS = Object.freeze([
             "original",
             "translated",
@@ -31,6 +38,18 @@
                 if (onlyStrings && typeof sanitized[field] !== "string")
                     continue;
                 sanitized[field] = cleanCardText(sanitized[field]);
+            }
+            const redundantChecker =
+                isRedundantSentence || SharedUtils?.isRedundantSentence;
+            if (typeof redundantChecker === "function") {
+                if (redundantChecker(sanitized.sentence, sanitized.original)) {
+                    sanitized.sentence = "";
+                    sanitized.sentenceTranslated = "";
+                }
+                if (redundantChecker(sanitized.aiSentence, sanitized.original)) {
+                    sanitized.aiSentence = "";
+                    sanitized.aiSentenceTranslated = "";
+                }
             }
             return sanitized;
         }
@@ -152,7 +171,7 @@
                 id: sanitizedEntry.id || generateId(),
                 sr: sanitizedEntry.sr
                     ? { ...sanitizedEntry.sr }
-                    : SRS.defaultState(),
+                    : (S || SRS).defaultState(),
                 timestamp: sanitizedEntry.timestamp || now,
                 updatedAt: now,
                 downloaded: !!sanitizedEntry.downloaded,
@@ -208,7 +227,10 @@
                     (word.id && w.id === word.id) ||
                     wordKey(w) === wordKey(word),
                 (existing) => ({
-                    sr: SRS.update(existing.sr || SRS.defaultState(), rating),
+                    sr: (S || SRS).update(
+                        existing.sr || (S || SRS).defaultState(),
+                        rating,
+                    ),
                 }),
             );
         }

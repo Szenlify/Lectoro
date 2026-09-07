@@ -822,6 +822,7 @@ body::before {
     color: var(--mint);
     word-break: break-word;
     margin-top: 3px;
+    white-space: pre-line;
 }
 
 .word-item .wi-meta {
@@ -840,6 +841,7 @@ body::before {
     border-top: 1px solid rgba(255, 255, 255, 0.04);
     word-break: break-word;
     line-height: 1.5;
+    white-space: pre-line;
 }
 
 .word-item .wi-sentence .wi-cloze {
@@ -2040,6 +2042,8 @@ body::before {
     font-size: 28px;
     font-weight: 800;
     letter-spacing: -0.5px;
+    white-space: pre-line;
+    line-height: 1.25;
 }
 
 .review-word.__qt_original {
@@ -2114,6 +2118,7 @@ body::before {
     color: rgba(255, 255, 255, 0.92);
     line-height: 1.6;
     max-width: 300px;
+    white-space: pre-line;
 }
 
 .review-context .__qt_original,
@@ -2322,6 +2327,7 @@ body::before {
     font-size: 14px;
     line-height: 1.5;
     word-break: break-word;
+    white-space: pre-line;
 }
 
 .review-ai-original {

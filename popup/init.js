@@ -195,7 +195,13 @@ function downloadFile(content, filename, mimeType) {
 
 function buildReviewSpeakText(word, sentence) {
     if (!word) return "";
-    return sentence ? `${word}. ${sentence}` : word;
+    const isRedundant =
+        typeof SharedUtils !== "undefined" &&
+        typeof SharedUtils.isRedundantSentence === "function"
+            ? SharedUtils.isRedundantSentence(sentence, word)
+            : sentence &&
+              sentence.trim().toLowerCase() === word.trim().toLowerCase();
+    return sentence && !isRedundant ? `${word}. ${sentence}` : word;
 }
 
 // Only speak automatically when the user is actually looking at the
