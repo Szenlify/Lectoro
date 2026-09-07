@@ -327,7 +327,7 @@
                         <div class="${PREFIX}ai-text">${formattedExplanation}</div>
                         <button class="${PREFIX}speak" data-text="${escapeAttr(explanation)}" data-lang="${escapeAttr(targetLang)}" data-source-lang="${escapeAttr(srcLang)}" data-original-text="${escapeAttr(text)}" title="Play explanation" style="margin-top:6px;">${SVG.SPEAKER}</button>
                     </div>
-                    <div class="${PREFIX}ai-result" id="${C.UI_IDS.AI_RESULT}" style="display:none;"></div>
+                    <div class="${PREFIX}ai-result" id="${LectoroConstants.UI_IDS.AI_RESULT}" style="display:none;"></div>
                 </div>
                 ${saveFooterHtml}`;
             showTooltip(html, rect, "top", anchorEl);
