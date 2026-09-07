@@ -70,21 +70,7 @@ assert(
 );
 console.log("✓ video-hotkeys.js: key Z properly routes to saveCurrentAiExplainItem when AI explanation is active");
 
-// 5. Verify shared/image-service.js
-const imgServicePath = path.join(rootDir, 'shared/image-service.js');
-const imgServiceContent = fs.readFileSync(imgServicePath, 'utf8');
-
-assert(
-    !imgServiceContent.includes('PIXABAY_SUPPORTED_LANGS'),
-    'image-service.js: dead PIXABAY_SUPPORTED_LANGS must be removed'
-);
-assert(
-    !imgServiceContent.includes('resolvePixabayLang'),
-    'image-service.js: dead resolvePixabayLang must be removed'
-);
-console.log("✓ image-service.js: dead Pixabay language code removed");
-
-// 6. Verify shared/gemini-proxy.js
+// 5. Verify shared/gemini-proxy.js
 const proxyPath = path.join(rootDir, 'shared/gemini-proxy.js');
 const proxyContent = fs.readFileSync(proxyPath, 'utf8');
 

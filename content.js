@@ -303,13 +303,6 @@
                 markupOptions,
             );
 
-            const imageSectionHtml = QT.buildVisualConceptHtml({
-                query: text,
-                translated: translation,
-                srcLang,
-                targetLang,
-            });
-
             const saveFooterHtml = QT.buildSaveFooterHtml(saveDataAttrs, {
                 aiLabel: "AI",
                 saveTitle: "Save word with AI translation for review",
@@ -334,7 +327,6 @@
                         <div class="${PREFIX}ai-text">${formattedExplanation}</div>
                         <button class="${PREFIX}speak" data-text="${escapeAttr(explanation)}" data-lang="${escapeAttr(targetLang)}" data-source-lang="${escapeAttr(srcLang)}" data-original-text="${escapeAttr(text)}" title="Play explanation" style="margin-top:6px;">${SVG.SPEAKER}</button>
                     </div>
-                    ${imageSectionHtml}
                     <div class="${PREFIX}ai-result" id="${C.UI_IDS.AI_RESULT}" style="display:none;"></div>
                 </div>
                 ${saveFooterHtml}`;

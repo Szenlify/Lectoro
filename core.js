@@ -171,7 +171,6 @@
         }
         clearTimeout(tooltipHideTimer);
         stopTooltipSpeech();
-        tooltipImageToken += 1;
         tooltipEl.classList.remove("visible");
         tooltipEl.classList.remove(`${PREFIX}is-loading`);
         tooltipHideTimer = setTimeout(() => {
@@ -640,13 +639,6 @@
         const P = PREFIX;
         const dataAttrs = `data-src="${escapeAttr(original)}" data-translated="${escapeAttr(translated)}" data-src-lang="${escapeAttr(srcLang)}" data-tgt-lang="${escapeAttr(targetLang)}"`;
 
-        const imageSectionHtml = buildVisualConceptHtml({
-            query: original,
-            translated,
-            srcLang,
-            targetLang,
-        });
-
         const saveFooterHtml = buildSaveFooterHtml(dataAttrs, {
             aiLabel: "AI Sentence",
             saveTitle: "Save word",
@@ -672,41 +664,9 @@
                         ${speakButtonHtml(translated, targetLang, "Play translation")}
                     </span>
                 </div>
-                ${imageSectionHtml}
             </div>
             <div class="${P}ai-result" id="${C.UI_IDS.AI_RESULT}" style="display:none;"></div>
             ${saveFooterHtml}`;
-    }
-
-    /**
-     * Builds Visual Concept strip HTML (SSOT).
-     * Reusable across basic tooltip and AI explanation tooltip.
-     */
-    function buildVisualConceptHtml({
-        query,
-        translated = "",
-        srcLang = "",
-        targetLang = "",
-    } = {}) {
-        if (!query || !isSingleWord(query) || isSimpleWord(query)) return "";
-        const P = PREFIX;
-        const commonsSearchUrl = `https://commons.wikimedia.org/w/index.php?search=${encodeURIComponent(query)}&title=Special:MediaSearch&go=Go&type=image`;
-        return `
-            <div class="${P}image-section">
-                <div class="${P}image-header">
-                    <span class="${P}image-label">${SVG.IMAGE_SEARCH} Visual Concept</span>
-                    <a class="${P}image-ext-link" href="${commonsSearchUrl}" target="_blank" rel="noopener noreferrer" title="Search Wikimedia Commons">
-                        Commons ${SVG.EXTERNAL_LINK}
-                    </a>
-                </div>
-                <div class="${P}image-strip ${P}image-strip-loading" data-query="${escapeAttr(query)}" data-translated="${escapeAttr(translated)}" data-src-lang="${escapeAttr(srcLang)}" data-tgt-lang="${escapeAttr(targetLang)}">
-                    <div class="${P}image-card ${P}image-skeleton"></div>
-                    <div class="${P}image-card ${P}image-skeleton"></div>
-                    <div class="${P}image-card ${P}image-skeleton"></div>
-                    <div class="${P}image-card ${P}image-skeleton"></div>
-                    <div class="${P}image-card ${P}image-skeleton"></div>
-                </div>
-            </div>`;
     }
 
     /**
@@ -821,22 +781,16 @@
     }
 
     async function buildSaveEntry(btn, screenshotPromise = null) {
-        const stripEl = tooltipEl?.querySelector(`.${PREFIX}image-strip`);
-        const userSelectedImage = stripEl?.dataset?.selectedUrl || null;
-        const userSelectedCaption = stripEl?.dataset?.selectedCaption || null;
-
-        const screenshot = userSelectedImage
-            ? userSelectedImage
-            : (screenshotPromise
-                ? await screenshotPromise
-                : await captureContextScreenshot());
+        const screenshot = screenshotPromise
+            ? await screenshotPromise
+            : await captureContextScreenshot();
 
         const entry = {
             original: cleanCardText(btn.dataset.src),
             translated: cleanCardText(btn.dataset.translated),
             srcLang: btn.dataset.srcLang,
             tgtLang: btn.dataset.tgtLang,
-            sentence: userSelectedCaption || "",
+            sentence: "",
             sentenceTranslated: "",
             aiSentence: "",
             aiSentenceTranslated: "",
@@ -921,106 +875,6 @@
         }
     }
 
-    let tooltipImageToken = 0;
-
-    async function loadTooltipImages(query) {
-        if (!tooltipEl) return;
-        const stripEl = tooltipEl.querySelector(`.${PREFIX}image-strip`);
-        if (!stripEl) return;
-
-        const currentToken = ++tooltipImageToken;
-        const targetWord = (query || stripEl.dataset.query || "").trim();
-        const section = stripEl.closest(`.${PREFIX}image-section`);
-        if (!targetWord || !isSingleWord(targetWord) || isSimpleWord(targetWord)) {
-            if (section) section.style.display = "none";
-            return;
-        }
-
-        const context = {
-            original: stripEl.dataset.query || targetWord,
-            translated: stripEl.dataset.translated || "",
-            srcLang: stripEl.dataset.srcLang || "",
-            targetLang: stripEl.dataset.tgtLang || "",
-        };
-
-        try {
-            const response = await new Promise((resolve) => {
-                chrome.runtime.sendMessage(
-                    { type: C.MESSAGE_TYPES.SEARCH_IMAGES, query: targetWord, context },
-                    (res) => resolve(res || {})
-                );
-            });
-            const images = Array.isArray(response?.results) ? response.results : [];
-
-            if (currentToken !== tooltipImageToken || !tooltipEl || !stripEl.isConnected) {
-                return;
-            }
-
-            stripEl.classList.remove(`${PREFIX}image-strip-loading`);
-
-            if (!images || images.length === 0) {
-                if (section) section.style.display = "none";
-                return;
-            }
-
-            stripEl.innerHTML = "";
-            images.forEach((img) => {
-                const card = document.createElement("div");
-                card.className = `${PREFIX}image-card ${PREFIX}image-skeleton`;
-                card.dataset.url = img.fullUrl || img.thumbnail;
-                card.dataset.caption = img.title || targetWord;
-                card.title = `${img.title || targetWord} (Click to set as card visual)`;
-
-                const imageEl = document.createElement("img");
-                imageEl.className = `${PREFIX}image-thumb`;
-                imageEl.alt = img.title || targetWord;
-                imageEl.loading = "lazy";
-
-                imageEl.onload = () => {
-                    card.classList.add("is-loaded");
-                    card.classList.remove(`${PREFIX}image-skeleton`);
-                };
-
-                imageEl.onerror = () => {
-                    card.remove();
-                    if (stripEl.children.length === 0 && section) {
-                        section.style.display = "none";
-                    }
-                };
-
-                imageEl.src = img.thumbnail;
-                card.appendChild(imageEl);
-
-                const badge = document.createElement("div");
-                badge.className = `${PREFIX}check-badge`;
-                badge.innerHTML = SVG.CHECK_SMALL;
-                card.appendChild(badge);
-
-                card.addEventListener("click", (e) => {
-                    e.stopPropagation();
-                    const wasSelected = card.classList.contains("selected");
-                    stripEl.querySelectorAll(`.${PREFIX}image-card.selected`).forEach((c) => {
-                        c.classList.remove("selected");
-                    });
-                    if (!wasSelected) {
-                        card.classList.add("selected");
-                        stripEl.dataset.selectedUrl = card.dataset.url;
-                        stripEl.dataset.selectedCaption = card.dataset.caption;
-                    } else {
-                        delete stripEl.dataset.selectedUrl;
-                        delete stripEl.dataset.selectedCaption;
-                    }
-                });
-
-                stripEl.appendChild(card);
-            });
-        } catch (_) {
-            if (currentToken === tooltipImageToken && stripEl.isConnected) {
-                if (section) section.style.display = "none";
-            }
-        }
-    }
-
     function attachTooltipHandlers() {
         if (!tooltipEl) return;
 
@@ -1028,22 +882,6 @@
             btn.addEventListener("click", (ev) => {
                 ev.stopPropagation();
                 handleTooltipSpeakClick(btn);
-            });
-        });
-
-        // Initialize educational visual associations if image strip is present
-        const stripEl = tooltipEl.querySelector(`.${PREFIX}image-strip`);
-        if (stripEl && stripEl.dataset.query) {
-            loadTooltipImages(stripEl.dataset.query);
-        }
-
-        tooltipEl.querySelectorAll(`.${PREFIX}img-search`).forEach((btn) => {
-            btn.addEventListener("click", (ev) => {
-                ev.stopPropagation();
-                const word = (btn.dataset.word || "").trim();
-                if (!word) return;
-                const url = `https://www.google.com/search?q=${encodeURIComponent(`${word} clipart`)}&udm=2`;
-                window.open(url, "_blank", "noopener,noreferrer");
             });
         });
 
@@ -1242,20 +1080,8 @@
         rememberScreenshotContext,
 
         buildTooltipHtml,
-        buildVisualConceptHtml,
         buildSaveFooterHtml,
         attachTooltipHandlers,
-        loadTooltipImages,
-        searchImages: (query) =>
-            typeof SharedImageService !== "undefined"
-                ? SharedImageService.search(query)
-                : new Promise((resolve) => {
-                      chrome.runtime.sendMessage(
-                          { type: C.MESSAGE_TYPES.SEARCH_IMAGES, query },
-                          (res) => resolve(res?.results || [])
-                      );
-                  }),
-
         splitIntoWordSpans,
         createHint,
         findWordAtPoint,

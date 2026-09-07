@@ -61,8 +61,7 @@
 
             /**
              * Checks whether a word is in the set of simple function words / stopwords
-             * (pronouns, auxiliary verbs, articles, prepositions) where showing a visual concept
-             * creates visual clutter and has no mnemonic value.
+             * (pronouns, auxiliary verbs, articles, prepositions).
              */
             isSimpleWord(str) {
                 if (!str || typeof str !== "string") return false;

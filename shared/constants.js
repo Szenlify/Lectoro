@@ -40,12 +40,6 @@
             NETFLIX_HIDDEN: `${PREFIX}netflix-subtitles-hidden`,
             NETFLIX_CAPTURING: `${PREFIX}netflix-capturing`,
             READING_SENTENCE_HIGHLIGHT: "qt-reading-sentence",
-            IMAGE_SECTION: `${PREFIX}image-section`,
-            IMAGE_STRIP: `${PREFIX}image-strip`,
-            IMAGE_CARD: `${PREFIX}image-card`,
-            IMAGE_SKELETON: `${PREFIX}image-skeleton`,
-            IMAGE_THUMB: `${PREFIX}image-thumb`,
-            IMAGE_SELECTED: `${PREFIX}image-selected`,
             IS_LOADING: `${PREFIX}is-loading`,
             AI_SUB_WRAP: `${PREFIX}ai-sub-wrap`,
             AI_SUB_ACTIVE: `${PREFIX}ai-sub-active`,
@@ -103,7 +97,6 @@
             SUBSCRIPTION_REFRESH_PROFILE: "QT_SUBSCRIPTION_REFRESH_PROFILE",
             ELEVENLABS_SYNTHESIZE: "QT_ELEVENLABS_SYNTHESIZE",
             ELEVENLABS_VOICES: "QT_ELEVENLABS_VOICES",
-            SEARCH_IMAGES: "QT_SEARCH_IMAGES",
         });
 
         const STORAGE_KEYS = Object.freeze({
@@ -126,7 +119,6 @@
             AI_USAGE_CACHE: "aiUsageCache",
             SUBSCRIPTION_PROFILE_CACHE: "subscriptionProfileCache",
             PERSISTENT_TRANSLATE_CACHE: "persistentTranslateCache",
-            PERSISTENT_IMAGE_CACHE: "persistentImageCache",
             LATEST_QUIZ_HTML: "latestQuizHtml",
             LATEST_QUIZ_TITLE: "latestQuizTitle",
             LATEST_QUIZ_MODE: "latestQuizMode",
@@ -158,15 +150,7 @@
             GOOGLE_TRANSLATE:
                 "https://translate.googleapis.com/translate_a/single",
             GOOGLE_TTS: "https://translate.google.com/translate_tts",
-            WIKIMEDIA_COMMONS: "https://commons.wikimedia.org/w/api.php",
-            OPENVERSE: "https://api.openverse.org/v1/images/",
-            PIXABAY: "https://commons.wikimedia.org/w/api.php",
         });
-
-        /**
-         * External API credentials (no keys required for Wikimedia Commons).
-         */
-        const API_KEYS = Object.freeze({});
 
         const SVG_ICONS = Object.freeze({
             TRANSLATE: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/></svg>`,
@@ -179,9 +163,6 @@
             SAVE_AI_CHECK: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#a78bfa" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>`,
             READ: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>`,
             AI: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 6 6 1-4.5 4.25L17 20l-5-3.75L7 20l.5-6.75L3 9l6-1 3-6z"/><path d="M8 13h8"/><path d="M8 17h8"/></svg>`,
-            IMAGE_SEARCH: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`,
-            EXTERNAL_LINK: `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`,
-            CHECK_SMALL: `<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
             EDIT: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>`,
             SPEED: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>`,
         });
@@ -462,7 +443,7 @@
 
         /**
          * Stopwords / simple functional words (pronouns, auxiliary verbs, articles, prepositions)
-         * Single Source of Truth shared across subtitle overlay, word cloud, and visual concept filters.
+         * Single Source of Truth shared across subtitle overlay and word cloud filters.
          */
         const SIMPLE_WORDS = Object.freeze(
             new Set([
@@ -495,7 +476,6 @@
             DEFAULT_SUBTITLE_SETTINGS,
             DEFAULT_TTS_SETTINGS,
             ENDPOINTS,
-            API_KEYS,
             SIMPLE_WORDS,
             SVG_ICONS,
             R2_CDN_BASE_URL,
