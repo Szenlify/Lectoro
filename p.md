@@ -64,7 +64,7 @@ pamietaj o zasadzie (Zasada DRY - Don't Repeat Yourself) oraz Centralizacja Logi
 
 
 
-
+Jesteś ekspertem Full-Stack JavaScript Developer
 
 Jesteś ekspertem od Chrome Extensions, Manifest V3 oraz UI/UX
 
