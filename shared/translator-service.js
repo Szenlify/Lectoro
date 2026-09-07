@@ -299,28 +299,6 @@
             };
         }
 
-        /**
-         * AI Movie dialogue translation with contextual explanation.
-         */
-        async function movieTranslate(text, targetLang, context = null) {
-            if (typeof AIPrompts === "undefined") {
-                throw new Error("AIPrompts is unavailable.");
-            }
-            const prompt = AIPrompts.movieTranslate(text, targetLang, context);
-            const parsed = await geminiRequest(prompt, {
-                temperature: 0.2,
-                maxOutputTokens: 350,
-                validate(result) {
-                    AIPrompts.validateLanguage(result, targetLang);
-                    requireTextFields(result, ["translation", "explanation"]);
-                },
-            });
-            return {
-                translation: parsed.translation || "",
-                explanation: parsed.explanation || "",
-            };
-        }
-
         function requireTextFields(result, fields) {
             if (fields.some((key) => typeof result?.[key] !== "string" || !result[key].trim())) {
                 throw new Error("AI returned an incomplete response.");
@@ -335,7 +313,6 @@
             geminiRequest,
             generateSentence,
             explainSentence,
-            movieTranslate,
         });
     },
 );

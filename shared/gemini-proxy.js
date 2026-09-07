@@ -221,7 +221,7 @@
             );
             document
                 .querySelectorAll(
-                    `#${Constants.UI_IDS.ICON} .${Constants.PREFIX}tb-ai, .${Constants.PREFIX}save-ai-btn, #exportQuiz`,
+                    `.${Constants.PREFIX}save-ai-btn, #exportQuiz`,
                 )
                 .forEach((button) => {
                     if (!button.dataset.aiOriginalTitle) {

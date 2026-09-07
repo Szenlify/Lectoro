@@ -1,6 +1,6 @@
 /**
  * Lectoro – Content Script Entry Point
- * Handles text selection, floating translation/AI toolbar, and read-aloud highlighting.
+ * Handles text selection, floating translation toolbar, and read-aloud highlighting.
  * Video player caption adapters and hotkey navigation are modularized under adapters/ and video/.
  */
 (() => {
@@ -17,11 +17,7 @@
         getTargetLang,
         translate: googleTranslate,
         escapeHtml,
-        escapeAttr,
-        langTag,
         isOwnUI,
-        isSingleWord,
-        isSimpleWord,
         buildTooltipHtml,
         attachTooltipHandlers,
         addCleanup,
@@ -29,7 +25,6 @@
         cleanTextForTTS,
         pickBestVoice,
         ensureVoices,
-        formatSpeechMarkup,
     } = QT;
 
     const READING_HIGHLIGHT_NAME =
@@ -110,14 +105,6 @@
             ),
         );
         iconEl.appendChild(readBtn);
-        iconEl.appendChild(
-            createToolbarButton(
-                "ai",
-                SVG.AI,
-                "AI Translate",
-                onAITranslateClick,
-            ),
-        );
         document.body.appendChild(iconEl);
         return iconEl;
     }
@@ -248,109 +235,6 @@
                 "top",
                 anchorEl,
             );
-        }
-    }
-
-    async function onAITranslateClick(e) {
-        e.stopPropagation();
-        e.preventDefault();
-        if (!currentText || !currentRect) return;
-
-        const text = currentText;
-        const rect = currentRect;
-        const anchorEl = rangeAnchorElement(currentRange);
-        const revision = selectionRevision;
-        if (isReading) cleanupReading();
-        hideIcon();
-        showLoading(rect, "top", anchorEl);
-
-        try {
-            const targetLang = await getTargetLang();
-            const [aiRes, googleRes] = await Promise.all([
-                QT.geminiMovieTranslate(text, targetLang),
-                googleTranslate(text, targetLang).catch(() => ({
-                    detectedLang: "auto",
-                })),
-            ]);
-            if (revision !== selectionRevision) return;
-
-            const { translation, explanation } = aiRes;
-            const srcLang =
-                typeof googleRes.detectedLang === "string"
-                    ? googleRes.detectedLang
-                    : "auto";
-
-            const saveDataAttrs =
-                `data-src="${escapeAttr(text)}" ` +
-                `data-translated="${escapeAttr(translation)}" ` +
-                `data-src-lang="${escapeAttr(srcLang)}" ` +
-                `data-tgt-lang="${escapeAttr(targetLang)}" ` +
-                `data-sentence="" data-sentence-translated=""`;
-
-            const markupOptions = {
-                sourceLang: srcLang,
-                originalText: text,
-                quoteClass: `${PREFIX}tts-original-quote`,
-            };
-            const formattedExplanation = formatSpeechMarkup(
-                explanation,
-                targetLang,
-                markupOptions,
-            );
-            const formattedTranslation = formatSpeechMarkup(
-                translation,
-                targetLang,
-                markupOptions,
-            );
-
-            const saveFooterHtml = QT.buildSaveFooterHtml(saveDataAttrs, {
-                aiLabel: "AI",
-                saveTitle: "Save word with AI translation for review",
-                aiTitle: "Save with smart AI sentence (Gemini)",
-            });
-
-            const html = `
-                <div class="${PREFIX}header"><span>AI Translation</span></div>
-                <div class="${PREFIX}body">
-                    <div class="${PREFIX}row">
-                        <span class="${PREFIX}label">${srcLang.toUpperCase()}</span>
-                        <span class="${PREFIX}text ${PREFIX}original">${escapeHtml(text)}</span>
-                        <button class="${PREFIX}speak" data-text="${escapeAttr(text)}" data-lang="${escapeAttr(srcLang)}" title="Play original">${SVG.SPEAKER}</button>
-                    </div>
-                    <div class="${PREFIX}row" style="margin-top:8px;">
-                        <span class="${PREFIX}label">${langTag(targetLang)}</span>
-                        <span class="${PREFIX}text ${PREFIX}translated">${formattedTranslation}</span>
-                        <button class="${PREFIX}speak" data-text="${escapeAttr(translation)}" data-lang="${escapeAttr(targetLang)}" title="Play translation">${SVG.SPEAKER}</button>
-                    </div>
-                    <div class="${PREFIX}ai-result" style="margin-top:10px; display:block;">
-                        <div class="${PREFIX}ai-label">✨ AI Explanation:</div>
-                        <div class="${PREFIX}ai-text">${formattedExplanation}</div>
-                        <button class="${PREFIX}speak" data-text="${escapeAttr(explanation)}" data-lang="${escapeAttr(targetLang)}" data-source-lang="${escapeAttr(srcLang)}" data-original-text="${escapeAttr(text)}" title="Play explanation" style="margin-top:6px;">${SVG.SPEAKER}</button>
-                    </div>
-                    <div class="${PREFIX}ai-result" id="${LectoroConstants.UI_IDS.AI_RESULT}" style="display:none;"></div>
-                </div>
-                ${saveFooterHtml}`;
-            showTooltip(html, rect, "top", anchorEl);
-            attachTooltipHandlers();
-            await QT.speak(explanation, targetLang, {
-                sourceLang: srcLang,
-                originalText: text,
-                isCancelled: () => revision !== selectionRevision,
-            });
-        } catch (err) {
-            if (revision !== selectionRevision) return;
-            console.error("[Lectoro AI]", err);
-            const limitReached = GeminiProxy.isLimitError(err);
-            if (limitReached) {
-                hideTooltip();
-            } else {
-                showTooltip(
-                    `<div class="${PREFIX}error">⚠ ${escapeHtml(err.message)}</div>`,
-                    rect,
-                    "top",
-                    anchorEl,
-                );
-            }
         }
     }
 
@@ -871,24 +755,6 @@
         if (e.key === "Escape") {
             runDismiss();
             hideAll();
-            return;
-        }
-
-        if (e.key === "Enter" || e.key === "NumpadEnter") {
-            const active = document.activeElement;
-            if (
-                active &&
-                (active.tagName === "INPUT" ||
-                    active.tagName === "TEXTAREA" ||
-                    active.isContentEditable)
-            ) {
-                return;
-            }
-            if (iconEl?.classList.contains("visible")) {
-                e.preventDefault();
-                e.stopPropagation();
-                onAITranslateClick(e);
-            }
         }
     });
 })();

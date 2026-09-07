@@ -15,7 +15,7 @@ test("language codes normalize regions and reject unknown output languages", () 
     assert.throws(() => Prompts.validateLanguage({ output_language: "pl" }, "de"));
     assert.throws(() => Prompts.validateLanguage({}, "de"));
     for (const code of Object.keys(Constants.SUPPORTED_LANGUAGES)) {
-        assert.ok(Prompts.movieTranslate("Hello", code).includes(`"output_language":"${Prompts.languageCode(code)}"`));
+        assert.ok(Prompts.standardTranslate("Hello", "", "en", code).includes(`"output_language":"${Prompts.languageCode(code)}"`));
     }
 });
 

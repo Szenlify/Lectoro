@@ -53,11 +53,6 @@ items: 0-4 useful terms in sentence order, with no duplicates. Each term must oc
 JSON: {"source_language":"...","output_language":"...","badge":"...","translation":"...","explanation":"...","items":[{"term":"...","type":"vocabulary","badge":"...","meaning":"...","explanation":"..."}]}`
             + data({ sentence, track_language: languageCode(options.sourceLang, true) }) + formatSubtitleContext(context);
     }
-    function movieTranslate(text, targetLang, context = null) {
-        return `${RULES}
-Translate only the input fragment into ${getLangName(targetLang)}: one natural version, preserving its scope. Add one short explanation in the same language about the most useful idiom, vocabulary or grammar point. Use context as evidence; briefly note unresolved ambiguity. Do not complete missing dialogue.
-JSON: {"translation":"...","explanation":"...","output_language":"${languageCode(targetLang)}"}` + data({ text }) + formatSubtitleContext(context);
-    }
     function standardTranslate(word, sentence, srcLang = "en", tgtLang = "pl") {
         return `${RULES}
 Translate the word/phrase from ${getLangName(srcLang)} into ${getLangName(tgtLang)}, using the supplied sentence to choose its sense. Return one natural translation per field. sentence_translation: translate the whole sentence, or "" if absent. explanation: one short useful sentence in ${getLangName(tgtLang)} about meaning or usage. Only quoted source terms may use the source language.
@@ -91,5 +86,5 @@ ${chosen.map((type) => contracts[type]).join("\n")}` + data({ vocabulary: opts.w
         return result;
     }
     return Object.freeze({ getLangName, languageCode, formatSubtitleContext, sentenceExample,
-        explainSentence, movieTranslate, standardTranslate, quiz, validateLanguage, QUIZ_TYPES, DEFAULT_QUIZ_TYPES });
+        explainSentence, standardTranslate, quiz, validateLanguage, QUIZ_TYPES, DEFAULT_QUIZ_TYPES });
 });

@@ -1074,7 +1074,6 @@
         // AI & Screenshots – delegates to SharedTranslatorService
         geminiGenerateSentence: (w, t, s, tgt) => SharedTranslatorService.generateSentence(w, t, s, tgt),
         geminiExplainSentence: (s, tgt, ctx = null, opts = {}) => SharedTranslatorService.explainSentence(s, tgt, ctx, opts),
-        geminiMovieTranslate: (t, tgt, ctx = null) => SharedTranslatorService.movieTranslate(t, tgt, ctx),
         captureVideoScreenshot,
         captureContextScreenshot,
         rememberScreenshotContext,
