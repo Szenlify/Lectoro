@@ -39,14 +39,15 @@ JSON: {"sentence":"...","translation":"...","output_language":"${languageCode(tg
     }
     function explainSentence(sentence, targetLang, context = null, options = {}) {
         const simple = options.aiExplanationLanguage === "simple_target";
-        const output = simple ? "the detected sentence language, in simple A2-B1 words" : getLangName(targetLang);
+        const sourceLang = languageCode(options.sourceLang || "en");
+        const output = simple ? `${getLangName(sourceLang)}, in simple A2-B1 words` : getLangName(targetLang);
         const task = simple ? "Paraphrase only the sentence in that same language" : "Translate only the sentence";
         return `${RULES}
-Explain a video subtitle. Detect its actual language; the track language is only a hint. All prose (translation, explanation, badges, meanings) must be in ${output}; terms stay verbatim in the source language. source_language and output_language are lowercase ISO language codes.
+Explain a video subtitle in the user's selected learning language, ${getLangName(options.sourceLang || "en")}. Use this source language; do not auto-detect another language. All prose (translation, explanation, badges, meanings) must be in ${output}; terms stay verbatim in the source language. source_language must be "${sourceLang}"; output_language is a lowercase ISO language code.
 ${task}, as one natural version on one line; preserve all clauses. explanation: at most 2 short sentences about the key learning point. Use context only to resolve meaning; briefly note material ambiguity instead of guessing unsupported details.
 items: 0-4 useful terms in sentence order, with no duplicates. Each term must occur in the sentence. type: idiom, phrasal_verb, slang or vocabulary. meaning: short contextual definition/translation; explanation: one short usage sentence. Omit obvious words. badge: short localized category label.
 JSON: {"source_language":"...","output_language":"...","badge":"...","translation":"...","explanation":"...","items":[{"term":"...","type":"vocabulary","badge":"...","meaning":"...","explanation":"..."}]}`
-            + data({ sentence, track_language: languageCode(options.sourceLang, true) }) + formatSubtitleContext(context);
+            + data({ sentence, learning_language: sourceLang }) + formatSubtitleContext(context);
     }
     function standardTranslate(word, sentence, srcLang = "en", tgtLang = "pl") {
         return `${RULES}

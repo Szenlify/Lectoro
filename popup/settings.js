@@ -1,6 +1,16 @@
 // ── Settings: load & save language ────────────────────────────────
+const learningLangSelect = document.getElementById("learningLang");
+learningLangSelect.replaceChildren(...Array.from(select.options, (option) => option.cloneNode(true)));
 whenPopupReady((data) => {
-    select.value = data.targetLang || LectoroConstants.DEFAULT_READING_SETTINGS.targetLang;
+    const defaults = LectoroConstants.DEFAULT_READING_SETTINGS;
+    const targetLang = LectoroConstants.normalizeSupportedLanguage(data.targetLang, defaults.targetLang);
+    const learningLang = LectoroConstants.normalizeSupportedLanguage(data.learningLang, defaults.learningLang);
+    select.value = targetLang;
+    learningLangSelect.value = learningLang;
+    // Retired languages and existing installs receive usable settings immediately.
+    if (data.targetLang !== targetLang || data.learningLang !== learningLang) {
+        chrome.storage.local.set({ targetLang, learningLang });
+    }
     rateRange.value = data.speechRate || 1.1;
     rateValue.textContent = parseFloat(data.speechRate || 1.1).toFixed(2);
     if (data.ttsVolume !== undefined && volumeRange) {
@@ -42,6 +52,10 @@ whenPopupReady((data) => {
 
 select.addEventListener("change", () => {
     chrome.storage.local.set({ targetLang: select.value }, flashSaved);
+});
+
+learningLangSelect.addEventListener("change", () => {
+    chrome.storage.local.set({ learningLang: learningLangSelect.value }, flashSaved);
 });
 
 const aiExpLangSelect = document.getElementById("aiExplanationLanguage");

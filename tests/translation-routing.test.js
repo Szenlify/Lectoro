@@ -22,7 +22,7 @@ function app({ initial = {}, user = { uid: "reader" }, respond } = {}) {
                 assert.equal(body.action, undefined, "translation must not send a separate usage request");
                 return respond ? respond(body) : { ok: true, json: async () => ({ text: "Cześć!", usage: { plan: "free", used: 1, limit: 100 } }) };
             }
-            return { ok: true, json: async () => [[["Google result"]], null, "en"] };
+            return { ok: true, json: async () => [[["Google result"]], null, "no"] };
         },
     });
     // Use the actual proxy transport with the VM's fetch rather than Node's global fetch.
@@ -108,4 +108,44 @@ test("text responses disable thinking and reject empty, blocked or truncated out
     const response = (text, finishReason = "STOP") => ({ candidates: [{ finishReason, content: { parts: [{ text: "ignore thoughts", thought: true }, { text }] } }] });
     assert.equal(readTextResponse(response(" Cześć! ")), "Cześć!");
     for (const value of [response(""), response("partial", "MAX_TOKENS"), response("blocked", "SAFETY")]) assert.throws(() => readTextResponse(value));
+});
+
+test("the learning language controls Google requests and labels instead of detected Norwegian", async () => {
+    const state = app({ user: null, initial: { learningLang: "en", targetLang: "pl" } });
+    const result = await state.service.translate("president");
+    const query = new URL(state.calls[0].url).searchParams;
+    assert.equal(query.get("sl"), "en");
+    assert.equal(query.get("tl"), "pl");
+    assert.equal(result.detectedLang, "en");
+    await state.store.local.set({ learningLang: "de", targetLang: "fr" });
+    const changed = await state.service.translate("president");
+    const changedQuery = new URL(state.calls[1].url).searchParams;
+    assert.equal(changedQuery.get("sl"), "de");
+    assert.equal(changedQuery.get("tl"), "fr");
+    assert.equal(changed.detectedLang, "de");
+});
+
+test("AI uses the selected source language and caches each language pair separately", async () => {
+    const state = app({ initial: { learningLang: "en" } });
+    await state.service.translate("president", "pl");
+    assert.ok(state.calls[0].body.prompt.includes("from English into Polish"));
+    await state.store.local.set({ learningLang: "fr" });
+    assert.equal((await state.service.translate("president", "pl")).detectedLang, "fr");
+    assert.ok(state.calls[1].body.prompt.includes("from French into Polish"));
+    await state.store.local.set({ learningLang: "en" });
+    assert.equal((await state.service.translate("president", "pl")).detectedLang, "en");
+    assert.equal(state.calls.length, 2);
+});
+
+test("legacy detected-language caches are ignored and retired settings use supported defaults", async () => {
+    const state = app({ user: null, initial: {
+        learningLang: "no", targetLang: "ru",
+        [C.STORAGE_KEYS.PERSISTENT_TRANSLATE_CACHE]: { "president|pl": { translated: "old", detectedLang: "no" } },
+    } });
+    assert.equal(await state.service.getLearningLang(), "en");
+    assert.equal(await state.service.getTargetLang(), "pl");
+    const result = await state.service.translate("president");
+    assert.notEqual(result.translated, "old");
+    assert.equal(result.detectedLang, "en");
+    assert.equal(state.calls.length, 1);
 });

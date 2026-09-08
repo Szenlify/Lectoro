@@ -920,7 +920,8 @@ const MESSAGE_HANDLERS = Object.freeze({
     ok: true,
     result: await SharedTranslatorService.translate(
       message.text,
-      message.targetLang
+      message.targetLang,
+      message.sourceLang
     ),
   }),
 
@@ -931,7 +932,7 @@ const MESSAGE_HANDLERS = Object.freeze({
 
   [MSG.TRANSLATE_SUBTITLE]: async (message) => ({
     ok: true,
-    result: await SharedSubtitleTranslationService.translate(message.text, message.targetLang),
+    result: await SharedSubtitleTranslationService.translate(message.text, message.targetLang, message.sourceLang),
   }),
 
   [MSG.SUBSCRIPTION_REFRESH_PROFILE]: async (message) => ({

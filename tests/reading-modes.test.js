@@ -14,6 +14,7 @@ function element(text = "") {
         isConnected: true,
         style: {},
         classList: {
+            contains: (value) => classes.has(value),
             add: (...values) => values.forEach((value) => classes.add(value)),
             remove: (...values) =>
                 values.forEach((value) => classes.delete(value)),
@@ -112,6 +113,7 @@ function app(settings = {}) {
             result: await context.SharedSubtitleTranslationService.translate(
                 message.text,
                 message.targetLang,
+                message.sourceLang,
             ),
         }),
     };
@@ -123,7 +125,6 @@ function app(settings = {}) {
         },
     };
     for (const name of [
-        "shouldTranslateWord",
         "showWordClouds",
         "doSentenceTranslation",
         "createSubtitleTranslationTask",
@@ -258,13 +259,14 @@ test("quota denial displays the limit and never fetches or speaks", async () => 
     assert.equal(state.errors.length, 0);
 });
 
-test("changing language while a translation is in flight discards its result", async () => {
+for (const setting of ["targetLang", "learningLang"]) {
+test(`changing ${setting} while a translation is in flight discards its result`, async () => {
     const state = app({ subtitleTTS: true, wordCloudMode: false });
     const pending = deferred();
     state.context.fetch = () => pending.promise;
     const action = state.start();
     await tick();
-    await state.store.local.set({ targetLang: "de" });
+    await state.store.local.set({ [setting]: "de" });
     pending.resolve({
         ok: true,
         json: async () => [[["stare tłumaczenie"]], null, "en"],
@@ -274,6 +276,8 @@ test("changing language while a translation is in flight discards its result", a
     assert.equal(state.speech.length, 0);
     assert.equal(state.errors.length, 0);
 });
+
+}
 
 test("disabled modes or a missing cue restore playback without requests", async () => {
     for (const empty of [false, true]) {
@@ -298,12 +302,27 @@ test("speech failure does not replace a valid sentence translation with an error
     assert.equal(state.errors.length, 0);
 });
 
-test("word filtering preserves phrases and skips stopwords, numbers and punctuation", () => {
-    const state = app();
-    for (const word of ["the", "I", "isn't", "123", "...", "A1"])
-        assert.equal(state.context.shouldTranslateWord(word), false, word);
-    for (const word of ["important", "give up", "look forward to"])
-        assert.equal(state.context.shouldTranslateWord(word), true, word);
+test("word clouds highlight only dictionary matches, including simple words and inflections", async () => {
+    const state = app({ wordCloudMode: true, subtitleTTS: false });
+    const dictionary = require("../shared/local-dictionary");
+    state.context.LectoroPlayerRegistry.getSubtitleLanguage = () => "no";
+    const words = ["the", "apples", "unlisted", "look forward to", "123"];
+    const spans = words.map(element);
+    spans[2].classList.add("highlight");
+    state.context.activeWordSpans = spans;
+    state.context.activeText = words.join(" ");
+    state.context.SharedTranslatorService.lookupWords = async (requested, targetLang, sourceLang) => {
+        assert.equal(targetLang, "pl");
+        assert.equal(sourceLang, "en");
+        assert.deepEqual(Array.from(requested), words);
+        assert.ok(spans.every((span) => !span.classList.contains("highlight")));
+        return requested.map((word) => dictionary.lookup(word, { the: "ten", apple: "jabłko" }));
+    };
+    await state.start();
+    assert.deepEqual(spans.map((span) => span.classList.contains("highlight")), [true, true, false, false, false]);
+    assert.deepEqual(Array.from(state.context.wordCloudEls, ({ cloud }) => cloud.textContent), ["ten", "jabłko"]);
+    assert.equal(state.urls.length, 0);
+    assert.equal(state.errors.length, 0);
 });
 
 test("holding S keeps the session open; a second press closes it and resumes playback", async () => {

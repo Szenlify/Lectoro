@@ -43,6 +43,12 @@
     let isReading = false;
     let iconShowFrame = null;
     let selectionRevision = 0;
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area !== "local" || !(changes.learningLang || changes.targetLang)) return;
+        selectionRevision++;
+        runDismiss();
+        hideAll();
+    });
     let readingSession = 0;
     let readingSafetyTimer = null;
     let readingMonitorTimer = null;

@@ -5,13 +5,14 @@
 
     async function translate(text, revision, layout = null) {
         const ui = overlay();
-        const targetLang = await root.SharedTranslatorService.getTargetLang();
+        const { targetLang, learningLang } = await root.SharedTranslatorService.getReadingSettings();
         if (revision !== ui.subtitleModeRevision || !String(text || "").trim())
             return null;
         const response = await root.SharedUtils.sendRuntimeMessage({
             type: root.LectoroConstants.MESSAGE_TYPES.TRANSLATE_SUBTITLE,
             text: String(text).trim(),
             targetLang,
+            sourceLang: learningLang,
         });
         if (revision !== ui.subtitleModeRevision) return null;
         const result = response?.result;
@@ -100,10 +101,14 @@
     root.chrome?.storage?.onChanged?.addListener((changes, area) => {
         if (
             area === "local" &&
-            (changes.targetLang || changes.wordCloudMode || changes.subtitleTTS)
+            (changes.targetLang || changes.learningLang || changes.wordCloudMode || changes.subtitleTTS)
         ) {
             const ui = overlay();
             if (ui?.isSubtitleUiOpen()) ui.restoreOriginal();
+            if (changes.targetLang || changes.learningLang) {
+                ui?.closeSubTooltip?.({ resumeVideo: false });
+                if (ui?.isAiTooltipActive?.()) ui.closeAiTooltip({ resumeVideo: false });
+            }
         }
     });
 })(globalThis);

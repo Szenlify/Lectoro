@@ -3,7 +3,7 @@
     "use strict";
     let transaction = Promise.resolve();
 
-    async function translate(text, targetLang) {
+    async function translate(text, targetLang, sourceLang = null) {
         text = String(text || "").trim();
         if (!text) throw new Error("No subtitle to translate.");
         // Serialize cache check, quota check and commit across all tabs.
@@ -11,10 +11,12 @@
             .catch(() => {})
             .then(async () => {
                 const translator = root.SharedTranslatorService;
+                const learningLang = sourceLang || await translator.getLearningLang();
                 const subscriptions = root.SubscriptionService;
                 const cached = await translator.getCachedTranslation(
                     text,
                     targetLang,
+                    learningLang,
                 );
                 if (cached) return { status: "success", ...cached, targetLang };
                 const quota = await subscriptions.getSubtitleQuotaStatus(
@@ -22,7 +24,7 @@
                 );
                 if (!quota.allowed)
                     return { status: "limit", quota, targetLang };
-                const result = await translator.translate(text, targetLang);
+                const result = await translator.translate(text, targetLang, learningLang);
                 const committed = await subscriptions.consumeSubtitleQuota(
                     text.length,
                 );

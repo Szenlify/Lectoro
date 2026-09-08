@@ -103,6 +103,7 @@
         const STORAGE_KEYS = Object.freeze({
             SAVED_WORDS: "savedWords",
             TARGET_LANG: "targetLang",
+            LEARNING_LANG: "learningLang",
             TRANSLATE_RETRY_AT: "lectoro_translate_retry_at",
             SPEECH_VOICE: "speechVoice",
             SPEECH_RATE: "speechRate",
@@ -137,6 +138,7 @@
 
         const DEFAULT_READING_SETTINGS = Object.freeze({
             targetLang: "pl",
+            learningLang: "en",
             aiExplanationLanguage: "native",
             subtitleTTS: false,
             wordCloudMode: true,
@@ -191,13 +193,6 @@
                 native: "العربية",
                 flag: "🇸🇦",
             }),
-            bg: Object.freeze({
-                code: "bg",
-                name: "Bulgarian",
-                tag: "BG",
-                native: "Български",
-                flag: "🇧🇬",
-            }),
             cs: Object.freeze({
                 code: "cs",
                 name: "Czech",
@@ -205,26 +200,12 @@
                 native: "Čeština",
                 flag: "🇨🇿",
             }),
-            da: Object.freeze({
-                code: "da",
-                name: "Danish",
-                tag: "DA",
-                native: "Dansk",
-                flag: "🇩🇰",
-            }),
             de: Object.freeze({
                 code: "de",
                 name: "German",
                 tag: "DE",
                 native: "Deutsch",
                 flag: "🇩🇪",
-            }),
-            el: Object.freeze({
-                code: "el",
-                name: "Greek",
-                tag: "EL",
-                native: "Ελληνικά",
-                flag: "🇬🇷",
             }),
             en: Object.freeze({
                 code: "en",
@@ -260,20 +241,6 @@
                 tag: "HI",
                 native: "हिन्दी",
                 flag: "🇮🇳",
-            }),
-            hr: Object.freeze({
-                code: "hr",
-                name: "Croatian",
-                tag: "HR",
-                native: "Hrvatski",
-                flag: "🇭🇷",
-            }),
-            hu: Object.freeze({
-                code: "hu",
-                name: "Hungarian",
-                tag: "HU",
-                native: "Magyar",
-                flag: "🇭🇺",
             }),
             id: Object.freeze({
                 code: "id",
@@ -338,27 +305,6 @@
                 native: "Română",
                 flag: "🇷🇴",
             }),
-            ru: Object.freeze({
-                code: "ru",
-                name: "Russian",
-                tag: "RU",
-                native: "Русский",
-                flag: "🇷🇺",
-            }),
-            sk: Object.freeze({
-                code: "sk",
-                name: "Slovak",
-                tag: "SK",
-                native: "Slovenčina",
-                flag: "🇸🇰",
-            }),
-            sv: Object.freeze({
-                code: "sv",
-                name: "Swedish",
-                tag: "SV",
-                native: "Svenska",
-                flag: "🇸🇪",
-            }),
             th: Object.freeze({
                 code: "th",
                 name: "Thai",
@@ -373,26 +319,12 @@
                 native: "Türkçe",
                 flag: "🇹🇷",
             }),
-            uk: Object.freeze({
-                code: "uk",
-                name: "Ukrainian",
-                tag: "UK",
-                native: "Українська",
-                flag: "🇺🇦",
-            }),
             vi: Object.freeze({
                 code: "vi",
                 name: "Vietnamese",
                 tag: "VI",
                 native: "Tiếng Việt",
                 flag: "🇻🇳",
-            }),
-            zh: Object.freeze({
-                code: "zh",
-                name: "Chinese",
-                tag: "ZH",
-                native: "中文",
-                flag: "🇨🇳",
             }),
         });
 
@@ -418,6 +350,11 @@
             if (!code) return "";
             const c = String(code).toLowerCase();
             return LANG_NAMES[c] || c.toUpperCase();
+        }
+
+        function normalizeSupportedLanguage(code, fallback = "en") {
+            const language = String(code || "").trim().toLowerCase().replace(/_/g, "-");
+            return Object.hasOwn(SUPPORTED_LANGUAGES, language) ? language : fallback;
         }
 
         function langTag(code) {
@@ -489,6 +426,7 @@
             SVG_ICONS,
             R2_CDN_BASE_URL,
             SUPPORTED_LANGUAGES,
+            normalizeSupportedLanguage,
             LANG_NAMES,
             LANG_TAGS,
             ELEVENLABS_VOICES,

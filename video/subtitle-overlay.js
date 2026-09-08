@@ -933,8 +933,7 @@
         ensureSubtitleUiTracking();
 
         try {
-            const targetLang = await QT.getTargetLang();
-            const srcLang = getPlayerRegistry()?.getSubtitleLanguage?.() || "en";
+            const { targetLang, learningLang: srcLang } = await SharedTranslatorService.getReadingSettings();
             const [translated] = await SharedTranslatorService.lookupWords([text], targetLang, srcLang);
             if (!isSubHovering || lastHoveredSubWord !== wordSpan) return;
             if (!translated) {
@@ -1327,17 +1326,6 @@
     QT.addDismissHandler(closeAiTooltip);
 
     const normalizeLanguageCode = SharedUtils.normalizeLanguageCode;
-
-    async function detectSourceLanguage(text, targetLang, aiResult) {
-        const fromAi = normalizeLanguageCode(aiResult?.detectedLang);
-        if (fromAi) return fromAi;
-        try {
-            const detection = await QT.translate(text, targetLang);
-            return normalizeLanguageCode(detection?.detectedLang, "auto");
-        } catch (_) {
-            return "auto";
-        }
-    }
 
     function clearSubtitleVideoHighlights() {
         try {
@@ -2608,10 +2596,8 @@
             if (!isCurrent()) return;
             aiExplainMode = aiExplanationLanguage;
             const context = getActiveSubtitleContext(video, text);
-            const knownSourceLang = normalizeLanguageCode(
-                getPlayerRegistry()?.getCurrentLanguage?.() ||
-                getPlayerRegistry()?.getTrackLanguage?.()
-            );
+            const knownSourceLang = await SharedTranslatorService.getLearningLang();
+            if (!isCurrent()) return;
             const res = await QT.geminiExplainSentence(
                 text,
                 targetLang,
@@ -2620,11 +2606,7 @@
             );
             if (!isCurrent()) return;
 
-            const sourceLang = await detectSourceLanguage(
-                text,
-                targetLang,
-                res,
-            );
+            const sourceLang = knownSourceLang;
             if (!isCurrent()) return;
 
             aiExplainSourceLang = sourceLang;
@@ -2778,21 +2760,6 @@
 
     // ── Word Cloud & Sentence Overlay ──────────────────────────────
 
-    function shouldTranslateWord(rawText) {
-        const text = (rawText || "").trim();
-        if (!text) return false;
-        if (/\d/.test(text)) return false;
-        if (/^[\s.,!?;:"'()\[\]{}—–\-_/\\<>]+$/.test(text)) return false;
-
-        // Multi-word phrases (phrasal verbs, idioms, collocations) should always be translated
-        if (/\s/.test(text)) {
-            const words = text.split(/\s+/).filter(Boolean);
-            if (words.length >= 2) return true;
-        }
-
-        return !SharedUtils.isSimpleWord(text);
-    }
-
     function removeWordClouds() {
         wordCloudEls.forEach(({ cloud }) => cloud.remove());
         wordCloudEls = [];
@@ -2897,10 +2864,7 @@
         for (const span of spans) {
             if (!span || !span.textContent?.trim()) continue;
             wordSpans.push(span);
-            span.classList.toggle(
-                WORD_CLOUD_HIGHLIGHT_CLASS,
-                shouldTranslateWord(span.textContent),
-            );
+            span.classList.remove(WORD_CLOUD_HIGHLIGHT_CLASS);
         }
 
         if (wordSpans.length === 0) {
@@ -2914,16 +2878,13 @@
             return;
         }
 
-        const targetLang = await SharedTranslatorService.getTargetLang();
+        const { targetLang, learningLang } = await SharedTranslatorService.getReadingSettings();
         if (modeRevision !== subtitleModeRevision) return;
 
-        const translatableSpans = wordSpans.filter((span) =>
-            shouldTranslateWord(span.textContent),
-        );
         const translations = await SharedTranslatorService.lookupWords(
-            translatableSpans.map((span) => span.dataset.clean || span.textContent),
+            wordSpans.map((span) => span.dataset.clean || span.textContent),
             targetLang,
-            opts.sourceLang || getPlayerRegistry()?.getSubtitleLanguage?.() || "en",
+            learningLang,
         );
         if (modeRevision !== subtitleModeRevision) return;
 
@@ -2934,9 +2895,9 @@
             Math.min(18, Math.round(subFontSizePx * 0.55)),
         );
 
-        translatableSpans.forEach((span, i) => {
+        wordSpans.forEach((span, i) => {
             const translated = translations[i];
-            if (!translated || typeof translated !== "string") return;
+            if (typeof translated !== "string" || !translated.trim()) return;
             let targetSpan = span;
             if (!targetSpan.isConnected) {
                 const liveSpans = Array.from(
@@ -2949,6 +2910,7 @@
             }
             const rect = targetSpan.getBoundingClientRect();
             if (rect.width === 0 && rect.height === 0) return;
+            targetSpan.classList.add(WORD_CLOUD_HIGHLIGHT_CLASS);
             const cloud = document.createElement("div");
             cloud.className = WORD_CLOUD_CLASS;
             cloud.textContent = translated;

@@ -22,9 +22,13 @@ To proste heurystyki, nie pełny analizator gramatyczny; tłumaczenie zachowuje 
 podstawową ze słownika. Dokładną formę, np. `"running": "bieganie"`, możesz dopisać
 osobno, aby miała pierwszeństwo.
 
-Język docelowy pochodzi z ustawienia Native language (`targetLang`). YouTube,
-Netflix i dostępne ścieżki HTML5 dostarczają język źródłowy. Bez metadanych
-przyjmujemy angielski. Dla innych znanych języków dopasowujemy dokładne wartości
+Język docelowy pochodzi z ustawienia Native language (`targetLang`). Język źródłowy
+wybierasz w Learning language (`learningLang`, domyślnie angielski). Ten wybór
+obowiązuje w słownikach, tłumaczeniach Google/Gemini i oznaczeniach języka;
+automatyczne rozpoznawanie oraz język ścieżki filmu go nie zmieniają.
+Przykład: English + Polish daje `EN → PL`, również dla krótkiego słowa `president`.
+Cache jest oddzielny dla każdej pary języków. W ustawieniach i słownikach pozostaje
+20 obsługiwanych języków. Dla innych języków nauki niż angielski dopasowujemy dokładne wartości
 w słowniku źródłowym i wspólne angielskie klucze; nie stosujemy do nich angielskich
 reguł odmiany. Przy rozbudowie par innych niż angielski dodaj klucz do obu plików.
 

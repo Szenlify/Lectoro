@@ -22,6 +22,16 @@ test("every supported language contains the starter entries and permits new user
     }
 });
 
+test("language registry, settings and dictionary files contain only the requested 20 languages", () => {
+    const expected = "ja de ko fr es it pt-br ar pl tr hi id vi en th ro nl cs he pt".split(" ");
+    assert.deepEqual(Object.keys(C.SUPPORTED_LANGUAGES).sort(), [...expected].sort());
+    const files = fs.readdirSync(path.join(__dirname, "../dictionaries")).filter((file) => file.endsWith(".json"));
+    assert.deepEqual(files.sort(), expected.map((code) => `${code}.json`).sort());
+    const html = fs.readFileSync(path.join(__dirname, "../popup.html"), "utf8");
+    const select = html.match(/<select id="targetLang"[^>]*>([\s\S]*?)<\/select>/)[1];
+    assert.deepEqual(Array.from(select.matchAll(/<option value="([^"]+)"/g), (match) => match[1]), expected);
+});
+
 test("English inflections resolve only to existing entries, with exact matches taking precedence", () => {
     for (const [word, lemma] of Object.entries({
         "“APPLES!”": "apple", "apple’s": "apple", books: "book", playing: "play",

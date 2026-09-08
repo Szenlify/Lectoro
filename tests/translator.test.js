@@ -65,7 +65,7 @@ test("word caches coalesce custom fetchers and hydrate before a cache miss", asy
         },
         {
             [key]: {
-                "example|pl": { translated: "przykład", detectedLang: "en" },
+                [JSON.stringify(["en", "pl", "example"])]: { translated: "przykład", detectedLang: "en" },
             },
         },
     );
