@@ -2068,6 +2068,7 @@ html.__qt_netflix-capturing [id^="__qt_"] {
    ═══════════════════════════════════════════════════════════════ */
 
 /* Unified phrase/word wrapper ensuring contiguous background across multi-word idioms */
+.__qt_word-cloud-phrase,
 .__qt_ai-sub-wrap {
   display: inline !important;
   box-decoration-break: clone !important;
@@ -2081,6 +2082,9 @@ html.__qt_netflix-capturing [id^="__qt_"] {
 }
 
 /* Neutralize individual word borders/backgrounds inside the unified phrase wrapper */
+.__qt_word-cloud-phrase .__qt_sub-word,
+#__qt_custom_subtitles_layer .__qt_word-cloud-phrase .__qt_sub-word:hover,
+#__qt_custom_subtitles_layer .__qt_word-cloud-phrase .__qt_sub-word.__qt_word-hover,
 .__qt_ai-sub-wrap .__qt_sub-word,
 #__qt_custom_subtitles_layer .__qt_ai-sub-wrap .__qt_sub-word:hover,
 #__qt_custom_subtitles_layer .__qt_ai-sub-wrap .__qt_sub-word.__qt_word-hover,

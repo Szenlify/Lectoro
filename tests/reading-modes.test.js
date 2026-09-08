@@ -9,6 +9,37 @@ const overlayFile = "video/subtitle-overlay.js";
 function element(text = "") {
     const classes = new Set();
     return {
+        childNodes: [],
+        parentNode: null,
+        get firstChild() { return this.childNodes[0] || null; },
+        get nextSibling() {
+            const siblings = this.parentNode?.childNodes || [];
+            return siblings[siblings.indexOf(this) + 1] || null;
+        },
+        set className(value) {
+            classes.clear();
+            value.split(/\s+/).forEach((name) => classes.add(name));
+        },
+        closest(selector) {
+            return this.classList.contains(selector.slice(1)) ? this : this.parentNode?.closest(selector) || null;
+        },
+        appendChild(node) {
+            node.remove();
+            node.parentNode = this;
+            this.childNodes.push(node);
+        },
+        insertBefore(node, reference) {
+            node.remove();
+            node.parentNode = this;
+            this.childNodes.splice(this.childNodes.indexOf(reference), 0, node);
+        },
+        remove() {
+            if (this.parentNode) {
+                const siblings = this.parentNode.childNodes;
+                siblings.splice(siblings.indexOf(this), 1);
+                this.parentNode = null;
+            }
+        },
         textContent: text,
         dataset: { clean: text },
         isConnected: true,
@@ -125,6 +156,7 @@ function app(settings = {}) {
         },
     };
     for (const name of [
+        "wrapMatchedSpans",
         "showWordClouds",
         "doSentenceTranslation",
         "createSubtitleTranslationTask",
@@ -308,6 +340,11 @@ test("word clouds skip simple words and highlight every token of a dictionary ph
     state.context.LectoroPlayerRegistry.getSubtitleLanguage = () => "no";
     const words = ["You", "are", "we", "the", "apples", "unlisted", "look", "forward", "to", "123"];
     const spans = words.map(element);
+    const line = element();
+    spans.forEach((span) => {
+        line.appendChild(span);
+        line.appendChild(element(" "));
+    });
     spans[2].classList.add("highlight");
     state.context.activeWordSpans = spans;
     state.context.activeText = words.join(" ");
@@ -320,10 +357,47 @@ test("word clouds skip simple words and highlight every token of a dictionary ph
         return dictionary.lookupWordByWord(requested, require("../dictionaries/pl.json"));
     };
     await state.start();
-    assert.deepEqual(spans.map((span) => span.classList.contains("highlight")), [false, false, false, false, true, false, true, true, true, false]);
+    assert.deepEqual(spans.map((span) => !!span.closest(".highlight")), [false, false, false, false, true, false, true, true, true, false]);
     assert.deepEqual(Array.from(state.context.wordCloudEls, ({ cloud }) => cloud.textContent), ["jabłko", "wyczekiwać z niecierpliwością"]);
     assert.equal(state.urls.length, 0);
     assert.equal(state.errors.length, 0);
+});
+
+test("blessing in disguise has a continuous background, centered cloud and reversible grouping", async () => {
+    const state = app({ wordCloudMode: true, subtitleTTS: false });
+    const words = ["blessing", "in", "disguise"];
+    const spans = words.map(element);
+    const line = element();
+    spans.forEach((span, index) => {
+        if (index) line.appendChild(element(" "));
+        line.appendChild(span);
+        span.getBoundingClientRect = () => ({ left: 100 + index * 80, right: 160 + index * 80,
+            top: 200, bottom: 220, width: 60, height: 20 });
+    });
+    const originalNodes = [...line.childNodes];
+    state.context.activeWordSpans = spans;
+    state.context.activeText = words.join(" ");
+    state.context.window.innerWidth = 1000;
+    state.context.SharedTranslatorService.lookupWords = async (requested) =>
+        require("../shared/local-dictionary").lookupWordByWord(requested, require("../dictionaries/pl.json"));
+    loadFunction(state.context, overlayFile, "positionWordCloud");
+    loadFunction(state.context, overlayFile, "removeWordClouds");
+    state.context.document.querySelectorAll = () => [];
+    await state.start();
+    assert.equal(state.context.wordCloudEls.length, 1);
+    const { cloud, span, members, wrappers } = state.context.wordCloudEls[0];
+    assert.equal(cloud.textContent, "szczęście w nieszczęściu");
+    assert.equal(wrappers.length, 1);
+    assert.deepEqual(wrappers[0].childNodes, originalNodes, "spaces share the same background");
+    assert.ok(spans.every((member) => !member.classList.contains("highlight")));
+    assert.ok(wrappers[0].classList.contains("highlight"));
+    assert.equal(cloud.style.left, "180px", "cloud center equals the center of all three words");
+    spans[2].getBoundingClientRect = () => ({ left: 260, right: 400, top: 200, bottom: 220, width: 140, height: 20 });
+    state.context.positionWordCloud(cloud, span, members);
+    assert.equal(cloud.style.left, "220px", "position follows the whole phrase after resizing");
+    state.context.removeWordClouds();
+    assert.deepEqual(line.childNodes, originalNodes, "closing preserves original word nodes and spaces");
+    assert.equal(state.context.wordCloudEls.length, 0);
 });
 
 test("holding S keeps the session open; a second press closes it and resumes playback", async () => {

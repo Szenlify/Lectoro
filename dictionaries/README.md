@@ -25,7 +25,7 @@ osobno, aby miała pierwszeństwo.
 Tryb word-by-word dopasowuje najpierw najdłuższy zwrot z JSON do kolejnych słów
 napisu, a dopiero później pojedyncze hasła. Na przykład `gave up` korzysta z
 `give up`, a `looking forward to` z `look forward to`. Cały zwrot jest podświetlany
-i otrzymuje jedną chmurkę przy pierwszym słowie. Obsługiwane są też zaimki
+i otrzymuje wspólne tło oraz jedną chmurkę wyśrodkowaną nad całym zwrotem. Obsługiwane są też zaimki
 dzierżawcze w hasłach takich jak `pull someone's leg` → `pulled my leg`.
 Nie łączymy zwrotów przez interpunkcję niewystępującą w haśle.
 

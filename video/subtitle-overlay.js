@@ -1443,8 +1443,9 @@
         return null;
     }
 
-    function wrapMatchedSpans(matchingSpans, cssClass, aiIndex) {
-        if (!matchingSpans || matchingSpans.length === 0) return;
+    function wrapMatchedSpans(matchingSpans, cssClass, aiIndex, wrapperClass = C.UI_CLASSES.AI_SUB_WRAP) {
+        const wrappers = [];
+        if (!matchingSpans || matchingSpans.length === 0) return wrappers;
 
         // Group consecutive spans by parent container
         const groups = [];
@@ -1455,9 +1456,10 @@
             if (!span || !span.isConnected) continue;
 
             // If already wrapped in an existing ai-sub-wrap, update class and ai-index
-            const existingWrap = span.closest(`.${C.UI_CLASSES.AI_SUB_WRAP}`);
+            const existingWrap = span.closest(`.${wrapperClass}`);
             if (existingWrap) {
-                existingWrap.className = `${C.UI_CLASSES.AI_SUB_WRAP} ${cssClass}`;
+                existingWrap.className = `${wrapperClass} ${cssClass}`;
+                if (!wrappers.includes(existingWrap)) wrappers.push(existingWrap);
                 if (aiIndex !== undefined) {
                     existingWrap.dataset.aiIndex = String(aiIndex);
                 }
@@ -1505,7 +1507,7 @@
             }
 
             const wrapper = document.createElement("span");
-            wrapper.className = `${C.UI_CLASSES.AI_SUB_WRAP} ${cssClass}`;
+            wrapper.className = `${wrapperClass} ${cssClass}`;
             if (aiIndex !== undefined) {
                 wrapper.dataset.aiIndex = String(aiIndex);
             }
@@ -1513,7 +1515,9 @@
             for (const node of nodesToWrap) {
                 wrapper.appendChild(node);
             }
+            wrappers.push(wrapper);
         }
+        return wrappers;
     }
 
     function highlightSpansForTerm(spans, term, cssClass, aiIndex) {
@@ -2761,7 +2765,15 @@
     // ── Word Cloud & Sentence Overlay ──────────────────────────────
 
     function removeWordClouds() {
-        wordCloudEls.forEach(({ cloud }) => cloud.remove());
+        wordCloudEls.forEach(({ cloud, wrappers = [] }) => {
+            cloud.remove();
+            for (const wrapper of wrappers) {
+                const parent = wrapper.parentNode;
+                if (!parent) continue;
+                while (wrapper.firstChild) parent.insertBefore(wrapper.firstChild, wrapper);
+                wrapper.remove();
+            }
+        });
         wordCloudEls = [];
         document
             .querySelectorAll(`.${WORD_CLOUD_HIGHLIGHT_CLASS}`)
@@ -2771,10 +2783,19 @@
         wordCloudActive = false;
     }
 
-    function positionWordCloud(cloud, span) {
+    function positionWordCloud(cloud, span, members = [span]) {
         if (!cloud?.isConnected || !span?.isConnected) return;
-        const rect = span.getBoundingClientRect();
-        if (rect.width === 0 && rect.height === 0) return;
+        const rects = members.filter((member) => member?.isConnected)
+            .map((member) => member.getBoundingClientRect())
+            .filter((rect) => rect.width > 0 || rect.height > 0);
+        if (!rects.length) return;
+        const rect = {
+            left: Math.min(...rects.map((r) => r.left)),
+            right: Math.max(...rects.map((r) => r.right)),
+            top: Math.min(...rects.map((r) => r.top)),
+            bottom: Math.max(...rects.map((r) => r.bottom)),
+        };
+        rect.width = rect.right - rect.left;
         const cloudRect = cloud.getBoundingClientRect();
         let left = rect.left + (rect.width - cloudRect.width) / 2;
         let top = rect.top - cloudRect.height + 12;
@@ -2796,8 +2817,8 @@
         subtitleUiTrackingFrame = null;
         if (translationOverlay?.isConnected) positionOverlay();
 
-        for (const { cloud, span } of wordCloudEls) {
-            positionWordCloud(cloud, span);
+        for (const { cloud, span, members } of wordCloudEls) {
+            positionWordCloud(cloud, span, members);
         }
 
         if (isSubHovering && subTooltipAnchor) {
@@ -2899,30 +2920,33 @@
         wordSpans.forEach((span, i) => {
             const { translated, length = 1 } = translations[i] || {};
             if (typeof translated !== "string" || !translated.trim()) return;
-            let targetSpan = span;
-            if (!targetSpan.isConnected) {
+            let members = wordSpans.slice(i, i + length);
+            if (members.some((member) => !member.isConnected)) {
                 const liveSpans = Array.from(
                     document.querySelectorAll(`.${SUB_WORD_CLASS}`),
                 );
-                const matched = liveSpans.find(
-                    (s) => s.textContent.trim() === span.textContent.trim(),
+                const start = liveSpans.findIndex(
+                    (candidate, index) => members.every((member, offset) =>
+                        liveSpans[index + offset]?.textContent.trim() === member.textContent.trim()),
                 );
-                if (matched) targetSpan = matched;
+                if (start < 0) return;
+                members = liveSpans.slice(start, start + length);
             }
+            const targetSpan = members[0];
             const rect = targetSpan.getBoundingClientRect();
             if (rect.width === 0 && rect.height === 0) return;
-            targetSpan.classList.add(WORD_CLOUD_HIGHLIGHT_CLASS);
-            for (const member of wordSpans.slice(i + 1, i + length)) {
-                member.classList.add(WORD_CLOUD_HIGHLIGHT_CLASS);
-            }
+            const wrappers = length > 1
+                ? wrapMatchedSpans(members, WORD_CLOUD_HIGHLIGHT_CLASS, undefined, `${PREFIX}word-cloud-phrase`)
+                : [];
+            if (length === 1) targetSpan.classList.add(WORD_CLOUD_HIGHLIGHT_CLASS);
             const cloud = document.createElement("div");
             cloud.className = WORD_CLOUD_CLASS;
             cloud.textContent = translated;
             cloud.style.fontSize = cloudFontSize + "px";
             cloud.style.animationDelay = i * 0.02 + "s";
             parent.appendChild(cloud);
-            wordCloudEls.push({ cloud, span: targetSpan });
-            positionWordCloud(cloud, targetSpan);
+            wordCloudEls.push({ cloud, span: targetSpan, members, wrappers });
+            positionWordCloud(cloud, targetSpan, members);
         });
         ensureSubtitleUiTracking();
     }
