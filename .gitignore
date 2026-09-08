@@ -10,3 +10,17 @@ functions/.env.*
 # Node modules
 functions/node_modules/
 node_modules/
+
+# Dictionary build artifacts and local API configuration
+py/dist/
+py/checkpoints/
+py/__pycache__/
+py/.env
+py/.env.*
+
+python/.venv/
+python/work/
+python/dist/
+python/__pycache__/
+python/.env
+python/.env.*

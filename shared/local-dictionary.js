@@ -1,9 +1,12 @@
-/** Bundled dictionaries: no remote requests, keys are English lemmas. */
+/** Local lookup of downloaded directed pairs, with bundled English starter data. */
 (function (root) {
     "use strict";
     const utils = root.SharedUtils || (typeof module !== "undefined" && module.exports ? require("./utils") : null);
     const dictionaries = new Map();
     const indexes = new WeakMap();
+    const compiled = new WeakMap();
+    const languages = new WeakMap();
+    const tokenizer = root.DictionaryTokenizer || (typeof module !== "undefined" && module.exports ? require("./dictionary-tokenizer") : null);
     const normalize = (word) => String(word || "").normalize("NFKC").toLowerCase()
         .replace(/[’‘]/g, "'").replace(/\s+/g, " ")
         .replace(/^[^\p{L}\p{M}]+|[^\p{L}\p{M}]+$/gu, "");
@@ -42,6 +45,26 @@
         return [...forms];
     }
 
+    function formsFor(word, dictionary) {
+        return (languages.get(dictionary) || "en") === "en" ? candidates(word) : [normalize(word)];
+    }
+
+    function compilePack(pack) {
+        if (compiled.has(pack)) return compiled.get(pack);
+        const dictionary = Object.create(null);
+        for (const [term, senses] of Object.entries(pack.entries)) {
+            dictionary[term] = [...new Set(senses.flatMap((sense) => sense.translations))].join(" / ");
+        }
+        for (const [form, lemmas] of Object.entries(pack.forms || {})) {
+            if (!Object.hasOwn(dictionary, form)) {
+                dictionary[form] = [...new Set(lemmas.map((lemma) => dictionary[lemma]).filter(Boolean))].join(" / ");
+            }
+        }
+        languages.set(dictionary, pack.sourceLanguage);
+        compiled.set(pack, dictionary);
+        return dictionary;
+    }
+
     async function loadDictionary(language) {
         if (!Object.hasOwn(root.LectoroConstants.SUPPORTED_LANGUAGES, language)) return {};
         if (!dictionaries.has(language)) {
@@ -63,7 +86,7 @@
             if (typeof translated !== "string" || !translated.trim()) continue;
             const normalized = normalize(key);
             if (!entries.has(normalized) || key === normalized) entries.set(normalized, translated);
-            const tokens = key.split(/\s+/);
+            const tokens = tokenizer ? tokenizer.tokenize(key).filter((token) => token.type === "word").map((token) => token.text) : key.split(/\s+/);
             if (tokens.length < 2) continue;
             const first = normalize(tokens[0]);
             if (!phrases.has(first)) phrases.set(first, []);
@@ -84,7 +107,7 @@
             .replace(/[’‘]/g, "'").replace(/^[^\p{L}\p{M}]+|[^\p{L}\p{M}]+$/gu, "");
         if (Object.hasOwn(target, exact) && typeof target[exact] === "string") return target[exact];
         const { entries } = indexDictionary(target);
-        for (const form of candidates(word)) {
+        for (const form of formsFor(word, target)) {
             if (entries.has(form)) return entries.get(form);
         }
         return null; // Missing words must never trigger a paid call.
@@ -98,18 +121,18 @@
         for (let i = 0; i < words.length; i++) {
             let match = null;
             if (!source) {
-                const options = candidates(words[i]).flatMap((form) => phrases.get(form) || [])
+                const options = formsFor(words[i], target).flatMap((form) => phrases.get(form) || [])
                     .sort((a, b) => b.tokens.length - a.tokens.length);
                 match = options.find(({ tokens }) => tokens.every((token, offset) => {
                     const actual = words[i + offset];
                     if (actual === undefined) return false;
                     const expected = normalize(token);
-                    const possessive = /^(?:someone|one)'s$/.test(expected)
+                    const possessive = (languages.get(target) || "en") === "en" && /^(?:someone|one)'s$/.test(expected)
                         && /^(?:my|your|his|her|its|our|their|[\p{L}]+['’]s)$/u.test(normalize(actual));
-                    if (!possessive && !candidates(actual).includes(expected)) return false;
+                    if (!possessive && !formsFor(actual, target).includes(expected)) return false;
                     // Do not join unrelated clauses; punctuation written in the idiom is allowed.
                     if (offset < tokens.length - 1) {
-                        const punctuation = (text) => (text.match(/[,;:.!?]+["'’”)]*$/u) || [""])[0];
+                        const punctuation = (text) => (text.match(/[,;:.!?。！？、；：]+["'’”)]*$/u) || [""])[0];
                         if (punctuation(actual) !== punctuation(token)) return false;
                     }
                     return true;
@@ -120,7 +143,7 @@
                 i += match.tokens.length - 1;
                 continue;
             }
-            if (!source && utils.isSimpleWord(words[i])) continue;
+            if (!source && (languages.get(target) || "en") === "en" && utils.isSimpleWord(words[i])) continue;
             const translated = lookup(words[i], target, source);
             if (translated) result[i] = { translated, length: 1 };
         }
@@ -137,15 +160,16 @@
         };
         targetLang = languageCode(targetLang);
         sourceLang = languageCode(sourceLang);
-        const [target, source] = await Promise.all([
-            loadDictionary(targetLang),
-            sourceLang && sourceLang !== "en" && sourceLang !== "auto" ? loadDictionary(sourceLang) : null,
-        ]);
+        if (!Object.hasOwn(root.LectoroConstants.SUPPORTED_LANGUAGES, targetLang) || !Object.hasOwn(root.LectoroConstants.SUPPORTED_LANGUAGES, sourceLang)) return words.map(() => null);
+        if (sourceLang === targetLang) return words.map((word) => options?.wordByWord ? null : word);
+        const pack = await root.DictionaryStore?.getPair(sourceLang, targetLang);
+        // Missing non-English pairs are never guessed through a reverse English lookup.
+        const target = pack ? compilePack(pack) : sourceLang === "en" ? await loadDictionary(targetLang) : {};
         return options?.wordByWord
-            ? lookupWordByWord(words, target, source)
-            : words.map((word) => lookup(word, target, source));
+            ? lookupWordByWord(words, target)
+            : words.map((word) => lookup(word, target));
     }
 
-    root.LocalDictionary = Object.freeze({ lookupWords, lookup, candidates, lookupWordByWord });
+    root.LocalDictionary = Object.freeze({ lookupWords, lookup, candidates, lookupWordByWord, compilePack });
     if (typeof module !== "undefined") module.exports = root.LocalDictionary;
 })(globalThis);

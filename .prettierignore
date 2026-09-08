@@ -1,0 +1,6 @@
+# Generated dictionaries have byte hashes in catalog.json. Do not reformat them.
+python/dist/
+python/work/
+python/.venv/
+py/dist/
+py/checkpoints/

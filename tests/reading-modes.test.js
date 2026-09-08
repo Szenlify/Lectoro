@@ -354,7 +354,7 @@ test("word clouds skip simple words and highlight every token of a dictionary ph
         assert.equal(options.wordByWord, true);
         assert.deepEqual(Array.from(requested), words);
         assert.ok(spans.every((span) => !span.classList.contains("highlight")));
-        return dictionary.lookupWordByWord(requested, require("../dictionaries/pl.json"));
+        return dictionary.lookupWordByWord(requested, { apple: "jabłko", "look forward to": "wyczekiwać z niecierpliwością" });
     };
     await state.start();
     assert.deepEqual(spans.map((span) => !!span.closest(".highlight")), [false, false, false, false, true, false, true, true, true, false]);

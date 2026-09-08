@@ -6,6 +6,8 @@ importScripts(
   "shared/utils.js",
   "shared/srs.js",
   "shared/word-repository.js",
+  "shared/dictionary-store.js",
+  "shared/dictionary-tokenizer.js",
   "shared/local-dictionary.js",
   "shared/translator-service.js",
   "firebase/firebase-config.js",

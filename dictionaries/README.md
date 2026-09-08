@@ -1,4 +1,12 @@
-# Lokalne słowniki
+# Słowniki pobierane z R2
+
+Aktualne generatory GoogleTranslator i instrukcję R2 opisano w [python/README.md](../python/README.md).
+Rozszerzenie najpierw sprawdza wersjonowaną paczkę wybranej pary w IndexedDB/R2.
+Poniższe pliki lokalne stanowią zapasowe dane dla kierunków EN→X. Odwrotne
+wyszukiwanie przez angielskie klucze nie jest już używane dla pozostałych par.
+Brakujące słowa nadal nie powodują wywołań płatnego API.
+
+# Format lokalnych danych zapasowych
 
 Pliki językowe zawierają lokalne hasła i zwroty. Klucz to angielska forma podstawowa,
 a wartość to tłumaczenie w języku nazwy pliku, np. w `pl.json`:
@@ -47,11 +55,11 @@ obowiązuje w słownikach, tłumaczeniach Google/Gemini i oznaczeniach języka;
 automatyczne rozpoznawanie oraz język ścieżki filmu go nie zmieniają.
 Przykład: English + Polish daje `EN → PL`, również dla krótkiego słowa `president`.
 Cache jest oddzielny dla każdej pary języków. W ustawieniach i słownikach pozostaje
-12 obsługiwanych języków. Dla innych języków nauki niż angielski dopasowujemy dokładne wartości
-w słowniku źródłowym i wspólne angielskie klucze; nie stosujemy do nich angielskich
-reguł odmiany. Przy rozbudowie par innych niż angielski dodaj klucz do obu plików.
+12 obsługiwanych języków. Dla języków nauki innych niż angielski wymagana jest
+bezpośrednia paczka pary z CDN; reguły angielskiej odmiany nie są do niej stosowane.
 
-Chmurki słów i podpowiedzi po najechaniu korzystają tylko z plików rozszerzenia.
+Chmurki słów i podpowiedzi po najechaniu korzystają lokalnie z pobranych paczek
+lub zapasowych plików rozszerzenia. Pobieranie/aktualizacja paczki wymaga internetu.
 Brakujące słowo nie powoduje połączenia z Google, Gemini ani Firebase.
 
 # Tłumaczenie zdań i koszty

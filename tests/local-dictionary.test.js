@@ -45,7 +45,7 @@ test("English inflections resolve only to existing entries, with exact matches t
     }
     assert.equal(dictionary.lookup("running", { ...pl, running: "bieganie" }), "bieganie");
     assert.equal(dictionary.lookup("business", pl), pl.business);
-    for (const word of ["unknown", "pineapples", "123", "constructor", "__proto__"]) {
+    for (const word of ["zzqvxx", "123", "constructor", "__proto__"]) {
         assert.equal(dictionary.lookup(word, pl), null, word);
     }
 });
@@ -65,7 +65,7 @@ test("one lazy local file read per language; unknown words never request a remot
     load(context, "shared/local-dictionary.js");
     const service = context.LocalDictionary;
     const result = await Promise.all([
-        service.lookupWords(["apples", "missing"], "pl", "en-US"),
+        service.lookupWords(["apples", "zzqvxx"], "pl", "en-US"),
         service.lookupWords(["running"], "pl"),
     ]);
     assert.deepEqual(Array.from(result[0]), ["jabłko", null]);
@@ -91,13 +91,19 @@ test("every Polish phrase is matched as a whole with its exact JSON translation"
 });
 
 test("phrases use inflections, possessive slots, curly apostrophes and longest matches", () => {
+    // Stable engine fixtures: user-editable dictionaries may add exact inflected phrases.
+    const phrases = {
+        "give up": "poddać się", "look forward to": "wyczekiwać", "take care of": "opiekować się",
+        "run out of": "wyczerpać", "pull someone's leg": "żartować", "lose one's touch": "stracić wprawę",
+        "don't judge a book by its cover": "nie oceniaj po okładce",
+    };
     for (const [text, key] of [
         ["gave up", "give up"], ["looking forward to", "look forward to"],
         ["took care of", "take care of"], ["ran out of", "run out of"],
         ["pulled my leg", "pull someone's leg"], ["lost her touch", "lose one's touch"],
         ["don’t judge a book by its cover", "don't judge a book by its cover"],
     ]) {
-        assert.equal(dictionary.lookupWordByWord(text.split(" "), pl)[0].translated, pl[key], text);
+        assert.equal(dictionary.lookupWordByWord(text.split(" "), phrases)[0].translated, phrases[key], text);
     }
     const result = dictionary.lookupWordByWord(["look", "forward", "to"], {
         look: "patrzeć", "look forward": "krótsze", "look forward to": "dłuższe",

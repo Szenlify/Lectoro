@@ -728,7 +728,7 @@
             lineEl.className = `${PREFIX}custom-sub-line`;
             lineEl.setAttribute("dir", "auto");
 
-            for (const token of SharedPhraseDetector.tokenizeSubtitleLine(
+            for (const token of (globalThis.DictionaryTokenizer?.tokenize || SharedPhraseDetector.tokenizeSubtitleLine)(
                 lineText,
             )) {
                 if (token.type === "word") {
