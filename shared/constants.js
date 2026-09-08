@@ -186,13 +186,6 @@
          * Fully synchronized with all target languages available in Lectoro.
          */
         const SUPPORTED_LANGUAGES = Object.freeze({
-            ar: Object.freeze({
-                code: "ar",
-                name: "Arabic",
-                tag: "AR",
-                native: "العربية",
-                flag: "🇸🇦",
-            }),
             cs: Object.freeze({
                 code: "cs",
                 name: "Czech",
@@ -235,20 +228,6 @@
                 native: "עברית",
                 flag: "🇮🇱",
             }),
-            hi: Object.freeze({
-                code: "hi",
-                name: "Hindi",
-                tag: "HI",
-                native: "हिन्दी",
-                flag: "🇮🇳",
-            }),
-            id: Object.freeze({
-                code: "id",
-                name: "Indonesian",
-                tag: "ID",
-                native: "Bahasa Indonesia",
-                flag: "🇮🇩",
-            }),
             it: Object.freeze({
                 code: "it",
                 name: "Italian",
@@ -290,41 +269,6 @@
                 tag: "PT",
                 native: "Português",
                 flag: "🇵🇹",
-            }),
-            "pt-br": Object.freeze({
-                code: "pt-br",
-                name: "Portuguese (Brazil)",
-                tag: "PT-BR",
-                native: "Português (Brasil)",
-                flag: "🇧🇷",
-            }),
-            ro: Object.freeze({
-                code: "ro",
-                name: "Romanian",
-                tag: "RO",
-                native: "Română",
-                flag: "🇷🇴",
-            }),
-            th: Object.freeze({
-                code: "th",
-                name: "Thai",
-                tag: "TH",
-                native: "ไทย",
-                flag: "🇹🇭",
-            }),
-            tr: Object.freeze({
-                code: "tr",
-                name: "Turkish",
-                tag: "TR",
-                native: "Türkçe",
-                flag: "🇹🇷",
-            }),
-            vi: Object.freeze({
-                code: "vi",
-                name: "Vietnamese",
-                tag: "VI",
-                native: "Tiếng Việt",
-                flag: "🇻🇳",
             }),
         });
 
