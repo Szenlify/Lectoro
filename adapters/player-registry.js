@@ -1190,6 +1190,13 @@
             }
             return session?.binding?.container || null;
         },
+        getSubtitleLanguage() {
+            const video = this.getVideo();
+            const session = video && videoSessions.get(video);
+            const language = session?.binding?.adapter?.getSubtitleLanguage?.();
+            if (language) return language;
+            return Array.from(video?.textTracks || []).find((track) => track.mode === "showing")?.language || "en";
+        },
         getSubtitleElements() {
             const video = this.getVideo();
             if (!video || isPreviewOrThumbnailVideo(video)) {

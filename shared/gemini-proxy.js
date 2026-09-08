@@ -44,8 +44,8 @@
         const MAX_AI_CACHE_SIZE = 200;
         const aiResponseCache = new Map();
 
-        function getAiCacheKey(prompt, temperature, maxOutputTokens) {
-            return `${prompt}__${temperature}__${maxOutputTokens}`;
+        function getAiCacheKey(prompt, temperature, maxOutputTokens, responseFormat = "json") {
+            return `${prompt}__${temperature}__${maxOutputTokens}__${responseFormat}`;
         }
 
         function rememberAiResponse(cacheKey, text) {
@@ -156,9 +156,12 @@
             return setCachedUsage(data.usage);
         }
 
-        async function requireAvailableUsage() {
-            const usage =
-                (await refreshUsage(false)) || (await getCachedUsage());
+        async function requireAvailableUsage(localOnly = false) {
+            const user = await FirebaseSync.getUser();
+            const cached = localOnly ? await getCachedUsage() : await refreshUsage(false);
+            const usage = cached?.uid === user?.uid && cached?.month === Utils.currentMonth()
+                ? cached : null;
+            if (!usage) return null; // The generate request checks the authoritative server quota.
             const validation =
                 typeof SubscriptionConfig !== "undefined"
                     ? SubscriptionConfig.checkAiLimit({
@@ -176,7 +179,7 @@
                 );
                 error.code = "AI_LIMIT_REACHED";
                 error.validation = validation;
-                showUpgradePrompt(usage);
+                if (!localOnly) showUpgradePrompt(usage);
                 throw error;
             }
             return usage;
@@ -269,7 +272,7 @@
         const pendingRequests = new Map();
         function request(prompt, opts = {}) {
             if (opts.cache === false) return performRequest(prompt, opts);
-            const key = getAiCacheKey(prompt, opts.temperature ?? 0.8, opts.maxOutputTokens ?? 500);
+            const key = getAiCacheKey(prompt, opts.temperature ?? 0.8, opts.maxOutputTokens ?? 500, opts.responseFormat);
             if (pendingRequests.has(key)) return pendingRequests.get(key);
             const pending = performRequest(prompt, opts).finally(() => pendingRequests.delete(key));
             pendingRequests.set(key, pending);
@@ -278,12 +281,13 @@
 
         async function performRequest(
             prompt,
-            { temperature = 0.8, maxOutputTokens = 500, cache = true } = {},
+            { temperature = 0.8, maxOutputTokens = 500, cache = true, responseFormat = "json" } = {},
         ) {
             const cacheKey = getAiCacheKey(
                 prompt,
                 temperature,
                 maxOutputTokens,
+                responseFormat,
             );
             if (cache && aiResponseCache.has(cacheKey)) {
                 const cachedEntry = aiResponseCache.get(cacheKey);
@@ -301,7 +305,7 @@
                     response = await Utils.sendRuntimeMessage({
                         type: MSG.GEMINI_REQUEST,
                         prompt,
-                        opts: { temperature, maxOutputTokens, cache },
+                        opts: { temperature, maxOutputTokens, cache, responseFormat },
                     });
                 } catch (err) {
                     if (!err.runtimeError && isLimitError(err)) {
@@ -321,10 +325,10 @@
             const token = await getToken();
 
             if (!token) {
-                throw new Error("Sign in to use AI features.");
+                throw Object.assign(new Error("Sign in to use AI features."), { code: "AUTH_REQUIRED" });
             }
 
-            const previousUsage = await requireAvailableUsage();
+            const previousUsage = await requireAvailableUsage(responseFormat === "text");
             // Optimistic local reservation blocks parallel UI actions immediately.
             if (previousUsage) {
                 await setCachedUsage({
@@ -341,7 +345,7 @@
             try {
                 res = await Utils.postJson(
                     PROXY_URL,
-                    { prompt, temperature, maxOutputTokens },
+                    { prompt, temperature, maxOutputTokens, responseFormat },
                     { token },
                 );
             } catch (error) {
@@ -354,7 +358,7 @@
             if (!res.ok) {
                 const msg = data?.error || `AI server error (${res.status})`;
 
-                if (res.status === 429) {
+                if (res.status === 429 && (data?.code === "AI_LIMIT_REACHED" || Number.isFinite(Number(data?.limit)))) {
                     const plan = data?.plan || "free";
                     const limit = data?.limit || "?";
                     await setCachedUsage({
@@ -367,7 +371,7 @@
                         `Monthly AI limit reached (${limit} requests/mo for plan ${plan.toUpperCase()}). Upgrade your plan to continue.`,
                     );
                     error.code = "AI_LIMIT_REACHED";
-                    showUpgradePrompt({
+                    if (responseFormat !== "text") showUpgradePrompt({
                         plan,
                         used: Number(data?.used || limit || 0),
                         limit: Number(data?.limit || 0),
@@ -376,10 +380,13 @@
                 }
                 if (previousUsage) await setCachedUsage(previousUsage);
                 if (res.status === 401) {
-                    throw new Error("Session expired. Please sign in again.");
+                    throw Object.assign(new Error("Session expired. Please sign in again."), { code: "AUTH_REQUIRED" });
                 }
 
-                throw new Error(msg);
+                throw Object.assign(new Error(msg), {
+                    status: res.status,
+                    code: data?.code || (res.status === 429 || res.status === 503 ? "RATE_LIMITED" : "AI_REQUEST_FAILED"),
+                });
             }
 
             const finalUsage = await setCachedUsage(

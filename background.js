@@ -6,6 +6,7 @@ importScripts(
   "shared/utils.js",
   "shared/srs.js",
   "shared/word-repository.js",
+  "shared/local-dictionary.js",
   "shared/translator-service.js",
   "firebase/firebase-config.js",
   "firebase/firebase-sync.js",
@@ -921,6 +922,11 @@ const MESSAGE_HANDLERS = Object.freeze({
       message.text,
       message.targetLang
     ),
+  }),
+
+  [MSG.LOOKUP_WORDS]: async (message) => ({
+    ok: true,
+    result: await SharedTranslatorService.lookupWords(message.words, message.targetLang, message.sourceLang),
   }),
 
   [MSG.TRANSLATE_SUBTITLE]: async (message) => ({

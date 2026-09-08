@@ -631,6 +631,7 @@
     const YouTubeAdapter = {
         id: "youtube",
         name: "YouTube",
+        getSubtitleLanguage: () => activeTrack?.languageCode || "",
         playerSelector: "#movie_player, .html5-video-player, ytd-shorts",
         containerSelector: ".ytp-caption-window-container",
         cueSelector: ".caption-visual-line, .ytp-caption-segment",

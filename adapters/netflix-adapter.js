@@ -1014,6 +1014,10 @@
     const NetflixAdapter = {
         id: "netflix",
         name: "Netflix",
+        getSubtitleLanguage: () => {
+            const track = activeTextTrackState.track;
+            return track?.bcp47 || track?.bcp47LanguageTag || track?.language || track?.languageCode || "";
+        },
         playerSelector: ".watch-video, [data-uia='video-canvas'], .nf-player-container",
         containerSelector: ".player-timedtext",
         cueSelector: ".player-timedtext-text-container",

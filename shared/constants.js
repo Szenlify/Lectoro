@@ -73,6 +73,7 @@
         });
 
         const MESSAGE_TYPES = Object.freeze({
+            LOOKUP_WORDS: "QT_LOOKUP_WORDS",
             REVIEW_DUE: "QT_REVIEW_DUE",
             CAPTURE_VISIBLE_TAB: "QT_CAPTURE_VISIBLE_TAB",
             FETCH_NETFLIX_TIMED_TEXT: "QT_FETCH_NETFLIX_TIMED_TEXT",

@@ -215,6 +215,7 @@ async function fetchGeminiWithRetry(geminiKey, payload, maxRetries = 2) {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
+                signal: AbortSignal.timeout(payload.generationConfig?.responseMimeType === "text/plain" ? 12000 : 25000),
             });
 
             if (response.ok) {
@@ -224,7 +225,7 @@ async function fetchGeminiWithRetry(geminiKey, payload, maxRetries = 2) {
             lastStatus = response.status;
             const details = await response.json().catch(() => ({}));
             const msg = details?.error?.message || `Gemini HTTP ${response.status}`;
-            lastError = new Error(msg);
+            lastError = Object.assign(new Error(msg), { status: response.status });
 
             // Only retry on transient rate limit or server errors
             if (response.status !== 429 && response.status !== 503 && response.status !== 500) {
@@ -602,7 +603,10 @@ exports.geminiProxy = onRequest(
             }
         }
 
-        const { prompt, temperature = 0.8, maxOutputTokens = 500 } = req.body || {};
+        const { prompt, temperature = 0.8, maxOutputTokens = 500, responseFormat = "json" } = req.body || {};
+        if (!["json", "text"].includes(responseFormat)) {
+            return res.status(400).json({ error: "Unsupported response format." });
+        }
         if (!prompt || typeof prompt !== "string") {
             return res.status(400).json({ error: "Brak pola 'prompt' w ciele żądania." });
         }
@@ -651,17 +655,20 @@ exports.geminiProxy = onRequest(
 
         let text;
         try {
-            const { generationConfig, readJsonResponse } = require("./ai-response");
+            const { generationConfig, readJsonResponse, readTextResponse } = require("./ai-response");
             const geminiPayload = {
                 contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: generationConfig(temperature, maxOutputTokens),
+                generationConfig: generationConfig(temperature, maxOutputTokens, responseFormat),
             };
-            const geminiResponse = await fetchGeminiWithRetry(geminiKey, geminiPayload, 2);
-            text = readJsonResponse(geminiResponse);
+            const geminiResponse = await fetchGeminiWithRetry(geminiKey, geminiPayload, responseFormat === "text" ? 0 : 2);
+            text = responseFormat === "text" ? readTextResponse(geminiResponse) : readJsonResponse(geminiResponse);
         } catch (error) {
             console.error("[geminiProxy] Gemini fetch error:", error);
             await rollbackAiReservation(db, userRef, month);
-            return res.status(502).json({ error: error.message || "Błąd połączenia z Gemini API." });
+            return res.status(502).json({
+                error: error.message || "Błąd połączenia z Gemini API.",
+                code: [429, 503].includes(error.status) ? "RATE_LIMITED" : "AI_REQUEST_FAILED",
+            });
         }
 
         const activeAiLimit = getPlanLimits(aiReservation.plan).ai.usesPerMonth;

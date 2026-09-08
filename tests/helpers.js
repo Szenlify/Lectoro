@@ -7,7 +7,7 @@ function load(context, file) {
     vm.runInContext(read(file), context, { filename: file });
 }
 function loadFunction(context, file, name) {
-    const source = read(file);
+    const source = read(file).replace(/\r\n/g, "\n");
     const declaration = new RegExp(
         `^( +)(?:async )?function ${name}\\(`,
         "m",

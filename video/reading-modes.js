@@ -50,11 +50,11 @@
                 if (wasPlaying) ui.resumeVideoAfterSubtitleClose(video);
                 return;
             }
-            const translationTask = translate(
+            const translationTask = settings.subtitleTTS ? translate(
                 snapshot.text,
                 revision,
                 snapshot.layout,
-            );
+            ) : null;
             const tasks = [];
             if (settings.wordCloudMode) {
                 tasks.push(

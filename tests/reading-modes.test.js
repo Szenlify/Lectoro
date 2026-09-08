@@ -27,6 +27,7 @@ function element(text = "") {
 function app(settings = {}) {
     const store = storage({ ...C.DEFAULT_READING_SETTINGS, ...settings });
     const drawn = [],
+        loading = [],
         speech = [],
         errors = [],
         limits = [],
@@ -83,12 +84,20 @@ function app(settings = {}) {
         showSubtitleTranslationUnderOriginal: (text, options) => {
             if (!options?.loading) drawn.push(text);
         },
+        showAiShimmer: () => loading.push("Analyzing"),
+        removeAiShimmer() {},
+        applyAiExplanation: (html) => drawn.push(html.replace(/<[^>]*>/g, "")),
+        translationOverlay: null,
         removeSubtitleTranslationUnderOriginal() {},
         aiSubTranslationEl: null,
         ensureSubtitleUiTracking() {},
         positionWordCloud() {},
     });
     load(context, "shared/translator-service.js");
+    context.SharedTranslatorService = {
+        ...context.SharedTranslatorService,
+        lookupWords: async (words, language) => words.map((word) => `${language}:${word}`),
+    };
     context.SubscriptionService = {
         getSubtitleQuotaStatus: async () => ({ allowed: true }),
         consumeSubtitleQuota: async (n) => {
@@ -107,13 +116,12 @@ function app(settings = {}) {
         }),
     };
     context.QT = {
+        escapeHtml: U.escapeHtml,
         getOverlayParent: () => ({ appendChild() {} }),
         speak: async (text, lang) => {
             speech.push({ text, lang });
         },
     };
-    context.wordCloudCache =
-        context.SharedTranslatorService.createTranslateCache();
     for (const name of [
         "shouldTranslateWord",
         "showWordClouds",
@@ -164,6 +172,7 @@ function app(settings = {}) {
         store,
         video,
         drawn,
+        loading,
         speech,
         errors,
         limits,
@@ -198,9 +207,11 @@ for (const language of ["pl", "de"]) {
                 ),
                 words ? [`${language}:important`, `${language}:example`] : [],
             );
-            assert.equal(state.speech.length, 1);
-            assert.equal(state.speech[0].lang, language);
-            assert.equal(state.charged(), "important example".length);
+            assert.equal(state.speech.length, sentence ? 1 : 0);
+            if (sentence) assert.equal(state.speech[0].lang, language);
+            assert.equal(state.loading.length, sentence ? 1 : 0);
+            assert.equal(state.charged(), sentence ? "important example".length : 0);
+            assert.equal(state.urls.length, sentence ? 1 : 0);
             assert.equal(state.video.paused, true);
             assert.equal(state.errors.length, 0);
         });
@@ -215,19 +226,16 @@ test("HTTP 429 produces one visible error, no original-as-translation and no quo
     assert.equal(state.errors[0].code, "RATE_LIMITED");
     assert.equal(state.drawn.length, 0);
     assert.equal(state.speech.length, 0);
-    assert.equal(state.context.wordCloudEls.length, 0);
+    assert.equal(state.context.wordCloudEls.length, 2);
     assert.equal(state.charged(), 0);
 });
 
-test("partial word failure keeps successful clouds and reports the failure", async () => {
-    const state = app();
-    const originalFetch = state.context.fetch;
-    state.context.fetch = async (url) =>
-        new URL(url).searchParams.get("q") === "example"
-            ? { ok: false, status: 503 }
-            : originalFetch(url);
+test("missing dictionary words are skipped without a network fallback", async () => {
+    const state = app({ wordCloudMode: true, subtitleTTS: false });
+    state.context.SharedTranslatorService.lookupWords = async () => ["pl:important", null];
     await state.start();
-    assert.equal(state.errors.length, 1);
+    assert.equal(state.errors.length, 0);
+    assert.equal(state.urls.length, 0);
     assert.deepEqual(
         Array.from(
             state.context.wordCloudEls,
