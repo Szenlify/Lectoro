@@ -2882,9 +2882,10 @@
         if (modeRevision !== subtitleModeRevision) return;
 
         const translations = await SharedTranslatorService.lookupWords(
-            wordSpans.map((span) => span.dataset.clean || span.textContent),
+            wordSpans.map((span) => span.textContent.trim()),
             targetLang,
             learningLang,
+            { wordByWord: true },
         );
         if (modeRevision !== subtitleModeRevision) return;
 
@@ -2896,7 +2897,7 @@
         );
 
         wordSpans.forEach((span, i) => {
-            const translated = translations[i];
+            const { translated, length = 1 } = translations[i] || {};
             if (typeof translated !== "string" || !translated.trim()) return;
             let targetSpan = span;
             if (!targetSpan.isConnected) {
@@ -2911,6 +2912,9 @@
             const rect = targetSpan.getBoundingClientRect();
             if (rect.width === 0 && rect.height === 0) return;
             targetSpan.classList.add(WORD_CLOUD_HIGHLIGHT_CLASS);
+            for (const member of wordSpans.slice(i + 1, i + length)) {
+                member.classList.add(WORD_CLOUD_HIGHLIGHT_CLASS);
+            }
             const cloud = document.createElement("div");
             cloud.className = WORD_CLOUD_CLASS;
             cloud.textContent = translated;

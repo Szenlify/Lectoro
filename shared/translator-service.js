@@ -394,15 +394,15 @@
             }
         }
 
-        async function lookupWords(words, targetLang, sourceLang = null) {
+        async function lookupWords(words, targetLang, sourceLang = null, options = {}) {
             sourceLang = Constants.normalizeSupportedLanguage(sourceLang || await getLearningLang());
             if (shouldProxy()) {
                 const response = await Utils.sendRuntimeMessage({
-                    type: MSG.LOOKUP_WORDS, words, targetLang, sourceLang,
+                    type: MSG.LOOKUP_WORDS, words, targetLang, sourceLang, options,
                 });
                 return response.result;
             }
-            return globalThis.LocalDictionary.lookupWords(words, targetLang, sourceLang);
+            return globalThis.LocalDictionary.lookupWords(words, targetLang, sourceLang, options);
         }
 
         /**

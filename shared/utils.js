@@ -66,10 +66,12 @@
             isSimpleWord(str) {
                 if (!str || typeof str !== "string") return false;
                 const cleanWord = str
+                    .normalize("NFKC")
                     .trim()
                     .toLowerCase()
-                    .replace(/^[\p{P}\p{S}\s]+|[\p{P}\p{S}\s]+$/gu, "")
-                    .replace(/[^\p{L}']/gu, "");
+                    .replace(/[’‘]/g, "'")
+                    .replace(/^[\p{P}\p{S}\s]+|[\p{P}\p{S}\s]+$/gu, "");
+                if (!/^[\p{L}']+$/u.test(cleanWord)) return false;
                 if (!cleanWord || cleanWord.length <= 1) return true;
                 const simpleSet = C?.SIMPLE_WORDS;
                 if (simpleSet && simpleSet.has(cleanWord)) return true;

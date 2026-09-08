@@ -927,7 +927,7 @@ const MESSAGE_HANDLERS = Object.freeze({
 
   [MSG.LOOKUP_WORDS]: async (message) => ({
     ok: true,
-    result: await SharedTranslatorService.lookupWords(message.words, message.targetLang, message.sourceLang),
+    result: await SharedTranslatorService.lookupWords(message.words, message.targetLang, message.sourceLang, message.options),
   }),
 
   [MSG.TRANSLATE_SUBTITLE]: async (message) => ({

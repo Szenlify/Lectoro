@@ -97,7 +97,7 @@ function app(settings = {}) {
     load(context, "shared/translator-service.js");
     context.SharedTranslatorService = {
         ...context.SharedTranslatorService,
-        lookupWords: async (words, language) => words.map((word) => `${language}:${word}`),
+        lookupWords: async (words, language) => words.map((word) => ({ translated: `${language}:${word}`, length: 1 })),
     };
     context.SubscriptionService = {
         getSubtitleQuotaStatus: async () => ({ allowed: true }),
@@ -233,7 +233,7 @@ test("HTTP 429 produces one visible error, no original-as-translation and no quo
 
 test("missing dictionary words are skipped without a network fallback", async () => {
     const state = app({ wordCloudMode: true, subtitleTTS: false });
-    state.context.SharedTranslatorService.lookupWords = async () => ["pl:important", null];
+    state.context.SharedTranslatorService.lookupWords = async () => [{ translated: "pl:important", length: 1 }, null];
     await state.start();
     assert.equal(state.errors.length, 0);
     assert.equal(state.urls.length, 0);
@@ -302,25 +302,26 @@ test("speech failure does not replace a valid sentence translation with an error
     assert.equal(state.errors.length, 0);
 });
 
-test("word clouds highlight only dictionary matches, including simple words and inflections", async () => {
+test("word clouds skip simple words and highlight every token of a dictionary phrase", async () => {
     const state = app({ wordCloudMode: true, subtitleTTS: false });
     const dictionary = require("../shared/local-dictionary");
     state.context.LectoroPlayerRegistry.getSubtitleLanguage = () => "no";
-    const words = ["the", "apples", "unlisted", "look forward to", "123"];
+    const words = ["You", "are", "we", "the", "apples", "unlisted", "look", "forward", "to", "123"];
     const spans = words.map(element);
     spans[2].classList.add("highlight");
     state.context.activeWordSpans = spans;
     state.context.activeText = words.join(" ");
-    state.context.SharedTranslatorService.lookupWords = async (requested, targetLang, sourceLang) => {
+    state.context.SharedTranslatorService.lookupWords = async (requested, targetLang, sourceLang, options) => {
         assert.equal(targetLang, "pl");
         assert.equal(sourceLang, "en");
+        assert.equal(options.wordByWord, true);
         assert.deepEqual(Array.from(requested), words);
         assert.ok(spans.every((span) => !span.classList.contains("highlight")));
-        return requested.map((word) => dictionary.lookup(word, { the: "ten", apple: "jabłko" }));
+        return dictionary.lookupWordByWord(requested, require("../dictionaries/pl.json"));
     };
     await state.start();
-    assert.deepEqual(spans.map((span) => span.classList.contains("highlight")), [true, true, false, false, false]);
-    assert.deepEqual(Array.from(state.context.wordCloudEls, ({ cloud }) => cloud.textContent), ["ten", "jabłko"]);
+    assert.deepEqual(spans.map((span) => span.classList.contains("highlight")), [false, false, false, false, true, false, true, true, true, false]);
+    assert.deepEqual(Array.from(state.context.wordCloudEls, ({ cloud }) => cloud.textContent), ["jabłko", "wyczekiwać z niecierpliwością"]);
     assert.equal(state.urls.length, 0);
     assert.equal(state.errors.length, 0);
 });

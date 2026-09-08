@@ -1,6 +1,6 @@
 # Lokalne słowniki
 
-Każdy plik językowy ma 20 startowych haseł. Klucz to angielska forma podstawowa,
+Pliki językowe zawierają lokalne hasła i zwroty. Klucz to angielska forma podstawowa,
 a wartość to tłumaczenie w języku nazwy pliku, np. w `pl.json`:
 
 ```json
@@ -22,13 +22,32 @@ To proste heurystyki, nie pełny analizator gramatyczny; tłumaczenie zachowuje 
 podstawową ze słownika. Dokładną formę, np. `"running": "bieganie"`, możesz dopisać
 osobno, aby miała pierwszeństwo.
 
+Tryb word-by-word dopasowuje najpierw najdłuższy zwrot z JSON do kolejnych słów
+napisu, a dopiero później pojedyncze hasła. Na przykład `gave up` korzysta z
+`give up`, a `looking forward to` z `look forward to`. Cały zwrot jest podświetlany
+i otrzymuje jedną chmurkę przy pierwszym słowie. Obsługiwane są też zaimki
+dzierżawcze w hasłach takich jak `pull someone's leg` → `pulled my leg`.
+Nie łączymy zwrotów przez interpunkcję niewystępującą w haśle.
+
+Automatyczne chmurki pomijają podstawowe angielskie słowa z `SIMPLE_WORDS`
+w `shared/constants.js`, np. `you`, `are`, `we`, oraz ich skróty (`you're`, `we’ve`).
+Te słowa nadal uczestniczą w dopasowaniu całych zwrotów; ręczne najechanie na
+pojedyncze słowo pozwala sprawdzić jego tłumaczenie. Filtr nie dotyczy innych
+języków źródłowych. Wielkie litery i typograficzne apostrofy są normalizowane;
+dokładne hasło zachowuje pierwszeństwo, np. `May` i `may`.
+
+Tłumaczenie jest wyświetlane dokładnie tak, jak zapisano je w JSON. Jeśli hasło
+zawiera kilka znaczeń rozdzielonych `/`, chmurka pokazuje je wszystkie. Dopasowanie
+zwrotów daje kontekst słownikowy, ale nie rozstrzyga automatycznie wszystkich
+wieloznaczności ani zwrotów rozdzielonych dodatkowymi słowami.
+
 Język docelowy pochodzi z ustawienia Native language (`targetLang`). Język źródłowy
 wybierasz w Learning language (`learningLang`, domyślnie angielski). Ten wybór
 obowiązuje w słownikach, tłumaczeniach Google/Gemini i oznaczeniach języka;
 automatyczne rozpoznawanie oraz język ścieżki filmu go nie zmieniają.
 Przykład: English + Polish daje `EN → PL`, również dla krótkiego słowa `president`.
 Cache jest oddzielny dla każdej pary języków. W ustawieniach i słownikach pozostaje
-20 obsługiwanych języków. Dla innych języków nauki niż angielski dopasowujemy dokładne wartości
+12 obsługiwanych języków. Dla innych języków nauki niż angielski dopasowujemy dokładne wartości
 w słowniku źródłowym i wspólne angielskie klucze; nie stosujemy do nich angielskich
 reguł odmiany. Przy rozbudowie par innych niż angielski dodaj klucz do obu plików.
 

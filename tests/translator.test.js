@@ -315,3 +315,27 @@ test("popup requests also use the worker instead of a separate direct transport"
     );
     assert.equal(sent.targetLang, "de");
 });
+
+test("word-by-word options and token order reach the dictionary worker", async () => {
+    let sent;
+    const context = vm.createContext({
+        window: {},
+        chrome: { runtime: { sendMessage() {} } },
+        LectoroConstants: C,
+        SharedUtils: {
+            sendRuntimeMessage: async (message) => {
+                sent = message;
+                return { result: [null, { translated: "poddawać się", length: 2 }, null] };
+            },
+        },
+    });
+    load(context, "shared/translator-service.js");
+    const words = ["you", "gave", "up"];
+    const result = await context.SharedTranslatorService.lookupWords(words, "pl", "en", { wordByWord: true });
+    assert.equal(sent.type, C.MESSAGE_TYPES.LOOKUP_WORDS);
+    assert.equal(sent.sourceLang, "en");
+    assert.equal(sent.targetLang, "pl");
+    assert.equal(sent.options.wordByWord, true);
+    assert.deepEqual(sent.words, words);
+    assert.equal(result[1].length, 2);
+});
