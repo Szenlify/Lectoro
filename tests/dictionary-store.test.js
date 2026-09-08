@@ -139,7 +139,7 @@ test("direct pairs preserve multiple meanings, aliases and non-English phrases w
     assert.equal(dictionary.lookup("zamku", compiled), "Burg / Schloss");
     assert.equal(dictionary.lookup("buses", compiled), null);
     assert.deepEqual(dictionary.lookupWordByWord(["dzień", "dobry", "zamku"], compiled), [
-        { translated: "Guten Tag", length: 2 }, null, { translated: "Burg / Schloss", length: 1 },
+        { translated: "Guten Tag", length: 2 }, null, { translated: "Burg", length: 1 },
     ]);
 });
 

@@ -3,7 +3,10 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import sqlite3
+import shutil
+import sys
 import time
 import unicodedata
 from contextlib import contextmanager
@@ -193,33 +196,121 @@ def read_overrides(source, target):
         raise ValueError(f"Niepoprawny plik {path}")
     result = {}
     for term, values in data.items():
-        values = [values] if isinstance(values, str) else values
-        if not valid_text(term) or not isinstance(values, list) or not 1 <= len(values) <= 16 or not all(valid_text(v, 500) for v in values):
-            raise ValueError(f"Niepoprawna korekta w {path}: {term}")
-        result[term] = values
+        if not valid_text(term):
+            raise ValueError(f"Niepoprawne haslo w {path}: {term}")
+        if isinstance(values, dict):
+            senses = values.get("senses")
+            if not {"senses"} <= set(values) <= {"senses", "primaryTranslation"} or not isinstance(senses, list) or not 1 <= len(senses) <= 32:
+                raise ValueError(f"Niepoprawne znaczenia: {term}")
+            ids = set()
+            for sense in senses:
+                if not isinstance(sense, dict) or set(sense) != {"id", "translations", "definition", "partOfSpeech", "examples"}:
+                    raise ValueError(f"Niepoprawna struktura znaczenia: {term}")
+                if not valid_text(sense["id"], 80) or sense["id"] in ids:
+                    raise ValueError(f"Niepoprawny lub powtorzony identyfikator: {term}")
+                ids.add(sense["id"])
+                for field, limit in (("definition", 500), ("partOfSpeech", 50)):
+                    if not valid_text(sense[field], limit):
+                        raise ValueError(f"Niepoprawne {field}: {term}")
+                validate_translations(sense["translations"], term)
+                examples = sense["examples"]
+                if not isinstance(examples, list) or not 1 <= len(examples) <= 4 or not all(
+                    isinstance(e, dict) and set(e) == {"source", "target"} and
+                    all(valid_text(e[k], 500) for k in ("source", "target")) for e in examples
+                ):
+                    raise ValueError(f"Niepoprawne przyklady: {term}")
+            if "primaryTranslation" in values and values["primaryTranslation"] not in [t for sense in senses for t in sense["translations"]]:
+                raise ValueError(f"Glowny odpowiednik nie nalezy do tlumaczen: {term}")
+            result[term] = values
+        else:
+            values = [values] if isinstance(values, str) else values
+            validate_translations(values, term)
+            result[term] = values
     return result
 
 
-def export_pair(source, target, words, source_info, connection, output, overrides):
-    cached = dict(connection.execute("SELECT term, translated FROM translations WHERE engine=? AND source=? AND target=?", (ENGINE, source, target)))
+def validate_translations(values, term):
+    if not isinstance(values, list) or not 1 <= len(values) <= 16 or not all(valid_text(v, 500) for v in values):
+        raise ValueError(f"Niepoprawne tlumaczenia: {term}")
+
+
+def lexical_translations(values):
+    """Translations contain equivalents only; grammar belongs in metadata."""
+    result = []
+    for value in values:
+        for item in value.split("/"):
+            item = item.strip()
+            if re.match(r"^(czasownik pomocniczy|rodzajnik|znacznik|wykładnik|podmiot formalny|relacja przynależności|odbiorca czynności)\b", item, re.I):
+                continue
+            item = re.sub(r"\s*\([^)]*\)", "", item).strip()
+            if item and item not in result:
+                result.append(item)
+    return result
+
+
+def entry_senses(source, term, value, manual):
+    identifier = hashlib.sha256((source + "\0" + term).encode("utf-8")).hexdigest()[:24]
+    if isinstance(value, dict):
+        senses = [{"senseId": f"entry.{identifier}.{sense['id']}",
+                   **{k: v for k, v in sense.items() if k != "id"},
+                   "reviewStatus": "manual-override" if manual else "machine-generated"}
+                  for sense in value["senses"]]
+    else:
+        senses = [{"senseId": "entry." + identifier, "translations": value,
+                   "reviewStatus": "manual-override" if manual else "machine-generated"}]
+    result = []
+    orphan_examples = []
+    for sense in senses:
+        translations = lexical_translations(sense["translations"])
+        if translations:
+            result.append({**sense, "translations": translations})
+        else:
+            orphan_examples.extend(sense.get("examples", []))
+    if result and orphan_examples:
+        examples = result[0].get("examples", []) + orphan_examples
+        result[0]["examples"] = list({(e["source"], e["target"]): e for e in examples}.values())[:4]
+    return result
+
+
+def export_pair(source, target, words, source_info, connection, output, overrides, curated_only=False, engine=ENGINE):
+    cached = dict(connection.execute("SELECT term, translated FROM translations WHERE engine=? AND source=? AND target=?", (engine, source, target)))
     entries = {}
+    primary_translations = {}
     unchanged = []
+    needs_review = {}
     for term in words:
         if term not in overrides and term not in cached:
             continue
-        translations = overrides.get(term, [cached.get(term)])
-        if translations == [term]:
-            unchanged.append(term)
-        identifier = hashlib.sha256((source + "\0" + term).encode("utf-8")).hexdigest()[:24]
-        entries[term] = [{"senseId": "entry." + identifier, "translations": translations,
-                          "reviewStatus": "manual-override" if term in overrides else "machine-generated"}]
+        manual = term in overrides
+        value = overrides[term] if manual else json.loads(cached[term]) if engine.startswith("ollama:") else [cached[term]]
+        senses = entry_senses(source, term, value, manual)
+        if not senses:
+            needs_review[term] = ["no-lexical-translation"]
+            continue
+        translations = [t for sense in senses for t in sense["translations"]]
+        flags = []
+        if not manual:
+            flags.append("machine-generated-without-context")
+            if any(t.casefold() == term.casefold() for t in translations):
+                unchanged.append(term)
+                flags.append("same-as-source")
+            if any(t.isupper() and len(t) > 1 for t in translations):
+                flags.append("all-uppercase")
+            needs_review[term] = flags
+        if curated_only and not manual:
+            continue
+        entries[term] = senses
+        primary = value.get("primaryTranslation") if isinstance(value, dict) else None
+        if primary not in translations:
+            primary = "wszystko" if source == "en" and target == "pl" and term == "all" and "wszystko" in translations else translations[0]
+        primary_translations[term] = primary
     if not entries:
         return None
     pair = f"{source}-{target}"
     # Entry IDs are lookup identifiers, not claims that Google disambiguated senses.
     content = {"schemaVersion": 1, "sourceLanguage": source, "targetLanguage": target,
-               "entries": entries, "forms": {}}
-    base_version = "google-" + hashlib.sha256(encode(content)).hexdigest()[:16]
+               "entries": entries, "forms": {}, "primaryTranslations": primary_translations}
+    base_version = ("local-" if engine.startswith("ollama:") else "google-") + hashlib.sha256(encode(content)).hexdigest()[:16]
     # A formatter/editor may have changed a previously generated file. Preserve it:
     # that URL may already be cached in R2 or an installed extension. Use the first
     # matching or unused revision, so subsequent exports remain idempotent.
@@ -240,9 +331,9 @@ def export_pair(source, target, words, source_info, connection, output, override
     if catalog.get("schemaVersion") != 1 or not isinstance(catalog.get("pairs"), dict):
         raise ValueError("Niepoprawny istniejacy katalog CDN")
     licenses = {"schemaVersion": 1, "pairs": {pair: {
-        "wordlist": source_info, "translationProvider": "Google Translate via deep-translator 1.11.4",
+        "wordlist": source_info, "translationProvider": engine,
         "translationRights": "No additional rights granted by this tool",
-        "reviewStatus": "Machine translations; no contextual sense disambiguation",
+        "reviewStatus": "Local editorial overrides and optional unreviewed machine translations; no independent linguistic review",
     }}}
     if not destination.exists():
         # Content-addressed assets remain byte-for-byte immutable.
@@ -257,22 +348,86 @@ def export_pair(source, target, words, source_info, connection, output, override
     write_json(catalog_path, catalog)
     return {"pair": pair, "file": str(destination), "entryCount": len(entries),
             "requestedCount": len(words), "complete": len(entries) == len(words),
-            "unchanged": unchanged, "missing": [term for term in words if term not in entries]}
+            "unchanged": unchanged, "needsReview": needs_review,
+            "qualityChecked": False, "curatedOnly": curated_only, "missing": [term for term in words if term not in entries]}
+
+
+class TranslationProgress:
+    """One live terminal line; occasional plain lines when redirected to a log."""
+    def __init__(self, total, completed, requests, stream=None, clock=time.monotonic):
+        self.total, self.completed, self.requests = total, completed, requests
+        self.stream = stream if stream is not None else sys.stdout
+        self.clock, self.started = clock, clock()
+        self.tty = self.stream.isatty()
+        self.attempts = self.saved = self.failed = self.width = 0
+        self.last_print = -1
+
+    def update(self, attempts=0, saved=0, failed=0, term="", force=False):
+        self.attempts, self.saved, self.failed = attempts, saved, failed
+        if not self.tty and not force and attempts == self.last_print:
+            return
+        if not self.tty and not force and attempts not in (0, 1, self.requests) and attempts % 25:
+            return
+        done = self.completed + saved
+        fraction = done / self.total if self.total else 1
+        filled = int(fraction * 20)
+        elapsed = max(0, self.clock() - self.started)
+        eta = "--"
+        if attempts:
+            seconds = round(elapsed / attempts * max(0, self.requests - attempts))
+            eta = f"{seconds // 3600:02d}:{seconds // 60 % 60:02d}:{seconds % 60:02d}"
+        line = (f"[{'#' * filled}{'-' * (20 - filled)}] {fraction:6.2%} "
+                f"{done}/{self.total} | sesja {attempts}/{self.requests} "
+                f"| bledy {failed} | ETA sesji {eta}")
+        if term and self.tty:
+            line += f" | {term[:24]}"
+        if self.tty:
+            columns = max(20, shutil.get_terminal_size(fallback=(120, 24)).columns - 1)
+            if len(line) > columns:
+                line = (f"[{int(fraction * 100):3d}%] {done}/{self.total} "
+                        f"| sesja {attempts}/{self.requests} | bledy {failed} | ETA {eta}")
+            line = line[:columns]
+            self.stream.write("\r" + line.ljust(min(self.width, columns)))
+            self.width = len(line)
+        else:
+            self.stream.write(line + "\n")
+        self.stream.flush()
+        self.last_print = attempts
+
+    def log(self, message, **kwargs):
+        if self.tty and self.width:
+            self.stream.write("\r" + " " * self.width + "\r")
+            self.width = 0
+        print(message, file=self.stream, flush=True)
+
+    def close(self):
+        self.update(self.attempts, self.saved, self.failed, force=True)
+        if self.tty:
+            self.stream.write("\n")
+            self.stream.flush()
+            self.width = 0
 
 
 def run_pair(source, target, document, connection, args, remaining, factory=Translator, sleep=time.sleep):
     from deep_translator.exceptions import TranslationNotFound
 
+    engine = getattr(args, "engine_id", ENGINE)
     overrides = read_overrides(source, target)
     words = list(dict.fromkeys(document["words"] + list(overrides)))
-    cached = {row[0] for row in connection.execute("SELECT term FROM translations WHERE engine=? AND source=? AND target=?", (ENGINE, source, target))}
+    cached = {row[0] for row in connection.execute("SELECT term FROM translations WHERE engine=? AND source=? AND target=?", (engine, source, target))}
     missing = [term for term in words if term not in cached and term not in overrides]
     deferred = {row[0] for row in connection.execute(
         "SELECT term FROM failures WHERE source=? AND target=? AND error=?",
         (source, target, "TranslationNotFound"))}
+    if engine.startswith("ollama:"):
+        deferred = set()  # Google parse failures do not exclude local generation.
     retry_failed = getattr(args, "retry_failed", False)
+    if engine.startswith("ollama:") and retry_failed:
+        raise ValueError("Ollama: wznow bez --retry-failed; ta opcja dotyczy bledow Google")
     pending = [term for term in missing if (term in deferred) == retry_failed]
     print(f"{source}->{target}: {len(words)} hasel, pozostalo {len(missing)}; w tej kolejce {len(pending)}, odlozone {len(set(missing) & deferred)}.", flush=True)
+    progress = TranslationProgress(len(words), len(words) - len(missing), min(len(pending), remaining))
+    progress.update(force=True)
     client = None
     used, stopped = 0, False
     consecutive_missing, saved_count = 0, 0
@@ -282,48 +437,55 @@ def run_pair(source, target, document, connection, args, remaining, factory=Tran
         for term in pending:
             if used >= remaining:
                 break
+            progress.update(used, saved_count, used - saved_count, term=term)
             sleep(args.delay)
             used += 1
             try:
                 translated = client.translate(term)
-                if not valid_text(translated, 500):
+                if engine.startswith("ollama:"):
+                    from local_generator import validate_generated
+                    translated = json.dumps(validate_generated(translated, term), ensure_ascii=False)
+                elif not valid_text(translated, 500):
                     raise ValueError("Niepoprawne tlumaczenie")
             except Exception as error:
+                progress.update(used, saved_count, used - saved_count)
                 with connection:
                     connection.execute("INSERT OR REPLACE INTO failures VALUES (?,?,?,?,?)", (source, target, term, type(error).__name__, time.time()))
                 if isinstance(error, TranslationNotFound):
                     consecutive_missing += 1
-                    print(f"ODLOZONE {term!r}: nie odczytano tlumaczenia. Haslo zostaje na liscie brakow.", flush=True)
+                    progress.log(f"ODLOZONE {term!r}: nie odczytano tlumaczenia. Haslo zostaje na liscie brakow.", flush=True)
                     if consecutive_missing < 3:
                         # Try a different term after a pause, never an endless retry of
                         # this response. Repeated parse failures may be a service block.
                         if used < remaining:
                             sleep(max(5, args.delay))
                         continue
-                    print("STOP: 3 kolejne odpowiedzi bez tlumaczenia. Usluga moze byc niedostepna; ponow pozniej.", flush=True)
+                    progress.log("STOP: 3 kolejne odpowiedzi bez tlumaczenia. Usluga moze byc niedostepna; ponow pozniej.", flush=True)
                 else:
-                    print(f"STOP {source}->{target}, haslo {term!r}: {type(error).__name__}. Postep zachowany. Ponow pozniej.", flush=True)
+                    progress.log(f"STOP {source}->{target}, haslo {term!r}: {type(error).__name__}: {str(error)[:240]}. Postep zachowany. Ponow pozniej.", flush=True)
                 stopped = True
                 break
             with connection:
-                connection.execute("INSERT OR REPLACE INTO translations VALUES (?,?,?,?,?)", (ENGINE, source, target, term, translated))
+                connection.execute("INSERT OR REPLACE INTO translations VALUES (?,?,?,?,?)", (engine, source, target, term, translated))
                 connection.execute("DELETE FROM failures WHERE source=? AND target=? AND term=?", (source, target, term))
             consecutive_missing = 0
             saved_count += 1
-            if saved_count == 1 or used % 100 == 0:
-                print(f"  Zapisano {saved_count} nowych tlumaczen; sprawdzono {used}/{len(pending)} hasel.", flush=True)
+            progress.update(used, saved_count, used - saved_count)
     except KeyboardInterrupt:
-        print("Przerwano. Zapisuje paczke z ukonczonych tlumaczen.", flush=True)
+        progress.log("Przerwano. Zapisuje paczke z ukonczonych tlumaczen.", flush=True)
         stopped = True
     finally:
+        progress.close()
         if client:
             client.close()
-    report = export_pair(source, target, words, document["source"], connection, args.output, overrides)
+    report = export_pair(source, target, words, document["source"], connection, args.output, overrides, getattr(args, "curated_only", False), engine)
     if report:
-        print(f"Paczka: {report['entryCount']}/{report['requestedCount']} hasel; {report['file']}", flush=True)
+        progress.log(f"Paczka: {report['entryCount']}/{report['requestedCount']} hasel; {report['file']}", flush=True)
     else:
         report = {"pair": f"{source}-{target}", "file": None, "entryCount": 0,
                   "requestedCount": len(words), "complete": False, "unchanged": [], "missing": words}
+    report["qualityChecked"] = False
+    report.setdefault("needsReview", {})
     report["stopped"] = stopped
     failed_terms = {row[0] for row in connection.execute(
         "SELECT term FROM failures WHERE source=? AND target=? AND error=?",
@@ -331,30 +493,40 @@ def run_pair(source, target, document, connection, args, remaining, factory=Tran
     report["deferred"] = [term for term in report["missing"] if term in failed_terms]
     write_json(Path(args.work) / "reports" / f"{source}-{target}.json", report)
     if report["missing"]:
-        print(f"Brakujace hasla: {len(report['missing'])}, w tym odlozone: {len(report['deferred'])}.", flush=True)
+        progress.log(f"Brakujace hasla: {len(report['missing'])}, w tym odlozone: {len(report['deferred'])}.", flush=True)
     if report["deferred"]:
-        print("Odlozone tlumaczenia ponow pozniej z --retry-failed.", flush=True)
+        progress.log("Odlozone tlumaczenia ponow pozniej z --retry-failed.", flush=True)
     return used, stopped
 
 
 def add_options(parser):
+    parser.add_argument("--engine", choices=["google", "ollama"], default="google", help="google: same tlumaczenia; ollama: tlumaczenia i przyklady lokalnie")
+    parser.add_argument("--model", help="Nazwa pobranego lokalnego modelu Ollama; wymagane dla --engine ollama")
     parser.add_argument("--count", type=int, default=50000, help="Liczba najczestszych hasel na jezyk (domyslnie 50000)")
     parser.add_argument("--work", type=Path, default=DIRECTORY / "work")
     parser.add_argument("--output", type=Path, default=DIRECTORY / "dist/dictionaries")
-    parser.add_argument("--max-requests", type=int, default=50000, help="Limit wywolan Google na cale uruchomienie")
+    parser.add_argument("--max-requests", type=int, default=50000, help="Limit zapytan do wybranego silnika na cale uruchomienie")
     parser.add_argument("--delay", type=float, default=1.5, help="Przerwa przed kazdym zapytaniem w sekundach")
     parser.add_argument("--timeout", type=float, default=30, help="Limit oczekiwania HTTP w sekundach")
-    parser.add_argument("--export-only", action="store_true", help="Eksportuj zapisany postep bez wywolan Google")
+    parser.add_argument("--export-only", action="store_true", help="Eksportuj zapisany postep bez zapytan do silnika")
+    parser.add_argument("--curated-only", action="store_true", help="Eksportuj tylko hasla z korekt; nie wywoluj Google")
     parser.add_argument("--retry-failed", action="store_true", help="Tlumacz tylko odlozone hasla z bledem TranslationNotFound")
 
 
 def run(args, sources, targets):
-    if not 1 <= args.count <= 190000 or args.max_requests < 1 or args.delay < 1 or not 1 <= args.timeout <= 120:
-        raise ValueError("count: 1..190000; max-requests: >0; delay: >=1; timeout: 1..120")
+    if not 1 <= args.count <= 190000 or args.max_requests < 1 or args.delay < 1 or not 1 <= args.timeout <= 600:
+        raise ValueError("count: 1..190000; max-requests: >0; delay: >=1; timeout: 1..600")
+    factory = Translator
+    if getattr(args, "engine", "google") == "ollama":
+        if not args.model or not re.fullmatch(r"[A-Za-z0-9._:/-]+", args.model) or "cloud" in args.model.lower():
+            raise ValueError("Podaj --model z nazwa modelu lokalnego (bez modeli cloud)")
+        from local_generator import LocalGenerator
+        args.engine_id = "ollama:" + args.model + ":lexical-v1"
+        factory = lambda source, target, timeout: LocalGenerator(source, target, max(120, timeout), args.model)
     with job_lock(args.work):
         connection = open_cache(args.work)
         try:
-            remaining = 0 if args.export_only else args.max_requests
+            remaining = 0 if args.export_only or args.curated_only else args.max_requests
             stopped = False
             for source in sources:
                 document = prepare_source(source, args.count, args.work)
@@ -362,11 +534,11 @@ def run(args, sources, targets):
                 for target in targets:
                     if source == target:
                         continue
-                    used, stopped = run_pair(source, target, document, connection, args, remaining)
+                    used, stopped = run_pair(source, target, document, connection, args, remaining, factory)
                     remaining -= used
                     if stopped:
                         return 1
-                if remaining <= 0 and not args.export_only:
+                if remaining <= 0 and not (args.export_only or args.curated_only):
                     print("Limit tego uruchomienia osiagniety. Powtorz polecenie, aby wznowic.")
                     break
             return 0

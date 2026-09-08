@@ -737,6 +737,10 @@
                         ? `${SUB_WORD_CLASS} ${PREFIX}sub-phrase`
                         : SUB_WORD_CLASS;
                     span.textContent = token.text;
+                    span.tabIndex = 0;
+                    span.setAttribute("role", "button");
+                    span.setAttribute("aria-haspopup", "dialog");
+                    span.setAttribute("aria-controls", QT.TOOLTIP_ID);
                     if (token.clean) {
                         span.dataset.clean = token.clean;
                     }
@@ -866,6 +870,10 @@
                 ? options.resumeVideo
                 : subWasPlaying;
 
+        if (lastHoveredSubWord?.isConnected && QT.getTooltipEl()?.contains(document.activeElement)) {
+            // Restore focus before clearing hover state so focusin cannot reopen the card.
+            lastHoveredSubWord.focus({ preventScroll: true });
+        }
         isSubHovering = false;
         subWasPlaying = false;
         subClickLocked = false;
@@ -904,7 +912,7 @@
                 tooltip?.contains(document.activeElement)
             )
                 return;
-            if (subClickLocked) return;
+            if (subClickLocked || lastHoveredSubWord === document.activeElement) return;
             const { x, y } = QT.getMousePos();
             const wordUnderMouse = QT.findWordAtPoint(x, y, SUB_WORD_CLASS);
             if (wordUnderMouse) return;
@@ -934,7 +942,16 @@
 
         try {
             const { targetLang, learningLang: srcLang } = await SharedTranslatorService.getReadingSettings();
-            const [translated] = await SharedTranslatorService.lookupWords([text], targetLang, srcLang);
+            const contextSpans = activeWordSpans.filter((span) => span?.isConnected);
+            const wordIndex = contextSpans.indexOf(wordSpan);
+            const [dictionary] = await SharedTranslatorService.lookupWords([text], targetLang, srcLang, {
+                details: true,
+                context: (activeText || getPlayerRegistry()?.getCurrentText() || "").slice(0, 10000),
+                ...(wordIndex >= 0 && contextSpans.length <= 500 ? {
+                    contextWords: contextSpans.map((span) => span.textContent.trim()), wordIndex,
+                } : {}),
+            });
+            const translated = dictionary?.translated;
             if (!isSubHovering || lastHoveredSubWord !== wordSpan) return;
             if (!translated) {
                 QT.showTooltip(`<div class="${PREFIX}body">No dictionary entry yet.</div>`, rect, placement);
@@ -945,6 +962,7 @@
                 targetLang,
                 original: text,
                 translated,
+                dictionary,
             });
             QT.showTooltip(html, rect, placement);
             QT.attachTooltipHandlers();
@@ -980,6 +998,23 @@
 
         await showWordTooltip(wordSpan, text, wordSpan.getBoundingClientRect());
     }
+
+    document.addEventListener("focusin", (event) => {
+        if (event.target.classList?.contains(SUB_WORD_CLASS)) {
+            if (subCloseTimer !== null) { clearTimeout(subCloseTimer); subCloseTimer = null; }
+            if (lastHoveredSubWord !== event.target || !isSubHovering) void triggerWordHover(event.target);
+        }
+    });
+    document.addEventListener("focusout", (event) => {
+        if (event.target.classList?.contains(SUB_WORD_CLASS) || QT.getTooltipEl()?.contains(event.target)) scheduleCloseSubTooltip();
+    });
+    document.addEventListener("keydown", async (event) => {
+        if (!event.target.classList?.contains(SUB_WORD_CLASS) || !["Enter", " "].includes(event.key)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        await triggerWordHover(event.target);
+        if (lastHoveredSubWord === event.target && isSubHovering) QT.getTooltipEl()?.querySelector("summary, button")?.focus();
+    }, true);
 
     document.addEventListener(
         "mousemove",

@@ -1,3 +1,114 @@
+# Jakość tłumaczeń i uruchomienie na Macu
+
+Generator działa bez płatnego API. Google tłumaczy pojedyncze hasła bez kontekstu:
+wynik jest wersją roboczą, nie zweryfikowanym słownikiem. Zwiększenie `--count`
+nie poprawia jakości. Nie uruchamiaj wszystkich par, jeśli potrzebujesz tylko EN→PL.
+
+W głównym folderze `Lectoro` na macOS/Linux:
+
+```bash
+python3 -m venv python/.venv
+python/.venv/bin/python -m pip install -r python/requirements.txt
+# Paczka tylko z dostarczonych korekt, bez zapytań do Google:
+python/.venv/bin/python python/build_en_pl.py --count 50000 --curated-only
+# Pełna baza robocza, z pierwszeństwem korekt i zachowaniem postępu:
+python/.venv/bin/python python/build_en_pl.py --count 50000
+```
+
+Opcjonalny plik `python/overrides/en-pl.json` może zawierać własne korekty,
+znaczenia i przykłady. Brak tego pliku oznacza brak ręcznych korekt.
+W `translations` wpisuj tylko krótkie odpowiedniki, bez objaśnień gramatycznych.
+
+Korekty mają pierwszeństwo także przed błędami zapisanymi wcześniej w SQLite.
+Można nadal używać prostego formatu `{"book": ["książka"]}`. Dla wielu znaczeń:
+
+```json
+{
+  "bank": {
+    "senses": [
+      {
+        "id": "financial-institution",
+        "partOfSpeech": "noun",
+        "translations": ["bank"],
+        "definition": "Instytucja prowadząca rachunki i udzielająca kredytów.",
+        "examples": [{"source": "I went to the bank.", "target": "Poszedłem do banku."}]
+      }
+    ]
+  }
+}
+```
+
+Zachowuj `id` znaczenia przy poprawkach i zmianie kolejności. Generator buduje
+z niego stabilne `senseId`. `reviewStatus: manual-override` oznacza wpis z pliku
+korekt, a `machine-generated` wynik Google; żaden status nie oznacza niezależnej
+recenzji. Hover w napisach pokazuje pełną listę krótkich odpowiedników oraz zdania przykładowe.
+Kliknięcie zdania rozwija jego tłumaczenie; ponowne kliknięcie je chowa. Nie pokazujemy
+części mowy, opisów znaczeń ani przycisku wyboru znaczenia. Metadane pozostają w danych,
+ponieważ pomagają lokalnemu dopasowaniu do kontekstu.
+
+Tryb S (word by word) wybiera tylko jeden odpowiednik. Najpierw korzysta z kontekstu,
+potem z `primaryTranslations` w paczce, a na końcu z pierwszego odpowiednika.
+Domyślne EN→PL `all` to `wszystko`. Hover nadal pokazuje `cały / wszyscy / wszystkie / wszystko`.
+Opisy takie jak `czasownik pomocniczy (bez osobnego tłumaczenia)` są odfiltrowywane,
+także ze starszych paczek. `is` pokazuje `jest`. Jeden odpowiednik może być krótką frazą,
+gdy naturalne tłumaczenie tego wymaga (np. `poddać się`); nie obcinamy go do jednego wyrazu.
+
+Dobór kontekstowy jest lokalną heurystyką wykorzystującą przykłady i proste reguły
+gramatyczne angielskiego. Nie gwarantuje poprawności w każdym zdaniu. Przykłady muszą
+być obecne w paczce; zwykły GoogleTranslator ich nie tworzy.
+
+## Generowanie tłumaczeń i przykładów bez płatnego API
+
+Nowy wariant `--engine ollama` generuje jednocześnie krótki główny odpowiednik,
+alternatywne znaczenia i 1–2 zdania przykładowe z tłumaczeniem dla każdego znaczenia.
+Wymaga działającej lokalnej [Ollamy](https://ollama.com/download) i pobranego modelu
+obsługującego wybrane języki. Skrypt nie instaluje ani nie pobiera modelu automatycznie.
+Zastąp `NAZWA_MODELU` rzeczywistą nazwą lokalnego modelu z `ollama list`.
+
+```bash
+python/.venv/bin/python python/build_en_pl.py --engine ollama --model NAZWA_MODELU --count 50000 --timeout 300
+```
+
+Endpoint jest stały: `http://127.0.0.1:11434/api/chat`. Skrypt nie korzysta z płatnego
+API ani nie przełącza się automatycznie na model chmurowy. Korzysta z JSON Schema,
+sprawdza obecność hasła w przykładzie, główny odpowiednik oraz kompletność odpowiedzi.
+Błędny lub ucięty wynik zatrzymuje sesję i nie trafia do cache. Gotowe wpisy są
+zachowane; powtórzenie tego samego polecenia wznawia pracę. Weryfikacja struktury
+nie zastępuje sprawdzenia poprawności językowej modelu.
+
+Cache jest osobny dla silnika/modelu i wersji instrukcji. Stare tłumaczenie Google
+bez przykładów nie jest traktowane jako ukończony wpis Ollamy. Zmiana modelu zaczyna
+osobną kolejkę. Eksport gotowych wpisów bez generowania:
+
+```bash
+python/.venv/bin/python python/build_en_pl.py --engine ollama --model NAZWA_MODELU --count 50000 --export-only
+```
+
+Dotychczasowe polecenie bez `--engine ollama` nadal używa Google i tworzy tylko
+tłumaczenia. `--retry-failed` dotyczy Google; dla Ollamy wznowienie jest zwykłym
+powtórzeniem polecenia. Limit `--max-requests` obejmuje hasła generowane w jednej sesji.
+
+
+Podczas tłumaczenia terminal pokazuje pasek pokrycia całej listy (wliczając cache
+i korekty), liczbę zapytań w sesji, błędy i ETA sesji. ETA pojawia się po pierwszym
+zapytaniu i obejmuje bieżący limit zapytań, nie wszystkie przyszłe wznowienia.
+Błędy nie zwiększają liczby ukończonych haseł. W logu przekierowanym do pliku
+postęp pojawia się okresowo w osobnych liniach. Trwający stary proces nie załaduje
+zmian kodu: przerwij go Ctrl+C, poczekaj na zapis paczki i uruchom ponownie.
+
+Raport `python/work/reports/en-pl.json` zawiera `needsReview` z wynikami Google,
+flagami identycznego tekstu źródłowego i wielkich liter oraz `missing` z brakami.
+Identyczny tekst może być poprawny (np. zapożyczenie), dlatego nie jest automatycznie
+usuwany. `complete` dotyczy pokrycia listy, a nie poprawności. `qualityChecked`
+pozostaje `false`: kontrola struktury i heurystyki nie zastępują oceny językowej.
+`--curated-only` pomija wyniki Google i nie wykonuje zapytań tłumaczących.
+Po poprawkach użyj `--export-only` do odświeżenia pełnej paczki lub
+`--curated-only` do paczki samych korekt. Obie opcje aktualizują katalog w folderze
+wyjściowym; paczka samych korekt ma ograniczone pokrycie.
+
+Na nowym komputerze odtwórz `.venv`, a folder `python/work` skopiuj ze starego.
+W Gicie zapisane są skrypty i korekty, ale nie lokalny postęp ani paczki `dist`.
+
 # Co zrobić
 
 Wykonuj polecenia w PowerShell, w głównym folderze Lectoro.
@@ -14,6 +125,7 @@ python/.venv/Scripts/python.exe -m pip install -r python/requirements.txt
 ```powershell
 python/.venv/Scripts/python.exe python/build_en_pl.py --count 50000
 python/.venv/Scripts/python.exe python/build_en_pl.py --count 50000 --retry-failed
+python/.venv/bin/python python/build_en_pl.py --count 50000 --retry-failed
 ```
 
 Skrypt sam tworzy listę z `wordfreq` i tłumaczy przez `GoogleTranslator`. Nie potrzebujesz starego słownika, klucza API ani Gemini. Większą listę uzyskasz przez `--count 100000`.

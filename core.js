@@ -101,6 +101,8 @@
     if (!tooltipEl) {
       tooltipEl = document.createElement("div");
       tooltipEl.id = TOOLTIP_ID;
+      tooltipEl.setAttribute("role", "dialog");
+      tooltipEl.setAttribute("aria-label", "Translation");
     }
     const parent = getOverlayParent();
     if (tooltipEl.parentElement !== parent) parent.appendChild(tooltipEl);
@@ -710,7 +712,28 @@
     return `<button class="${PREFIX}speak" data-text="${escapeAttr(text)}" data-lang="${escapeAttr(lang)}" ${extraAttrs} title="${title}">${SVG.SPEAKER}</button>`;
   }
 
-  function buildTooltipHtml({ srcLang, targetLang, original, translated }) {
+  function buildDictionaryDetailsHtml(dictionary, srcLang, targetLang) {
+    if (!dictionary || !Array.isArray(dictionary.senses) || !dictionary.senses.length) return "";
+    const P = PREFIX;
+    const seen = new Set();
+    const examples = dictionary.senses.slice(0, 32).flatMap((sense) =>
+      Array.isArray(sense.examples) ? sense.examples.slice(0, 4) : []
+    ).filter((example) => {
+      if (!example || typeof example.source !== "string" || typeof example.target !== "string") return false;
+      const key = example.source + "\0" + example.target;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    if (!examples.length) return "";
+    return `<section class="${P}dictionary-details" aria-label="Examples">${examples.map((example) => `
+      <details class="${P}dictionary-example">
+        <summary lang="${escapeAttr(srcLang)}" dir="auto">${escapeHtml(example.source)}</summary>
+        <div lang="${escapeAttr(targetLang)}" dir="auto">${escapeHtml(example.target)}</div>
+      </details>`).join("")}</section>`;
+  }
+
+  function buildTooltipHtml({ srcLang, targetLang, original, translated, dictionary = null }) {
     const P = PREFIX;
     const dataAttrs = `data-src="${escapeAttr(original)}" data-translated="${escapeAttr(translated)}" data-src-lang="${escapeAttr(srcLang)}" data-tgt-lang="${escapeAttr(targetLang)}"`;
 
@@ -739,6 +762,7 @@
                         ${speakButtonHtml(translated, targetLang, "Play translation")}
                     </span>
                 </div>
+                ${buildDictionaryDetailsHtml(dictionary, srcLang, targetLang)}
             </div>
             <div class="${P}ai-result" id="${C.UI_IDS.AI_RESULT}" style="display:none;"></div>
             ${saveFooterHtml}`;

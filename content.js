@@ -216,10 +216,19 @@
 
         try {
             const targetLang = await getTargetLang();
-            const { translated, detectedLang } = await googleTranslate(
-                text,
-                targetLang,
-            );
+            let dictionary = null;
+            let result = null;
+            if (text.length <= 200) {
+                const { learningLang } = await SharedTranslatorService.getReadingSettings();
+                try {
+                    [dictionary] = await SharedTranslatorService.lookupWords([text], targetLang, learningLang, {
+                        details: true,
+                        context: (anchorEl?.textContent || text).slice(0, 10000),
+                    });
+                    if (dictionary) result = { translated: dictionary.translated, detectedLang: learningLang };
+                } catch (_) { /* Keep ordinary selection translation available if the dictionary cannot load. */ }
+            }
+            const { translated, detectedLang } = result || await googleTranslate(text, targetLang);
             if (revision !== selectionRevision) return;
             const srcLang =
                 typeof detectedLang === "string" ? detectedLang : "auto";
@@ -229,6 +238,7 @@
                 targetLang,
                 original: text,
                 translated,
+                dictionary,
             });
             showTooltip(html, rect, "top", anchorEl);
             attachTooltipHandlers();

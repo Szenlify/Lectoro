@@ -6,6 +6,7 @@
     const indexes = new WeakMap();
     const compiled = new WeakMap();
     const languages = new WeakMap();
+    const senseIndexes = new WeakMap();
     const tokenizer = root.DictionaryTokenizer || (typeof module !== "undefined" && module.exports ? require("./dictionary-tokenizer") : null);
     const normalize = (word) => String(word || "").normalize("NFKC").toLowerCase()
         .replace(/[’‘]/g, "'").replace(/\s+/g, " ")
@@ -49,17 +50,36 @@
         return (languages.get(dictionary) || "en") === "en" ? candidates(word) : [normalize(word)];
     }
 
+    function lexicalTranslations(values) {
+        return [...new Set(values.flatMap((value) => String(value).split(/\s*\/\s*/))
+            .filter((value) => !/^(?:czasownik pomocniczy|rodzajnik|znacznik|wykładnik|podmiot formalny|relacja przynależności|odbiorca czynności)\b/iu.test(value.trim()))
+            .map((value) => value.replace(/\s*\([^)]*\)/g, "").trim())
+            .filter(Boolean))];
+    }
+    const primaryIndexes = new WeakMap();
+    function singleTranslation(translated) {
+        return lexicalTranslations([translated || ""])[0] || null;
+    }
+
     function compilePack(pack) {
         if (compiled.has(pack)) return compiled.get(pack);
         const dictionary = Object.create(null);
+        const sensesByTerm = new Map();
         for (const [term, senses] of Object.entries(pack.entries)) {
-            dictionary[term] = [...new Set(senses.flatMap((sense) => sense.translations))].join(" / ");
+            dictionary[term] = lexicalTranslations(senses.flatMap((sense) => sense.translations)).join(" / ");
+            sensesByTerm.set(term, senses);
+            if (!sensesByTerm.has(normalize(term)) || term === normalize(term)) sensesByTerm.set(normalize(term), senses);
         }
         for (const [form, lemmas] of Object.entries(pack.forms || {})) {
             if (!Object.hasOwn(dictionary, form)) {
                 dictionary[form] = [...new Set(lemmas.map((lemma) => dictionary[lemma]).filter(Boolean))].join(" / ");
+                const senses = lemmas.flatMap((lemma) => pack.entries[lemma] || []);
+                sensesByTerm.set(form, senses);
+                if (!sensesByTerm.has(normalize(form))) sensesByTerm.set(normalize(form), senses);
             }
         }
+        primaryIndexes.set(dictionary, pack.primaryTranslations || {});
+        senseIndexes.set(dictionary, sensesByTerm);
         languages.set(dictionary, pack.sourceLanguage);
         compiled.set(pack, dictionary);
         return dictionary;
@@ -113,6 +133,74 @@
         return null; // Missing words must never trigger a paid call.
     }
 
+    const contextTokens = (text) => String(text || "").match(/[\p{L}\p{M}]+(?:['’][\p{L}\p{M}]+)*|[.!?;,。！？；]/gu) || [];
+    const contextStops = new Set("a an the i you he she it we they me my your his her its our their this that these those to of in on at for with by from as is am are was were be been being have has had do does did and or but if so not no yes very here there".split(" "));
+
+    function rankSenses(senses, word, contextWords, wordIndex, language) {
+        if (senses.length < 2 || !contextWords.length) return { senses, selection: "dictionary" };
+        const tokens = contextWords.map(normalize);
+        const term = normalize(word);
+        // Positional signals must refer to this occurrence, never the first repeated word.
+        let index = Number.isInteger(wordIndex) && normalize(contextWords[wordIndex]) === term ? wordIndex : -1;
+        if (index < 0 && tokens.filter((token) => token === term).length === 1) index = tokens.indexOf(term);
+        if (index < 0) return { senses, selection: "ambiguous" };
+        let left = index, right = index;
+        const boundary = (value) => /[.!?;,。！？；]/u.test(value);
+        while (left > 0 && index - left < 6 && !boundary(contextWords[left - 1])) left--;
+        while (right < tokens.length - 1 && right - index < 6 && !boundary(contextWords[right])) {
+            right++;
+            if (boundary(contextWords[right])) break;
+        }
+        const stem = (token) => language === "en" ? candidates(token).at(-1) : token;
+        const useful = (token) => token && token !== term && (language !== "en" || !contextStops.has(token));
+        const context = new Set(tokens.slice(left, right + 1).filter(useful).map(stem));
+        const exampleSets = senses.map((sense) => new Set((sense.examples || []).flatMap((e) => contextTokens(e.source).map(normalize)).filter(useful).map(stem)));
+        const previous = left < index ? tokens[index - 1] : "";
+        const next = right > index ? tokens[index + 1] : "";
+        const scored = senses.map((sense, order) => {
+            let score = 0;
+            for (const token of exampleSets[order]) {
+                if (context.has(token) && !exampleSets.some((set, i) => i !== order && set.has(token))) score += 2;
+            }
+            if (language === "en") {
+                if (/^(a|an|the|this|that|my|your|his|her|our|their)$/.test(previous) && sense.partOfSpeech === "noun") score += 3;
+                if (/^(i|you|we|they|he|she|to)$/.test(previous) && sense.partOfSpeech === "verb") score += 3;
+                if (/^(am|is|are|was|were|be|been)$/.test(term) && /ing$/.test(next) && sense.partOfSpeech === "auxiliary") score += 6;
+                if (/^(have|has|had)$/.test(term) && (/ed$/.test(next) || /^(been|gone|done|seen|eaten|written|taken|left|made|said|found|bought)$/.test(next)) && sense.partOfSpeech === "auxiliary") score += 6;
+            }
+            return { sense, score, order };
+        }).sort((a, b) => b.score - a.score || a.order - b.order);
+        if (scored[0].score < 2 || scored[0].score - scored[1].score < 2) return { senses, selection: "ambiguous" };
+        return { senses: scored.map((item) => item.sense), selection: "context" };
+    }
+
+    function lookupDetails(word, target, contextWords = [], wordIndex = -1) {
+        const translated = lookup(word, target);
+        if (!translated) return null;
+        const index = senseIndexes.get(target);
+        const exact = String(word).normalize("NFKC").trim().replace(/[’‘]/g, "'")
+            .replace(/^[^\p{L}\p{M}]+|[^\p{L}\p{M}]+$/gu, "");
+        let senses = index?.get(exact);
+        if (!senses) {
+            for (const form of formsFor(word, target)) {
+                if (index?.has(form)) { senses = index.get(form); break; }
+            }
+        }
+        if (!senses?.length) return { translated: lexicalTranslations([translated]).join(" / "), primaryTranslation: singleTranslation(translated), senses: [], selection: "dictionary" };
+        const ranked = rankSenses(senses, word, contextWords, wordIndex, languages.get(target) || "en");
+        const choices = lexicalTranslations([translated]);
+        const configured = primaryIndexes.get(target)?.[exact] || primaryIndexes.get(target)?.[normalize(word)];
+        const preferred = configured || ((languages.get(target) === "en" && normalize(word) === "all" && choices.includes("wszystko")) ? "wszystko" : null);
+        const contextual = ranked.selection === "context" ? lexicalTranslations(ranked.senses[0].translations)[0] : null;
+        return {
+            translated: choices.join(" / "),
+            primaryTranslation: contextual || (choices.includes(preferred) ? preferred : choices[0]),
+            // Bound message payloads even for forms that point at many lemmas.
+            senses: ranked.senses.slice(0, 32), selection: ranked.selection,
+            selectedSenseId: ranked.selection === "context" ? ranked.senses[0].senseId : null,
+        };
+    }
+
     // Keep positions aligned with subtitle spans: one bubble per longest matching phrase.
     // Simple words remain available inside phrases and for explicit hover lookups.
     function lookupWordByWord(words, target, source = null) {
@@ -139,12 +227,14 @@
                 }));
             }
             if (match) {
-                result[i] = { translated: match.translated, length: match.tokens.length };
+                const phrase = words.slice(i, i + match.tokens.length).join(" ");
+                const details = lookupDetails(phrase, target, words, i);
+                result[i] = { translated: details?.primaryTranslation || singleTranslation(match.translated), length: match.tokens.length };
                 i += match.tokens.length - 1;
                 continue;
             }
             if (!source && (languages.get(target) || "en") === "en" && utils.isSimpleWord(words[i])) continue;
-            const translated = lookup(words[i], target, source);
+            const translated = source ? singleTranslation(lookup(words[i], target, source)) : lookupDetails(words[i], target, words, i)?.primaryTranslation;
             if (translated) result[i] = { translated, length: 1 };
         }
         return result;
@@ -154,6 +244,9 @@
         if (!Array.isArray(words) || words.length > 500 || words.some((w) => typeof w !== "string" || w.length > 200)) {
             throw new Error("Invalid dictionary lookup.");
         }
+        options = options || {};
+        if (options.context !== undefined && (typeof options.context !== "string" || options.context.length > 10000)) throw new Error("Invalid dictionary context.");
+        if (options.contextWords !== undefined && (!Array.isArray(options.contextWords) || options.contextWords.length > 500 || options.contextWords.some((w) => typeof w !== "string" || w.length > 200))) throw new Error("Invalid dictionary context words.");
         const languageCode = (value) => {
             const code = String(value || "").toLowerCase().replace(/_/g, "-");
             return Object.hasOwn(root.LectoroConstants.SUPPORTED_LANGUAGES, code) ? code : code.split("-")[0];
@@ -161,15 +254,19 @@
         targetLang = languageCode(targetLang);
         sourceLang = languageCode(sourceLang);
         if (!Object.hasOwn(root.LectoroConstants.SUPPORTED_LANGUAGES, targetLang) || !Object.hasOwn(root.LectoroConstants.SUPPORTED_LANGUAGES, sourceLang)) return words.map(() => null);
-        if (sourceLang === targetLang) return words.map((word) => options?.wordByWord ? null : word);
+        if (sourceLang === targetLang) return words.map((word) => options.wordByWord ? null : options.details ? { translated: word, senses: [], selection: "dictionary" } : word);
         const pack = await root.DictionaryStore?.getPair(sourceLang, targetLang);
         // Missing non-English pairs are never guessed through a reverse English lookup.
         const target = pack ? compilePack(pack) : sourceLang === "en" ? await loadDictionary(targetLang) : {};
+        if (options.details) {
+            const context = options.contextWords || contextTokens(options.context);
+            return words.map((word) => lookupDetails(word, target, context, options.wordIndex));
+        }
         return options?.wordByWord
             ? lookupWordByWord(words, target)
             : words.map((word) => lookup(word, target));
     }
 
-    root.LocalDictionary = Object.freeze({ lookupWords, lookup, candidates, lookupWordByWord, compilePack });
+    root.LocalDictionary = Object.freeze({ lookupWords, lookup, candidates, lookupWordByWord, compilePack, lookupDetails, rankSenses });
     if (typeof module !== "undefined") module.exports = root.LocalDictionary;
 })(globalThis);

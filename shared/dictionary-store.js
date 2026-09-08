@@ -22,6 +22,19 @@
                 if (!isObject(sense) || !validText(sense.senseId) || !Array.isArray(sense.translations) || !sense.translations.length || sense.translations.length > 16 || !sense.translations.every((t) => validText(t, 500))) {
                     throw new Error("Invalid dictionary sense");
                 }
+                for (const [field, limit] of [["definition", 500], ["partOfSpeech", 50], ["reviewStatus", 200]]) {
+                    if (sense[field] !== undefined && !validText(sense[field], limit)) throw new Error("Invalid dictionary sense metadata");
+                }
+                if (sense.examples !== undefined && (!Array.isArray(sense.examples) || sense.examples.length > 4 ||
+                    !sense.examples.every((example) => isObject(example) && validText(example.source, 500) && validText(example.target, 500)))) {
+                    throw new Error("Invalid dictionary examples");
+                }
+            }
+        }
+        if (pack.primaryTranslations !== undefined) {
+            if (!isObject(pack.primaryTranslations) || Object.keys(pack.primaryTranslations).length > 200000) throw new Error("Invalid primary translations");
+            for (const [term, value] of Object.entries(pack.primaryTranslations)) {
+                if (!validText(value, 500) || !Object.hasOwn(pack.entries, term) || !pack.entries[term].some((sense) => sense.translations.includes(value))) throw new Error("Invalid primary translation");
             }
         }
         const forms = Object.entries(pack.forms || {});

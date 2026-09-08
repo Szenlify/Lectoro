@@ -179,6 +179,82 @@ class PipelineTest(unittest.TestCase):
             finally:
                 cache.close()
 
+    def test_structured_senses_keep_ids_when_reordered_and_correct_cached_errors(self):
+        fixture = pipeline.read_json(Path(__file__).parent.parent / "tests/fixtures/dictionary-meanings.json")
+        overrides = {term: {"senses": [{**{k: v for k, v in sense.items() if k not in {"senseId", "reviewStatus"}}, "id": sense["senseId"].split(".")[-1]} for sense in senses]} for term, senses in fixture["entries"].items()}
+        with tempfile.TemporaryDirectory() as work:
+            cache = pipeline.open_cache(work)
+            try:
+                with cache:
+                    cache.execute("INSERT INTO translations VALUES (?,?,?,?,?)",
+                                  (pipeline.ENGINE, "en", "pl", "I", "I"))
+                    cache.execute("INSERT INTO translations VALUES (?,?,?,?,?)",
+                                  (pipeline.ENGINE, "en", "pl", "radio", "RADIO"))
+                report = pipeline.export_pair("en", "pl", ["I", "as", "radio"], {}, cache, Path(work)/"out", overrides)
+                pack = pipeline.read_json(report["file"])
+                self.assertEqual(pack["entries"]["I"][0]["translations"], ["ja"])
+                self.assertGreater(len(pack["entries"]["as"]), 1)
+                self.assertEqual(report["needsReview"]["radio"],
+                                 ["machine-generated-without-context", "same-as-source", "all-uppercase"])
+                before = {s["definition"]: s["senseId"] for s in pack["entries"]["as"]}
+                overrides["as"]["senses"].reverse()
+                curated = pipeline.export_pair("en", "pl", ["I", "as", "radio"], {}, cache, Path(work)/"out", overrides, True)
+                result = pipeline.read_json(curated["file"])
+                self.assertNotIn("radio", result["entries"])
+                self.assertEqual(curated["missing"], ["radio"])
+                self.assertFalse(curated["complete"])
+                self.assertEqual(before, {s["definition"]: s["senseId"] for s in result["entries"]["as"]})
+            finally:
+                cache.close()
+
+    def test_structured_override_rejects_duplicate_ids_and_invalid_examples(self):
+        import copy
+        fixture = pipeline.read_json(Path(__file__).parent.parent / "tests/fixtures/dictionary-meanings.json")
+        sense = fixture["entries"]["I"][0]
+        original = {"senses": [{**{k: v for k, v in sense.items() if k not in {"senseId", "reviewStatus"}}, "id": "speaker"}]}
+        for corruption in ("duplicate", "example"):
+            with tempfile.TemporaryDirectory() as work, patch.object(pipeline, "DIRECTORY", Path(work)):
+                value = copy.deepcopy(original)
+                if corruption == "duplicate":
+                    value["senses"].append(copy.deepcopy(value["senses"][0]))
+                else:
+                    value["senses"][0]["examples"] = [{"source": "test"}]
+                pipeline.write_json(Path(work)/"overrides/en-pl.json", {"I": value})
+                with self.assertRaises(ValueError):
+                    pipeline.read_overrides("en", "pl")
+
+    def test_progress_counts_saved_entries_not_failed_requests_and_estimates_session(self):
+        import io
+        output = io.StringIO()
+        now = [100.0]
+        progress = pipeline.TranslationProgress(100, 40, 10, stream=output, clock=lambda: now[0])
+        progress.update(force=True)
+        now[0] += 20
+        progress.update(attempts=4, saved=3, failed=1, force=True)
+        progress.close()
+        last = output.getvalue().splitlines()[-1]
+        self.assertIn("43.00% 43/100", last)
+        self.assertIn("sesja 4/10", last)
+        self.assertIn("bledy 1", last)
+        self.assertIn("ETA sesji 00:00:30", last)
+        self.assertNotIn("\r", output.getvalue())
+
+    def test_terminal_progress_clears_line_for_errors_and_finishes_with_newline(self):
+        import io
+        class Terminal(io.StringIO):
+            def isatty(self):
+                return True
+        output = Terminal()
+        progress = pipeline.TranslationProgress(2, 1, 1, stream=output, clock=lambda: 0)
+        progress.update(term="book")
+        progress.log("STOP: limit")
+        progress.update(attempts=1, saved=0, failed=1)
+        progress.close()
+        self.assertIn("\r", output.getvalue())
+        self.assertIn("STOP: limit\n", output.getvalue())
+        self.assertTrue(output.getvalue().endswith("\n"))
+        self.assertNotIn("100.00%", output.getvalue())
+
     def test_google_adapter_sets_explicit_languages_timeout_and_restores_transport(self):
         import deep_translator.google as google
         original = google.requests

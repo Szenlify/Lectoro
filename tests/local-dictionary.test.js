@@ -129,7 +129,7 @@ test("simple English words and contractions are skipped only in automatic word-b
     for (const word of ["important", "apple’s", "look forward to", "we are"]) {
         assert.equal(U.isSimpleWord(word), false, word);
     }
-    assert.equal(dictionary.lookup("you", pl), "ty");
+    assert.equal(dictionary.lookup("you", pl), pl.you);
     assert.deepEqual(dictionary.lookupWordByWord(["you"], { key: "znaczenie" }, { key: "you" }),
         [{ translated: "znaczenie", length: 1 }]);
 });
