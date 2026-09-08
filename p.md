@@ -34,32 +34,6 @@ Wymogi dotyczące `change.md`:
 
 sprawdz i dokończ w wzorcowej czytelności [change.md](file;file:///c%3A/Users/FS/Documents/GitHub/Lectoro/change.md)
 
-Jesteś ekspertem od Chrome Extensions, Manifest V3 oraz zasad Chrome Web Store.
-
-Przeanalizuj całe repozytorium tej wtyczki Chrome:
-
-## WAŻNE
-
-unowoczesnijmy funkcje "Enter" na video
-jak klikne Enter wszystko w animacji tak jak teraz jest powiekszajace sie dymki oraz qtAiShimmer. maja sie pokazywac osobno kazde idiomy trudne slowa do wyjasnienia po kolei nie na raz a nastepne slowa / idiomy w kolejce maja miec lekki bg fioletowego zeby bylo wiadomo co nastepne, które beda tlumaczone. wszystko ma miec Piekny UI/UX spojny z qtAiShimmer fajnie by bylo jakby raz po borderze kolory z przeszly jak teraz jest modne w AI oczywiscie wyjasnienia TTS ma czytac tak aby nauka jezyka obcego byla przyjemna i konkretna. strzalkami w bok przechodz do nastepnego slowa / idiumy/ frazy zeby nie czekac na to co chce uslyszec, sam dymek ma byc z tych CSS co juz mam
-
-Nie przepisuj całego projektu i nie wykonuj zmian w ciemno.
-pamietaj o zasadzie (Zasada DRY - Don't Repeat Yourself) oraz Centralizacja Logiki (Single Source of Truth)
-
-Jesteś ekspertem Software Engineer
-
-Jesteś ekspertem Full-Stack JavaScript Developer
-
-Jesteś ekspertem od Chrome Extensions, Manifest V3 oraz UI/UX
-
-## WAŻNE
-
-w finkcji "Enter" niech jak bedzie 4/4 to zeby chmurka nei znikala i nie wznawiala filmu oraz w trybie simple language tlumaczenia AI to meaning tlumaczenie tez ma byc czytanie przez TTS
-
-pamietaj o zasadzie (Zasada DRY - Don't Repeat Yourself) oraz Centralizacja Logiki (Single Source of Truth)
-i wskarz co trzeba przepisac aby uczytelnic kod aby zeby funkcjonalnosci zostaly takie same sprawdz rowniez css czy nie ma martwych klass i w kodzie czy nie ma martwego kodu lub starych nie uzywanych funkcji
-
-
 
 
 
@@ -74,6 +48,9 @@ chociaz zostaw go dla uzytkownikow niezalogowanych i dla tych co skoncza im sie 
 
 zrob lekkie zapytania do gemini 2.5 lite
 
+a tlumaczenie word by word bedzie z json
+zrob bardzo maly plik json w kazdym jezyku tlumaczenie podstawowych 20 slow dopisze je pozniej sam ale zrob jakis system zeby rozpoznawal np apple to jablko ale w js zeby wychwytywal nawet jak bedzie slowo na napisach apples albo cos z koncowkami z ing ed itp
+
 design ma wygladac zamiast szarych napisow pod orginalnymi napisami ma sie pojawiac chmurka nad napisami jak
 Translation unavailable
 Translation service is busy. Please try again shortly.
@@ -86,10 +63,7 @@ lekki prompt cos w stylu:
 Przetłumacz poniższy tekst (native lang ustawiony w ustawieniach) Zwróć wyłącznie przetłumaczony tekst, bez żadnego wstępu, podsumowania ani komentarzy
 
 temperature = 0
-
-wymysl jeszcze jakis sposob zeby klucz api byl bezpieczny ale jak tysiace uzytkownikow bedzie korzystac z tej wtyczki do chrome zeby mnie nie bolalo finansowo oplacac kazde polaczenie do firebase cloud itp
-
-i jesli ktos zaloguje sie wykorzysta tokeny AI to moze usunac konto i zalogowac sie ponownie i ma spowrotem 10 tokenow AI
+z tej wtyczki do chrome zeby mnie nie bolalo finansowo oplacac kazde polaczenie do firebase cloud
 
 
 
