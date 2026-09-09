@@ -28,6 +28,8 @@
 
 15. tooltipy dla przycisków z opisem co robią
 
+16. Cloud Sync przyciski kolo siebie sync oraz singout a przycisk delete account umieścic na samym dole settings z wyjasnieniem ze sybskrybcja zostanie anulowana itp
+
 17. opis wszystkich kosztów i zweryfikowanie marży projektu:
 cloudflare, kazde uzycie firebase firebase, 	
 createStripePortalSession, 	
