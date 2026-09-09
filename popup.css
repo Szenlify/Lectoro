@@ -3030,10 +3030,78 @@ html[data-lectoro-ai-limit-reached] #exportQuiz {
     font-size: 10px;
 }
 
+/* ¦¦ Subscription Carousel ¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦ */
+.subscription-carousel {
+    position: relative;
+}
+
 .subscription-plans-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: flex;
     gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 4px 0 6px;
+}
+
+.subscription-plans-grid::-webkit-scrollbar {
+    display: none;
+}
+
+.carousel-arrow-next {
+    position: absolute;
+    right: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 3;
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border: 1px solid rgba(129, 140, 248, 0.25);
+    border-radius: 50%;
+    background: rgba(15, 15, 30, 0.85);
+    backdrop-filter: blur(8px);
+    color: #c7d2fe;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.carousel-arrow-next:hover {
+    border-color: rgba(129, 140, 248, 0.55);
+    background: rgba(99, 102, 241, 0.25);
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.2);
+}
+
+.carousel-arrow-next.is-scrolled-end {
+    transform: translateY(-50%) rotate(180deg);
+}
+
+.carousel-arrow-next.is-scrolled-end:hover {
+    transform: translateY(-50%) rotate(180deg) scale(1.1);
+}
+
+.subscription-carousel::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 32px;
+    background: linear-gradient(90deg, transparent, rgba(4, 26, 36, 0.85));
+    pointer-events: none;
+    z-index: 2;
+    border-radius: 0 14px 14px 0;
+    transition: opacity 0.3s ease;
+}
+
+.subscription-carousel.is-scrolled-end::after {
+    opacity: 0;
 }
 
 .subscription-plan-card {
@@ -3360,28 +3428,26 @@ html[data-lectoro-ai-limit-reached] #exportQuiz {
     line-height: 1.35;
 }
 
-.subscription-plans-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 7px;
-}
-
 .subscription-plan-card {
     position: relative;
     display: flex;
+    flex: 0 0 42%;
     min-width: 0;
     min-height: 220px;
     flex-direction: column;
-    padding: 11px 10px 10px;
+    padding: 12px 12px 10px;
     overflow: hidden;
-    border-color: rgba(255, 255, 255, 0.075);
+    border: 1px solid rgba(255, 255, 255, 0.075);
     border-radius: 14px;
     background:
         linear-gradient(160deg, rgba(255, 255, 255, 0.045), transparent 48%),
         rgba(255, 255, 255, 0.018);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    scroll-snap-align: start;
     transition:
         border-color 0.2s ease,
-        box-shadow 0.2s ease;
+        box-shadow 0.2s ease,
+        transform 0.25s ease;
 }
 
 .subscription-plan-card:hover {
@@ -3423,12 +3489,12 @@ html[data-lectoro-ai-limit-reached] #exportQuiz {
 }
 
 .subscription-plan-card .subscription-plan-topline strong {
-    font-size: 10px;
+    font-size: 11px;
     letter-spacing: 0.06em;
 }
 
 .subscription-plan-badge {
-    padding: 4px 5px;
+    padding: 4px 6px;
     font-size: 8.5px;
     letter-spacing: 0;
 }
@@ -3449,7 +3515,7 @@ html[data-lectoro-ai-limit-reached] #exportQuiz {
     width: fit-content;
     margin-top: 6px;
     color: #6ee7b7;
-    font-size: 7px;
+    font-size: 8px;
     font-weight: 850;
     letter-spacing: 0.08em;
     line-height: 1;
@@ -3466,21 +3532,21 @@ html[data-lectoro-ai-limit-reached] #exportQuiz {
 
 .subscription-plan-card .subscription-plan-price b {
     margin: 0;
-    font-size: 15px;
+    font-size: 16px;
     letter-spacing: -0.035em;
     white-space: nowrap;
 }
 
 .subscription-plan-price > span {
     color: var(--text-muted);
-    font-size: 9px;
+    font-size: 9.5px;
     white-space: nowrap;
 }
 
 .subscription-plan-features {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 5px;
 }
 
 .subscription-plan-card .subscription-plan-features > span {
@@ -3488,8 +3554,8 @@ html[data-lectoro-ai-limit-reached] #exportQuiz {
     align-items: flex-start;
     gap: 4px;
     color: var(--text-secondary);
-    font-size: 9px;
-    line-height: 1.25;
+    font-size: 9.5px;
+    line-height: 1.3;
 }
 
 .subscription-plan-features i {
@@ -3528,7 +3594,7 @@ html[data-lectoro-ai-limit-reached] #exportQuiz {
 .subscription-trial-note {
     margin-top: 6px;
     color: var(--text-muted);
-    font-size: 7px;
+    font-size: 8px;
     line-height: 1.35;
     text-align: center;
 }
@@ -3542,10 +3608,10 @@ html[data-lectoro-ai-limit-reached] #exportQuiz {
 .subscription-plan-current {
     display: inline-flex !important;
     align-items: center;
-    min-height: 28px;
+    min-height: 32px;
     margin: 0;
     color: var(--mint);
-    font-size: 7.5px;
+    font-size: 8.5px;
     font-weight: 800;
     letter-spacing: 0.04em;
 }
@@ -3562,14 +3628,14 @@ html[data-lectoro-ai-limit-reached] #exportQuiz {
 
 .subscription-plan-button {
     display: inline-flex;
-    min-height: 29px;
+    min-height: 30px;
     align-items: center;
     justify-content: center;
     gap: 5px;
     margin-top: 0;
-    padding: 6px;
+    padding: 6px 8px;
     border-radius: 8px;
-    font-size: 7.5px;
+    font-size: 8.5px;
 }
 
 .subscription-plan-button.is-loading {

@@ -156,7 +156,12 @@
                         <span>Card required · $0 charged for the first 3 days</span>
                     </div>
                 </div>
-                <div class="subscription-plans-grid" id="subscriptionPlansGrid"></div>
+                <div class="subscription-carousel" id="subscriptionCarousel">
+                    <div class="subscription-plans-grid" id="subscriptionPlansGrid"></div>
+                    <button type="button" class="carousel-arrow-next" id="carouselNext" aria-label="Scroll plans">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
+                    </button>
+                </div>
                 <div class="stripe-billing-status" id="stripeBillingStatus" aria-live="polite"></div>
             </div>
 
