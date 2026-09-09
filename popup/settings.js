@@ -297,6 +297,39 @@ function renderSubscriptionPlans(subscription, signedIn = true) {
             </article>`;
         })
         .join("");
+
+    initSubscriptionCarousel(grid);
+}
+
+/* Subscription Carousel Navigation */
+function initSubscriptionCarousel(grid) {
+    if (!grid) return;
+    const cards = grid.querySelectorAll(".subscription-plan-card");
+    if (cards.length === 0) return;
+
+    const btn = document.getElementById("carouselNext");
+    if (!btn) return;
+
+    let scrolledToEnd = false;
+
+    function updateArrow() {
+        const maxScroll = grid.scrollWidth - grid.clientWidth;
+        scrolledToEnd = grid.scrollLeft >= maxScroll - 4;
+        btn.classList.toggle("is-scrolled-end", scrolledToEnd);
+        const carousel = document.getElementById("subscriptionCarousel");
+        if (carousel) carousel.classList.toggle("is-scrolled-end", scrolledToEnd);
+    }
+
+    btn.addEventListener("click", () => {
+        if (scrolledToEnd) {
+            grid.scrollTo({ left: 0, behavior: "smooth" });
+        } else {
+            grid.scrollBy({ left: grid.clientWidth * 0.55, behavior: "smooth" });
+        }
+    });
+
+    grid.addEventListener("scroll", updateArrow, { passive: true });
+    updateArrow();
 }
 
 function renderElevenLabsUsage(subscription) {

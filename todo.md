@@ -41,6 +41,8 @@
 Stack Trace
 popup/export.js:1059 (anonymous function)
 
+18. usunac calkowicie 15,000 chars/h translate dla free
+
 
 
 17. opis wszystkich kosztów i zweryfikowanie marży projektu:
