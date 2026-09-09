@@ -2260,7 +2260,7 @@ body[data-lectoro-ai-active="true"]
   overflow-wrap: anywhere;
 }
 #__qt_tooltip .__qt_dictionary-example {
-  padding: 7px 0;
+  padding: 9px 0;
   color: #e4e7ef;
 }
 #__qt_tooltip .__qt_dictionary-example + .__qt_dictionary-example {
@@ -2295,6 +2295,8 @@ body[data-lectoro-ai-active="true"]
   cursor: pointer;
   list-style: none;
   border-radius: 3px;
+  text-decoration: none;
+  transition: color 0.15s ease;
 }
 #__qt_tooltip .__qt_example-reveal {
   box-sizing: border-box;
@@ -2317,10 +2319,8 @@ body[data-lectoro-ai-active="true"]
 #__qt_tooltip .__qt_example-reveal summary::-webkit-details-marker {
   display: none;
 }
-#__qt_tooltip .__qt_example-reveal summary:hover {
+#__qt_tooltip .__qt_example-reveal[open] > summary:hover {
   color: #fff;
-  text-decoration: underline dotted;
-  text-underline-offset: 4px;
 }
 #__qt_tooltip .__qt_example-reveal summary:focus-visible {
   outline: 2px solid #70baef;
@@ -2331,8 +2331,10 @@ body[data-lectoro-ai-active="true"]
   grid-template-columns: minmax(0, 1fr) 24px;
   gap: 6px;
   align-items: flex-start;
-  padding-inline-start: 18px;
-  margin-top: 5px;
+  margin-inline-start: 4px;
+  padding-inline-start: 12px;
+  border-inline-start: 2px solid rgba(174, 182, 200, 0.2);
+  margin-top: 8px;
   color: #aeb6c8;
 }
 #__qt_tooltip .__qt_dictionary-example.__qt_dictionary-line,
@@ -2356,26 +2358,40 @@ body[data-lectoro-ai-active="true"]
   width: 16px;
   height: 16px;
 }
+#__qt_tooltip .__qt_dictionary-definition-section {
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(78, 205, 196, 0.07);
+}
 #__qt_tooltip .__qt_dictionary-definition {
-  color: #b7bdcd;
-  margin: 0 0 18px;
+  color: #d4d9e5;
+  margin: 0;
   line-height: 1.65;
 }
 #__qt_tooltip .__qt_dictionary-caption {
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: #939bad;
+  color: #a8b0c2;
 }
 #__qt_tooltip .__qt_dictionary-synonyms {
-  color: #aeb6c8;
+  color: #c4b5e8;
   margin: 12px 0 0;
   padding-top: 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
-  font-size: 12px;
+  font-size: 14px;
+  font-weight: 500;
+}
+#__qt_tooltip .__qt_dictionary-caption:has(+ .__qt_dictionary-definition) {
+  padding-inline-start: 8px;
+  border-inline-start: 2px solid #4ecdc4;
+  color: #e4e7ef;
+  font-size: 11px;
+  font-weight: 700;
 }
 #__qt_tooltip .__qt_save-example:focus-visible {
   outline: 2px solid #70baef;
