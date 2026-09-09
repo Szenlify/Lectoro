@@ -49,11 +49,13 @@ test("bilingual compact entries preserve translations and accept zero to three s
     const env = environment({serve:()=>{throw Error('unused');}});
     const examples = [1,2,3].map(n=>({source:`Example ${n} with work.`,target:`Przykład ${n} z pracą.`}));
     for (const synonyms of [[],['job'],['job','labor','employment']]) {
-        const entry = {t:'praca',d:'An activity.',s:synonyms,e:examples};
+        const entry = {t:'praca',d:{source:'An activity.',target:'Czynność.'},s:synonyms,e:examples};
         const pack = env.api.validatePack({work:entry},'en','pl','v1');
         const details = dictionary.lookupDetails('work',dictionary.compilePack(pack));
         assert.deepEqual(details.senses[0].examples,examples);
-        for (const invalid of [{...entry,s:['a','b','c','d']},
+        assert.equal(details.senses[0].definition,'An activity.');
+        assert.equal(details.senses[0].definitionTranslated,'Czynność.');
+        for (const invalid of [{...entry,d:{source:'An activity.',target:''}}, {...entry,s:['a','b','c','d']},
             {...entry,e:examples.map(e=>({...e,target:''}))}, {...entry,e:[examples[0],examples[0],examples[2]]}]) {
             assert.throws(()=>env.api.validatePack({work:invalid},'en','pl','v1'));
         }

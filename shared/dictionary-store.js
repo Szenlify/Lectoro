@@ -19,7 +19,8 @@
             for (const [word, entry] of terms) {
                 const legacy = Array.isArray(entry?.e) && entry.e.every(e => typeof e === "string");
                 if (!validText(word, 80) || !isObject(entry) || Object.keys(entry).sort().join() !== "d,e,s,t" ||
-                    !single(entry.t) || !validText(entry.d, 300) ||
+                    !single(entry.t) || !(validText(entry.d, 300) || (isObject(entry.d) &&
+                        Object.keys(entry.d).sort().join() === "source,target" && validText(entry.d.source, 300) && validText(entry.d.target, 300))) ||
                     !Array.isArray(entry.s) || entry.s.length > (legacy ? 4 : 3) ||
                     !entry.s.every(s => validText(s, 80)) || new Set(entry.s.map(s => s.toLowerCase())).size !== entry.s.length ||
                     !Array.isArray(entry.e) || entry.e.length !== 3 || !entry.e.every(e => legacy ? validText(e, 300) :

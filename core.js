@@ -765,7 +765,9 @@
         const sense = dictionary.senses[0];
         const definition =
             typeof sense.definition === "string"
-                ? `<p class="${P}dictionary-definition" lang="${escapeAttr(srcLang)}" dir="auto">${escapeHtml(sense.definition)}</p>`
+                ? (sense.definitionTranslated
+                    ? `<details class="${P}dictionary-definition ${P}example-reveal"><summary lang="${escapeAttr(srcLang)}" dir="auto" title="Show translation">${escapeHtml(sense.definition)}</summary><div class="${P}example-translation">${speakButtonHtml(sense.definitionTranslated, targetLang, "Play definition translation")}<p lang="${escapeAttr(targetLang)}" dir="auto">${escapeHtml(sense.definitionTranslated)}</p></div></details>`
+                    : `<p class="${P}dictionary-definition" lang="${escapeAttr(srcLang)}" dir="auto">${escapeHtml(sense.definition)}</p>`)
                 : "";
         const synonyms =
             Array.isArray(sense.synonyms) && sense.synonyms.length

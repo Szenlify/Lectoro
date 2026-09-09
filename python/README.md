@@ -1,7 +1,7 @@
 # Słownik EN → PL przez Gemini 2.5 Flash-Lite
 
 Generator używa Twojego płatnego klucza Gemini. Zapisuje jeden polski odpowiednik,
-angielską definicję, 0–3 synonimy i trzy angielskie zdania z polskimi tłumaczeniami. Gotowy JSON jest pobierany
+definicję po angielsku i po polsku, 0–3 angielskie synonimy i trzy angielskie zdania z polskimi tłumaczeniami. Gotowy JSON jest pobierany
 przez Lectoro z R2, a szczegóły pojawiają się pod tłumaczeniem słowa na wideo.
 
 ## 1. Otwórz PowerShell w folderze `python`
@@ -142,7 +142,7 @@ bazy i listy ze starszego generatora; obecny korzysta z `work/compact/`.
 `en-pl.json` zawiera wyłącznie mapę słów w takim formacie:
 
 ```json
-{"work":{"t":"praca","d":"an activity you do as part of your job","s":["job","labor","employment"],"e":[{"source":"I have work today.","target":"Mam dziś pracę."},{"source":"Her work is important.","target":"Jej praca jest ważna."},{"source":"We work every day.","target":"Pracujemy codziennie."}]}}
+{"work":{"t":"praca","d":{"source":"an activity you do as part of your job","target":"czynność wykonywana w ramach pracy"},"s":["job","labor","employment"],"e":[{"source":"I have work today.","target":"Mam dziś pracę."},{"source":"Her work is important.","target":"Jej praca jest ważna."},{"source":"We work every day.","target":"Pracujemy codziennie."}]}}
 ```
 
 Każdy eksport może tworzyć nowe wydanie `compact-HASH`. **Aktualne wydanie wskazuje
@@ -153,6 +153,15 @@ kolejkuje do ponownego wygenerowania przy zwykłym uruchomieniu. To wymaga zapyt
 kopia starych wpisów zostaje w tabeli `legacy_entries` w SQLite. Sam `--export-only`
 nie uzupełnia tłumaczeń i odrzuca wpisy w starym formacie. Dla testowej bazy uruchom
 `generate_dictionary.py --count 10 --export-every 10` i wgraj nowy folder `dictionaries`.
+
+Definicja ma format `d: {source, target}`: tekst angielski i jego polskie tłumaczenie.
+Jeśli istniejący wpis ma poprawne przykłady i synonimy, ale definicję jako pojedynczy tekst,
+zwykłe uruchomienie generatora uzupełni przez Gemini tylko polską definicję. Pozostała treść
+zostaje zachowana; kopia wpisu jest w tabeli `definition_upgrades`. Przerwaną aktualizację
+można wznowić tą samą komendą. `--export-only` nie wykonuje tłumaczeń.
+W hoverze polską definicję rozwija się kliknięciem definicji angielskiej.
+Te pary definicji i przykładów można później wykorzystać do indeksu PL → EN;
+polskie synonimy wymagają osobnego uzupełnienia dla danego znaczenia.
 
 W hoverze kliknięcie przykładowego zdania rozwija tłumaczenie. Oba teksty mają TTS,
 a gwiazdka zapisuje zdanie z tłumaczeniem do powtórek i staje się żółta.

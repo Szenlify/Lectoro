@@ -12,7 +12,7 @@ from unittest.mock import patch
 from generate_dictionary import APIError, Progress, main, open_database, prepare, request_entry, run, validate_entry
 
 
-ENTRY = {"t": "praca", "d": "an activity you do as part of your job",
+ENTRY = {"t": "praca", "d": {"source": "an activity you do as part of your job", "target": "czynność wykonywana w ramach pracy"},
          "s": ["job", "labor", "employment"],
          "e": [{"source": "I have work today.", "target": "Mam dziś pracę."},
                {"source": "Her work is important.", "target": "Jej praca jest ważna."},
@@ -20,6 +20,28 @@ ENTRY = {"t": "praca", "d": "an activity you do as part of your job",
 
 
 class CompactTests(unittest.TestCase):
+    def test_definition_upgrade_preserves_existing_content(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            words = root / "words.txt"
+            words.write_text("work\n", encoding="utf-8")
+            args = argparse.Namespace(work=root / "work", output=root / "out", words=words,
+                                      count=1, model="test", interval=0, export_every=1)
+            db = open_database(args.work)
+            prepare(db, args)
+            old = {**ENTRY, "d": ENTRY["d"]["source"]}
+            with db:
+                db.execute("UPDATE words SET entry=?", (json.dumps(old),))
+            db.close()
+            db = open_database(args.work)
+            prepare(db, args)
+            with patch("generate_dictionary.request_json", return_value={"target": ENTRY["d"]["target"]}) as api, patch("builtins.print"):
+                self.assertTrue(run(db, args, request_entry))
+            self.assertEqual(api.call_count, 1)
+            self.assertEqual(api.call_args.kwargs["context"]["definition"], old["d"])
+            self.assertEqual(json.loads(db.execute("SELECT entry FROM words").fetchone()[0]), ENTRY)
+            db.close()
+
     def test_invalid_entries_stop_without_sleep_and_export_pending(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
