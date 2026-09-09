@@ -266,25 +266,40 @@ class Progress:
         self.width = 0
 
     def stats(self):
-        return self.db.execute("SELECT count(*),count(entry),coalesce(sum(errors),0),coalesce(sum(attempts),0) FROM words JOIN selected USING(word)").fetchone()
+        return self.db.execute("SELECT count(*),count(entry),coalesce(sum(CASE WHEN entry IS NULL AND errors>0 THEN 1 ELSE 0 END),0),coalesce(sum(attempts),0) FROM words JOIN selected USING(word)").fetchone()
 
-    def update(self, status, error=False):
+    def update(self, status, error=False, word=None):
         status = " ".join(str(status).replace(os.environ.get("GEMINI_API_KEY") or "\0", "[REDACTED]").split())
         if error:
             self.last_error = status
             with (self.args.work / "errors.log").open("a", encoding="utf-8") as log:
                 log.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} {status}\n")
+            status = word or "Ponowienie"
         total, done, errors, attempts = self.stats()
         ratio = done / max(1, total)
         speed = (done - self.initial) * 3600 / max(1, time.monotonic() - self.started)
-        eta = f"{(total-done)/speed:.1f}h" if speed else "?"
+        remaining = max(0, total - done)
+        seconds = int(remaining / speed * 3600 + 0.999) if speed else None
+        if not remaining:
+            eta = "0s"
+        elif seconds is None or "czesciowy" in status.lower() or "niepelne" in status.lower():
+            eta = "--"
+        elif seconds >= 3600:
+            eta = f"{seconds//3600}h {(seconds%3600)//60:02d}m"
+        elif seconds >= 60:
+            eta = f"{seconds//60}m {seconds%60:02d}s"
+        else:
+            eta = f"{seconds}s"
         bar = "#" * int(ratio * 12) + "-" * (12 - int(ratio * 12))
         percent = int(ratio * 10000) / 100
-        line = f"[{bar}] {percent:.2f}% {done}/{total} | bledy {errors} | {status} | proby {attempts} | {speed:.0f}/h | ETA {eta}"
-        if self.last_error and not error:
-            line += f" | ostatni blad: {self.last_error}"
+        prefix = f"[{bar}] {percent:.2f}% {done}/{total} | nieudane {errors} | "
+        suffix = f" | zostalo {eta}"
         if sys.stdout.isatty():
             limit = max(1, shutil.get_terminal_size((120, 24)).columns - 1)
+            budget = max(1, limit - len(prefix) - len(suffix))
+            status = status if len(status) <= budget else status[:max(0, budget-1)] + "~"
+        line = prefix + status + suffix
+        if sys.stdout.isatty():
             line = line if len(line) <= limit else line[:max(0, limit-3)] + "..."
             print("\r" + line + " " * max(0, min(self.width, limit) - len(line)), end="", flush=True)
             self.width = len(line)
@@ -343,7 +358,7 @@ def export_reverse(db, args, catalog):
 
 class ReverseProgress(Progress):
     def stats(self):
-        return self.db.execute("SELECT count(*),count(synonyms),coalesce(sum(errors),0),coalesce(sum(attempts),0) FROM reverse_jobs JOIN reverse_selected USING(key)").fetchone()
+        return self.db.execute("SELECT count(*),count(synonyms),coalesce(sum(CASE WHEN synonyms IS NULL AND errors>0 THEN 1 ELSE 0 END),0),coalesce(sum(attempts),0) FROM reverse_jobs JOIN reverse_selected USING(key)").fetchone()
 
 
 def run_reverse(db, args, generate=None, attempts=None, progress=None):
@@ -373,11 +388,11 @@ def run_reverse(db, args, generate=None, attempts=None, progress=None):
                 attempts[key] = attempt
                 ready = db.execute("SELECT next_try FROM reverse_jobs WHERE key=?", (key,)).fetchone()[0]
                 while ready > time.time():
-                    progress.update(f"PL-EN: czekam {ready-time.time():.0f}s po bledzie API")
+                    progress.update(f"PL-EN pauza {ready-time.time():.0f}s")
                     time.sleep(min(ready-time.time(), 1 if sys.stdout.isatty() else 30))
                 with db:
                     db.execute("UPDATE reverse_jobs SET attempts=attempts+1 WHERE key=?", (key,))
-                progress.update(f"PL-EN: {entry['t']} ({word})")
+                progress.update(f"PL-EN {entry['t']}")
                 future = pool.submit(generate, word, entry)
                 try:
                     while True:
@@ -387,7 +402,7 @@ def run_reverse(db, args, generate=None, attempts=None, progress=None):
                         except concurrent.futures.TimeoutError:
                             if future.done():
                                 raise
-                            progress.update(f"PL-EN: API pracuje nad {entry['t']}")
+                            progress.update(f"PL-EN {entry['t']}")
                     if (not isinstance(synonyms, list) or len(synonyms) > 3 or not all(valid_text(s, 80) for s in synonyms) or
                             len({s.casefold() for s in synonyms}) != len(synonyms) or entry['t'].casefold() in {s.casefold() for s in synonyms}):
                         raise ValueError("Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed")
@@ -400,7 +415,7 @@ def run_reverse(db, args, generate=None, attempts=None, progress=None):
                     args.validation_feedback[entry['t']] = message
                     with db:
                         db.execute("UPDATE reverse_jobs SET errors=errors+1,error=?,next_try=? WHERE key=?", (message, time.time()+delay, key))
-                    progress.update(f"PL-EN BLAD {entry['t']}: {message}", error=True)
+                    progress.update(f"PL-EN BLAD {entry['t']}: {message}", error=True, word=f"PL-EN {entry['t']}")
                     if transient and (attempt == getattr(args, "max_attempts", 3) or isinstance(error, APIError) and error.status in (400,401,403,404)):
                         args.reverse_blocked = True
                         export(db, args, progress)
@@ -409,7 +424,7 @@ def run_reverse(db, args, generate=None, attempts=None, progress=None):
                     with db:
                         db.execute("UPDATE reverse_jobs SET synonyms=?,error=NULL,next_try=0 WHERE key=?", (json.dumps(synonyms, ensure_ascii=False), key))
                     completed += 1
-                    progress.update(f"PL-EN OK: {entry['t']}")
+                    progress.update(f"PL-EN {entry['t']}")
                     if completed % args.export_every == 0:
                         export(db, args, progress)
                     if args.interval:
@@ -456,7 +471,7 @@ def export(db, args, progress=None):
     write_json(catalog_path, catalog)
     prune_old_releases(args.output)
     if progress:
-        progress.update(f"Eksport {len(entries)} wpisow ({len(raw)/1048576:.2f} MiB)")
+        progress.update("Zapis plikow")
     else:
         print(f"EKSPORT {len(entries)} wpisow | JSON {len(raw)/1048576:.2f} MiB | gzip {len(compressed)/1048576:.2f} MiB | {destination}", flush=True)
 
@@ -504,23 +519,23 @@ def run(db, args, generate=request_entry, reverse_generate=None):
             total, done, errors, attempts = db.execute("SELECT count(*),count(entry),coalesce(sum(errors),0),coalesce(sum(attempts),0) FROM words JOIN selected USING(word)").fetchone()
             if done == total:
                 export(db, args, progress)
-                progress.update(f"Gotowe - {args.output}" if reverse_ok else "EN-PL gotowe; PL-EN czesciowe: pending-pl-en.json")
+                progress.update("EN-PL gotowe" if reverse_ok else "PL-EN niepelne")
                 return reverse_ok
             row = db.execute("SELECT word,errors,next_try FROM words JOIN selected USING(word) WHERE entry IS NULL AND word NOT IN (SELECT word FROM deferred) ORDER BY next_try,ordinal LIMIT 1").fetchone()
             if row is None:
                 export(db, args, progress)
-                progress.update(f"WYNIK CZESCIOWY: brakuje {total-done}; szczegoly: pending.json / errors.log")
+                progress.update("Wynik czesciowy")
                 return False
             word, failures, ready = row
             wait = max(ready, next_request) - time.time()
             if wait > 0:
-                progress.update(f"Czekam {wait:.0f}s (limit API/siec lub --interval); wznowie")
+                progress.update(f"{word} (pauza {wait:.0f}s)")
                 time.sleep(min(wait, 1 if sys.stdout.isatty() else 30))
                 continue
             with db:
                 db.execute("UPDATE words SET attempts=attempts+1 WHERE word=?", (word,))
             attempts_this_run[word] = attempts_this_run.get(word, 0) + 1
-            progress.update(f"Generuje {word}")
+            progress.update(word)
             future = pool.submit(generate, word, args)
             while True:
                 try:
@@ -529,7 +544,7 @@ def run(db, args, generate=request_entry, reverse_generate=None):
                 except concurrent.futures.TimeoutError:
                     if future.done():
                         break
-                    progress.update(f"API pracuje: {word}")
+                    progress.update(word)
                 except Exception:
                     break
             try:
@@ -548,7 +563,7 @@ def run(db, args, generate=request_entry, reverse_generate=None):
                         db.execute("INSERT OR IGNORE INTO deferred VALUES (?)", (word,))
                 if isinstance(error, ValueError):
                     args.validation_feedback[word] = message
-                progress.update(f"BLAD {word} ({attempts_this_run[word]}/{max_attempts}): {message}", error=True)
+                progress.update(f"BLAD {word} ({attempts_this_run[word]}/{max_attempts}): {message}", error=True, word=word)
                 if isinstance(error, APIError) and error.status in (400, 401, 403, 404):
                     args.forward_blocked = True
                     export(db, args, progress)
@@ -563,7 +578,7 @@ def run(db, args, generate=request_entry, reverse_generate=None):
                 with db:
                     db.execute("UPDATE words SET entry=?,error=NULL,next_try=0 WHERE word=?", (json.dumps(entry, ensure_ascii=False, separators=(",", ":")), word))
                 new += 1
-                progress.update(f"OK {word} -> {entry['t']}")
+                progress.update(word)
                 if getattr(args, "bidirectional", False):
                     reverse_ok = run_reverse(db, args, reverse_generate, reverse_attempts, progress)
                 if new - last_export >= args.export_every:

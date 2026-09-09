@@ -53,10 +53,12 @@ Ta komenda już korzysta z płatnego API:
 ```
 
 Model jest domyślnie ustawiony na `gemini-2.5-flash-lite`. W konsoli zobaczysz aktualne słowo,
-liczbę zapisanych wpisów, pasek 0–100%, liczbę błędów i prób, tempo oraz orientacyjny czas do końca.
+liczbę zapisanych wpisów, pasek 0–100%, liczbę nieudanych haseł, bieżące słowo i szacowany czas do końca.
 W terminalu jeden wiersz aktualizuje się na miejscu, również podczas oczekiwania na API.
-Błędy trafiają także do `work/compact/errors.log`; ostatni błąd pozostaje w statusie
-(długi wiersz jest skracany do szerokości terminala). Po przekierowaniu wyjścia do pliku
+Błędy trafiają do `work/compact/errors.log`. „Nieudane” to liczba haseł z błędem,
+które nadal nie mają poprawnego wpisu, a nie liczba prób; po poprawnej próbie licznik maleje.
+Czas jest podawany w godzinach, minutach i sekundach; `--` oznacza brak oszacowania.
+Długi status jest skracany do szerokości terminala. Po przekierowaniu wyjścia do pliku
 statusy są zapisywane jako osobne linie. Eksport trafia do `dist/dictionaries/`.
 
 ## 5. Generuj 50 000 słów

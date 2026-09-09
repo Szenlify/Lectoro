@@ -20,6 +20,29 @@ ENTRY = {"t": "praca", "d": {"s": "an activity you do as part of your job", "t":
 
 
 class CompactTests(unittest.TestCase):
+    def test_progress_counts_unresolved_words_not_failed_attempts(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            words = root / "words.txt"
+            words.write_text("work\njob\n", encoding="utf-8")
+            args = argparse.Namespace(work=root / "work", words=words, count=2)
+            db = open_database(args.work)
+            prepare(db, args)
+            with db:
+                db.execute("UPDATE words SET errors=21 WHERE word='work'")
+            progress = Progress(db, args)
+            self.assertEqual(progress.stats()[2], 1)
+            with patch("builtins.print") as output:
+                progress.update("work")
+            line = output.call_args.args[0]
+            self.assertIn("nieudane 1 | work | zostalo", line)
+            self.assertNotIn("proby", line)
+            self.assertNotIn("/h", line)
+            with db:
+                db.execute("UPDATE words SET entry=? WHERE word='work'", (json.dumps(ENTRY),))
+            self.assertEqual(progress.stats()[2], 0)
+            db.close()
+
     def test_fixed_release_replaces_content_and_cleans_only_generated_folders(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
