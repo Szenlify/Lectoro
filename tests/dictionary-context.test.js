@@ -68,7 +68,7 @@ test('pack validator bounds optional definitions and examples while accepting ol
 });
 
 test('hover renders definition and escaped source examples without example translations', () => {
-  const context=vm.createContext({PREFIX:'__qt_',escapeHtml:U.escapeHtml,escapeAttr:U.escapeAttr});
+  const context=vm.createContext({PREFIX:'__qt_',escapeHtml:U.escapeHtml,escapeAttr:U.escapeAttr,speakButtonHtml:(text,lang)=>`<button class="__qt_speak" data-lang="${lang}">TTS</button>`});
   loadFunction(context,'core.js','buildDictionaryDetailsHtml');
   const result=dictionary.lookupDetails('like',target,['I','like','music'],1);
   result.senses=result.senses.map(s=>({...s,examples:[{source:'<img src=x onerror=alert(1)>',target:'Przykład'}]}));
@@ -77,10 +77,13 @@ test('hover renders definition and escaped source examples without example trans
   assert.ok(!html.includes('Use this meaning'));
   assert.ok(html.includes('dictionary-definition'));
   assert.ok(!/<details[^>]+ open/.test(html));
-  assert.ok(!html.includes('<details'));
+  assert.ok(html.includes('<details'));
+  assert.ok(html.includes('data-lang="en"'));
+  assert.ok(html.includes('data-lang="pl"'));
   assert.ok(html.includes('&lt;img'));
   assert.ok(!html.includes('<img'));
-  assert.ok(!html.replace(/<[^>]*>/g, '').includes('Przykład'));
+  assert.ok(html.includes('example-translation'));
+  assert.ok(html.includes('aria-pressed="false"'));
   assert.equal(context.buildDictionaryDetailsHtml(null,'en','pl'),'');
 });
 

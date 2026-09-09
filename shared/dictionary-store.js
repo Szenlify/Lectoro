@@ -17,11 +17,14 @@
             if (!terms.length || terms.length > 200000) throw new Error("Invalid compact dictionary count");
             const single = (s) => validText(s, 80) && /^[\p{L}\p{M}]+$/u.test(s);
             for (const [word, entry] of terms) {
+                const legacy = Array.isArray(entry?.e) && entry.e.every(e => typeof e === "string");
                 if (!validText(word, 80) || !isObject(entry) || Object.keys(entry).sort().join() !== "d,e,s,t" ||
                     !single(entry.t) || !validText(entry.d, 300) ||
-                    !Array.isArray(entry.s) || entry.s.length < 2 || entry.s.length > 4 ||
+                    !Array.isArray(entry.s) || entry.s.length > (legacy ? 4 : 3) ||
                     !entry.s.every(s => validText(s, 80)) || new Set(entry.s.map(s => s.toLowerCase())).size !== entry.s.length ||
-                    !Array.isArray(entry.e) || entry.e.length !== 3 || !entry.e.every(e => validText(e, 300)) || new Set(entry.e).size !== entry.e.length) {
+                    !Array.isArray(entry.e) || entry.e.length !== 3 || !entry.e.every(e => legacy ? validText(e, 300) :
+                        isObject(e) && Object.keys(e).sort().join() === "source,target" && validText(e.source, 300) && validText(e.target, 300)) ||
+                    new Set(entry.e.map(e => (legacy ? e : e.source).toLowerCase())).size !== entry.e.length) {
                     throw new Error("Invalid compact dictionary entry");
                 }
             }

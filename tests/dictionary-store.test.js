@@ -45,6 +45,21 @@ function environment({ records = new Map(), serve, clock = () => 1000000, failSa
     return { store, api, calls, context, records };
 }
 
+test("bilingual compact entries preserve translations and accept zero to three synonyms", () => {
+    const env = environment({serve:()=>{throw Error('unused');}});
+    const examples = [1,2,3].map(n=>({source:`Example ${n} with work.`,target:`Przykład ${n} z pracą.`}));
+    for (const synonyms of [[],['job'],['job','labor','employment']]) {
+        const entry = {t:'praca',d:'An activity.',s:synonyms,e:examples};
+        const pack = env.api.validatePack({work:entry},'en','pl','v1');
+        const details = dictionary.lookupDetails('work',dictionary.compilePack(pack));
+        assert.deepEqual(details.senses[0].examples,examples);
+        for (const invalid of [{...entry,s:['a','b','c','d']},
+            {...entry,e:examples.map(e=>({...e,target:''}))}, {...entry,e:[examples[0],examples[0],examples[2]]}]) {
+            assert.throws(()=>env.api.validatePack({work:invalid},'en','pl','v1'));
+        }
+    }
+});
+
 test("compact R2 JSON supports details, inflections and offline restart", async () => {
     const entry = {t: "praca", d: "an activity you do as part of your job", s: ["job", "labor"], e: ["My work is important.", "I have work today.", "We work every day."]};
     const raw = Buffer.from(JSON.stringify({work: entry}));
@@ -59,7 +74,7 @@ test("compact R2 JSON supports details, inflections and offline restart", async 
     const offline = environment({records: env.records, serve: () => {throw Error("offline");}});
     assert.equal((await offline.context.LocalDictionary.lookupWords(["work"], "pl", "en"))[0], "praca");
     assert.equal(offline.calls.length, 0);
-    for (const invalid of [{...entry, t: "ciężka praca"}, {...entry, s: ["job"]}]) {
+    for (const invalid of [{...entry, t: "ciężka praca"}, {...entry, s: ["job", "job"]}]) {
         assert.throws(() => env.api.validatePack({work: invalid}, "en", "pl", "v1"));
     }
 });

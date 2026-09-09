@@ -13,10 +13,34 @@ from generate_dictionary import APIError, main, open_database, prepare, request_
 
 ENTRY = {"t": "praca", "d": "an activity you do as part of your job",
          "s": ["job", "labor", "employment"],
-         "e": ["I have work today.", "Her work is important.", "We work every day."]}
+         "e": [{"source": "I have work today.", "target": "Mam dziś pracę."},
+               {"source": "Her work is important.", "target": "Jej praca jest ważna."},
+               {"source": "We work every day.", "target": "Pracujemy codziennie."}]}
 
 
 class CompactTests(unittest.TestCase):
+    def test_legacy_entries_are_backed_up_and_regenerated(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            words = root / "words.txt"
+            words.write_text("work\n", encoding="utf-8")
+            args = argparse.Namespace(work=root / "work", output=root / "dist" / "dictionaries",
+                                      words=words, count=1, model="test", interval=0, export_every=1)
+            db = open_database(args.work)
+            prepare(db, args)
+            legacy = {**ENTRY, "e": [e["source"] for e in ENTRY["e"]]}
+            with db:
+                db.execute("UPDATE words SET entry=?", (json.dumps(legacy),))
+            db.close()
+            db = open_database(args.work)
+            with patch("builtins.print"):
+                prepare(db, args)
+                self.assertIsNone(db.execute("SELECT entry FROM words").fetchone()[0])
+                self.assertEqual(json.loads(db.execute("SELECT entry FROM legacy_entries").fetchone()[0]), legacy)
+                run(db, args, lambda *_: ENTRY)
+            self.assertEqual(json.loads(db.execute("SELECT entry FROM words").fetchone()[0]), ENTRY)
+            db.close()
+
     def test_export_only_creates_uploadable_dictionaries_folder(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
@@ -63,8 +87,11 @@ class CompactTests(unittest.TestCase):
 
     def test_rejects_alternatives_duplicates_and_missing_word(self):
         self.assertEqual(validate_entry("work", ENTRY), ENTRY)
+        for synonyms in ([], ["job"], ["job", "labor", "employment"]):
+            validate_entry("work", {**ENTRY, "s": synonyms})
         for patch_value in ({"t": "praca / pracować"}, {"t": "ciężka praca"}, {"s": ["job", "Job"]},
-                            {"s": ["work", "job"]}, {"e": ["Hello."] * 3}, {"d": "<script>"}):
+                            {"s": ["work", "job"]}, {"s": ["job", "labor", "employment", "task"]},
+                            {"e": ["Hello."] * 3}, {"e": [{"source": "I work.", "target": ""}] * 3}, {"d": "<script>"}):
             with self.subTest(patch_value=patch_value), self.assertRaises(ValueError):
                 validate_entry("work", {**ENTRY, **patch_value})
 

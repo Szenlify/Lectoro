@@ -770,7 +770,7 @@
         const synonyms =
             Array.isArray(sense.synonyms) && sense.synonyms.length
                 ? `<p class="${P}dictionary-synonyms" lang="${escapeAttr(srcLang)}" dir="auto"><span class="${P}dictionary-caption">Synonyms</span> ${sense.synonyms
-                      .slice(0, 4)
+                      .slice(0, 3)
                       .map((s) => escapeHtml(s))
                       .join(", ")}</p>`
                 : "";
@@ -796,8 +796,11 @@
             .map(
                 (example) => `
       <div class="${P}dictionary-example">
-        <p lang="${escapeAttr(srcLang)}" dir="auto">${escapeHtml(example.source)}</p>
-        <button type="button" class="${P}save-example" data-src="${escapeAttr(example.source)}" data-translated="${escapeAttr(example.target)}" data-src-lang="${escapeAttr(srcLang)}" data-tgt-lang="${escapeAttr(targetLang)}" title="Add sentence to review" aria-label="${escapeAttr(`Add to review: ${example.source}`)}">+<span class="${P}example-save-label"> Save</span></button>
+        <div class="${P}example-content">
+          ${example.target ? `<details class="${P}example-reveal"><summary lang="${escapeAttr(srcLang)}" dir="auto" title="Show translation">${escapeHtml(example.source)}</summary><div class="${P}example-translation"><p lang="${escapeAttr(targetLang)}" dir="auto">${escapeHtml(example.target)}</p>${speakButtonHtml(example.target, targetLang, "Play translation")}</div></details>` : `<p lang="${escapeAttr(srcLang)}" dir="auto">${escapeHtml(example.source)}</p>`}
+        </div>
+        ${speakButtonHtml(example.source, srcLang, "Play example")}
+        <button type="button" class="${P}save-example" data-src="${escapeAttr(example.source)}" data-translated="${escapeAttr(example.target)}" data-src-lang="${escapeAttr(srcLang)}" data-tgt-lang="${escapeAttr(targetLang)}" title="Add sentence to review" aria-label="${escapeAttr(`Add to review: ${example.source}`)}" aria-pressed="false">☆</button>
       </div>`,
             )
             .join("")}${synonyms}<div class="${P}example-status" role="status" aria-live="polite"></div></section>`;
@@ -1002,7 +1005,8 @@
     async function handleSaveExampleClick(btn) {
         if (btn.disabled) return;
         btn.disabled = true;
-        btn.textContent = "Saving…";
+        btn.textContent = "☆";
+        btn.setAttribute("aria-busy", "true");
         const status = btn.closest(`.${PREFIX}dictionary-details`)?.querySelector(`.${PREFIX}example-status`);
         if (status) status.textContent = "";
         try {
@@ -1019,16 +1023,19 @@
                 sentence: "", sentenceTranslated: "", aiSentence: "", aiSentenceTranslated: "",
                 screenshot: "", url: window.location.href, timestamp: Date.now(), downloaded: false,
             });
-            btn.textContent = "Saved";
+            btn.textContent = "★";
+            btn.setAttribute("aria-pressed", "true");
             btn.classList.add("saved");
             btn.title = "Sentence saved to review";
             btn.setAttribute("aria-label", "Sentence saved to review");
             if (status) status.textContent = "Sentence saved to review.";
         } catch (error) {
             btn.disabled = false;
-            btn.textContent = "Retry";
+            btn.textContent = "☆";
             btn.title = error?.message || "Could not save sentence";
             if (status) status.textContent = btn.title;
+        } finally {
+            btn.setAttribute("aria-busy", "false");
         }
     }
 
@@ -1108,6 +1115,21 @@
                 handleSaveExampleClick(btn);
             });
         });
+        const exampleButtons = [...tooltipEl.querySelectorAll(`.${PREFIX}save-example`)];
+        if (exampleButtons.length) {
+            SharedWordRepository.getStoredWords().then((words) => {
+                for (const btn of exampleButtons) {
+                    if (!words.some(w => w.original === cleanCardText(btn.dataset.src) &&
+                        w.srcLang === btn.dataset.srcLang && w.tgtLang === btn.dataset.tgtLang)) continue;
+                    btn.textContent = "★";
+                    btn.classList.add("saved");
+                    btn.disabled = true;
+                    btn.title = "Sentence saved to review";
+                    btn.setAttribute("aria-label", btn.title);
+                    btn.setAttribute("aria-pressed", "true");
+                }
+            }).catch(() => {});
+        }
 
         tooltipEl.querySelectorAll(`.${PREFIX}speak`).forEach((btn) => {
             btn.addEventListener("click", (ev) => {

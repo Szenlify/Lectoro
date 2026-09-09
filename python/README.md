@@ -1,7 +1,7 @@
 # Słownik EN → PL przez Gemini 2.5 Flash-Lite
 
 Generator używa Twojego płatnego klucza Gemini. Zapisuje jeden polski odpowiednik,
-angielską definicję, 2–4 synonimy i trzy angielskie zdania. Gotowy JSON jest pobierany
+angielską definicję, 0–3 synonimy i trzy angielskie zdania z polskimi tłumaczeniami. Gotowy JSON jest pobierany
 przez Lectoro z R2, a szczegóły pojawiają się pod tłumaczeniem słowa na wideo.
 
 ## 1. Otwórz PowerShell w folderze `python`
@@ -85,7 +85,7 @@ przerwę co najmniej 15 minut; podczas czekania nadal pojawiają się komunikaty
 Błędy zapisu podczas pracy też są ponawiane. Brak zależności, dostępu do bazy przy starcie
 lub niepoprawny klucz wymagają naprawienia konfiguracji.
 
-**50 000 oznacza liczbę wybranych haseł.** Nie każde ma jeden polski odpowiednik i dwa synonimy.
+**50 000 oznacza liczbę wybranych haseł.** Nie każde ma jeden polski odpowiednik. Brak synonimów jest dozwolony (`s: []`).
 Niepoprawne wpisy nie są zapisywane; mogą pozostać w kolejce do weryfikacji i być ponawiane
 bez końca. Wtedy możesz zatrzymać skrypt i wykorzystać częściowy słownik. Walidacja sprawdza
 format, długość i duplikaty, ale nie gwarantuje poprawności językowej odpowiedzi modelu.
@@ -132,11 +132,20 @@ bazy i listy ze starszego generatora; obecny korzysta z `work/compact/`.
 `en-pl.json` zawiera wyłącznie mapę słów w takim formacie:
 
 ```json
-{"work":{"t":"praca","d":"an activity you do as part of your job","s":["job","labor","employment"],"e":["I have work today.","Her work is important.","We work every day."]}}
+{"work":{"t":"praca","d":"an activity you do as part of your job","s":["job","labor","employment"],"e":[{"source":"I have work today.","target":"Mam dziś pracę."},{"source":"Her work is important.","target":"Jej praca jest ważna."},{"source":"We work every day.","target":"Pracujemy codziennie."}]}}
 ```
 
 Każdy eksport może tworzyć nowe wydanie `compact-HASH`. **Aktualne wydanie wskazuje
 `catalog.json`; nie wybieraj folderu na podstawie nazwy ani kolejności alfabetycznej.**
+
+Starsze wpisy bez tłumaczeń przykładów lub z czterema synonimami generator automatycznie
+kolejkuje do ponownego wygenerowania przy zwykłym uruchomieniu. To wymaga zapytań do API;
+kopia starych wpisów zostaje w tabeli `legacy_entries` w SQLite. Sam `--export-only`
+nie uzupełnia tłumaczeń i odrzuca wpisy w starym formacie. Dla testowej bazy uruchom
+`generate_dictionary.py --count 10 --export-every 10` i wgraj nowy folder `dictionaries`.
+
+W hoverze kliknięcie przykładowego zdania rozwija tłumaczenie. Oba teksty mają TTS,
+a gwiazdka zapisuje zdanie z tłumaczeniem do powtórek i staje się żółta.
 Aby wyświetlić dokładny plik do wysłania:
 
 ```powershell
