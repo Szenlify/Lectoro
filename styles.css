@@ -2245,22 +2245,86 @@ body[data-lectoro-ai-active="true"]
 
 /* Concise dictionary details beneath the word translation. */
 #__qt_tooltip .__qt_dictionary-details {
-  margin-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   font-size: 13px;
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
 #__qt_tooltip .__qt_dictionary-example {
-  margin: 10px 0 0;
-  padding: 8px 10px;
-  border-inline-start: 2px solid #70baef;
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 4px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 0;
+  color: #e4e7ef;
+}
+#__qt_tooltip .__qt_dictionary-example + .__qt_dictionary-example {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+#__qt_tooltip .__qt_dictionary-example p {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+}
+#__qt_tooltip .__qt_dictionary-definition {
+  color: #b7bdcd;
+  margin: 0 0 18px;
+  line-height: 1.65;
+}
+#__qt_tooltip .__qt_dictionary-caption {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: #939bad;
+}
+#__qt_tooltip .__qt_dictionary-synonyms {
+  color: #aeb6c8;
+  margin: 12px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 12px;
+}
+#__qt_tooltip .__qt_save-example {
+  flex: 0 0 auto;
+  min-height: 28px;
+  min-width: 54px;
+  padding: 3px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 7px;
+  background: transparent;
+  color: #c8d1e3;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+#__qt_tooltip .__qt_save-example:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.28);
   color: #fff;
 }
-#__qt_tooltip .__qt_dictionary-definition,
-#__qt_tooltip .__qt_dictionary-synonyms {
-  color: #c4c9dc;
-  margin: 10px 0;
+#__qt_tooltip .__qt_save-example:focus-visible {
+  outline: 2px solid #70baef;
+  outline-offset: 3px;
+}
+#__qt_tooltip .__qt_save-example:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+#__qt_tooltip .__qt_save-example.saved {
+  color: #8ad4b0;
+  border-color: transparent;
+  opacity: 1;
+}
+#__qt_tooltip .__qt_example-status {
+  font-size: 11px;
+  color: #b7bdcd;
+}
+#__qt_tooltip .__qt_example-status:not(:empty) {
+  margin-top: 10px;
 }

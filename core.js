@@ -769,7 +769,7 @@
                 : "";
         const synonyms =
             Array.isArray(sense.synonyms) && sense.synonyms.length
-                ? `<p class="${P}dictionary-synonyms" lang="${escapeAttr(srcLang)}" dir="auto"><strong>Synonyms:</strong> ${sense.synonyms
+                ? `<p class="${P}dictionary-synonyms" lang="${escapeAttr(srcLang)}" dir="auto"><span class="${P}dictionary-caption">Synonyms</span> ${sense.synonyms
                       .slice(0, 4)
                       .map((s) => escapeHtml(s))
                       .join(", ")}</p>`
@@ -791,13 +791,16 @@
                 return true;
             });
         if (!examples.length && !definition && !synonyms) return "";
-        return `<section class="${P}dictionary-details" aria-label="Dictionary details">${definition}${synonyms}${examples.length ? "<strong>Examples:</strong>" : ""}${examples
+        return `<section class="${P}dictionary-details" aria-label="Dictionary details">${definition}${examples.length ? `<div class="${P}dictionary-caption">Examples</div>` : ""}${examples
             .slice(0, 3)
             .map(
                 (example) => `
-      <p class="${P}dictionary-example" lang="${escapeAttr(srcLang)}" dir="auto">${escapeHtml(example.source)}</p>`,
+      <div class="${P}dictionary-example">
+        <p lang="${escapeAttr(srcLang)}" dir="auto">${escapeHtml(example.source)}</p>
+        <button type="button" class="${P}save-example" data-src="${escapeAttr(example.source)}" data-translated="${escapeAttr(example.target)}" data-src-lang="${escapeAttr(srcLang)}" data-tgt-lang="${escapeAttr(targetLang)}" title="Add sentence to review" aria-label="${escapeAttr(`Add to review: ${example.source}`)}">+<span class="${P}example-save-label"> Save</span></button>
+      </div>`,
             )
-            .join("")}</section>`;
+            .join("")}${synonyms}<div class="${P}example-status" role="status" aria-live="polite"></div></section>`;
     }
 
     function buildTooltipHtml({
@@ -996,6 +999,39 @@
         }
     }
 
+    async function handleSaveExampleClick(btn) {
+        if (btn.disabled) return;
+        btn.disabled = true;
+        btn.textContent = "Saving…";
+        const status = btn.closest(`.${PREFIX}dictionary-details`)?.querySelector(`.${PREFIX}example-status`);
+        if (status) status.textContent = "";
+        try {
+            const original = cleanCardText(btn.dataset.src);
+            let translated = cleanCardText(btn.dataset.translated);
+            if (!translated) {
+                const result = await SharedTranslatorService.translate(original, btn.dataset.tgtLang, btn.dataset.srcLang);
+                translated = cleanCardText(result?.translated);
+            }
+            if (!translated) throw new Error("Could not translate this sentence. Try again.");
+            await QT.saveWord({
+                original, translated,
+                srcLang: btn.dataset.srcLang, tgtLang: btn.dataset.tgtLang,
+                sentence: "", sentenceTranslated: "", aiSentence: "", aiSentenceTranslated: "",
+                screenshot: "", url: window.location.href, timestamp: Date.now(), downloaded: false,
+            });
+            btn.textContent = "Saved";
+            btn.classList.add("saved");
+            btn.title = "Sentence saved to review";
+            btn.setAttribute("aria-label", "Sentence saved to review");
+            if (status) status.textContent = "Sentence saved to review.";
+        } catch (error) {
+            btn.disabled = false;
+            btn.textContent = "Retry";
+            btn.title = error?.message || "Could not save sentence";
+            if (status) status.textContent = btn.title;
+        }
+    }
+
     async function handleSaveAiClick(saveAiBtn) {
         if (
             saveAiBtn.classList.contains("saved") ||
@@ -1065,6 +1101,13 @@
 
     function attachTooltipHandlers() {
         if (!tooltipEl) return;
+
+        tooltipEl.querySelectorAll(`.${PREFIX}save-example`).forEach((btn) => {
+            btn.addEventListener("click", (ev) => {
+                ev.stopPropagation();
+                handleSaveExampleClick(btn);
+            });
+        });
 
         tooltipEl.querySelectorAll(`.${PREFIX}speak`).forEach((btn) => {
             btn.addEventListener("click", (ev) => {

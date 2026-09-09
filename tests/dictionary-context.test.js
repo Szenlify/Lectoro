@@ -80,8 +80,46 @@ test('hover renders definition and escaped source examples without example trans
   assert.ok(!html.includes('<details'));
   assert.ok(html.includes('&lt;img'));
   assert.ok(!html.includes('<img'));
-  assert.ok(!html.includes('Przykład'));
+  assert.ok(!html.replace(/<[^>]*>/g, '').includes('Przykład'));
   assert.equal(context.buildDictionaryDetailsHtml(null,'en','pl'),'');
+});
+
+test('example save translates the sentence once, prevents double clicks and allows retry', async () => {
+  const saved = [];
+  let calls = 0, fail = true;
+  const status = {textContent:''};
+  const btn = {
+    dataset:{src:'She likes apples and oranges.',translated:'',srcLang:'en',tgtLang:'pl'},
+    disabled:false, classList:{add(){}}, setAttribute(){},
+    closest:()=>({querySelector:()=>status}),
+  };
+  const context = vm.createContext({
+    PREFIX:'__qt_', cleanCardText:s=>String(s || '').trim(),
+    window:{location:{href:'https://example.com'}},
+    SharedTranslatorService:{async translate(text, target, source){
+      calls++;
+      assert.equal(text, btn.dataset.src);
+      assert.equal(target,'pl'); assert.equal(source,'en');
+      if(fail) throw new Error('Network unavailable');
+      return {translated:'Lubi jabłka i pomarańcze.'};
+    }}, QT:{async saveWord(entry){saved.push(entry);}},
+  });
+  loadFunction(context,'core.js','handleSaveExampleClick');
+  await context.handleSaveExampleClick(btn);
+  assert.equal(btn.disabled,false);
+  assert.equal(saved.length,0);
+  assert.equal(status.textContent,'Network unavailable');
+  fail = false;
+  await Promise.all([context.handleSaveExampleClick(btn),context.handleSaveExampleClick(btn)]);
+  assert.equal(saved.length,1);
+  assert.equal(saved[0].original,btn.dataset.src);
+  assert.equal(saved[0].translated,'Lubi jabłka i pomarańcze.');
+  assert.equal(calls,2);
+  assert.equal(btn.disabled,true);
+  btn.disabled=false; btn.dataset.translated='Gotowe tłumaczenie';
+  await context.handleSaveExampleClick(btn);
+  assert.equal(calls,2);
+  assert.equal(saved[1].translated,'Gotowe tłumaczenie');
 });
 
 test('subtitle hover passes the exact word occurrence and ignores stale async results', async () => {
