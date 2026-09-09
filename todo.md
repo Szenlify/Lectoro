@@ -28,7 +28,7 @@
 
 15. tooltipy dla przycisków z opisem co robią
 
-16. Cloud Sync przyciski kolo siebie sync oraz singout a przycisk delete account umieścic na samym dole settings z wyjasnieniem ze sybskrybcja zostanie anulowana itp
+16. Cloud Sync usunac sync wymyslic sposob zeby automatycznie to robilo np po wykryciu zmiany po 3 minutach samo niech sie synchronizuje
 
 17. quizy czesto maja problem z wygenerowaniem quizu dopiero po kroryms kliknieciu załapuje // Successfully generated: update local quota
       await recordExportSuccess("quiz");

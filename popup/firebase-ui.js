@@ -55,6 +55,11 @@ async function renderSyncUI() {
     const container = document.getElementById("syncContent");
     if (!container) return;
     const renderRevision = ++firebaseUiRenderRevision;
+    const accountDeletion = document.getElementById("accountDeletion");
+    if (accountDeletion) {
+        accountDeletion.hidden = true;
+        accountDeletion.innerHTML = "";
+    }
 
     if (typeof FirebaseSync === "undefined" || !FirebaseSync.isConfigured()) {
         container.innerHTML = `
@@ -155,25 +160,29 @@ async function renderSyncUI() {
           : "";
 
     container.innerHTML = `
-        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-            <span style="color:var(--mint); font-size:13px;">✓</span>
-            <span style="font-size:12px; color:var(--text-secondary); font-weight:500;">${escapeSyncHtml(user.email)}</span>
-        </div>
-        <div style="font-size:10px; color:var(--text-ghost); margin-bottom:10px;">
-            Last synced: ${lastSyncText}
-        </div>
-        <div class="sync-actions">
-            <span class="sync-button-wrap">
+        <div class="sync-account-row">
+            <div class="sync-account-details">
+                <div class="sync-account-email"><span class="sync-account-check" aria-hidden="true">✓</span><span>${escapeSyncHtml(user.email)}</span></div>
+                <div class="sync-last-updated">Last synced: ${lastSyncText}</div>
+            </div>
+            <div class="sync-actions">
                 <button id="firebaseSyncNow" class="sync-btn sync-primary" ${syncing || signingOut || deletingAccount ? "disabled" : ""}>${syncButtonText}</button>
-            </span>
-            <button id="firebaseSignOut" class="sync-btn" ${firebaseUiAction ? "disabled" : ""}>
-                ${signingOut ? "⏳ Signing out..." : "Sign out"}
-            </button>
-            <button id="firebaseDeleteAccount" class="sync-btn sync-danger" ${firebaseUiAction ? "disabled" : ""} title="Permanently delete account and all cloud data">
-                ${deletingAccount ? "⏳ Deleting..." : "Delete account"}
-            </button>
+                <button id="firebaseSignOut" class="sync-btn" ${firebaseUiAction ? "disabled" : ""}>
+                    ${signingOut ? "Signing out..." : "Sign out"}
+                </button>
+            </div>
         </div>
         ${statusHtml}`;
+
+    if (accountDeletion) {
+        accountDeletion.hidden = false;
+        accountDeletion.innerHTML = `
+            <button id="firebaseDeleteAccount" class="account-delete-btn" ${firebaseUiAction ? "disabled" : ""} aria-describedby="accountDeletionDescription">
+                ${deletingAccount ? "Deleting account..." : "Delete account"}
+            </button>
+            <p id="accountDeletionDescription">Permanently delete your account and synced words and screenshots. This cannot be undone. If you have an active subscription, cancel it in your billing settings before deleting your account to stop future charges.</p>
+            ${firebaseUiFeedback?.type === "error" ? `<div class="sync-status sync-status-error" role="alert">${escapeSyncHtml(firebaseUiFeedback.message)}</div>` : ""}`;
+    }
 
     document
         .getElementById("firebaseSyncNow")
@@ -233,7 +242,7 @@ async function renderSyncUI() {
         ?.addEventListener("click", async () => {
             if (firebaseUiAction) return;
             const confirmed = confirm(
-                "Are you sure you want to permanently delete your Lectoro account and all synced words and screenshots in the cloud?\n\nThis action cannot be undone.",
+                "Are you sure you want to permanently delete your Lectoro account and all synced words and screenshots in the cloud?\n\nIf you have an active subscription, cancel it in your billing settings first to stop future charges. Deleting your account does not cancel your subscription.\n\nThis action cannot be undone.",
             );
             if (!confirmed) return;
 

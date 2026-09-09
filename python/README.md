@@ -55,6 +55,12 @@ Ta komenda już korzysta z płatnego API:
 .\.venv\Scripts\python.exe generate_dictionary.py --count 10 --export-every 10
 ```
 
+./python/.venv/bin/python3 -m pip install -r requirements.txt
+
+export SSL_CERT_FILE="$(./python/.venv/bin/python3 -m certifi)"
+
+./python/.venv/bin/python3 generate_dictionary.py --count 20
+
 Model jest domyślnie ustawiony na `gemini-2.5-flash-lite`. W konsoli zobaczysz aktualne słowo,
 liczbę zapisanych wpisów, pasek 0–100%, liczbę nieudanych haseł, bieżące słowo i szacowany czas do końca.
 W terminalu jeden wiersz aktualizuje się na miejscu, również podczas oczekiwania na API.
