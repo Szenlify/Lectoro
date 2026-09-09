@@ -1,6 +1,5 @@
 /**
- * Lectoro – Video Keyboard Hotkeys & Navigation Manager
- * Handles WSAD, Enter, Z, Space, Speed, and subtitle seeking across video players.
+ * LectoroAI – Video Keyboard Hotkeys & Navigation Manager
  */
 (() => {
     "use strict";
@@ -10,11 +9,10 @@
         "d", "D", "ArrowRight",
         "w", "W", "ArrowUp",
         "s", "S", "ArrowDown",
-        "e", "E",
         "Enter", "NumpadEnter",
         "q", "Q",
         "Escape",
-        "z", "Z",
+        "z", "Z","v",
         "[", "{", "]", "}",
         "Home", "PageUp",
     ]);
@@ -93,7 +91,7 @@
             e.stopImmediatePropagation();
 
             // Holding S must not close the session just opened by the first keydown.
-            if (e.repeat && ["s", "S", "e", "E", "ArrowDown"].includes(key)) return;
+            if (e.repeat && ["s", "S", "ArrowDown"].includes(key)) return;
 
             // Speed Control: [ and ]
             if (["[", "{", "]", "}"].includes(key)) {
@@ -142,7 +140,7 @@
                         return;
                     }
                 }
-                if (key === "z" || key === "Z") {
+                if (key === "z" || key === "Z" || key === "v") {
                     if (overlay?.saveCurrentAiExplainItem?.()) {
                         return;
                     }
@@ -161,6 +159,7 @@
             if (
                 key === "z" ||
                 key === "Z" ||
+                key === "v" ||
                 key === "Home" ||
                 key === "PageUp"
             ) {
@@ -193,9 +192,7 @@
             if (
                 key === "s" ||
                 key === "S" ||
-                key === "ArrowDown" ||
-                key === "e" ||
-                key === "E"
+                key === "ArrowDown"
             ) {
                 if (!e.repeat) void globalThis.LectoroReadingModes.start(video);
                 return;
