@@ -148,7 +148,7 @@
   z-index: 2147483647;
   max-width: min(500px, calc(100vw - 20px)) !important;
   height: auto !important;
-  max-height: min(520px, calc(100vh - 48px)) !important;
+  max-height: min(500px, calc(100vh - 48px)) !important;
   bottom: auto !important;
   right: auto !important;
   box-sizing: border-box;
