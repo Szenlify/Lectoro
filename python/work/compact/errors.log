@@ -1,0 +1,957 @@
+2026-09-09 15:35:38 BLAD the (1/3): Example 1: source must contain exact word 'the', not an inflected form
+2026-09-09 15:35:51 PL-EN BLAD i: Gemini nie dokonczyl odpowiedzi
+2026-09-09 15:35:52 PL-EN BLAD i: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 15:35:57 BLAD a (1/3): Example 1: source must contain exact word 'a', not an inflected form
+2026-09-09 15:35:59 PL-EN BLAD w: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 15:36:01 PL-EN BLAD w: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 15:36:03 BLAD i (1/3): Example 1: source must contain exact word 'i', not an inflected form
+2026-09-09 15:36:08 PL-EN BLAD dla: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 15:36:09 PL-EN BLAD dla: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 15:36:10 PL-EN BLAD dla: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 15:36:12 PL-EN BLAD ten: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 15:43:34 BLAD be (1/3): Example 3: source must contain exact word 'be', not an inflected form
+2026-09-09 15:43:37 BLAD have (1/3): HTTP 503; sprawdz serwer/model/klucz lub limit API
+2026-09-09 15:43:45 BLAD the (1/3): Example 1: source must contain exact word 'the', not an inflected form
+2026-09-09 15:43:46 BLAD a (1/3): Example 1: source must contain exact word 'a', not an inflected form
+2026-09-09 15:43:48 BLAD i (1/3): Example 3: source must contain exact word 'i', not an inflected form
+2026-09-09 15:43:50 BLAD have (2/3): Example 2: source must contain exact word 'have', not an inflected form
+2026-09-09 15:43:52 BLAD the (2/3): Example 1: source must contain exact word 'the', not an inflected form
+2026-09-09 15:43:53 BLAD a (2/3): Example 1: source must contain exact word 'a', not an inflected form
+2026-09-09 15:43:54 BLAD i (2/3): Example 1: source must contain exact word 'i', not an inflected form
+2026-09-09 15:43:56 BLAD have (3/3): Example 2: source must contain exact word 'have', not an inflected form
+2026-09-09 15:43:57 BLAD the (3/3): Example 1: source must contain exact word 'the', not an inflected form
+2026-09-09 15:43:58 BLAD a (3/3): Example 1: source must contain exact word 'a', not an inflected form
+2026-09-09 15:44:03 PL-EN BLAD dla: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 15:44:04 PL-EN BLAD dla: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 15:44:05 PL-EN BLAD dla: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 15:44:06 PL-EN BLAD i: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 15:44:07 PL-EN BLAD na: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 15:44:08 PL-EN BLAD na: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:00:46 BLAD my (1/3): Example 1: source must contain exact word 'my', not an inflected form
+2026-09-09 16:00:58 BLAD me (1/3): Example 1: source must contain exact word 'me', not an inflected form
+2026-09-09 16:01:01 BLAD one (1/3): Example 1: source must contain exact word 'one', not an inflected form
+2026-09-09 16:01:09 BLAD up (1/3): Tlumaczenie musi byc jednym polskim slowem
+2026-09-09 16:01:18 BLAD no (1/3): Example 1: source must contain exact word 'no', not an inflected form
+2026-09-09 16:01:23 BLAD it's (1/3): Example 1: source must contain exact word 'it's', not an inflected form
+2026-09-09 16:01:41 BLAD don't (1/3): Example 1: source must contain exact word 'don't', not an inflected form
+2026-09-09 16:01:48 BLAD other (1/3): Example 3: source must contain exact word 'other', not an inflected form
+2026-09-09 16:02:09 BLAD think (1/3): Example 3: source must contain exact word 'think', not an inflected form
+2026-09-09 16:02:19 BLAD want (1/3): Example 2: source must contain exact word 'want', not an inflected form
+2026-09-09 16:02:24 BLAD said (1/3): Example 3: source must contain exact word 'said', not an inflected form
+2026-09-09 16:02:26 BLAD way (1/3): Example 3: source must contain exact word 'way', not an inflected form
+2026-09-09 16:02:46 BLAD years (1/3): Example 3: source must contain exact word 'years', not an inflected form
+2026-09-09 16:02:48 BLAD day (1/3): Example 3: source must contain exact word 'day', not an inflected form
+2026-09-09 16:03:00 BLAD got (1/3): Example 3: source must contain exact word 'got', not an inflected form
+2026-09-09 16:03:16 BLAD s (1/3): Example 1: source must contain exact word 's', not an inflected form
+2026-09-09 16:03:17 BLAD that's (1/3): Example 1: source must contain exact word 'that's', not an inflected form
+2026-09-09 16:03:38 BLAD am (1/3): Example 2: source must contain exact word 'am', not an inflected form
+2026-09-09 16:05:52 BLAD between (1/3): Example 2: source and Polish target must be nonempty plain text, at most 300 characters
+2026-09-09 16:06:23 BLAD give (1/3): Gemini nie dokonczyl odpowiedzi
+2026-09-09 16:06:53 BLAD have (1/3): Example 2: source must contain exact word 'have', not an inflected form
+2026-09-09 16:06:54 BLAD the (1/3): Example 1: source must contain exact word 'the', not an inflected form
+2026-09-09 16:06:55 BLAD a (1/3): Example 3: source must contain exact word 'a', not an inflected form
+2026-09-09 16:06:57 BLAD my (1/3): Example 1: source must contain exact word 'my', not an inflected form
+2026-09-09 16:06:58 BLAD me (1/3): Example 1: source must contain exact word 'me', not an inflected form
+2026-09-09 16:06:59 BLAD one (1/3): Example 1: source must contain exact word 'one', not an inflected form
+2026-09-09 16:07:00 BLAD up (1/3): Tlumaczenie musi byc jednym polskim slowem
+2026-09-09 16:07:02 BLAD no (1/3): Example 1: source must contain exact word 'no', not an inflected form
+2026-09-09 16:07:03 BLAD it's (1/3): Example 1: source must contain exact word 'it's', not an inflected form
+2026-09-09 16:07:04 BLAD don't (1/3): Example 1: source must contain exact word 'don't', not an inflected form
+2026-09-09 16:07:08 BLAD want (1/3): Example 2: source must contain exact word 'want', not an inflected form
+2026-09-09 16:07:09 BLAD said (1/3): Example 3: source must contain exact word 'said', not an inflected form
+2026-09-09 16:07:14 BLAD got (1/3): Example 1: source must contain exact word 'got', not an inflected form
+2026-09-09 16:07:16 BLAD s (1/3): Example 1: source must contain exact word 's', not an inflected form
+2026-09-09 16:07:17 BLAD that's (1/3): Example 1: source must contain exact word 'that's', not an inflected form
+2026-09-09 16:07:18 BLAD am (1/3): Example 2: source must contain exact word 'am', not an inflected form
+2026-09-09 16:07:22 BLAD have (2/3): Example 2: source must contain exact word 'have', not an inflected form
+2026-09-09 16:07:23 BLAD the (2/3): Example 3: source must contain exact word 'the', not an inflected form
+2026-09-09 16:07:25 BLAD a (2/3): Example 1: source must contain exact word 'a', not an inflected form
+2026-09-09 16:07:26 BLAD my (2/3): Example 1: source must contain exact word 'my', not an inflected form
+2026-09-09 16:07:31 BLAD no (2/3): Example 1: source must contain exact word 'no', not an inflected form
+2026-09-09 16:07:32 BLAD it's (2/3): Example 1: source must contain exact word 'it's', not an inflected form
+2026-09-09 16:07:33 BLAD don't (2/3): Example 2: source must contain exact word 'don't', not an inflected form
+2026-09-09 16:07:35 BLAD want (2/3): Example 2: source must contain exact word 'want', not an inflected form
+2026-09-09 16:07:37 BLAD got (2/3): Example 1: source must contain exact word 'got', not an inflected form
+2026-09-09 16:07:38 BLAD s (2/3): Example 1: source must contain exact word 's', not an inflected form
+2026-09-09 16:07:40 BLAD that's (2/3): Example 1: source must contain exact word 'that's', not an inflected form
+2026-09-09 16:07:42 BLAD have (3/3): Example 2: source must contain exact word 'have', not an inflected form
+2026-09-09 16:07:43 BLAD the (3/3): Example 1: source must contain exact word 'the', not an inflected form
+2026-09-09 16:07:45 BLAD a (3/3): Example 1: source must contain exact word 'a', not an inflected form
+2026-09-09 16:07:46 BLAD my (3/3): Example 1: source must contain exact word 'my', not an inflected form
+2026-09-09 16:07:49 BLAD it's (3/3): Example 1: source must contain exact word 'it's', not an inflected form
+2026-09-09 16:07:50 BLAD don't (3/3): Example 2: source must contain exact word 'don't', not an inflected form
+2026-09-09 16:07:51 BLAD want (3/3): Example 2: source must contain exact word 'want', not an inflected form
+2026-09-09 16:07:53 BLAD got (3/3): Example 1: source must contain exact word 'got', not an inflected form
+2026-09-09 16:07:54 BLAD s (3/3): Example 1: source must contain exact word 's', not an inflected form
+2026-09-09 16:07:55 BLAD that's (3/3): Example 1: source must contain exact word 'that's', not an inflected form
+2026-09-09 16:08:07 PL-EN BLAD wszystko: Gemini nie dokonczyl odpowiedzi
+2026-09-09 16:08:16 PL-EN BLAD wszystko: Gemini nie dokonczyl odpowiedzi
+2026-09-09 16:08:25 PL-EN BLAD wszystko: Gemini nie dokonczyl odpowiedzi
+2026-09-09 16:08:30 PL-EN BLAD inny: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:08:40 PL-EN BLAD wokoło: Gemini nie dokonczyl odpowiedzi
+2026-09-09 16:08:48 PL-EN BLAD wokoło: Gemini nie dokonczyl odpowiedzi
+2026-09-09 16:08:50 PL-EN BLAD przy: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:09:01 PL-EN BLAD ponieważ: Gemini nie dokonczyl odpowiedzi
+2026-09-09 16:09:02 PL-EN BLAD ponieważ: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:09:03 PL-EN BLAD ponieważ: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:09:07 PL-EN BLAD między: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:09:17 PL-EN BLAD między: Gemini nie dokonczyl odpowiedzi
+2026-09-09 16:09:18 PL-EN BLAD między: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:09:25 PL-EN BLAD dzień: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:09:27 PL-EN BLAD zrobił: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:09:29 PL-EN BLAD nie: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:09:30 PL-EN BLAD robić: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:09:31 PL-EN BLAD robić: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:09:32 PL-EN BLAD robić: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:09:46 PL-EN BLAD zawsze: Gemini nie dokonczyl odpowiedzi
+2026-09-09 16:09:51 PL-EN BLAD dla: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:09:52 PL-EN BLAD dla: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:09:53 PL-EN BLAD dla: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:09:57 PL-EN BLAD dać: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:09:58 PL-EN BLAD dać: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:09:59 PL-EN BLAD dać: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:10:00 PL-EN BLAD iść: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:10:10 PL-EN BLAD iść: Gemini nie dokonczyl odpowiedzi
+2026-09-09 16:10:12 PL-EN BLAD chodzenie: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:10:16 PL-EN BLAD ma: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:10:17 PL-EN BLAD ma: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:10:20 PL-EN BLAD jej: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:10:21 PL-EN BLAD jej: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:10:22 PL-EN BLAD jej: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:10:30 PL-EN BLAD tutaj: Gemini nie dokonczyl odpowiedzi
+2026-09-09 16:10:32 PL-EN BLAD jemu: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:10:33 PL-EN BLAD jemu: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:10:34 PL-EN BLAD jemu: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:10:35 PL-EN BLAD jego: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:10:35 PL-EN BLAD jego: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:10:36 PL-EN BLAD jego: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:10:47 PL-EN BLAD jak: Gemini nie dokonczyl odpowiedzi
+2026-09-09 16:10:55 PL-EN BLAD jak: Gemini nie dokonczyl odpowiedzi
+2026-09-09 16:11:05 PL-EN BLAD jak: Gemini nie dokonczyl odpowiedzi
+2026-09-09 16:11:08 PL-EN BLAD jeśli: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:11:10 PL-EN BLAD jego: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:11:13 PL-EN BLAD wiedzieć: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:11:14 PL-EN BLAD wiedzieć: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:11:15 PL-EN BLAD wiedzieć: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:11:17 PL-EN BLAD lubić: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:11:18 PL-EN BLAD lubić: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:11:19 PL-EN BLAD lubić: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:11:22 PL-EN BLAD miłość: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:11:25 PL-EN BLAD robić: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:11:26 PL-EN BLAD robić: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:11:35 PL-EN BLAD robić: Gemini nie dokonczyl odpowiedzi
+2026-09-09 16:11:44 PL-EN BLAD człowiek: Gemini nie dokonczyl odpowiedzi
+2026-09-09 16:11:53 PL-EN BLAD człowiek: Gemini nie dokonczyl odpowiedzi
+2026-09-09 16:12:01 PL-EN BLAD człowiek: Gemini nie dokonczyl odpowiedzi
+2026-09-09 16:12:04 PL-EN BLAD ja: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:12:05 PL-EN BLAD więcej: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:12:06 PL-EN BLAD więcej: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:12:07 PL-EN BLAD więcej: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:12:18 PL-EN BLAD pan: Gemini nie dokonczyl odpowiedzi
+2026-09-09 16:12:19 PL-EN BLAD pan: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:12:28 PL-EN BLAD pan: Gemini nie dokonczyl odpowiedzi
+2026-09-09 16:12:29 PL-EN BLAD dużo: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:12:30 PL-EN BLAD dużo: Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed
+2026-09-09 16:15:24 BLAD have (1/3): Example 2: source must contain exact word 'have', not an inflected form
+2026-09-09 16:15:28 BLAD a (1/3): Example 1: source must contain exact word 'a', not an inflected form
+2026-09-09 16:15:29 BLAD my (1/3): Example 1: source must contain exact word 'my', not an inflected form
+2026-09-09 16:15:31 BLAD it's (1/3): Example 1: source must contain exact word 'it's', not an inflected form
+2026-09-09 16:15:32 BLAD don't (1/3): Example 1: source must contain exact word 'don't', not an inflected form
+2026-09-09 16:15:34 BLAD want (1/3): Example 2: source must contain exact word 'want', not an inflected form
+2026-09-09 16:15:35 BLAD got (1/3): Example 3: source must contain exact word 'got', not an inflected form
+2026-09-09 16:15:36 BLAD s (1/3): Example 1: source must contain exact word 's', not an inflected form
+2026-09-09 16:15:37 BLAD that's (1/3): Example 1: source must contain exact word 'that's', not an inflected form
+2026-09-09 16:15:39 BLAD have (2/3): Example 2: source must contain exact word 'have', not an inflected form
+2026-09-09 16:15:40 BLAD a (2/3): Example 1: source must contain exact word 'a', not an inflected form
+2026-09-09 16:15:41 BLAD my (2/3): Example 1: source must contain exact word 'my', not an inflected form
+2026-09-09 16:15:43 BLAD it's (2/3): Example 1: source must contain exact word 'it's', not an inflected form
+2026-09-09 16:15:44 BLAD don't (2/3): Example 2: source must contain exact word 'don't', not an inflected form
+2026-09-09 16:15:46 BLAD want (2/3): Example 2: source must contain exact word 'want', not an inflected form
+2026-09-09 16:15:47 BLAD got (2/3): Example 1: source must contain exact word 'got', not an inflected form
+2026-09-09 16:15:48 BLAD s (2/3): Example 1: source must contain exact word 's', not an inflected form
+2026-09-09 16:15:50 BLAD that's (2/3): Example 1: source must contain exact word 'that's', not an inflected form
+2026-09-09 16:15:51 BLAD have (3/3): Example 2: source must contain exact word 'have', not an inflected form
+2026-09-09 16:15:52 BLAD a (3/3): Example 3: source must contain exact word 'a', not an inflected form
+2026-09-09 16:15:54 BLAD my (3/3): Example 1: source must contain exact word 'my', not an inflected form
+2026-09-09 16:15:55 BLAD it's (3/3): Example 1: source must contain exact word 'it's', not an inflected form
+2026-09-09 16:15:57 BLAD don't (3/3): Example 2: source must contain exact word 'don't', not an inflected form
+2026-09-09 16:15:58 BLAD want (3/3): Example 2: source must contain exact word 'want', not an inflected form
+2026-09-09 16:16:00 BLAD got (3/3): Example 1: source must contain exact word 'got', not an inflected form
+2026-09-09 16:16:01 BLAD s (3/3): Example 1: source must contain exact word 's', not an inflected form
+2026-09-09 16:16:02 BLAD that's (3/3): Example 3: source must contain exact word 'that's', not an inflected form
+2026-09-09 17:06:28 BLAD thought (1/3): Example 3: source must contain exact word 'thought', not an inflected form
+2026-09-09 17:06:34 BLAD god (1/3): Example 2: source must contain exact word 'god', not an inflected form
+2026-09-09 17:06:50 BLAD times (1/3): Example 2: source must contain exact word 'times', not an inflected form
+2026-09-09 17:07:11 BLAD there's (1/3): Example 2: source must contain exact word 'there's', not an inflected form
+2026-09-09 17:07:13 BLAD told (1/3): Example 3: source must contain exact word 'told', not an inflected form
+2026-09-09 17:07:17 BLAD doesn't (1/3): Example 1: source must contain exact word 'doesn't', not an inflected form
+2026-09-09 17:07:21 BLAD mean (1/3): Example 2: source must contain exact word 'mean', not an inflected form
+2026-09-09 17:07:26 BLAD including (1/3): Translation must be one word in the target language
+2026-09-09 17:07:32 BLAD states (1/3): Example 2: source must contain exact word 'states', not an inflected form
+2026-09-09 17:08:11 BLAD says (1/3): Example 3: source must contain exact word 'says', not an inflected form
+2026-09-09 17:08:16 BLAD open (1/3): Example 3: source must contain exact word 'open', not an inflected form
+2026-09-09 17:08:31 BLAD using (1/3): Example 1: source must contain exact word 'using', not an inflected form
+2026-09-09 17:08:35 BLAD d (1/3): Example 1: source must contain exact word 'd', not an inflected form
+2026-09-09 17:08:50 BLAD whole (1/3): Gemini nie dokonczyl odpowiedzi
+2026-09-09 17:09:00 BLAD story (1/3): Example 2: source must contain exact word 'story', not an inflected form
+2026-09-09 17:09:13 BLAD means (1/3): Example 1: source must contain exact word 'means', not an inflected form
+2026-09-09 17:09:27 BLAD post (1/3): Example 2: source must contain exact word 'post', not an inflected form
+2026-09-09 17:09:29 BLAD t (1/3): Example 1: source must contain exact word 't', not an inflected form
+2026-09-09 17:09:41 BLAD fact (1/3): Example 2: source must contain exact word 'fact', not an inflected form
+2026-09-09 17:09:49 BLAD level (1/3): Example 3: source must contain exact word 'level', not an inflected form
+2026-09-09 17:09:55 BLAD become (1/3): Translation must be one word in the target language
+2026-09-09 17:10:03 BLAD guy (1/3): Example 1: source must contain exact word 'guy', not an inflected form
+2026-09-09 17:10:17 BLAD south (1/3): Gemini nie dokonczyl odpowiedzi
+2026-09-09 17:10:22 BLAD fuck (1/3): Example 1: source must contain exact word 'fuck', not an inflected form
+2026-09-09 17:10:29 BLAD m (1/3): Example 1: source must contain exact word 'm', not an inflected form
+2026-09-09 17:10:46 BLAD john (1/3): Example 1: source must contain exact word 'john', not an inflected form
+2026-09-09 17:11:04 BLAD understand (1/3): Example 2: source must contain exact word 'understand', not an inflected form
+2026-09-09 17:11:06 BLAD york (1/3): Example 1: source must contain exact word 'york', not an inflected form
+2026-09-09 17:11:12 BLAD i'd (1/3): Example 1: source must contain exact word 'i'd', not an inflected form
+2026-09-09 17:11:16 BLAD looks (1/3): Example 1: source must contain exact word 'looks', not an inflected form
+2026-09-09 17:11:21 BLAD b (1/3): Example 1: source must contain exact word 'b', not an inflected form
+2026-09-09 17:11:28 BLAD members (1/3): Example 2: source must contain exact word 'members', not an inflected form
+2026-09-09 17:11:33 BLAD r (1/3): Example 1: source must contain exact word 'r', not an inflected form
+2026-09-09 17:11:47 BLAD saw (1/3): Example 2: source must contain exact word 'saw', not an inflected form
+2026-09-09 17:11:51 BLAD won't (1/3): Translation must be one word in the target language
+2026-09-09 17:11:52 BLAD c (1/3): Example 1: source must contain exact word 'c', not an inflected form
+2026-09-09 17:11:55 BLAD fucking (1/3): Example 1: source must contain exact word 'fucking', not an inflected form
+2026-09-09 17:12:32 BLAD myself (1/3): Example 2: source must contain exact word 'myself', not an inflected form
+2026-09-09 17:12:41 BLAD fire (1/3): Example 1: source must contain exact word 'fire', not an inflected form
+2026-09-09 17:13:12 BLAD according (1/3): Example 1: source must contain exact word 'according', not an inflected form
+2026-09-09 17:13:14 BLAD e (1/3): Example 1: source must contain exact word 'e', not an inflected form
+2026-09-09 17:13:29 BLAD wasn't (1/3): Translation must be one word in the target language
+2026-09-09 17:13:34 BLAD example (1/3): Example 3: source must contain exact word 'example', not an inflected form
+2026-09-09 17:13:37 BLAD heard (1/3): Example 2: source must contain exact word 'heard', not an inflected form
+2026-09-09 17:13:38 BLAD london (1/3): Example 1: source must contain exact word 'london', not an inflected form
+2026-09-09 17:13:42 BLAD type (1/3): Example 1: source must contain exact word 'type', not an inflected form
+2026-09-09 17:13:54 BLAD word (1/3): Example 1: source must contain exact word 'word', not an inflected form
+2026-09-09 17:14:06 BLAD gave (1/3): Gemini nie dokonczyl odpowiedzi
+2026-09-09 17:14:14 BLAD self (1/3): Example 1: source must contain exact word 'self', not an inflected form
+2026-09-09 17:14:17 BLAD words (1/3): Example 1: source must contain exact word 'words', not an inflected form
+2026-09-09 17:14:22 BLAD cut (1/3): Translation must be one word in the target language
+2026-09-09 17:14:39 BLAD de (1/3): Example 1: source must contain exact word 'de', not an inflected form
+2026-09-09 17:14:55 BLAD re (1/3): Example 1: source must contain exact word 're', not an inflected form
+2026-09-09 17:15:09 BLAD date (1/3): Example 1: source must contain exact word 'date', not an inflected form
+2026-09-09 17:15:20 BLAD site (1/3): Example 2: source must contain exact word 'site', not an inflected form
+2026-09-09 17:15:23 BLAD you'll (1/3): Example 1: source must contain exact word 'you'll', not an inflected form
+2026-09-09 17:16:00 BLAD especially (1/3): Wymagane 0-3 rozne synonimy
+2026-09-09 17:16:04 BLAD june (1/3): Example 1: source must contain exact word 'june', not an inflected form
+2026-09-09 17:16:09 BLAD record (1/3): Example 3: source must contain exact word 'record', not an inflected form
+2026-09-09 17:16:13 BLAD w (1/3): Example 1: source must contain exact word 'w', not an inflected form
+2026-09-09 17:16:27 BLAD died (1/3): Gemini nie dokonczyl odpowiedzi
+2026-09-09 17:16:42 BLAD st (1/3): Example 1: source must contain exact word 'st', not an inflected form
+2026-09-09 17:16:44 BLAD what's (1/3): Example 1: source must contain exact word 'what's', not an inflected form
+2026-09-09 17:16:47 BLAD x (1/3): Example 1: source must contain exact word 'x', not an inflected form
+2026-09-09 17:16:57 BLAD happen (1/3): Example 2: source must contain exact word 'happen', not an inflected form
+2026-09-09 17:17:10 BLAD rights (1/3): Example 1: source must contain exact word 'rights', not an inflected form
+2026-09-09 17:17:14 BLAD test (1/3): Example 1: source must contain exact word 'test', not an inflected form
+2026-09-09 17:17:26 BLAD l (1/3): Example 1: source must contain exact word 'l', not an inflected form
+2026-09-09 17:17:48 BLAD girls (1/3): Example 3: source must contain exact word 'girls', not an inflected form
+2026-09-09 17:17:55 BLAD july (1/3): Example 1: source must contain exact word 'july', not an inflected form
+2026-09-09 17:18:03 BLAD al (1/3): Example 1: source must contain exact word 'al', not an inflected form
+2026-09-09 17:18:17 BLAD longer (1/3): Wymagane 0-3 rozne synonimy
+2026-09-09 17:18:27 BLAD received (1/3): Example 3: source must contain exact word 'received', not an inflected form
+2026-09-09 17:18:31 BLAD themselves (1/3): Example 1: source must contain exact word 'themselves', not an inflected form
+2026-09-09 17:18:34 BLAD worked (1/3): Example 1: source must contain exact word 'worked', not an inflected form
+2026-09-09 17:18:49 BLAD n (1/3): Example 1: source must contain exact word 'n', not an inflected form
+2026-09-09 17:19:27 BLAD david (1/3): Example 1: source must contain exact word 'david', not an inflected form
+2026-09-09 17:19:44 BLAD p (1/3): Example 1: source must contain exact word 'p', not an inflected form
+2026-09-09 17:19:54 BLAD england (1/3): Example 1: source must contain exact word 'england', not an inflected form
+2026-09-09 17:20:02 BLAD o (1/3): Example 1: source must contain exact word 'o', not an inflected form
+2026-09-09 17:20:04 BLAD page (1/3): Example 2: source must contain exact word 'page', not an inflected form
+2026-09-09 17:20:12 BLAD uk (1/3): Example 1: source must contain exact word 'uk', not an inflected form
+2026-09-09 17:20:19 BLAD cannot (1/3): Translation must be one word in the target language
+2026-09-09 17:20:27 BLAD haven't (1/3): Translation must be one word in the target language
+2026-09-09 17:20:28 BLAD james (1/3): Example 1: source must contain exact word 'james', not an inflected form
+2026-09-09 17:20:35 BLAD october (1/3): Example 1: source must contain exact word 'october', not an inflected form
+2026-09-09 17:20:41 BLAD style (1/3): Example 1: source must contain exact word 'style', not an inflected form
+2026-09-09 17:20:42 BLAD u (1/3): Example 1: source must contain exact word 'u', not an inflected form
+2026-09-09 17:20:58 BLAD itself (1/3): Example 3: source must contain exact word 'itself', not an inflected form
+2026-09-09 17:21:17 BLAD couldn't (1/3): Translation must be one word in the target language
+2026-09-09 17:21:23 BLAD enjoy (1/3): Example 2: source must contain exact word 'enjoy', not an inflected form
+2026-09-09 17:21:32 BLAD entire (1/3): Gemini nie dokonczyl odpowiedzi
+2026-09-09 17:21:33 BLAD french (1/3): Wymagane 0-3 rozne synonimy
+2026-09-09 17:21:38 BLAD met (1/3): Example 3: source must contain exact word 'met', not an inflected form
+2026-09-09 17:21:52 BLAD considered (1/3): Example 1: source must contain exact word 'considered', not an inflected form
+2026-09-09 17:22:05 BLAD f (1/3): Example 1: source must contain exact word 'f', not an inflected form
+2026-09-09 17:22:13 BLAD lose (1/3): Translation must be one word in the target language
+2026-09-09 17:22:14 BLAD michael (1/3): Example 1: source must contain exact word 'michael', not an inflected form
+2026-09-09 17:22:18 BLAD seem (1/3): Example 1: source must contain exact word 'seem', not an inflected form
+2026-09-09 17:22:23 BLAD simply (1/3): Translation must be one word in the target language
+2026-09-09 17:22:26 BLAD super (1/3): Example 1: source must contain exact word 'super', not an inflected form
+2026-09-09 17:22:30 BLAD washington (1/3): Example 1: source must contain exact word 'washington', not an inflected form
+2026-09-09 17:22:32 BLAD bed (1/3): Example 2: source must contain exact word 'bed', not an inflected form
+2026-09-09 17:22:42 BLAD december (1/3): Example 1: source must contain exact word 'december', not an inflected form
+2026-09-09 17:22:50 BLAD loss (1/3): Example 1: source must contain exact word 'loss', not an inflected form
+2026-09-09 17:23:02 BLAD systems (1/3): Example 3: source must contain exact word 'systems', not an inflected form
+2026-09-09 17:23:03 BLAD version (1/3): Example 3: source must contain exact word 'version', not an inflected form
+2026-09-09 17:23:10 BLAD australia (1/3): Example 1: source must contain exact word 'australia', not an inflected form
+2026-09-09 17:23:15 BLAD h (1/3): Example 1: source must contain exact word 'h', not an inflected form
+2026-09-09 17:23:18 BLAD internet (1/3): Example 1: source must contain exact word 'internet', not an inflected form
+2026-09-09 17:23:31 BLAD v (1/3): Example 1: source must contain exact word 'v', not an inflected form
+2026-09-09 17:23:36 BLAD aren't (1/3): Example 1: source must contain exact word 'aren't', not an inflected form
+2026-09-09 17:23:43 BLAD followed (1/3): Example 1: source must contain exact word 'followed', not an inflected form
+2026-09-09 17:23:45 BLAD la (1/3): Example 1: source must contain exact word 'la', not an inflected form
+2026-09-09 17:23:53 BLAD professional (1/3): Example 3: source must contain exact word 'professional', not an inflected form
+2026-09-09 17:24:02 BLAD truth (1/3): Example 2: source must contain exact word 'truth', not an inflected form
+2026-09-09 17:24:07 BLAD card (1/3): Example 2: source must contain exact word 'card', not an inflected form
+2026-09-09 17:24:09 BLAD cases (1/3): Example 2: source must contain exact word 'cases', not an inflected form
+2026-09-09 17:24:13 BLAD europe (1/3): Example 1: source must contain exact word 'europe', not an inflected form
+2026-09-09 17:24:14 BLAD george (1/3): Example 1: source must contain exact word 'george', not an inflected form
+2026-09-09 17:24:15 BLAD india (1/3): Example 1: source must contain exact word 'india', not an inflected form
+2026-09-09 17:24:33 BLAD we've (1/3): Example 1: source must contain exact word 'we've', not an inflected form
+2026-09-09 17:24:42 BLAD february (1/3): Example 1: source must contain exact word 'february', not an inflected form
+2026-09-09 17:24:51 BLAD paul (1/3): Example 1: source must contain exact word 'paul', not an inflected form
+2026-09-09 17:24:53 BLAD places (1/3): Example 2: source must contain exact word 'places', not an inflected form
+2026-09-09 17:25:08 BLAD y (1/3): Example 1: source must contain exact word 'y', not an inflected form
+2026-09-09 17:25:20 BLAD eye (1/3): Example 1: source must contain exact word 'eye', not an inflected form
+2026-09-09 17:25:22 BLAD ii (1/3): Example 1: source must contain exact word 'ii', not an inflected form
+2026-09-09 17:25:29 BLAD provided (1/3): Example 1: source must contain exact word 'provided', not an inflected form
+2026-09-09 17:25:56 BLAD chinese (1/3): Example 1: source must contain exact word 'chinese', not an inflected form
+2026-09-09 17:26:16 BLAD russian (1/3): Example 1: source must contain exact word 'russian', not an inflected form
+2026-09-09 17:26:26 BLAD california (1/3): Example 1: source must contain exact word 'california', not an inflected form
+2026-09-09 17:26:35 BLAD described (1/3): Example 1: source must contain exact word 'described', not an inflected form
+2026-09-09 17:26:41 BLAD g (1/3): Example 1: source must contain exact word 'g', not an inflected form
+2026-09-09 17:26:48 BLAD j (1/3): Example 1: source must contain exact word 'j', not an inflected form
+2026-09-09 17:27:30 BLAD additional (1/3): Wymagane 0-3 rozne synonimy
+2026-09-09 17:27:37 BLAD forces (1/3): Example 1: source must contain exact word 'forces', not an inflected form
+2026-09-09 17:27:42 BLAD minute (1/3): Example 1: source must contain exact word 'minute', not an inflected form
+2026-09-09 17:27:44 BLAD numbers (1/3): Example 1: source must contain exact word 'numbers', not an inflected form
+2026-09-09 17:27:50 BLAD studies (1/3): Example 1: source must contain exact word 'studies', not an inflected form
+2026-09-09 17:27:51 BLAD unless (1/3): Translation must be one word in the target language
+2026-09-09 17:27:55 BLAD canada (1/3): Example 1: source must contain exact word 'canada', not an inflected form
+2026-09-09 17:28:01 BLAD episode (1/3): Example 1: source must contain exact word 'episode', not an inflected form
+2026-09-09 17:28:15 BLAD san (1/3): Example 1: source must contain exact word 'san', not an inflected form
+2026-09-09 17:28:24 BLAD teams (1/3): Example 2: source must contain exact word 'teams', not an inflected form
+2026-09-09 17:28:34 BLAD continued (1/3): Example 1: source must contain exact word 'continued', not an inflected form
+2026-09-09 17:28:49 BLAD friday (1/3): Gemini nie dokonczyl odpowiedzi
+2026-09-09 17:29:37 BLAD pre (1/3): Example 1: source must contain exact word 'pre', not an inflected form
+2026-09-09 17:29:38 BLAD product (1/3): Example 2: source must contain exact word 'product', not an inflected form
+2026-09-09 17:29:45 BLAD unit (1/3): Example 3: source must contain exact word 'unit', not an inflected form
+2026-09-09 17:29:51 BLAD bar (1/3): Example 1: source must contain exact word 'bar', not an inflected form
+2026-09-09 17:30:03 BLAD france (1/3): Example 1: source must contain exact word 'france', not an inflected form
+2026-09-09 17:30:19 BLAD rule (1/3): Example 3: source must contain exact word 'rule', not an inflected form
+2026-09-09 17:30:30 BLAD australian (1/3): Example 1: source must contain exact word 'australian', not an inflected form
+2026-09-09 17:30:43 BLAD none (1/3): Example 1: source must contain exact word 'none', not an inflected form
+2026-09-09 17:30:46 BLAD russia (1/3): Example 1: source must contain exact word 'russia', not an inflected form
+2026-09-09 17:30:50 BLAD trump (1/3): Example 1: source must contain exact word 'trump', not an inflected form
+2026-09-09 17:30:52 BLAD weekend (1/3): Translation must be one word in the target language
+2026-09-09 17:30:57 BLAD africa (1/3): Example 1: source must contain exact word 'africa', not an inflected form
+2026-09-09 17:31:06 BLAD compared (1/3): Example 1: source must contain exact word 'compared', not an inflected form
+2026-09-09 17:31:57 BLAD dream (1/3): Example 2: source must contain exact word 'dream', not an inflected form
+2026-09-09 17:32:03 BLAD here's (1/3): Example 1: source must contain exact word 'here's', not an inflected form
+2026-09-09 17:32:05 BLAD indian (1/3): Example 1: source must contain exact word 'indian', not an inflected form
+2026-09-09 17:32:06 BLAD k (1/3): Example 1: source must contain exact word 'k', not an inflected form
+2026-09-09 17:32:16 BLAD resources (1/3): Example 3: source must contain exact word 'resources', not an inflected form
+2026-09-09 17:32:22 BLAD supposed (1/3): Example 1: source must contain exact word 'supposed', not an inflected form
+2026-09-09 17:32:27 BLAD touch (1/3): Example 2: source must contain exact word 'touch', not an inflected form
+2026-09-09 17:32:45 BLAD facebook (1/3): Example 1: source must contain exact word 'facebook', not an inflected form
+2026-09-09 17:32:58 BLAD notice (1/3): Example 3: source must contain exact word 'notice', not an inflected form
+2026-09-09 17:33:06 BLAD records (1/3): Example 1: source must contain exact word 'records', not an inflected form
+2026-09-09 17:33:19 BLAD cars (1/3): Example 2: source must contain exact word 'cars', not an inflected form
+2026-09-09 17:33:25 BLAD fully (1/3): Translation must be one word in the target language
+2026-09-09 17:33:29 BLAD japan (1/3): Example 1: source must contain exact word 'japan', not an inflected form
+2026-09-09 17:33:31 BLAD male (1/3): Example 1: source must contain exact word 'male', not an inflected form
+2026-09-09 17:33:38 BLAD smith (1/3): Example 1: source must contain exact word 'smith', not an inflected form
+2026-09-09 17:33:41 BLAD texas (1/3): Example 1: source must contain exact word 'texas', not an inflected form
+2026-09-09 17:33:42 BLAD we'll (1/3): Example 1: source must contain exact word 'we'll', not an inflected form
+2026-09-09 17:33:49 BLAD ain't (1/3): Translation must be one word in the target language
+2026-09-09 17:34:14 BLAD peter (1/3): Example 1: source must contain exact word 'peter', not an inflected form
+2026-09-09 17:34:30 BLAD william (1/3): Example 1: source must contain exact word 'william', not an inflected form
+2026-09-09 17:34:41 BLAD economy (1/3): Example 3: source must contain exact word 'economy', not an inflected form
+2026-09-09 17:34:45 BLAD foot (1/3): Example 3: source must contain exact word 'foot', not an inflected form
+2026-09-09 17:35:09 BLAD activity (1/3): Example 2: source must contain exact word 'activity', not an inflected form
+2026-09-09 17:35:22 BLAD flight (1/3): Example 2: source must contain exact word 'flight', not an inflected form
+2026-09-09 17:35:26 BLAD google (1/3): Example 1: source must contain exact word 'google', not an inflected form
+2026-09-09 17:35:37 BLAD obama (1/3): Example 1: source must contain exact word 'obama', not an inflected form
+2026-09-09 17:35:39 BLAD offered (1/3): Example 1: source must contain exact word 'offered', not an inflected form
+2026-09-09 17:35:40 BLAD putting (1/3): Example 2: source must contain exact word 'putting', not an inflected form
+2026-09-09 17:35:48 BLAD stars (1/3): Example 3: source must contain exact word 'stars', not an inflected form
+2026-09-09 17:35:51 BLAD accept (1/3): Translation must be one word in the target language
+2026-09-09 17:36:28 BLAD robert (1/3): Example 1: source must contain exact word 'robert', not an inflected form
+2026-09-09 17:37:11 BLAD lie (1/3): Example 2: source must contain exact word 'lie', not an inflected form
+2026-09-09 17:37:12 BLAD notes (1/3): Example 1: source must contain exact word 'notes', not an inflected form
+2026-09-09 17:37:15 BLAD plays (1/3): Example 1: source must contain exact word 'plays', not an inflected form
+2026-09-09 17:37:30 BLAD thomas (1/3): Example 1: source must contain exact word 'thomas', not an inflected form
+2026-09-09 17:37:32 BLAD twice (1/3): Translation must be one word in the target language
+2026-09-09 17:37:43 BLAD worry (1/3): Gemini nie dokonczyl odpowiedzi
+2026-09-09 17:37:51 BLAD cent (1/3): Example 2: source must contain exact word 'cent', not an inflected form
+2026-09-09 17:37:52 BLAD chicago (1/3): Example 1: source must contain exact word 'chicago', not an inflected form
+2026-09-09 17:38:16 BLAD realize (1/3): Example 2: source must contain exact word 'realize', not an inflected form
+2026-09-09 17:38:27 BLAD tom (1/3): Example 1: source must contain exact word 'tom', not an inflected form
+2026-09-09 17:38:30 BLAD twitter (1/3): Example 1: source must contain exact word 'twitter', not an inflected form
+2026-09-09 17:38:37 BLAD actions (1/3): Example 2: source must contain exact word 'actions', not an inflected form
+2026-09-09 17:38:41 BLAD benefit (1/3): Example 1: source must contain exact word 'benefit', not an inflected form
+2026-09-09 17:38:46 BLAD failed (1/3): Example 1: source must contain exact word 'failed', not an inflected form
+2026-09-09 17:38:50 BLAD feature (1/3): Example 2: source must contain exact word 'feature', not an inflected form
+2026-09-09 17:38:59 BLAD louis (1/3): Example 1: source must contain exact word 'louis', not an inflected form
+2026-09-09 17:39:02 BLAD mid (1/3): Example 1: s and t must be nonempty plain text, at most 300 characters
+2026-09-09 17:39:03 BLAD paris (1/3): Example 1: source must contain exact word 'paris', not an inflected form
+2026-09-09 17:39:11 BLAD seat (1/3): Example 2: source must contain exact word 'seat', not an inflected form
+2026-09-09 17:39:14 BLAD sexual (1/3): Example 1: source must contain exact word 'sexual', not an inflected form
+2026-09-09 17:39:15 BLAD shouldn't (1/3): Translation must be one word in the target language
+2026-09-09 17:39:26 BLAD becoming (1/3): Translation must be one word in the target language
+2026-09-09 17:39:28 BLAD chris (1/3): Example 1: source must contain exact word 'chris', not an inflected form
+2026-09-09 17:39:34 BLAD ex (1/3): Example 1: source must contain exact word 'ex', not an inflected form
+2026-09-09 17:39:40 BLAD http (1/3): Example 1: source must contain exact word 'http', not an inflected form
+2026-09-09 17:39:41 BLAD individuals (1/3): Example 1: source must contain exact word 'individuals', not an inflected form
+2026-09-09 17:39:43 BLAD japanese (1/3): Example 1: source must contain exact word 'japanese', not an inflected form
+2026-09-09 17:39:48 BLAD projects (1/3): Example 2: source must contain exact word 'projects', not an inflected form
+2026-09-09 17:39:49 BLAD ring (1/3): Translation must be one word in the target language
+2026-09-09 17:40:20 BLAD obviously (1/3): Example 2: source must contain exact word 'obviously', not an inflected form
+2026-09-09 17:40:36 BLAD window (1/3): Example 2: source must contain exact word 'window', not an inflected form
+2026-09-09 17:40:49 BLAD correct (1/3): Example 2: source must contain exact word 'correct', not an inflected form
+2026-09-09 17:40:51 BLAD ed (1/3): Example 1: source must contain exact word 'ed', not an inflected form
+2026-09-09 17:40:55 BLAD greatest (1/3): Example 3: source must contain exact word 'greatest', not an inflected form
+2026-09-09 17:41:01 BLAD movies (1/3): Example 2: source must contain exact word 'movies', not an inflected form
+2026-09-09 17:41:07 BLAD richard (1/3): Example 1: source must contain exact word 'richard', not an inflected form
+2026-09-09 17:41:13 BLAD usa (1/3): Example 1: source must contain exact word 'usa', not an inflected form
+2026-09-09 17:41:22 BLAD decide (1/3): Example 2: source must contain exact word 'decide', not an inflected form
+2026-09-09 17:41:38 BLAD joe (1/3): Example 1: source must contain exact word 'joe', not an inflected form
+2026-09-09 17:41:39 BLAD los (1/3): Example 1: source must contain exact word 'los', not an inflected form
+2026-09-09 17:41:42 BLAD mary (1/3): Example 1: source must contain exact word 'mary', not an inflected form
+2026-09-09 17:41:50 BLAD require (1/3): Translation must be one word in the target language
+2026-09-09 17:41:57 BLAD thinks (1/3): Example 3: source must contain exact word 'thinks', not an inflected form
+2026-09-09 17:41:59 BLAD wood (1/3): Example 3: source must contain exact word 'wood', not an inflected form
+2026-09-09 17:42:06 BLAD charles (1/3): Example 1: source must contain exact word 'charles', not an inflected form
+2026-09-09 17:42:22 BLAD inc (1/3): Example 1: source must contain exact word 'inc', not an inflected form
+2026-09-09 17:42:23 BLAD israel (1/3): Example 1: source must contain exact word 'israel', not an inflected form
+2026-09-09 17:42:47 BLAD ad (1/3): Example 2: source must contain exact word 'ad', not an inflected form
+2026-09-09 17:43:05 BLAD florida (1/3): Example 1: source must contain exact word 'florida', not an inflected form
+2026-09-09 17:43:44 BLAD ends (1/3): Example 1: source must contain exact word 'ends', not an inflected form
+2026-09-09 17:43:58 BLAD mexico (1/3): Example 1: source must contain exact word 'mexico', not an inflected form
+2026-09-09 17:44:02 BLAD presented (1/3): Example 1: source must contain exact word 'presented', not an inflected form
+2026-09-09 17:44:14 BLAD treat (1/3): Example 2: source must contain exact word 'treat', not an inflected form
+2026-09-09 17:44:40 BLAD henry (1/3): Example 1: source must contain exact word 'henry', not an inflected form
+2026-09-09 17:44:46 BLAD magazine (1/3): Example 2: source must contain exact word 'magazine', not an inflected form
+2026-09-09 17:44:48 BLAD martin (1/3): Example 1: source must contain exact word 'martin', not an inflected form
+2026-09-09 17:44:56 BLAD reference (1/3): Example 3: source must contain exact word 'reference', not an inflected form
+2026-09-09 17:45:09 BLAD angeles (1/3): Example 1: source must contain exact word 'angeles', not an inflected form
+2026-09-09 17:45:33 BLAD jones (1/3): Example 1: source must contain exact word 'jones', not an inflected form
+2026-09-09 17:45:34 BLAD lee (1/3): Example 1: source must contain exact word 'lee', not an inflected form
+2026-09-09 17:45:37 BLAD likes (1/3): Example 3: source must contain exact word 'likes', not an inflected form
+2026-09-09 17:45:43 BLAD orders (1/3): Example 1: source must contain exact word 'orders', not an inflected form
+2026-09-09 17:46:06 BLAD britain (1/3): Example 1: source must contain exact word 'britain', not an inflected form
+2026-09-09 17:46:08 BLAD citizens (1/3): Example 2: source must contain exact word 'citizens', not an inflected form
+2026-09-09 17:46:25 BLAD harry (1/3): Example 1: source must contain exact word 'harry', not an inflected form
+2026-09-09 17:46:33 BLAD johnson (1/3): Example 1: source must contain exact word 'johnson', not an inflected form
+2026-09-09 17:46:34 BLAD kick (1/3): Example 3: source must contain exact word 'kick', not an inflected form
+2026-09-09 17:46:40 BLAD matters (1/3): Example 2: source must contain exact word 'matters', not an inflected form
+2026-09-09 17:46:54 BLAD scott (1/3): Example 1: source must contain exact word 'scott', not an inflected form
+2026-09-09 17:47:00 BLAD toward (1/3): Translation must be one word in the target language
+2026-09-09 17:47:43 BLAD hasn't (1/3): Translation must be one word in the target language
+2026-09-09 17:47:57 BLAD proposed (1/3): Example 1: source must contain exact word 'proposed', not an inflected form
+2026-09-09 17:48:06 BLAD steve (1/3): Example 1: source must contain exact word 'steve', not an inflected form
+2026-09-09 17:48:23 BLAD canadian (1/3): Example 1: source must contain exact word 'canadian', not an inflected form
+2026-09-09 17:48:33 BLAD enemy (1/3): Example 1: source must contain exact word 'enemy', not an inflected form
+2026-09-09 17:49:00 BLAD republican (1/3): Gemini nie dokonczyl odpowiedzi
+2026-09-09 17:49:05 BLAD women's (1/3): Example 2: source must contain exact word 'women's', not an inflected form
+2026-09-09 17:49:06 BLAD appearance (1/3): Wymagane 0-3 rozne synonimy
+2026-09-09 17:49:13 BLAD ben (1/3): Example 1: source must contain exact word 'ben', not an inflected form
+2026-09-09 17:49:14 BLAD bodies (1/3): Example 2: source must contain exact word 'bodies', not an inflected form
+2026-09-09 17:49:31 BLAD im (1/3): Example 1: source must contain exact word 'im', not an inflected form
+2026-09-09 17:49:43 BLAD pm (1/3): Translation must be one word in the target language
+2026-09-09 17:50:27 BLAD methods (1/3): Example 1: source must contain exact word 'methods', not an inflected form
+2026-09-09 17:50:30 BLAD people's (1/3): Example 1: source must contain exact word 'people's', not an inflected form
+2026-09-09 17:50:34 BLAD relationships (1/3): Example 1: source must contain exact word 'relationships', not an inflected form
+2026-09-09 17:50:37 BLAD scotland (1/3): Translation must be one word in the target language
+2026-09-09 17:50:38 BLAD selected (1/3): Example 1: source must contain exact word 'selected', not an inflected form
+2026-09-09 17:50:46 BLAD supported (1/3): Example 1: source must contain exact word 'supported', not an inflected form
+2026-09-09 17:50:52 BLAD weren't (1/3): Translation must be one word in the target language
+2026-09-09 17:50:53 BLAD accepted (1/3): Example 1: source must contain exact word 'accepted', not an inflected form
+2026-09-09 17:51:04 BLAD boston (1/3): Example 1: source must contain exact word 'boston', not an inflected form
+2026-09-09 17:51:05 BLAD ca (1/3): Example 1: source must contain exact word 'ca', not an inflected form
+2026-09-09 17:51:26 BLAD lying (1/3): Example 2: source must contain exact word 'lying', not an inflected form
+2026-09-09 17:51:30 BLAD ms (1/3): Example 1: source must contain exact word 'ms', not an inflected form
+2026-09-09 17:51:32 BLAD organizations (1/3): Example 2: source must contain exact word 'organizations', not an inflected form
+2026-09-09 17:51:56 BLAD williams (1/3): Example 1: source must contain exact word 'williams', not an inflected form
+2026-09-09 17:51:58 BLAD ya (1/3): Example 1: source must contain exact word 'ya', not an inflected form
+2026-09-09 17:52:02 BLAD businesses (1/3): Example 2: source must contain exact word 'businesses', not an inflected form
+2026-09-09 17:52:12 BLAD et (1/3): Example 1: source must contain exact word 'et', not an inflected form
+2026-09-09 17:52:25 BLAD ireland (1/3): Example 1: source must contain exact word 'ireland', not an inflected form
+2026-09-09 17:52:27 BLAD italy (1/3): Example 1: source must contain exact word 'italy', not an inflected form
+2026-09-09 17:52:31 BLAD leg (1/3): Example 2: source must contain exact word 'leg', not an inflected form
+2026-09-09 17:52:37 BLAD ll (1/3): Example 1: source must contain exact word 'll', not an inflected form
+2026-09-09 17:52:38 BLAD loves (1/3): Example 3: source must contain exact word 'loves', not an inflected form
+2026-09-09 17:52:47 BLAD recorded (1/3): Example 1: source must contain exact word 'recorded', not an inflected form
+2026-09-09 17:53:05 BLAD youtube (1/3): Example 1: source must contain exact word 'youtube', not an inflected form
+2026-09-09 17:53:11 BLAD asia (1/3): Example 1: source must contain exact word 'asia', not an inflected form
+2026-09-09 17:53:35 BLAD korea (1/3): Example 1: source must contain exact word 'korea', not an inflected form
+2026-09-09 17:53:41 BLAD mm (1/3): Example 1: source must contain exact word 'mm', not an inflected form
+2026-09-09 17:53:56 BLAD taylor (1/3): Example 2: source must contain exact word 'taylor', not an inflected form
+2026-09-09 17:54:22 BLAD extended (1/3): Example 1: source must contain exact word 'extended', not an inflected form
+2026-09-09 17:54:49 BLAD sam (1/3): Example 1: source must contain exact word 'sam', not an inflected form
+2026-09-09 17:55:02 BLAD tony (1/3): Example 1: source must contain exact word 'tony', not an inflected form
+2026-09-09 17:55:25 BLAD chicken (1/3): Example 2: source must contain exact word 'chicken', not an inflected form
+2026-09-09 17:55:36 BLAD examples (1/3): Example 2: source must contain exact word 'examples', not an inflected form
+2026-09-09 17:55:38 BLAD falls (1/3): Example 1: source must contain exact word 'falls', not an inflected form
+2026-09-09 17:55:46 BLAD iii (1/3): Example 1: source must contain exact word 'iii', not an inflected form
+2026-09-09 17:55:48 BLAD inspired (1/3): Example 1: source must contain exact word 'inspired', not an inflected form
+2026-09-09 17:55:51 BLAD ma (1/3): Example 1: source must contain exact word 'ma', not an inflected form
+2026-09-09 17:56:23 BLAD alex (1/3): Example 1: source must contain exact word 'alex', not an inflected form
+2026-09-09 17:56:32 BLAD daniel (1/3): Example 1: source must contain exact word 'daniel', not an inflected form
+2026-09-09 17:56:38 BLAD eu (1/3): Example 1: source must contain exact word 'eu', not an inflected form
+2026-09-09 17:56:40 BLAD iran (1/3): Example 1: source must contain exact word 'iran', not an inflected form
+2026-09-09 17:56:42 BLAD jim (1/3): Example 1: source must contain exact word 'jim', not an inflected form
+2026-09-09 17:56:53 BLAD ourselves (1/3): Example 1: source must contain exact word 'ourselves', not an inflected form
+2026-09-09 17:56:54 BLAD pages (1/3): Example 2: source must contain exact word 'pages', not an inflected form
+2026-09-09 17:57:03 BLAD suicide (1/3): Example 1: source must contain exact word 'suicide', not an inflected form
+2026-09-09 17:57:11 BLAD un (1/3): Example 1: source must contain exact word 'un', not an inflected form
+2026-09-09 17:57:16 BLAD virginia (1/3): Example 1: source must contain exact word 'virginia', not an inflected form
+2026-09-09 17:57:36 BLAD customer (1/3): Example 1: source must contain exact word 'customer', not an inflected form
+2026-09-09 17:57:46 BLAD fail (1/3): Example 2: source must contain exact word 'fail', not an inflected form
+2026-09-09 17:57:58 BLAD jewish (1/3): Example 1: source must contain exact word 'jewish', not an inflected form
+2026-09-09 17:58:04 BLAD ohio (1/3): Example 1: source must contain exact word 'ohio', not an inflected form
+2026-09-09 17:58:05 BLAD opportunities (1/3): Example 1: source must contain exact word 'opportunities', not an inflected form
+2026-09-09 17:58:16 BLAD recommend (1/3): Gemini nie dokonczyl odpowiedzi
+2026-09-09 17:58:18 BLAD referred (1/3): Example 1: source must contain exact word 'referred', not an inflected form
+2026-09-09 17:58:34 BLAD wing (1/3): Example 1: source must contain exact word 'wing', not an inflected form
+2026-09-09 17:58:36 BLAD world's (1/3): Example 1: source must contain exact word 'world's', not an inflected form
+2026-09-09 17:58:37 BLAD answers (1/3): Wymagane 0-3 rozne synonimy
+2026-09-09 17:58:38 BLAD birds (1/3): Example 2: source must contain exact word 'birds', not an inflected form
+2026-09-09 17:58:42 BLAD cycle (1/3): Example 1: source must contain exact word 'cycle', not an inflected form
+2026-09-09 17:59:05 BLAD newspaper (1/3): Shorten d.s and d.t to at most 120 characters each; use simple everyday words
+2026-09-09 17:59:20 BLAD returns (1/3): Example 1: source must contain exact word 'returns', not an inflected form
+2026-09-09 17:59:26 BLAD scottish (1/3): Example 1: source must contain exact word 'scottish', not an inflected form
+2026-09-09 17:59:36 BLAD wales (1/3): Example 1: source must contain exact word 'wales', not an inflected form
+2026-09-09 17:59:42 BLAD aside (1/3): Translation must be one word in the target language
+2026-09-09 17:59:44 BLAD bell (1/3): Example 2: source must contain exact word 'bell', not an inflected form
+2026-09-09 17:59:46 BLAD blow (1/3): Translation must be one word in the target language
+2026-09-09 17:59:56 BLAD corporation (1/3): Example 1: source must contain exact word 'corporation', not an inflected form
+2026-09-09 17:59:59 BLAD danger (1/3): Example 3: source must contain exact word 'danger', not an inflected form
+2026-09-09 18:00:00 BLAD deals (1/3): Example 1: source must contain exact word 'deals', not an inflected form
+2026-09-09 18:00:03 BLAD deserve (1/3): Example 1: source must contain exact word 'deserve', not an inflected form
+2026-09-09 18:00:06 BLAD dollar (1/3): Example 1: source must contain exact word 'dollar', not an inflected form
+2026-09-09 18:00:13 BLAD faces (1/3): Example 1: source must contain exact word 'faces', not an inflected form
+2026-09-09 18:00:16 BLAD fucked (1/3): Example 1: source must contain exact word 'fucked', not an inflected form
+2026-09-09 18:00:20 BLAD kim (1/3): Example 1: source must contain exact word 'kim', not an inflected form
+2026-09-09 18:00:21 BLAD kinda (1/3): Example 1: source must contain exact word 'kinda', not an inflected form
+2026-09-09 18:00:24 BLAD mile (1/3): Example 1: source must contain exact word 'mile', not an inflected form
+2026-09-09 18:00:28 BLAD nick (1/3): Example 1: source must contain exact word 'nick', not an inflected form
+2026-09-09 18:00:41 BLAD ryan (1/3): Example 1: source must contain exact word 'ryan', not an inflected form
+2026-09-09 18:00:46 BLAD spain (1/3): Example 1: source must contain exact word 'spain', not an inflected form
+2026-09-09 18:00:54 BLAD wars (1/3): Example 3: source must contain exact word 'wars', not an inflected form
+2026-09-09 18:00:56 BLAD admit (1/3): Example 2: source must contain exact word 'admit', not an inflected form
+2026-09-09 18:01:21 BLAD jackson (1/3): Example 1: source must contain exact word 'jackson', not an inflected form
+2026-09-09 18:01:46 BLAD understood (1/3): Example 3: source must contain exact word 'understood', not an inflected form
+2026-09-09 18:01:52 BLAD adam (1/3): Example 1: source must contain exact word 'adam', not an inflected form
+2026-09-09 18:01:55 BLAD andrew (1/3): Example 1: source must contain exact word 'andrew', not an inflected form
+2026-09-09 18:01:58 BLAD bbc (1/3): Example 1: source must contain exact word 'bbc', not an inflected form
+2026-09-09 18:02:08 BLAD clinton (1/3): Example 1: source must contain exact word 'clinton', not an inflected form
+2026-09-09 18:02:14 BLAD em (1/3): Example 1: source must contain exact word 'em', not an inflected form
+2026-09-09 18:02:37 BLAD prefer (1/3): Example 2: source must contain exact word 'prefer', not an inflected form
+2026-09-09 18:02:49 BLAD tend (1/3): Example 2: source must contain exact word 'tend', not an inflected form
+2026-09-09 18:02:57 BLAD yard (1/3): Example 1: source must contain exact word 'yard', not an inflected form
+2026-09-09 18:03:15 BLAD dc (1/3): Example 1: source must contain exact word 'dc', not an inflected form
+2026-09-09 18:03:17 BLAD defined (1/3): Example 1: source must contain exact word 'defined', not an inflected form
+2026-09-09 18:03:24 BLAD el (1/3): Example 1: source must contain exact word 'el', not an inflected form
+2026-09-09 18:03:28 BLAD excuse (1/3): Example 3: source must contain exact word 'excuse', not an inflected form
+2026-09-09 18:03:32 BLAD golf (1/3): Example 1: source must contain exact word 'golf', not an inflected form
+2026-09-09 18:03:39 BLAD kevin (1/3): Example 1: source must contain exact word 'kevin', not an inflected form
+2026-09-09 18:03:47 BLAD partners (1/3): Example 2: source must contain exact word 'partners', not an inflected form
+2026-09-09 18:03:53 BLAD pregnant (1/3): Translation must be one word in the target language
+2026-09-09 18:03:57 BLAD q (1/3): Example 1: source must contain exact word 'q', not an inflected form
+2026-09-09 18:04:08 BLAD turkey (1/3): Example 2: source must contain exact word 'turkey', not an inflected form
+2026-09-09 18:04:09 BLAD ve (1/3): Example 1: source must contain exact word 've', not an inflected form
+2026-09-09 18:04:13 BLAD agents (1/3): Example 1: source must contain exact word 'agents', not an inflected form
+2026-09-09 18:04:15 BLAD amazon (1/3): Example 1: source must contain exact word 'amazon', not an inflected form
+2026-09-09 18:04:49 BLAD interior (1/3): Wymagane 0-3 rozne synonimy
+2026-09-09 18:04:52 BLAD jr (1/3): Example 1: source must contain exact word 'jr', not an inflected form
+2026-09-09 18:05:05 BLAD pakistan (1/3): Example 1: source must contain exact word 'pakistan', not an inflected form
+2026-09-09 18:05:10 BLAD practices (1/3): Example 3: source must contain exact word 'practices', not an inflected form
+2026-09-09 18:05:14 BLAD replaced (1/3): Example 1: source must contain exact word 'replaced', not an inflected form
+2026-09-09 18:05:37 BLAD agencies (1/3): Example 1: source must contain exact word 'agencies', not an inflected form
+2026-09-09 18:05:38 BLAD baseball (1/3): Example 1: source must contain exact word 'baseball', not an inflected form
+2026-09-09 18:05:48 BLAD client (1/3): Example 3: source must contain exact word 'client', not an inflected form
+2026-09-09 18:05:50 BLAD da (1/3): Example 1: source must contain exact word 'da', not an inflected form
+2026-09-09 18:05:55 BLAD democrats (1/3): Example 1: source must contain exact word 'democrats', not an inflected form
+2026-09-09 18:06:04 BLAD he'll (1/3): Example 1: source must contain exact word 'he'll', not an inflected form
+2026-09-09 18:06:15 BLAD michigan (1/3): Example 1: source must contain exact word 'michigan', not an inflected form
+2026-09-09 18:06:16 BLAD multi (1/3): Example 1: source must contain exact word 'multi', not an inflected form
+2026-09-09 18:06:17 BLAD nfl (1/3): Example 1: source must contain exact word 'nfl', not an inflected form
+2026-09-09 18:06:29 BLAD soviet (1/3): Example 1: source must contain exact word 'soviet', not an inflected form
+2026-09-09 18:06:55 BLAD francisco (1/3): Example 1: source must contain exact word 'francisco', not an inflected form
+2026-09-09 18:06:56 BLAD haha (1/3): Example 1: source must contain exact word 'haha', not an inflected form
+2026-09-09 18:07:03 BLAD hong (1/3): Example 1: source must contain exact word 'hong', not an inflected form
+2026-09-09 18:07:08 BLAD manchester (1/3): Example 1: source must contain exact word 'manchester', not an inflected form
+2026-09-09 18:07:21 BLAD protein (1/3): Translation must be one word in the target language
+2026-09-09 18:07:26 BLAD regions (1/3): Example 2: source must contain exact word 'regions', not an inflected form
+2026-09-09 18:07:28 BLAD represented (1/3): Example 1: source must contain exact word 'represented', not an inflected form
+2026-09-09 18:07:33 BLAD seats (1/3): Example 2: source must contain exact word 'seats', not an inflected form
+2026-09-09 18:07:41 BLAD sydney (1/3): Example 1: source must contain exact word 'sydney', not an inflected form
+2026-09-09 18:07:43 BLAD today's (1/3): Example 1: source must contain exact word 'today's', not an inflected form
+2026-09-09 18:07:47 BLAD unknown (1/3): Example 1: source must contain exact word 'unknown', not an inflected form
+2026-09-09 18:07:48 BLAD wilson (1/3): Example 1: source must contain exact word 'wilson', not an inflected form
+2026-09-09 18:07:55 BLAD balls (1/3): Example 1: source must contain exact word 'balls', not an inflected form
+2026-09-09 18:07:57 BLAD battery (1/3): Example 2: source must contain exact word 'battery', not an inflected form
+2026-09-09 18:08:03 BLAD carolina (1/3): Example 1: source must contain exact word 'carolina', not an inflected form
+2026-09-09 18:08:12 BLAD differences (1/3): Example 1: source must contain exact word 'differences', not an inflected form
+2026-09-09 18:08:13 BLAD edward (1/3): Example 1: source must contain exact word 'edward', not an inflected form
+2026-09-09 18:08:21 BLAD ft (1/3): Example 1: source must contain exact word 'ft', not an inflected form
+2026-09-09 18:08:24 BLAD hollywood (1/3): Example 1: source must contain exact word 'hollywood', not an inflected form
+2026-09-09 18:08:28 BLAD joseph (1/3): Example 1: source must contain exact word 'joseph', not an inflected form
+2026-09-09 18:08:38 BLAD recognize (1/3): Example 3: source must contain exact word 'recognize', not an inflected form
+2026-09-09 18:08:46 BLAD seasons (1/3): Example 2: source must contain exact word 'seasons', not an inflected form
+2026-09-09 18:08:56 BLAD thats (1/3): Example 1: source must contain exact word 'thats', not an inflected form
+2026-09-09 18:09:07 BLAD chances (1/3): Example 1: source must contain exact word 'chances', not an inflected form
+2026-09-09 18:09:16 BLAD covers (1/3): Example 3: source must contain exact word 'covers', not an inflected form
+2026-09-09 18:09:17 BLAD dan (1/3): Example 1: source must contain exact word 'dan', not an inflected form
+2026-09-09 18:09:32 BLAD jan (1/3): Example 1: source must contain exact word 'jan', not an inflected form
+2026-09-09 18:09:33 BLAD jordan (1/3): Example 1: source must contain exact word 'jordan', not an inflected form
+2026-09-09 18:09:36 BLAD lets (1/3): Example 1: source must contain exact word 'lets', not an inflected form
+2026-09-09 18:09:38 BLAD loans (1/3): Example 1: source must contain exact word 'loans', not an inflected form
+2026-09-09 18:09:54 BLAD statements (1/3): Example 1: source must contain exact word 'statements', not an inflected form
+2026-09-09 18:10:00 BLAD tim (1/3): Example 1: source must contain exact word 'tim', not an inflected form
+2026-09-09 18:10:07 BLAD yards (1/3): Example 1: source must contain exact word 'yards', not an inflected form
+2026-09-09 18:10:17 BLAD champions (1/3): Example 2: source must contain exact word 'champions', not an inflected form
+2026-09-09 18:10:24 BLAD employee (1/3): Example 2: source must contain exact word 'employee', not an inflected form
+2026-09-09 18:10:30 BLAD facing (1/3): Example 1: source must contain exact word 'facing', not an inflected form
+2026-09-09 18:10:46 BLAD le (1/3): Example 1: source must contain exact word 'le', not an inflected form
+2026-09-09 18:10:52 BLAD miller (1/3): Wymagane 0-3 rozne synonimy
+2026-09-09 18:11:05 BLAD recommended (1/3): Example 1: source must contain exact word 'recommended', not an inflected form
+2026-09-09 18:11:09 BLAD republicans (1/3): Example 1: source must contain exact word 'republicans', not an inflected form
+2026-09-09 18:11:13 BLAD scientists (1/3): Example 2: source must contain exact word 'scientists', not an inflected form
+2026-09-09 18:11:14 BLAD shoulder (1/3): Example 3: source must contain exact word 'shoulder', not an inflected form
+2026-09-09 18:11:20 BLAD stations (1/3): Example 2: source must contain exact word 'stations', not an inflected form
+2026-09-09 18:11:21 BLAD stephen (1/3): Example 1: source must contain exact word 'stephen', not an inflected form
+2026-09-09 18:11:29 BLAD zealand (1/3): Example 1: source must contain exact word 'zealand', not an inflected form
+2026-09-09 18:11:32 BLAD admitted (1/3): Example 1: source must contain exact word 'admitted', not an inflected form
+2026-09-09 18:11:38 BLAD bc (1/3): Example 1: source must contain exact word 'bc', not an inflected form
+2026-09-09 18:11:50 BLAD davis (1/3): Example 1: source must contain exact word 'davis', not an inflected form
+2026-09-09 18:11:54 BLAD eric (1/3): Example 1: source must contain exact word 'eric', not an inflected form
+2026-09-09 18:12:11 BLAD inch (1/3): Example 1: source must contain exact word 'inch', not an inflected form
+2026-09-09 18:12:16 BLAD kong (1/3): Example 1: source must contain exact word 'kong', not an inflected form
+2026-09-09 18:12:18 BLAD korean (1/3): Example 1: source must contain exact word 'korean', not an inflected form
+2026-09-09 18:12:49 BLAD toronto (1/3): Example 1: source must contain exact word 'toronto', not an inflected form
+2026-09-09 18:13:01 BLAD exists (1/3): Example 1: source must contain exact word 'exists', not an inflected form
+2026-09-09 18:13:08 BLAD howard (1/3): Example 1: source must contain exact word 'howard', not an inflected form
+2026-09-09 18:13:12 BLAD latin (1/3): Example 1: source must contain exact word 'latin', not an inflected form
+2026-09-09 18:13:13 BLAD lewis (1/3): Example 1: source must contain exact word 'lewis', not an inflected form
+2026-09-09 18:13:16 BLAD meanwhile (1/3): Translation must be one word in the target language
+2026-09-09 18:13:17 BLAD meetings (1/3): Example 2: source must contain exact word 'meetings', not an inflected form
+2026-09-09 18:13:21 BLAD offices (1/3): Example 2: source must contain exact word 'offices', not an inflected form
+2026-09-09 18:13:23 BLAD pants (1/3): Example 1: source must contain exact word 'pants', not an inflected form
+2026-09-09 18:13:32 BLAD proved (1/3): Example 3: source must contain exact word 'proved', not an inflected form
+2026-09-09 18:13:36 BLAD relative (1/3): Example 3: source must contain exact word 'relative', not an inflected form
+2026-09-09 18:13:42 BLAD sarah (1/3): Example 1: source must contain exact word 'sarah', not an inflected form
+2026-09-09 18:13:46 BLAD simon (1/3): Example 1: source must contain exact word 'simon', not an inflected form
+2026-09-09 18:13:52 BLAD supplies (1/3): Example 2: source must contain exact word 'supplies', not an inflected form
+2026-09-09 18:14:02 BLAD brian (1/3): Example 1: source must contain exact word 'brian', not an inflected form
+2026-09-09 18:14:08 BLAD children's (1/3): Example 1: source must contain exact word 'children's', not an inflected form
+2026-09-09 18:14:18 BLAD elizabeth (1/3): Example 1: source must contain exact word 'elizabeth', not an inflected form
+2026-09-09 18:14:36 BLAD jews (1/3): Example 1: source must contain exact word 'jews', not an inflected form
+2026-09-09 18:14:49 BLAD miami (1/3): Example 1: source must contain exact word 'miami', not an inflected form
+2026-09-09 18:14:54 BLAD occur (1/3): Example 1: source must contain exact word 'occur', not an inflected form
+2026-09-09 18:15:06 BLAD situations (1/3): Example 2: source must contain exact word 'situations', not an inflected form
+2026-09-09 18:15:14 BLAD z (1/3): Example 1: source must contain exact word 'z', not an inflected form
+2026-09-09 18:15:26 BLAD breaks (1/3): Example 2: source must contain exact word 'breaks', not an inflected form
+2026-09-09 18:15:29 BLAD cats (1/3): Example 2: source must contain exact word 'cats', not an inflected form
+2026-09-09 18:15:37 BLAD colorado (1/3): Example 1: source must contain exact word 'colorado', not an inflected form
+2026-09-09 18:15:43 BLAD donald (1/3): Example 1: source must contain exact word 'donald', not an inflected form
+2026-09-09 18:15:48 BLAD element (1/3): Example 3: source must contain exact word 'element', not an inflected form
+2026-09-09 18:15:49 BLAD elsewhere (1/3): Example 1: source must contain exact word 'elsewhere', not an inflected form
+2026-09-09 18:15:50 BLAD establish (1/3): Example 3: source must contain exact word 'establish', not an inflected form
+2026-09-09 18:15:56 BLAD gear (1/3): Example 1: source must contain exact word 'gear', not an inflected form
+2026-09-09 18:15:57 BLAD georgia (1/3): Example 1: source must contain exact word 'georgia', not an inflected form
+2026-09-09 18:16:06 BLAD jason (1/3): Example 1: source must contain exact word 'jason', not an inflected form
+2026-09-09 18:16:10 BLAD machines (1/3): Example 2: source must contain exact word 'machines', not an inflected form
+2026-09-09 18:16:17 BLAD pa (1/3): Example 1: source must contain exact word 'pa', not an inflected form
+2026-09-09 18:16:39 BLAD supporters (1/3): Example 2: source must contain exact word 'supporters', not an inflected form
+2026-09-09 18:16:54 BLAD alan (1/3): Example 1: source must contain exact word 'alan', not an inflected form
+2026-09-09 18:17:00 BLAD bars (1/3): Example 2: source must contain exact word 'bars', not an inflected form
+2026-09-09 18:17:19 BLAD egypt (1/3): Example 1: source must contain exact word 'egypt', not an inflected form
+2026-09-09 18:17:21 BLAD encourage (1/3): Example 2: source must contain exact word 'encourage', not an inflected form
+2026-09-09 18:17:32 BLAD governments (1/3): Example 2: source must contain exact word 'governments', not an inflected form
+2026-09-09 18:17:36 BLAD horses (1/3): Example 3: source must contain exact word 'horses', not an inflected form
+2026-09-09 18:17:41 BLAD jeff (1/3): Example 1: source must contain exact word 'jeff', not an inflected form
+2026-09-09 18:17:43 BLAD luke (1/3): Example 1: source must contain exact word 'luke', not an inflected form
+2026-09-09 18:17:45 BLAD mac (1/3): Example 1: source must contain exact word 'mac', not an inflected form
+2026-09-09 18:17:47 BLAD minds (1/3): Example 2: source must contain exact word 'minds', not an inflected form
+2026-09-09 18:17:51 BLAD networks (1/3): Example 1: source must contain exact word 'networks', not an inflected form
+2026-09-09 18:17:53 BLAD olympics (1/3): Example 1: source must contain exact word 'olympics', not an inflected form
+2026-09-09 18:17:58 BLAD pet (1/3): Example 2: source must contain exact word 'pet', not an inflected form
+2026-09-09 18:17:59 BLAD phones (1/3): Example 1: source must contain exact word 'phones', not an inflected form
+2026-09-09 18:18:11 BLAD rome (1/3): Example 1: source must contain exact word 'rome', not an inflected form
+2026-09-09 18:18:18 BLAD successfully (1/3): Translation must be one word in the target language
+2026-09-09 18:18:29 BLAD yo (1/3): Example 1: source must contain exact word 'yo', not an inflected form
+2026-09-09 18:18:44 BLAD dave (1/3): Example 1: source must contain exact word 'dave', not an inflected form
+2026-09-09 18:19:05 BLAD featured (1/3): Example 1: source must contain exact word 'featured', not an inflected form
+2026-09-09 18:19:11 BLAD harris (1/3): Example 1: source must contain exact word 'harris', not an inflected form
+2026-09-09 18:19:15 BLAD ideal (1/3): Example 1: source must contain exact word 'ideal', not an inflected form
+2026-09-09 18:19:16 BLAD illinois (1/3): Example 1: source must contain exact word 'illinois', not an inflected form
+2026-09-09 18:19:20 BLAD jimmy (1/3): Example 1: source must contain exact word 'jimmy', not an inflected form
+2026-09-09 18:19:22 BLAD kelly (1/3): Example 1: source must contain exact word 'kelly', not an inflected form
+2026-09-09 18:19:41 BLAD retired (1/3): Example 2: source must contain exact word 'retired', not an inflected form
+2026-09-09 18:19:42 BLAD roles (1/3): Example 1: source must contain exact word 'roles', not an inflected form
+2026-09-09 18:19:49 BLAD singles (1/3): Example 1: source must contain exact word 'singles', not an inflected form
+2026-09-09 18:19:59 BLAD we'd (1/3): Example 1: source must contain exact word 'we'd', not an inflected form
+2026-09-09 18:20:02 BLAD andy (1/3): Example 1: source must contain exact word 'andy', not an inflected form
+2026-09-09 18:20:07 BLAD believes (1/3): Example 3: source must contain exact word 'believes', not an inflected form
+2026-09-09 18:20:11 BLAD charlie (1/3): Example 1: source must contain exact word 'charlie', not an inflected form
+2026-09-09 18:20:31 BLAD episodes (1/3): Example 3: source must contain exact word 'episodes', not an inflected form
+2026-09-09 18:20:34 BLAD fbi (1/3): Example 1: source must contain exact word 'fbi', not an inflected form
+2026-09-09 18:20:40 BLAD iphone (1/3): Example 1: source must contain exact word 'iphone', not an inflected form
+2026-09-09 18:20:42 BLAD iraq (1/3): Example 1: source must contain exact word 'iraq', not an inflected form
+2026-09-09 18:20:45 BLAD liverpool (1/3): Example 1: source must contain exact word 'liverpool', not an inflected form
+2026-09-09 18:20:48 BLAD ny (1/3): Example 1: source must contain exact word 'ny', not an inflected form
+2026-09-09 18:21:14 BLAD pizza (1/3): Example 1: source must contain exact word 'pizza', not an inflected form
+2026-09-09 18:21:27 BLAD stages (1/3): Example 3: source must contain exact word 'stages', not an inflected form
+2026-09-09 18:22:12 BLAD dallas (1/3): Example 1: source must contain exact word 'dallas', not an inflected form
+2026-09-09 18:22:38 BLAD handed (1/3): Example 1: source must contain exact word 'handed', not an inflected form
+2026-09-09 18:22:40 BLAD houston (1/3): Example 1: source must contain exact word 'houston', not an inflected form
+2026-09-09 18:22:42 BLAD https (1/3): Example 1: source must contain exact word 'https', not an inflected form
+2026-09-09 18:22:45 BLAD industries (1/3): Example 1: source must contain exact word 'industries', not an inflected form
+2026-09-09 18:22:48 BLAD jane (1/3): Example 1: source must contain exact word 'jane', not an inflected form
+2026-09-09 18:22:53 BLAD languages (1/3): Example 2: source must contain exact word 'languages', not an inflected form
+2026-09-09 18:22:56 BLAD morgan (1/3): Example 1: source must contain exact word 'morgan', not an inflected form
+2026-09-09 18:22:58 BLAD moscow (1/3): Example 1: source must contain exact word 'moscow', not an inflected form
+2026-09-09 18:23:04 BLAD op (1/3): Example 1: source must contain exact word 'op', not an inflected form
+2026-09-09 18:23:08 BLAD philadelphia (1/3): Example 1: source must contain exact word 'philadelphia', not an inflected form
+2026-09-09 18:23:31 BLAD vegas (1/3): Example 1: source must contain exact word 'vegas', not an inflected form
+2026-09-09 18:23:37 BLAD anthony (1/3): Example 1: source must contain exact word 'anthony', not an inflected form
+2026-09-09 18:23:39 BLAD arthur (1/3): Example 1: source must contain exact word 'arthur', not an inflected form
+2026-09-09 18:23:54 BLAD dies (1/3): Example 2: source must contain exact word 'dies', not an inflected form
+2026-09-09 18:24:10 BLAD kings (1/3): Example 1: source must contain exact word 'kings', not an inflected form
+2026-09-09 18:24:17 BLAD mexican (1/3): Example 1: source must contain exact word 'mexican', not an inflected form
+2026-09-09 18:24:21 BLAD opinions (1/3): Example 1: source must contain exact word 'opinions', not an inflected form
+2026-09-09 18:24:22 BLAD patterns (1/3): Example 1: source must contain exact word 'patterns', not an inflected form
+2026-09-09 18:24:39 BLAD tho (1/3): Example 1: source must contain exact word 'tho', not an inflected form
+2026-09-09 18:24:42 BLAD trans (1/3): Example 1: source must contain exact word 'trans', not an inflected form
+2026-09-09 18:24:43 BLAD ups (1/3): Translation must be one word in the target language
+2026-09-09 18:24:44 BLAD vol (1/3): Example 1: source must contain exact word 'vol', not an inflected form
+2026-09-09 18:24:51 BLAD alexander (1/3): Example 1: source must contain exact word 'alexander', not an inflected form
+2026-09-09 18:24:55 BLAD ap (1/3): Example 1: source must contain exact word 'ap', not an inflected form
+2026-09-09 18:25:04 BLAD columbia (1/3): Example 1: source must contain exact word 'columbia', not an inflected form
+2026-09-09 18:25:07 BLAD confirm (1/3): Example 2: source must contain exact word 'confirm', not an inflected form
+2026-09-09 18:25:20 BLAD describes (1/3): Example 1: source must contain exact word 'describes', not an inflected form
+2026-09-09 18:25:44 BLAD marry (1/3): Translation must be one word in the target language
+2026-09-09 18:25:55 BLAD pennsylvania (1/3): Example 1: source must contain exact word 'pennsylvania', not an inflected form
+2026-09-09 18:26:03 BLAD rugby (1/3): Example 1: source must contain exact word 'rugby', not an inflected form
+2026-09-09 18:26:13 BLAD string (1/3): Example 1: source must contain exact word 'string', not an inflected form
+2026-09-09 18:26:15 BLAD sweden (1/3): Example 1: source must contain exact word 'sweden', not an inflected form
+2026-09-09 18:26:16 BLAD syria (1/3): Example 1: source must contain exact word 'syria', not an inflected form
+2026-09-09 18:26:22 BLAD abroad (1/3): Translation must be one word in the target language
+2026-09-09 18:26:35 BLAD cambridge (1/3): Example 1: source must contain exact word 'cambridge', not an inflected form
+2026-09-09 18:26:36 BLAD citizen (1/3): Example 3: source must contain exact word 'citizen', not an inflected form
+2026-09-09 18:26:43 BLAD contributed (1/3): Example 1: source must contain exact word 'contributed', not an inflected form
+2026-09-09 18:26:51 BLAD disney (1/3): Example 1: source must contain exact word 'disney', not an inflected form
+2026-09-09 18:27:00 BLAD francis (1/3): Example 1: source must contain exact word 'francis', not an inflected form
+2026-09-09 18:27:02 BLAD gary (1/3): Example 1: source must contain exact word 'gary', not an inflected form
+2026-09-09 18:27:08 BLAD lawyers (1/3): Example 2: source must contain exact word 'lawyers', not an inflected form
+2026-09-09 18:27:19 BLAD nba (1/3): Example 1: source must contain exact word 'nba', not an inflected form
+2026-09-09 18:27:23 BLAD one's (1/3): Example 1: source must contain exact word 'one's', not an inflected form
+2026-09-09 18:27:33 BLAD refuse (1/3): Example 2: source must contain exact word 'refuse', not an inflected form
+2026-09-09 18:27:34 BLAD researchers (1/3): Example 1: source must contain exact word 'researchers', not an inflected form
+2026-09-09 18:27:35 BLAD resource (1/3): Example 2: source must contain exact word 'resource', not an inflected form
+2026-09-09 18:27:40 BLAD seattle (1/3): Example 1: source must contain exact word 'seattle', not an inflected form
+2026-09-09 18:27:43 BLAD shell (1/3): Example 2: source must contain exact word 'shell', not an inflected form
+2026-09-09 18:27:49 BLAD towns (1/3): Example 2: source must contain exact word 'towns', not an inflected form
+2026-09-09 18:27:55 BLAD allen (1/3): Example 1: source must contain exact word 'allen', not an inflected form
+2026-09-09 18:27:59 BLAD arizona (1/3): Example 1: source must contain exact word 'arizona', not an inflected form
+2026-09-09 18:28:03 BLAD berlin (1/3): Example 1: source must contain exact word 'berlin', not an inflected form
+2026-09-09 18:28:07 BLAD clark (1/3): Example 1: source must contain exact word 'clark', not an inflected form
+2026-09-09 18:28:17 BLAD feb (1/3): Example 1: source must contain exact word 'feb', not an inflected form
+2026-09-09 18:28:31 BLAD iv (1/3): Example 1: source must contain exact word 'iv', not an inflected form
+2026-09-09 18:28:42 BLAD mo (1/3): Example 1: source must contain exact word 'mo', not an inflected form
+2026-09-09 18:28:44 BLAD oxford (1/3): Example 1: source must contain exact word 'oxford', not an inflected form
+2026-09-09 18:28:47 BLAD passenger (1/3): Example 2: source must contain exact word 'passenger', not an inflected form
+2026-09-09 18:28:52 BLAD pp (1/3): Example 1: source must contain exact word 'pp', not an inflected form
+2026-09-09 18:28:57 BLAD resident (1/3): Example 2: source must contain exact word 'resident', not an inflected form
+2026-09-09 18:29:00 BLAD shaped (1/3): Wymagane 0-3 rozne synonimy
+2026-09-09 18:29:08 BLAD sixth (1/3): Gemini nie dokonczyl odpowiedzi
+2026-09-09 18:29:11 BLAD styles (1/3): Example 1: source must contain exact word 'styles', not an inflected form
+2026-09-09 18:29:18 BLAD valid (1/3): Example 1: source must contain exact word 'valid', not an inflected form
+2026-09-09 18:29:22 BLAD year's (1/3): Example 2: source must contain exact word 'year's', not an inflected form
+2026-09-09 18:29:27 BLAD anna (1/3): Example 1: source must contain exact word 'anna', not an inflected form
+2026-09-09 18:29:28 BLAD atlanta (1/3): Example 1: source must contain exact word 'atlanta', not an inflected form
+2026-09-09 18:29:31 BLAD christians (1/3): Example 3: source must contain exact word 'christians', not an inflected form
+2026-09-09 18:29:46 BLAD god's (1/3): Example 2: source must contain exact word 'god's', not an inflected form
+2026-09-09 18:29:48 BLAD gordon (1/3): Example 1: source must contain exact word 'gordon', not an inflected form
+2026-09-09 18:29:57 BLAD instructions (1/3): Example 1: source must contain exact word 'instructions', not an inflected form
+2026-09-09 18:30:00 BLAD kansas (1/3): Example 1: source must contain exact word 'kansas', not an inflected form
+2026-09-09 18:30:01 BLAD km (1/3): Example 1: source must contain exact word 'km', not an inflected form
+2026-09-09 18:30:07 BLAD matthew (1/3): Example 1: source must contain exact word 'matthew', not an inflected form
+2026-09-09 18:30:11 BLAD mother's (1/3): Example 1: source must contain exact word 'mother's', not an inflected form
+2026-09-09 18:30:12 BLAD nov (1/3): Example 1: source must contain exact word 'nov', not an inflected form
+2026-09-09 18:30:13 BLAD patrick (1/3): Example 1: source must contain exact word 'patrick', not an inflected form
+2026-09-09 18:30:15 BLAD phil (1/3): Example 1: source must contain exact word 'phil', not an inflected form
+2026-09-09 18:30:24 BLAD remind (1/3): Translation must be one word in the target language
+2026-09-09 18:30:32 BLAD seed (1/3): Example 2: source must contain exact word 'seed', not an inflected form
+2026-09-09 18:30:41 BLAD tongue (1/3): Example 3: source must contain exact word 'tongue', not an inflected form
+2026-09-09 18:30:45 BLAD wayne (1/3): Example 1: source must contain exact word 'wayne', not an inflected form
+2026-09-09 18:30:47 BLAD anderson (1/3): Example 1: source must contain exact word 'anderson', not an inflected form
+2026-09-09 18:30:49 BLAD argued (1/3): Example 1: source must contain exact word 'argued', not an inflected form
+2026-09-09 18:30:51 BLAD austin (1/3): Example 1: source must contain exact word 'austin', not an inflected form
+2026-09-09 18:31:01 BLAD comprehensive (1/3): Example 1: source must contain exact word 'comprehensive', not an inflected form
+2026-09-09 18:31:06 BLAD diego (1/3): Example 1: source must contain exact word 'diego', not an inflected form
+2026-09-09 18:31:07 BLAD diseases (1/3): Example 2: source must contain exact word 'diseases', not an inflected form
+2026-09-09 18:31:09 BLAD doc (1/3): Example 1: source must contain exact word 'doc', not an inflected form
+2026-09-09 18:31:28 BLAD jean (1/3): Example 2: source must contain exact word 'jean', not an inflected form
+2026-09-09 18:31:34 BLAD melbourne (1/3): Example 1: source must contain exact word 'melbourne', not an inflected form
+2026-09-09 18:31:36 BLAD microsoft (1/3): Example 1: source must contain exact word 'microsoft', not an inflected form
+2026-09-09 18:31:56 BLAD strip (1/3): Example 2: source must contain exact word 'strip', not an inflected form
+2026-09-09 18:32:04 BLAD walter (1/3): Example 1: source must contain exact word 'walter', not an inflected form
+2026-09-09 18:32:05 BLAD wisconsin (1/3): Example 1: source must contain exact word 'wisconsin', not an inflected form
+2026-09-09 18:32:10 BLAD ann (1/3): Example 1: source must contain exact word 'ann', not an inflected form
+2026-09-09 18:32:12 BLAD apps (1/3): Example 2: source must contain exact word 'apps', not an inflected form
+2026-09-09 18:32:17 BLAD cant (1/3): Translation must be one word in the target language
+2026-09-09 18:32:19 BLAD chelsea (1/3): Example 1: source must contain exact word 'chelsea', not an inflected form
+2026-09-09 18:32:29 BLAD detroit (1/3): Example 1: source must contain exact word 'detroit', not an inflected form
+2026-09-09 18:32:31 BLAD dozen (1/3): Translation must be one word in the target language
+2026-09-09 18:32:35 BLAD exception (1/3): Example 2: source must contain exact word 'exception', not an inflected form
+2026-09-09 18:32:43 BLAD heroes (1/3): Example 2: source must contain exact word 'heroes', not an inflected form
+2026-09-09 18:32:50 BLAD input (1/3): Example 1: source must contain exact word 'input', not an inflected form
+2026-09-09 18:33:01 BLAD masters (1/3): Example 1: source must contain exact word 'masters', not an inflected form
+2026-09-09 18:33:04 BLAD oct (1/3): Example 1: source must contain exact word 'oct', not an inflected form
+2026-09-09 18:33:27 BLAD sept (1/3): Example 1: source must contain exact word 'sept', not an inflected form
+2026-09-09 18:33:29 BLAD singapore (1/3): Example 1: source must contain exact word 'singapore', not an inflected form
+2026-09-09 18:33:44 BLAD wishes (1/3): Example 2: source must contain exact word 'wishes', not an inflected form
+2026-09-09 18:33:45 BLAD wolf (1/3): Example 2: source must contain exact word 'wolf', not an inflected form
+2026-09-09 18:33:53 BLAD bears (1/3): Example 2: source must contain exact word 'bears', not an inflected form
+2026-09-09 18:33:57 BLAD bruce (1/3): Example 1: source must contain exact word 'bruce', not an inflected form
+2026-09-09 18:34:17 BLAD generated (1/3): Example 1: source must contain exact word 'generated', not an inflected form
+2026-09-09 18:34:28 BLAD kate (1/3): Example 1: source must contain exact word 'kate', not an inflected form
+2026-09-09 18:34:30 BLAD liberty (1/3): Shorten d.s and d.t to at most 120 characters each; use simple everyday words
+2026-09-09 18:34:33 BLAD maria (1/3): Example 1: source must contain exact word 'maria', not an inflected form
+2026-09-09 18:35:04 BLAD twin (1/3): Example 2: source must contain exact word 'twin', not an inflected form
+2026-09-09 18:35:06 BLAD veterans (1/3): Example 3: source must contain exact word 'veterans', not an inflected form
+2026-09-09 18:35:11 BLAD aug (1/3): Example 1: source must contain exact word 'aug', not an inflected form
+2026-09-09 18:35:20 BLAD column (1/3): Example 3: source must contain exact word 'column', not an inflected form
+2026-09-09 18:35:25 BLAD computers (1/3): Example 1: source must contain exact word 'computers', not an inflected form
+2026-09-09 18:35:33 BLAD di (1/3): Example 1: source must contain exact word 'di', not an inflected form
+2026-09-09 18:35:44 BLAD fuckin (1/3): Example 1: source must contain exact word 'fuckin', not an inflected form
+2026-09-09 18:35:52 BLAD hospitals (1/3): Example 1: source must contain exact word 'hospitals', not an inflected form
+2026-09-09 18:35:55 BLAD instagram (1/3): Example 1: source must contain exact word 'instagram', not an inflected form
+2026-09-09 18:35:57 BLAD iowa (1/3): Example 1: source must contain exact word 'iowa', not an inflected form
+2026-09-09 18:36:02 BLAD nigeria (1/3): Example 1: source must contain exact word 'nigeria', not an inflected form
+2026-09-09 18:36:10 BLAD premium (1/3): Translation must be one word in the target language
+2026-09-09 18:36:20 BLAD requested (1/3): Example 1: source must contain exact word 'requested', not an inflected form
+2026-09-09 18:36:24 BLAD rings (1/3): Example 3: source must contain exact word 'rings', not an inflected form
+2026-09-09 18:36:27 BLAD russell (1/3): Example 1: source must contain exact word 'russell', not an inflected form
+2026-09-09 18:36:39 BLAD teen (1/3): Example 1: source must contain exact word 'teen', not an inflected form
+2026-09-09 18:36:45 BLAD wildlife (1/3): Translation must be one word in the target language
+2026-09-09 18:36:50 BLAD anne (1/3): Example 1: source must contain exact word 'anne', not an inflected form
+2026-09-09 18:36:58 BLAD brands (1/3): Example 2: source must contain exact word 'brands', not an inflected form
+2026-09-09 18:37:01 BLAD communist (1/3): Example 1: source must contain exact word 'communist', not an inflected form
+2026-09-09 18:37:27 BLAD ian (1/3): Example 1: source must contain exact word 'ian', not an inflected form
+2026-09-09 18:37:28 BLAD il (1/3): Example 1: source must contain exact word 'il', not an inflected form
+2026-09-09 18:37:35 BLAD justin (1/3): Example 1: source must contain exact word 'justin', not an inflected form
+2026-09-09 18:37:49 BLAD pound (1/3): Example 3: source must contain exact word 'pound', not an inflected form
+2026-09-09 18:38:00 BLAD someone's (1/3): Example 1: source must contain exact word 'someone's', not an inflected form
+2026-09-09 18:38:02 BLAD submitted (1/3): Example 1: source must contain exact word 'submitted', not an inflected form
+2026-09-09 18:38:07 BLAD technologies (1/3): Example 1: source must contain exact word 'technologies', not an inflected form
+2026-09-09 18:38:11 BLAD trends (1/3): Example 1: source must contain exact word 'trends', not an inflected form
+2026-09-09 18:38:13 BLAD trials (1/3): Example 3: source must contain exact word 'trials', not an inflected form
+2026-09-09 18:38:14 BLAD ukraine (1/3): Example 1: source must contain exact word 'ukraine', not an inflected form
+2026-09-09 18:38:22 BLAD ali (1/3): Example 1: source must contain exact word 'ali', not an inflected form
+2026-09-09 18:38:41 BLAD chip (1/3): Example 2: source must contain exact word 'chip', not an inflected form
+2026-09-09 18:38:42 BLAD company's (1/3): Example 2: source must contain exact word 'company's', not an inflected form
+2026-09-09 18:38:53 BLAD districts (1/3): Example 1: source must contain exact word 'districts', not an inflected form
+2026-09-09 18:39:01 BLAD explore (1/3): Translation must be one word in the target language
+2026-09-09 18:39:06 BLAD giants (1/3): Example 2: source must contain exact word 'giants', not an inflected form
+2026-09-09 18:39:09 BLAD hamilton (1/3): Example 1: source must contain exact word 'hamilton', not an inflected form
+2026-09-09 18:39:12 BLAD indiana (1/3): Example 1: source must contain exact word 'indiana', not an inflected form
+2026-09-09 18:39:14 BLAD jazz (1/3): Example 1: source must contain exact word 'jazz', not an inflected form
+2026-09-09 18:39:16 BLAD jon (1/3): Example 1: source must contain exact word 'jon', not an inflected form
+2026-09-09 18:39:17 BLAD jonathan (1/3): Example 1: source must contain exact word 'jonathan', not an inflected form
+2026-09-09 18:39:19 BLAD lawrence (1/3): Example 1: source must contain exact word 'lawrence', not an inflected form
+2026-09-09 18:39:21 BLAD lincoln (1/3): Example 1: source must contain exact word 'lincoln', not an inflected form
+2026-09-09 18:39:24 BLAD massachusetts (1/3): Example 1: source must contain exact word 'massachusetts', not an inflected form
+2026-09-09 18:39:27 BLAD minnesota (1/3): Example 1: source must contain exact word 'minnesota', not an inflected form
+2026-09-09 18:39:29 BLAD oscar (1/3): Example 1: source must contain exact word 'oscar', not an inflected form
+2026-09-09 18:39:43 BLAD sean (1/3): Example 1: source must contain exact word 'sean', not an inflected form
+2026-09-09 18:39:45 BLAD sec (1/3): Example 3: source must contain exact word 'sec', not an inflected form
+2026-09-09 18:39:59 BLAD unlikely (1/3): Translation must be one word in the target language
+2026-09-09 18:40:01 BLAD vietnam (1/3): Example 1: source must contain exact word 'vietnam', not an inflected form
+2026-09-09 18:40:07 BLAD bat (1/3): Example 2: source must contain exact word 'bat', not an inflected form
+2026-09-09 18:40:33 BLAD goodbye (1/3): Translation must be one word in the target language
+2026-09-09 18:40:34 BLAD graham (1/3): Example 1: source must contain exact word 'graham', not an inflected form
+2026-09-09 18:40:37 BLAD hillary (1/3): Example 1: source must contain exact word 'hillary', not an inflected form
+2026-09-09 18:40:43 BLAD kentucky (1/3): Example 1: source must contain exact word 'kentucky', not an inflected form
+2026-09-09 18:40:45 BLAD madrid (1/3): Example 1: source must contain exact word 'madrid', not an inflected form
+2026-09-09 18:40:46 BLAD mi (1/3): Example 1: source must contain exact word 'mi', not an inflected form
+2026-09-09 18:40:49 BLAD oregon (1/3): Example 1: source must contain exact word 'oregon', not an inflected form
+2026-09-09 18:41:00 BLAD rivers (1/3): Example 1: source must contain exact word 'rivers', not an inflected form
+2026-09-09 18:41:02 BLAD rounds (1/3): Example 2: source must contain exact word 'rounds', not an inflected form
+2026-09-09 18:41:04 BLAD sa (1/3): Example 1: source must contain exact word 'sa', not an inflected form
+2026-09-09 18:41:51 BLAD dec (1/3): Example 1: source must contain exact word 'dec', not an inflected form
+2026-09-09 18:41:53 BLAD delhi (1/3): Example 1: source must contain exact word 'delhi', not an inflected form
+2026-09-09 18:42:29 BLAD lisa (1/3): Example 1: source must contain exact word 'lisa', not an inflected form
+2026-09-09 18:42:34 BLAD mp (1/3): Example 1: source must contain exact word 'mp', not an inflected form
+2026-09-09 18:42:38 BLAD philippines (1/3): Example 1: source must contain exact word 'philippines', not an inflected form
+2026-09-09 18:42:40 BLAD polish (1/3): Example 1: source must contain exact word 'polish', not an inflected form
+2026-09-09 18:42:48 BLAD rely (1/3): Example 3: source must contain exact word 'rely', not an inflected form
+2026-09-09 18:42:55 BLAD se (1/3): Example 1: source must contain exact word 'se', not an inflected form
+2026-09-09 18:43:00 BLAD succeed (1/3): Example 3: source must contain exact word 'succeed', not an inflected form
+2026-09-09 18:43:11 BLAD wore (1/3): Translation must be one word in the target language
+2026-09-09 18:43:25 BLAD cnn (1/3): Example 1: source must contain exact word 'cnn', not an inflected form
+2026-09-09 18:43:30 BLAD counts (1/3): Example 1: source must contain exact word 'counts', not an inflected form
+2026-09-09 18:43:32 BLAD creates (1/3): Example 3: source must contain exact word 'creates', not an inflected form
+2026-09-09 18:43:34 BLAD daughters (1/3): Example 1: source must contain exact word 'daughters', not an inflected form
+2026-09-09 18:43:37 BLAD discussions (1/3): Example 3: source must contain exact word 'discussions', not an inflected form
+2026-09-09 18:43:41 BLAD edinburgh (1/3): Example 1: source must contain exact word 'edinburgh', not an inflected form
+2026-09-09 18:43:44 BLAD expanded (1/3): Example 1: source must contain exact word 'expanded', not an inflected form
+2026-09-09 18:43:50 BLAD galaxy (1/3): Example 2: source must contain exact word 'galaxy', not an inflected form
+2026-09-09 18:43:56 BLAD greece (1/3): Example 1: source must contain exact word 'greece', not an inflected form
+2026-09-09 18:44:08 BLAD hoped (1/3): Translation must be one word in the target language
+2026-09-09 18:44:12 BLAD judgment (1/3): Example 1: source must contain exact word 'judgment', not an inflected form
+2026-09-09 18:44:13 BLAD kennedy (1/3): Example 1: source must contain exact word 'kennedy', not an inflected form
+2026-09-09 18:44:16 BLAD larry (1/3): Example 1: source must contain exact word 'larry', not an inflected form
+2026-09-09 18:44:17 BLAD las (1/3): Example 1: source must contain exact word 'las', not an inflected form
+2026-09-09 18:44:26 BLAD lmao (1/3): Gemini nie dokonczyl odpowiedzi
+2026-09-09 18:44:29 BLAD malaysia (1/3): Example 1: source must contain exact word 'malaysia', not an inflected form
+2026-09-09 18:44:32 BLAD moore (1/3): Example 1: source must contain exact word 'moore', not an inflected form
+2026-09-09 18:44:33 BLAD nazi (1/3): Example 1: source must contain exact word 'nazi', not an inflected form
+2026-09-09 18:44:38 BLAD philip (1/3): Example 1: source must contain exact word 'philip', not an inflected form
+2026-09-09 18:44:51 BLAD requests (1/3): Example 1: source must contain exact word 'requests', not an inflected form
+2026-09-09 18:44:59 BLAD spaces (1/3): Example 1: source must contain exact word 'spaces', not an inflected form
+2026-09-09 18:45:04 BLAD stranger (1/3): Example 3: source must contain exact word 'stranger', not an inflected form
+2026-09-09 18:45:10 BLAD thompson (1/3): Example 1: source must contain exact word 'thompson', not an inflected form
+2026-09-09 18:45:23 BLAD bonds (1/3): Example 2: source must contain exact word 'bonds', not an inflected form
+2026-09-09 18:45:27 BLAD churches (1/3): Example 1: source must contain exact word 'churches', not an inflected form
+2026-09-09 18:45:28 BLAD cleveland (1/3): Example 1: source must contain exact word 'cleveland', not an inflected form
+2026-09-09 18:45:29 BLAD cm (1/3): Example 1: source must contain exact word 'cm', not an inflected form
+2026-09-09 18:45:39 BLAD credits (1/3): Example 1: source must contain exact word 'credits', not an inflected form
+2026-09-09 18:45:45 BLAD everyone's (1/3): Example 1: source must contain exact word 'everyone's', not an inflected form
+2026-09-09 18:45:49 BLAD fits (1/3): Example 2: source must contain exact word 'fits', not an inflected form
+2026-09-09 18:45:57 BLAD ignored (1/3): Example 1: source must contain exact word 'ignored', not an inflected form
+2026-09-09 18:46:01 BLAD isis (1/3): Example 1: source must contain exact word 'isis', not an inflected form
+2026-09-09 18:46:05 BLAD maryland (1/3): Example 1: source must contain exact word 'maryland', not an inflected form
+2026-09-09 18:46:09 BLAD murray (1/3): Example 1: source must contain exact word 'murray', not an inflected form
+2026-09-09 18:46:10 BLAD oklahoma (1/3): Example 1: source must contain exact word 'oklahoma', not an inflected form
+2026-09-09 18:46:12 BLAD opera (1/3): Example 1: source must contain exact word 'opera', not an inflected form
+2026-09-09 18:46:13 BLAD overcome (1/3): Example 3: source must contain exact word 'overcome', not an inflected form
+2026-09-09 18:46:31 BLAD tokyo (1/3): Example 1: source must contain exact word 'tokyo', not an inflected form
+2026-09-09 18:46:46 BLAD addressed (1/3): Example 1: source must contain exact word 'addressed', not an inflected form
+2026-09-09 18:46:48 BLAD alabama (1/3): Example 1: source must contain exact word 'alabama', not an inflected form
+2026-09-09 18:46:49 BLAD alice (1/3): Example 1: source must contain exact word 'alice', not an inflected form
+2026-09-09 18:46:51 BLAD angels (1/3): Example 2: source must contain exact word 'angels', not an inflected form
+2026-09-09 18:46:52 BLAD anime (1/3): Example 1: source must contain exact word 'anime', not an inflected form
+2026-09-09 18:46:57 BLAD barry (1/3): Example 1: source must contain exact word 'barry', not an inflected form
+2026-09-09 18:47:03 BLAD cameron (1/3): Example 1: source must contain exact word 'cameron', not an inflected form
+2026-09-09 18:47:17 BLAD convince (1/3): Example 3: source must contain exact word 'convince', not an inflected form
+2026-09-09 18:47:18 BLAD cooper (1/3): Example 1: source must contain exact word 'cooper', not an inflected form
+2026-09-09 18:47:21 BLAD eh (1/3): Example 1: source must contain exact word 'eh', not an inflected form
+2026-09-09 18:47:31 BLAD fi (1/3): Example 1: source must contain exact word 'fi', not an inflected form
+2026-09-09 18:47:35 BLAD hd (1/3): Example 1: source must contain exact word 'hd', not an inflected form
+2026-09-09 18:47:41 BLAD jerry (1/3): Example 1: source must contain exact word 'jerry', not an inflected form
+2026-09-09 18:47:46 BLAD missouri (1/3): Example 1: source must contain exact word 'missouri', not an inflected form
+2026-09-09 18:47:50 BLAD nope (1/3): Example 1: source must contain exact word 'nope', not an inflected form
+2026-09-09 18:47:51 BLAD occasions (1/3): Example 2: source must contain exact word 'occasions', not an inflected form
+2026-09-09 18:47:57 BLAD pays (1/3): Example 3: source must contain exact word 'pays', not an inflected form
+2026-09-09 18:48:00 BLAD pursue (1/3): Example 1: source must contain exact word 'pursue', not an inflected form
+2026-09-09 18:48:01 BLAD realise (1/3): Example 1: source must contain exact word 'realise', not an inflected form
+2026-09-09 18:48:15 BLAD ted (1/3): Example 1: source must contain exact word 'ted', not an inflected form
+2026-09-09 18:48:19 BLAD va (1/3): Example 1: source must contain exact word 'va', not an inflected form
+2026-09-09 18:48:28 BLAD ac (1/3): Example 1: source must contain exact word 'ac', not an inflected form
+2026-09-09 18:48:30 BLAD accompanied (1/3): Example 1: source must contain exact word 'accompanied', not an inflected form
+2026-09-09 18:48:31 BLAD adams (1/3): Example 1: source must contain exact word 'adams', not an inflected form
+2026-09-09 18:48:39 BLAD aimed (1/3): Gemini nie dokonczyl odpowiedzi
+2026-09-09 18:48:47 BLAD boats (1/3): Example 2: source must contain exact word 'boats', not an inflected form
+2026-09-09 18:48:51 BLAD brooklyn (1/3): Example 1: source must contain exact word 'brooklyn', not an inflected form
+2026-09-09 18:48:52 BLAD colleges (1/3): Example 1: source must contain exact word 'colleges', not an inflected form
+2026-09-09 18:48:56 BLAD danny (1/3): Example 1: source must contain exact word 'danny', not an inflected form
+2026-09-09 18:48:58 BLAD des (1/3): Example 1: source must contain exact word 'des', not an inflected form
+2026-09-09 18:49:00 BLAD dvd (1/3): Example 1: source must contain exact word 'dvd', not an inflected form
+2026-09-09 18:49:10 BLAD garage (1/3): Translation must be one word in the target language
