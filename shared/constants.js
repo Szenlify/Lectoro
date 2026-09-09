@@ -221,13 +221,6 @@
                 native: "Français",
                 flag: "🇫🇷",
             }),
-            he: Object.freeze({
-                code: "he",
-                name: "Hebrew",
-                tag: "HE",
-                native: "עברית",
-                flag: "🇮🇱",
-            }),
             it: Object.freeze({
                 code: "it",
                 name: "Italian",
