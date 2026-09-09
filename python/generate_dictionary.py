@@ -205,7 +205,6 @@ def open_database(work):
     db.execute("PRAGMA journal_mode=WAL")
     db.execute("PRAGMA synchronous=FULL")
     db.execute("CREATE TABLE IF NOT EXISTS words (word TEXT PRIMARY KEY, ordinal INTEGER, entry TEXT, attempts INTEGER DEFAULT 0, errors INTEGER DEFAULT 0, next_try REAL DEFAULT 0, error TEXT)")
-    db.execute("CREATE TABLE IF NOT EXISTS reverse_jobs (key TEXT PRIMARY KEY, synonyms TEXT, attempts INTEGER DEFAULT 0, errors INTEGER DEFAULT 0, error TEXT, next_try REAL DEFAULT 0)")
     return db
 
 
@@ -319,23 +318,15 @@ def reverse_items(db):
         entry = compact_entry(json.loads(raw))
         if not isinstance(entry.get("d"), dict):
             continue
-        # Stable identity across the source/target -> s/t serialization change.
-        identity = {**entry, "d": {"source": entry["d"]["s"], "target": entry["d"]["t"]},
-                    "e": [{"source": e["s"], "target": e["t"]} for e in entry["e"]]}
-        key = hashlib.sha256(encode({word: identity})).hexdigest()
-        yield key, word, entry
+        yield word, entry
 
 
 def export_reverse(db, args, catalog):
     entries, pending = {}, []
-    for key, word, entry in reverse_items(db):
-        row = db.execute("SELECT synonyms,error FROM reverse_jobs WHERE key=?", (key,)).fetchone()
-        if not row or row[0] is None:
-            pending.append({"word": entry["t"], "english": word, "error": row[1] if row else None})
-            continue
+    for word, entry in reverse_items(db):
         # Compact has one meaning per headword; first completed English key wins.
         entries.setdefault(entry["t"], {"t": word, "d": {"s": entry["d"]["t"], "t": entry["d"]["s"]},
-                       "s": json.loads(row[0]), "e": [{"s": e["t"], "t": e["s"]} for e in entry["e"]]})
+                       "s": [], "e": [{"s": e["t"], "t": e["s"]} for e in entry["e"]]})
     write_json(args.work / "pending-pl-en.json", pending)
     if not entries:
         catalog["pairs"].pop("pl-en", None)
@@ -352,88 +343,14 @@ def export_reverse(db, args, catalog):
     temporary.replace(destination.with_suffix(".json.gz"))
     catalog["pairs"]["pl-en"] = {"version": version, "path": relative, "sha256": hashlib.sha256(raw).hexdigest(),
                                   "bytes": len(raw), "entryCount": len(entries)}
-    write_json(args.output / "sources-pl-en.json", {"derivedFrom": "en-pl", "synonymsModel": args.model,
+    write_json(args.output / "sources-pl-en.json", {"derivedFrom": "en-pl", "method": "local reversal; no API", "synonyms": "omitted",
                "reviewStatus": "machine-generated; not human reviewed", "wordlist": str(args.words) if args.words else WORDFREQ_SOURCE})
 
 
-class ReverseProgress(Progress):
-    def stats(self):
-        return self.db.execute("SELECT count(*),count(synonyms),coalesce(sum(CASE WHEN synonyms IS NULL AND errors>0 THEN 1 ELSE 0 END),0),coalesce(sum(attempts),0) FROM reverse_jobs JOIN reverse_selected USING(key)").fetchone()
-
-
-def run_reverse(db, args, generate=None, attempts=None, progress=None):
-    attempts = attempts if attempts is not None else {}
-    items = list(reverse_items(db))
-    db.execute("CREATE TEMP TABLE IF NOT EXISTS reverse_selected(key TEXT PRIMARY KEY)")
-    db.execute("DELETE FROM reverse_selected")
-    db.executemany("INSERT INTO reverse_selected VALUES (?)", ((key,) for key, _, _ in items))
-    db.executemany("INSERT OR IGNORE INTO reverse_jobs(key) VALUES (?)", ((key,) for key, _, _ in items))
-    db.commit()
-    if not hasattr(args, "validation_feedback"):
-        args.validation_feedback = {}
-    def request_synonyms(word, entry):
-        return request_json(entry["t"], args,
-            prompt="Return only 0-3 distinct Polish synonyms of the supplied Polish word in the EXACT supplied meaning. Never include the word itself. Empty array is correct when no genuine synonyms exist. Do not translate or rewrite definitions or examples. Each synonym is plain text, at most 80 characters.",
-            schema={"type": "array", "minItems": 0, "maxItems": 3, "items": {"type": "string"}},
-            context={"english": word, "definition": entry["d"]["t"], "examples": [e["t"] for e in entry["e"]]})
-    generate = generate or request_synonyms
-    completed = 0
-    from contextlib import nullcontext
-    with (nullcontext(progress) if progress else ReverseProgress(db, args)) as progress, concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-        progress.update("PL-EN: synonimy")
-        for key, word, entry in items:
-            if db.execute("SELECT synonyms FROM reverse_jobs WHERE key=?", (key,)).fetchone()[0] is not None:
-                continue
-            for attempt in range(attempts.get(key, 0) + 1, getattr(args, "max_attempts", 3) + 1):
-                attempts[key] = attempt
-                ready = db.execute("SELECT next_try FROM reverse_jobs WHERE key=?", (key,)).fetchone()[0]
-                while ready > time.time():
-                    progress.update(f"PL-EN pauza {ready-time.time():.0f}s")
-                    time.sleep(min(ready-time.time(), 1 if sys.stdout.isatty() else 30))
-                with db:
-                    db.execute("UPDATE reverse_jobs SET attempts=attempts+1 WHERE key=?", (key,))
-                progress.update(f"PL-EN {entry['t']}")
-                future = pool.submit(generate, word, entry)
-                try:
-                    while True:
-                        try:
-                            synonyms = future.result(timeout=1 if sys.stdout.isatty() else 15)
-                            break
-                        except concurrent.futures.TimeoutError:
-                            if future.done():
-                                raise
-                            progress.update(f"PL-EN {entry['t']}")
-                    if (not isinstance(synonyms, list) or len(synonyms) > 3 or not all(valid_text(s, 80) for s in synonyms) or
-                            len({s.casefold() for s in synonyms}) != len(synonyms) or entry['t'].casefold() in {s.casefold() for s in synonyms}):
-                        raise ValueError("Return 0-3 distinct Polish synonyms, excluding the original word; [] is allowed")
-                except Exception as error:
-                    transient = isinstance(error, (APIError, OSError, TimeoutError))
-                    delay = min(300, 5 * 2 ** (attempt-1)) if transient else 0
-                    if isinstance(error, APIError):
-                        delay = max(delay, error.retry_after, 30 if error.status == 429 else 0)
-                    message = str(error).replace(os.environ.get("GEMINI_API_KEY") or "\0", "[REDACTED]")[:300]
-                    args.validation_feedback[entry['t']] = message
-                    with db:
-                        db.execute("UPDATE reverse_jobs SET errors=errors+1,error=?,next_try=? WHERE key=?", (message, time.time()+delay, key))
-                    progress.update(f"PL-EN BLAD {entry['t']}: {message}", error=True, word=f"PL-EN {entry['t']}")
-                    if transient and (attempt == getattr(args, "max_attempts", 3) or isinstance(error, APIError) and error.status in (400,401,403,404)):
-                        args.reverse_blocked = True
-                        export(db, args, progress)
-                        return False
-                else:
-                    with db:
-                        db.execute("UPDATE reverse_jobs SET synonyms=?,error=NULL,next_try=0 WHERE key=?", (json.dumps(synonyms, ensure_ascii=False), key))
-                    completed += 1
-                    progress.update(f"PL-EN {entry['t']}")
-                    if completed % args.export_every == 0:
-                        export(db, args, progress)
-                    if args.interval:
-                        time.sleep(args.interval)
-                    break
-        export(db, args, progress)
-        total, done = db.execute("SELECT count(*),count(synonyms) FROM reverse_jobs JOIN reverse_selected USING(key)").fetchone()
-        progress.update("PL-EN gotowe" if total == done else f"PL-EN WYNIK CZESCIOWY: {done}/{total}; pending-pl-en.json")
-        return total == done
+def run_reverse(db, args):
+    # Export derives PL-EN directly from saved bilingual entries, without API calls.
+    export(db, args)
+    return True
 
 
 def export(db, args, progress=None):
@@ -490,14 +407,11 @@ def prune_old_releases(output):
             shutil.rmtree(resolved)
 
 
-def run(db, args, generate=request_entry, reverse_generate=None):
+def run(db, args, generate=request_entry):
     new, last_export = 0, 0
     next_request = 0
     attempts_this_run = {}
-    reverse_attempts = {}
-    args.reverse_blocked = False
     args.forward_blocked = False
-    reverse_ok = True
     args.validation_feedback = {}
     args.definition_entries = {}
     if db.execute("SELECT 1 FROM sqlite_master WHERE name='definition_upgrades'").fetchone():
@@ -510,17 +424,12 @@ def run(db, args, generate=request_entry, reverse_generate=None):
     db.commit()
     with Progress(db, args) as progress, concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
         progress.update("Start")
-        if getattr(args, "bidirectional", False):
-            reverse_ok = run_reverse(db, args, reverse_generate, reverse_attempts, progress)
         while True:
-            if args.reverse_blocked:
-                progress.update("STOP: blad API PL-EN; postep obu kierunkow zapisany")
-                return False
             total, done, errors, attempts = db.execute("SELECT count(*),count(entry),coalesce(sum(errors),0),coalesce(sum(attempts),0) FROM words JOIN selected USING(word)").fetchone()
             if done == total:
                 export(db, args, progress)
-                progress.update("EN-PL gotowe" if reverse_ok else "PL-EN niepelne")
-                return reverse_ok
+                progress.update("Gotowe EN-PL / PL-EN")
+                return True
             row = db.execute("SELECT word,errors,next_try FROM words JOIN selected USING(word) WHERE entry IS NULL AND word NOT IN (SELECT word FROM deferred) ORDER BY next_try,ordinal LIMIT 1").fetchone()
             if row is None:
                 export(db, args, progress)
@@ -579,8 +488,6 @@ def run(db, args, generate=request_entry, reverse_generate=None):
                     db.execute("UPDATE words SET entry=?,error=NULL,next_try=0 WHERE word=?", (json.dumps(entry, ensure_ascii=False, separators=(",", ":")), word))
                 new += 1
                 progress.update(word)
-                if getattr(args, "bidirectional", False):
-                    reverse_ok = run_reverse(db, args, reverse_generate, reverse_attempts, progress)
                 if new - last_export >= args.export_every:
                     export(db, args, progress)
                     last_export = new
@@ -618,7 +525,7 @@ def main():
                 while True:
                     try:
                         forward_ok = run(db, args)
-                        reverse_ok = False if args.forward_blocked else run_reverse(db, args)
+                        reverse_ok = run_reverse(db, args)
                         if not forward_ok or not reverse_ok:
                             raise SystemExit(2)
                         break

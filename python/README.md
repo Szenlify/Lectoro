@@ -171,26 +171,27 @@ zwykłe uruchomienie generatora uzupełni przez Gemini tylko polską definicję.
 zostaje zachowana; kopia wpisu jest w tabeli `definition_upgrades`. Przerwaną aktualizację
 można wznowić tą samą komendą. `--export-only` nie wykonuje tłumaczeń.
 W hoverze polską definicję rozwija się kliknięciem definicji angielskiej.
-Te pary definicji i przykładów można później wykorzystać do indeksu PL → EN;
-polskie synonimy są automatycznie uzupełniane dla danego znaczenia.
+Pary definicji i przykładów są odwracane lokalnie do PL → EN, bez polskich synonimów.
 
 ### Automatyczny PL → EN
 
 Zwykła komenda `generate_dictionary.py --count 20` najpierw kończy próby EN → PL,
 a następnie odwraca gotowe wpisy do PL → EN, również przy częściowym wyniku EN → PL.
-Błąd klucza lub powtarzające się problemy API zatrzymują oba etapy.
-Nie ma dodatkowej komendy. Gemini generuje wyłącznie
-0–3 polskie synonimy dla każdego odwracanego znaczenia; definicje i przykłady są
-odwracane lokalnie. PL → EN ma ten sam format compact co EN → PL:
+Odwracanie nie korzysta z Gemini ani sieci. Zamienia strony tłumaczeń, definicji
+i przykładów; polskie synonimy zawsze mają wartość `s: []`.
+PL → EN ma ten sam format compact co EN → PL:
 `{"hasło":{"t":"translation","d":{"s":"definicja","t":"definition"},"s":[],"e":[...]}}`.
 JSON nie zawiera `senseId` ani dodatkowej otoczki. Dla polskiego hasła z kilkoma
 angielskimi odpowiednikami eksport wybiera pierwszy gotowy wpis w kolejności
 alfabetycznej angielskich haseł. Pozostałe dane pozostają w bazie i EN → PL.
 
-Synonimy i próby są zapisywane w tabeli `reverse_jobs` w SQLite. Ponowne uruchomienie
-pomija ukończone wpisy; zmiana danych źródłowych wymaga nowych synonimów. Błędy
-odwracania trafiają do `pending-pl-en.json` i `errors.log`. Brakujące hasła EN → PL nie blokują odwracania gotowych wpisów.
-Limit prób polskich synonimów obowiązuje przez całe uruchomienie.
+Każdy eksport odtwarza PL → EN z gotowych wpisów w bazie. Dawne dane `reverse_jobs`
+nie są już używane. Brakujące hasła EN → PL nie blokują odwracania gotowych wpisów.
+Samo lokalne odwrócenie i eksport, bez klucza i bez API:
+
+```powershell
+.\.venv\Scripts\python.exe generate_dictionary.py --count 20 --export-only
+```
 
 Gotowy `dist/dictionaries/catalog.json` wskazuje oba kierunki. Wgraj cały folder
 `dictionaries` na R2. `--export-only` eksportuje również zapisany PL → EN bez API.

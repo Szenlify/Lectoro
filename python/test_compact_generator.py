@@ -59,7 +59,7 @@ class CompactTests(unittest.TestCase):
             (old / "en-pl.json").write_text("{}")
             with patch("builtins.print"):
                 export(db, args)
-                run_reverse(db, args, lambda *_: [])
+                run_reverse(db, args)
                 with db:
                     db.execute("UPDATE words SET entry=?", (json.dumps({**ENTRY, "s": []}),))
                 export(db, args)
@@ -95,7 +95,7 @@ class CompactTests(unittest.TestCase):
             self.assertEqual(stopped.exception.code, 2)
             self.assertEqual(calls, ["forward", "reverse"])
 
-    def test_reverse_runs_before_missing_words_and_after_each_success(self):
+    def test_partial_forward_exports_reverse_without_api(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             words = root / "words.txt"
@@ -115,12 +115,9 @@ class CompactTests(unittest.TestCase):
                 if word == "the":
                     raise ValueError("No valid entry")
                 return {**ENTRY, "s": [], "e": [{**e, "s": e["s"].replace("work", word)} for e in ENTRY["e"]]}
-            def reverse(word, _):
-                events.append("pl:" + word)
-                return []
-            with patch("builtins.print"):
-                self.assertFalse(run(db, args, forward, reverse))
-            self.assertEqual(events, ["pl:work", "en:job", "pl:job", "en:the", "en:the"])
+            with patch("builtins.print"), patch("generate_dictionary.request_json", side_effect=AssertionError("No reverse API")):
+                self.assertFalse(run(db, args, forward))
+            self.assertEqual(events, ["en:job", "en:the", "en:the"])
             catalog = json.loads((args.output / "catalog.json").read_text())
             self.assertEqual(set(catalog["pairs"]), {"en-pl", "pl-en"})
             for item in catalog["pairs"].values():
@@ -130,7 +127,7 @@ class CompactTests(unittest.TestCase):
                 self.assertEqual(hashlib.sha256(raw).hexdigest(), item["sha256"])
             db.close()
 
-    def test_reverse_preserves_colliding_senses_and_resumes_synonyms(self):
+    def test_reverse_is_local_with_empty_synonyms_and_stable_collision_choice(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             words = root / "words.txt"
@@ -143,22 +140,11 @@ class CompactTests(unittest.TestCase):
                 for word in ("work", "job"):
                     entry = {**ENTRY, "s": [], "e": [{**e, "s": e["s"].replace("work", word)} for e in ENTRY["e"]]}
                     db.execute("UPDATE words SET entry=? WHERE word=?", (json.dumps(entry), word))
-            def synonyms(word, entry):
-                if word == "work":
-                    return [entry["t"]]  # Invalid: the original word is not its own synonym.
-                return []
-            with patch("builtins.print"), patch("generate_dictionary.time.sleep") as sleep:
-                self.assertFalse(run_reverse(db, args, synonyms))
+            with patch("builtins.print"), patch("generate_dictionary.request_json", side_effect=AssertionError("No API")), patch("generate_dictionary.time.sleep") as sleep:
+                self.assertTrue(run_reverse(db, args))
+                self.assertTrue(run_reverse(db, args))
             sleep.assert_not_called()
-            self.assertEqual(len(json.loads((args.work / "pending-pl-en.json").read_text())), 1)
-            calls = []
-            def retry(word, entry):
-                calls.append(word)
-                return ["zajęcie"]
-            with patch("builtins.print"):
-                self.assertTrue(run_reverse(db, args, retry))
-                self.assertTrue(run_reverse(db, args, lambda *_: self.fail("Saved synonyms must be reused")))
-            self.assertEqual(calls, ["work"])
+            self.assertEqual(json.loads((args.work / "pending-pl-en.json").read_text()), [])
             catalog = json.loads((args.output / "catalog.json").read_text())
             self.assertEqual(set(catalog["pairs"]), {"en-pl", "pl-en"})
             item = catalog["pairs"]["pl-en"]
@@ -168,6 +154,7 @@ class CompactTests(unittest.TestCase):
             entry = json.loads(raw)["praca"]
             self.assertEqual(set(entry), {"t", "d", "s", "e"})
             self.assertEqual(entry["t"], "job")
+            self.assertEqual(entry["s"], [])
             self.assertEqual(entry["d"]["s"], ENTRY["d"]["t"])
             self.assertEqual(entry["e"][0]["s"], ENTRY["e"][0]["t"])
             self.assertNotIn(b'"senseId"', raw)
