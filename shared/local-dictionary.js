@@ -65,7 +65,9 @@
         if (compiled.has(pack)) return compiled.get(pack);
         const dictionary = Object.create(null);
         const sensesByTerm = new Map();
-        for (const [term, senses] of Object.entries(pack.entries)) {
+        for (const [term, value] of Object.entries(pack.entries)) {
+            const senses = pack.schemaVersion === 2 ? [{ senseId: term, translations: [value.t],
+                definition: value.d, synonyms: value.s, examples: value.e.map(source => ({ source, target: "" })) }] : value;
             dictionary[term] = lexicalTranslations(senses.flatMap((sense) => sense.translations)).join(" / ");
             sensesByTerm.set(term, senses);
             if (!sensesByTerm.has(normalize(term)) || term === normalize(term)) sensesByTerm.set(normalize(term), senses);

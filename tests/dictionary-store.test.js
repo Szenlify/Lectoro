@@ -45,6 +45,25 @@ function environment({ records = new Map(), serve, clock = () => 1000000, failSa
     return { store, api, calls, context, records };
 }
 
+test("compact R2 JSON supports details, inflections and offline restart", async () => {
+    const entry = {t: "praca", d: "an activity you do as part of your job", s: ["job", "labor"], e: ["My work is important.", "I have work today.", "We work every day."]};
+    const raw = Buffer.from(JSON.stringify({work: entry}));
+    const catalog = {schemaVersion: 1, pairs: {"en-pl": {version: "compact-v1", path: "releases/compact-v1/en-pl.json",
+        bytes: raw.length, sha256: createHash("sha256").update(raw).digest("hex"), entryCount: 1}}};
+    const env = environment({serve: url => new Response(url.endsWith("catalog.json") ? JSON.stringify(catalog) : raw)});
+    const [details] = await env.context.LocalDictionary.lookupWords(["works"], "pl", "en", {details: true});
+    assert.equal(details.primaryTranslation, "praca");
+    assert.equal(details.senses[0].definition, entry.d);
+    assert.deepEqual(Array.from(details.senses[0].synonyms), entry.s);
+    assert.equal(details.senses[0].examples[0].source, entry.e[0]);
+    const offline = environment({records: env.records, serve: () => {throw Error("offline");}});
+    assert.equal((await offline.context.LocalDictionary.lookupWords(["work"], "pl", "en"))[0], "praca");
+    assert.equal(offline.calls.length, 0);
+    for (const invalid of [{...entry, t: "ciężka praca"}, {...entry, s: ["job"]}]) {
+        assert.throws(() => env.api.validatePack({work: invalid}, "en", "pl", "v1"));
+    }
+});
+
 test("concurrent lookups download one catalog and one verified pair; missing words have no API fallback", async () => {
     const { raw, catalog } = artifact(pack());
     const env = environment({ serve: (url) => new Response(url.endsWith("catalog.json") ? JSON.stringify(catalog) : raw) });

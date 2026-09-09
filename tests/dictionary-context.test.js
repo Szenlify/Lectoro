@@ -67,7 +67,7 @@ test('pack validator bounds optional definitions and examples while accepting ol
   }
 });
 
-test('hover renders only source sentences with initially collapsed escaped translations', () => {
+test('hover renders definition and escaped source examples without example translations', () => {
   const context=vm.createContext({PREFIX:'__qt_',escapeHtml:U.escapeHtml,escapeAttr:U.escapeAttr});
   loadFunction(context,'core.js','buildDictionaryDetailsHtml');
   const result=dictionary.lookupDetails('like',target,['I','like','music'],1);
@@ -75,12 +75,12 @@ test('hover renders only source sentences with initially collapsed escaped trans
   const html=context.buildDictionaryDetailsHtml(result,'en','pl');
   assert.ok(!html.includes('Suggested meaning'));
   assert.ok(!html.includes('Use this meaning'));
-  assert.ok(!html.includes('dictionary-definition'));
+  assert.ok(html.includes('dictionary-definition'));
   assert.ok(!/<details[^>]+ open/.test(html));
-  assert.ok(html.includes('<details'));
+  assert.ok(!html.includes('<details'));
   assert.ok(html.includes('&lt;img'));
   assert.ok(!html.includes('<img'));
-  assert.ok(html.includes('Przykład'));
+  assert.ok(!html.includes('Przykład'));
   assert.equal(context.buildDictionaryDetailsHtml(null,'en','pl'),'');
 });
 

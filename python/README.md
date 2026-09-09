@@ -1,189 +1,223 @@
-# Jakość tłumaczeń i uruchomienie na Macu
+# Słownik EN → PL przez Gemini 2.5 Flash-Lite
 
-Generator działa bez płatnego API. Google tłumaczy pojedyncze hasła bez kontekstu:
-wynik jest wersją roboczą, nie zweryfikowanym słownikiem. Zwiększenie `--count`
-nie poprawia jakości. Nie uruchamiaj wszystkich par, jeśli potrzebujesz tylko EN→PL.
+Generator używa Twojego płatnego klucza Gemini. Zapisuje jeden polski odpowiednik,
+angielską definicję, 2–4 synonimy i trzy angielskie zdania. Gotowy JSON jest pobierany
+przez Lectoro z R2, a szczegóły pojawiają się pod tłumaczeniem słowa na wideo.
 
-W głównym folderze `Lectoro` na macOS/Linux:
+## 1. Otwórz PowerShell w folderze `python`
 
-```bash
-python3 -m venv python/.venv
-python/.venv/bin/python -m pip install -r python/requirements.txt
-# Paczka tylko z dostarczonych korekt, bez zapytań do Google:
-python/.venv/bin/python python/build_en_pl.py --count 50000 --curated-only
-# Pełna baza robocza, z pierwszeństwem korekt i zachowaniem postępu:
-python/.venv/bin/python python/build_en_pl.py --count 50000
+Jeżeli terminal jest w głównym katalogu repozytorium `Lectoro`, wpisz:
+
+```powershell
+cd python
 ```
 
-Opcjonalny plik `python/overrides/en-pl.json` może zawierać własne korekty,
-znaczenia i przykłady. Brak tego pliku oznacza brak ręcznych korekt.
-W `translations` wpisuj tylko krótkie odpowiedniki, bez objaśnień gramatycznych.
+**Wszystkie dalsze komendy wykonuj w `Lectoro/python`.** Nie dopisuj do nich ponownie `python/`.
+Potrzebujesz zainstalowanego Pythona 3.10 lub nowszego.
 
-Korekty mają pierwszeństwo także przed błędami zapisanymi wcześniej w SQLite.
-Można nadal używać prostego formatu `{"book": ["książka"]}`. Dla wielu znaczeń:
+## 2. Przygotuj środowisko — jednorazowo
+
+Jeżeli nie masz jeszcze folderu `.venv`, utwórz go:
+
+```powershell
+python -m venv .venv
+```
+
+Zainstaluj zależności:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+Nie musisz aktywować środowiska ani zmieniać zasad uruchamiania skryptów PowerShell.
+Jedyna bezpośrednia zależność to `wordfreq`, używana jako lista angielskich słów.
+
+## 3. Ustaw swój klucz — przy każdym nowym terminalu
+
+Wpisz lokalnie swój klucz zamiast `TWOJ_KLUCZ`:
+
+```powershell
+$env:GEMINI_API_KEY = "TWOJ_KLUCZ"
+```
+
+Klucz obowiązuje w tej sesji terminala. Nie umieszczaj go w plikach projektu ani nie wysyłaj
+do repozytorium. Skrypt nie odczytuje plików `.env`. Wywołania są rozliczane na projekcie
+powiązanym z kluczem; ponowienia również mogą zużywać płatne tokeny.
+
+## 4. Najpierw sprawdź 10 słów
+
+Ta komenda już korzysta z płatnego API:
+
+```powershell
+.\.venv\Scripts\python.exe generate_dictionary.py --count 10 --export-every 10
+```
+
+Model jest domyślnie ustawiony na `gemini-2.5-flash-lite`. W konsoli zobaczysz aktualne słowo,
+liczbę zapisanych wpisów, procent, liczbę błędów i prób, tempo oraz orientacyjny czas do końca.
+Komunikat `EKSPORT` podaje ścieżkę do pliku JSON. Sprawdź jego treść przed większym uruchomieniem.
+
+## 5. Generuj 50 000 słów
+
+```powershell
+.\.venv\Scripts\python.exe generate_dictionary.py --count 50000
+```
+
+Poprawne wpisy z próby 10 słów zostaną wykorzystane. Skrypt nie płaci ponownie za ich generowanie.
+Domyślnie robi 5 sekund przerwy po udanym zapytaniu. Jeśli limity Twojego konta pozwalają,
+możesz skrócić przerwę:
+
+```powershell
+.\.venv\Scripts\python.exe generate_dictionary.py --count 50000 --interval 1
+```
+
+Każdy poprawny wpis jest od razu zapisywany w SQLite. Eksport plików do R2 następuje
+co 250 nowych wpisów, po zakończeniu i po `Ctrl+C`. Nie uruchamiaj jednocześnie dwóch
+generatorów na tej samej bazie; blokada procesu temu zapobiega.
+
+### Zatrzymanie i wznowienie
+
+Zatrzymaj przez `Ctrl+C`. Aktywne zapytanie może najpierw czekać na timeout (domyślnie 120 s).
+Aby wznowić, uruchom ponownie komendę z tym samym `--count` i folderem pracy.
+Po otwarciu nowego terminala ustaw ponownie klucz z kroku 3.
+
+Błędy sieci, HTTP 429 i niepoprawne wpisy są ponawiane automatycznie. HTTP 429 powoduje
+przerwę co najmniej 15 minut; podczas czekania nadal pojawiają się komunikaty.
+Błędy zapisu podczas pracy też są ponawiane. Brak zależności, dostępu do bazy przy starcie
+lub niepoprawny klucz wymagają naprawienia konfiguracji.
+
+**50 000 oznacza liczbę wybranych haseł.** Nie każde ma jeden polski odpowiednik i dwa synonimy.
+Niepoprawne wpisy nie są zapisywane; mogą pozostać w kolejce do weryfikacji i być ponawiane
+bez końca. Wtedy możesz zatrzymać skrypt i wykorzystać częściowy słownik. Walidacja sprawdza
+format, długość i duplikaty, ale nie gwarantuje poprawności językowej odpowiedzi modelu.
+
+### Eksport zapisanych wpisów bez wywoływania API
+
+```powershell
+.\.venv\Scripts\python.exe generate_dictionary.py --count 50000 --export-only
+```
+
+Klucz nie jest wymagany. Użyj takiego samego `--count` jak podczas generowania.
+Jeśli korzystasz z własnej listy (`--words lista.txt`), niestandardowego `--work` lub `--output`,
+powtórz te same opcje przy wznowieniu i eksporcie. Lista UTF-8: jedno angielskie słowo na wiersz.
+
+## 6. Znajdź gotowe pliki
+
+```text
+python/
+  generate_dictionary.py       generator Gemini i eksport do R2
+  test_compact_generator.py    testy bez prawdziwych wywołań API
+  requirements.txt             zależności
+  README.md                    ta instrukcja
+  .venv/                       lokalne środowisko Pythona
+  work/
+    compact/
+      compact.sqlite3          zapisany postęp — zachowaj!
+      compact.sqlite3-wal      może istnieć podczas pracy — nie usuwaj
+      compact.sqlite3-shm      może istnieć podczas pracy — nie usuwaj
+      run.lock                 blokada procesu
+      pending.json             brakujące słowa i ostatnie błędy na chwilę eksportu
+  dist/
+    dictionaries/
+      catalog.json
+      sources-en-pl.json
+      releases/
+        compact-HASH/
+          en-pl.json
+          en-pl.json.gz
+```
+
+Foldery wyniku powstają po pierwszym poprawnym eksporcie. W `work/` mogą być także zachowane
+bazy i listy ze starszego generatora; obecny korzysta z `work/compact/`.
+
+`en-pl.json` zawiera wyłącznie mapę słów w takim formacie:
 
 ```json
-{
-  "bank": {
-    "senses": [
-      {
-        "id": "financial-institution",
-        "partOfSpeech": "noun",
-        "translations": ["bank"],
-        "definition": "Instytucja prowadząca rachunki i udzielająca kredytów.",
-        "examples": [{"source": "I went to the bank.", "target": "Poszedłem do banku."}]
-      }
-    ]
-  }
-}
+{"work":{"t":"praca","d":"an activity you do as part of your job","s":["job","labor","employment"],"e":["I have work today.","Her work is important.","We work every day."]}}
 ```
 
-Zachowuj `id` znaczenia przy poprawkach i zmianie kolejności. Generator buduje
-z niego stabilne `senseId`. `reviewStatus: manual-override` oznacza wpis z pliku
-korekt, a `machine-generated` wynik Google; żaden status nie oznacza niezależnej
-recenzji. Hover w napisach pokazuje pełną listę krótkich odpowiedników oraz zdania przykładowe.
-Kliknięcie zdania rozwija jego tłumaczenie; ponowne kliknięcie je chowa. Nie pokazujemy
-części mowy, opisów znaczeń ani przycisku wyboru znaczenia. Metadane pozostają w danych,
-ponieważ pomagają lokalnemu dopasowaniu do kontekstu.
-
-Tryb S (word by word) wybiera tylko jeden odpowiednik. Najpierw korzysta z kontekstu,
-potem z `primaryTranslations` w paczce, a na końcu z pierwszego odpowiednika.
-Domyślne EN→PL `all` to `wszystko`. Hover nadal pokazuje `cały / wszyscy / wszystkie / wszystko`.
-Opisy takie jak `czasownik pomocniczy (bez osobnego tłumaczenia)` są odfiltrowywane,
-także ze starszych paczek. `is` pokazuje `jest`. Jeden odpowiednik może być krótką frazą,
-gdy naturalne tłumaczenie tego wymaga (np. `poddać się`); nie obcinamy go do jednego wyrazu.
-
-Dobór kontekstowy jest lokalną heurystyką wykorzystującą przykłady i proste reguły
-gramatyczne angielskiego. Nie gwarantuje poprawności w każdym zdaniu. Przykłady muszą
-być obecne w paczce; zwykły GoogleTranslator ich nie tworzy.
-
-## Generowanie tłumaczeń i przykładów bez płatnego API
-
-Nowy wariant `--engine ollama` generuje jednocześnie krótki główny odpowiednik,
-alternatywne znaczenia i 1–2 zdania przykładowe z tłumaczeniem dla każdego znaczenia.
-Wymaga działającej lokalnej [Ollamy](https://ollama.com/download) i pobranego modelu
-obsługującego wybrane języki. Skrypt nie instaluje ani nie pobiera modelu automatycznie.
-Zastąp `NAZWA_MODELU` rzeczywistą nazwą lokalnego modelu z `ollama list`.
-
-```bash
-python/.venv/bin/python python/build_en_pl.py --engine ollama --model NAZWA_MODELU --count 50000 --timeout 300
-```
-
-Endpoint jest stały: `http://127.0.0.1:11434/api/chat`. Skrypt nie korzysta z płatnego
-API ani nie przełącza się automatycznie na model chmurowy. Korzysta z JSON Schema,
-sprawdza obecność hasła w przykładzie, główny odpowiednik oraz kompletność odpowiedzi.
-Błędny lub ucięty wynik zatrzymuje sesję i nie trafia do cache. Gotowe wpisy są
-zachowane; powtórzenie tego samego polecenia wznawia pracę. Weryfikacja struktury
-nie zastępuje sprawdzenia poprawności językowej modelu.
-
-Cache jest osobny dla silnika/modelu i wersji instrukcji. Stare tłumaczenie Google
-bez przykładów nie jest traktowane jako ukończony wpis Ollamy. Zmiana modelu zaczyna
-osobną kolejkę. Eksport gotowych wpisów bez generowania:
-
-```bash
-python/.venv/bin/python python/build_en_pl.py --engine ollama --model NAZWA_MODELU --count 50000 --export-only
-```
-
-Dotychczasowe polecenie bez `--engine ollama` nadal używa Google i tworzy tylko
-tłumaczenia. `--retry-failed` dotyczy Google; dla Ollamy wznowienie jest zwykłym
-powtórzeniem polecenia. Limit `--max-requests` obejmuje hasła generowane w jednej sesji.
-
-
-Podczas tłumaczenia terminal pokazuje pasek pokrycia całej listy (wliczając cache
-i korekty), liczbę zapytań w sesji, błędy i ETA sesji. ETA pojawia się po pierwszym
-zapytaniu i obejmuje bieżący limit zapytań, nie wszystkie przyszłe wznowienia.
-Błędy nie zwiększają liczby ukończonych haseł. W logu przekierowanym do pliku
-postęp pojawia się okresowo w osobnych liniach. Trwający stary proces nie załaduje
-zmian kodu: przerwij go Ctrl+C, poczekaj na zapis paczki i uruchom ponownie.
-
-Raport `python/work/reports/en-pl.json` zawiera `needsReview` z wynikami Google,
-flagami identycznego tekstu źródłowego i wielkich liter oraz `missing` z brakami.
-Identyczny tekst może być poprawny (np. zapożyczenie), dlatego nie jest automatycznie
-usuwany. `complete` dotyczy pokrycia listy, a nie poprawności. `qualityChecked`
-pozostaje `false`: kontrola struktury i heurystyki nie zastępują oceny językowej.
-`--curated-only` pomija wyniki Google i nie wykonuje zapytań tłumaczących.
-Po poprawkach użyj `--export-only` do odświeżenia pełnej paczki lub
-`--curated-only` do paczki samych korekt. Obie opcje aktualizują katalog w folderze
-wyjściowym; paczka samych korekt ma ograniczone pokrycie.
-
-Na nowym komputerze odtwórz `.venv`, a folder `python/work` skopiuj ze starego.
-W Gicie zapisane są skrypty i korekty, ale nie lokalny postęp ani paczki `dist`.
-
-# Co zrobić
-
-Wykonuj polecenia w PowerShell, w głównym folderze Lectoro.
-
-1. Zainstaluj Python 3.10 lub nowszy i zależności:
+Każdy eksport może tworzyć nowe wydanie `compact-HASH`. **Aktualne wydanie wskazuje
+`catalog.json`; nie wybieraj folderu na podstawie nazwy ani kolejności alfabetycznej.**
+Aby wyświetlić dokładny plik do wysłania:
 
 ```powershell
-python -m venv python/.venv
-python/.venv/Scripts/python.exe -m pip install -r python/requirements.txt
+$catalog = Get-Content .\dist\dictionaries\catalog.json -Raw | ConvertFrom-Json
+$catalog.pairs.'en-pl'.path
+$catalog.pairs.'en-pl'.entryCount
 ```
 
-2. Uruchom budowanie nowego słownika EN→PL z 50 000 najczęstszych haseł i dodatkowych fraz:
+## 7. Wgraj pliki do Cloudflare R2
 
-```powershell
-python/.venv/Scripts/python.exe python/build_en_pl.py --count 50000
-python/.venv/Scripts/python.exe python/build_en_pl.py --count 50000 --retry-failed
-python/.venv/bin/python python/build_en_pl.py --count 50000 --retry-failed
-```
-
-Skrypt sam tworzy listę z `wordfreq` i tłumaczy przez `GoogleTranslator`. Nie potrzebujesz starego słownika, klucza API ani Gemini. Większą listę uzyskasz przez `--count 100000`.
-
-3. Przetłumacz angielski na pozostałe języki:
-
-```powershell
-python/.venv/Scripts/python.exe python/translate_languages.py --sources en --targets ja,de,ko,fr,nl,he,es,it,cs,pt --count 50000
-```
-
-Dla każdej pary spośród 12 obsługiwanych języków użyj:
-
-```powershell
-python/.venv/Scripts/python.exe python/translate_languages.py --sources all --targets all --count 50000
-```
-
-Zostaw komputer włączony. To długi proces: domyślnie do 50 000 wywołań na uruchomienie, każde z przerwą 1,5 s plus czas odpowiedzi. Wszystkie pary to miliony wywołań. Po osiągnięciu limitu, przerwaniu lub błędzie Google powtórz to samo polecenie później. **Nie usuwaj `python/work`** — tam jest zapisany postęp. Gotowe hasła nie są tłumaczone ponownie.
-
-Opcjonalnie dopisz frazy do `python/extra/en.txt` (dla innych źródeł np. `pl.txt`). Poprawki tłumaczeń umieść w `python/overrides/en-pl.json`, np. `{"above board":"uczciwy / jawny"}`, i ponownie uruchom skrypt z `--export-only`. Sprawdź tłumaczenia przed publikacją; lista częstotliwości nie obejmuje wszystkich słów i znaczeń.
-
-Pojedyncze `TranslationNotFound` odkłada hasło do uzupełnienia i nie kończy pracy. Skrypt zatrzyma się po 3 takich błędach z rzędu albo od razu przy innym błędzie, np. limicie Google. Zwykłe wznowienie przetwarza nowe hasła. Odłożone hasła uzupełnij później osobnym poleceniem:
-
-```powershell
-python/.venv/Scripts/python.exe python/build_en_pl.py --count 50000 --retry-failed
-```
-
-# Co umieścić w R2
-
-Wgraj **folder `dictionaries` z `python/dist` do głównego poziomu Twojego bucketa R2**, zachowując nazwy wygenerowanych podfolderów:
+Użyj istniejącego bucketu Lectoro, udostępnionego pod adresem:
 
 ```text
-dictionaries/
-  catalog.json
-  releases/
-    google-.../
-      en-pl.json
-      licenses.json
-    google-.../
-      en-de.json
-      licenses.json
+https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev/
 ```
 
-Najpierw wgraj `releases`, **`catalog.json` na końcu**. Nie zmieniaj ręcznie wygenerowanych JSON-ów. Po kolejnej sesji wgraj nowe podfoldery oraz aktualny katalog. Każda paczka zawiera dotychczas ukończone hasła; liczbę brakujących sprawdzisz w `python/work/reports`.
+Wgraj cały folder **`python/dist/dictionaries/` do głównego katalogu bucketu R2**.
+Struktura lokalna odpowiada strukturze R2 przedstawionej w tabeli. Nie dodawaj poziomu
+`dist/` ani `dictionaries/dictionaries/` w buckecie.
 
-Jeśli potrzebujesz tylko ponownie zapisać ukończone tłumaczenia, bez połączenia z Google:
+Przesyłaj oryginalne pliki z dysku, bez wklejania JSON do edytora i formatowania.
+Nawet zmiana wcięć zmienia rozmiar i SHA-256, przez co rozszerzenie odrzuci słownik.
+
+Starszy eksport możesz odtworzyć w nowym folderze bez API:
 
 ```powershell
-python/.venv/Scripts/python.exe python/build_en_pl.py --count 50000 --export-only
+.\.venv\Scripts\python.exe generate_dictionary.py --count 10 --export-only
 ```
 
-Po przypadkowym sformatowaniu lub zmianie paczki skrypt utworzy nową wersję z końcówką `-r1`, `-r2` itd. Wgraj tę nową wersję i aktualny `catalog.json`; nie usuwaj zapisanych tłumaczeń z `python/work`.
+Użyj dotychczasowego `--count` (powyżej: test 10 słów). Postęp pozostaje w
+`work/compact/`; stary `dist/compact/` nie jest folderem do publikacji.
 
-W R2 włącz publiczny dostęp. Katalog musi być dostępny pod adresem:
+| Kolejność | Plik na komputerze, względem `python/` | Klucz obiektu w R2 |
+| --- | --- | --- |
+| 1 | `dist/dictionaries/releases/compact-HASH/en-pl.json` | `dictionaries/releases/compact-HASH/en-pl.json` |
+| 2 | `dist/dictionaries/sources-en-pl.json` | `dictionaries/sources-en-pl.json` |
+| 3 — na końcu | `dist/dictionaries/catalog.json` | `dictionaries/catalog.json` |
+
+Po przesłaniu całego folderu wgraj ponownie `catalog.json` do `dictionaries/catalog.json`,
+aby katalog został opublikowany po plikach wydania.
+Jeśli katalog na CDN zawiera inne pary języków, zachowaj ich wpisy w `pairs` i podmień tylko
+`en-pl`. Nowy lokalny katalog może zawierać tylko tę jedną parę.
+
+Dla plików JSON ustaw `Content-Type: application/json`. Zalecane nagłówki cache:
+
+- `catalog.json` i `sources-en-pl.json`: `Cache-Control: no-cache`;
+- wersjonowany `en-pl.json`: `Cache-Control: public,max-age=31536000,immutable`.
+
+Bucket musi pozwalać na publiczny odczyt tych obiektów. W razie ograniczeń CORS dopuść GET
+z rozszerzenia. Nie zmieniaj zawartości `en-pl.json` po eksporcie: jego rozmiar i SHA-256
+muszą zgadzać się z katalogiem. Limit aplikacji to 32 MiB; generator ogranicza długość wpisów.
+
+**Nie wysyłaj na R2** folderów `work/`, `.venv/`, plików `.py` ani klucza API.
+`sources-en-pl.json` zawiera atrybucję listy słów `wordfreq`; zachowaj ten plik przy publikacji.
+
+### Opcjonalnie: mniejszy transfer przez gzip
+
+Na początek możesz wysłać zwykły `.json` zgodnie z tabelą. Wersja `.json.gz` jest już wygenerowana.
+Aby jej użyć, wgraj jej bajty **pod tym samym kluczem kończącym się na `en-pl.json`**, ustawiając:
 
 ```text
-https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev/dictionaries/catalog.json
+Content-Type: application/json
+Content-Encoding: gzip
 ```
 
-Ustaw dla JSON `Content-Type: application/json; charset=utf-8`. Dla katalogu ustaw `Cache-Control: public, max-age=300`, a dla plików w `releases`: `public, max-age=31536000, immutable`.
+Katalog zostaje bez zmian, ponieważ rozmiar i SHA-256 dotyczą rozpakowanego JSON.
+Samo wgranie `.json.gz` obok `.json` nie sprawi, że aplikacja zacznie z niego korzystać.
 
-Przeładuj rozszerzenie i stronę filmu. Wybierz język nauki i docelowy odpowiadające wgranej parze. Aktualizacja wcześniej pobranego katalogu może potrwać do 6 godzin. Nie wrzucaj na R2 ani do paczki rozszerzenia folderów `.venv`, `work` ani skryptów Python.
+## 8. Sprawdź po publikacji
+
+Otwórz publiczny `dictionaries/catalog.json`, a następnie adres z prefiksem `dictionaries/`
+i ścieżką `pairs.en-pl.path`. Oba powinny odpowiadać i zawierać właściwy JSON.
+
+Adres R2 jest już skonfigurowany w `../shared/dictionary-store.js`. Po pobraniu aplikacja
+sprawdza rozmiar, sumę SHA-256 i format, a potem zapisuje słownik offline w IndexedDB.
+Sprawdzenie nowego katalogu może nastąpić dopiero po wygaśnięciu cache, do 6 godzin.
+Na wideo sprawdź słowo obecne w pliku: pod pojedynczym tłumaczeniem powinny być definicja,
+synonimy i trzy przykłady. Nie trzeba generować niczego przez API przy najechaniu na słowo.
+
+## Testy generatora — bez płatnych zapytań
+
+```powershell
+.\.venv\Scripts\python.exe -B -m unittest discover -s . -p test_compact_generator.py
+```

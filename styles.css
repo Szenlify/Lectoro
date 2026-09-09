@@ -2243,7 +2243,7 @@ body[data-lectoro-ai-active="true"]
   }
 }
 
-/* Click an example sentence to reveal its translation. */
+/* Concise dictionary details beneath the word translation. */
 #__qt_tooltip .__qt_dictionary-details {
   margin-top: 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.15);
@@ -2259,16 +2259,8 @@ body[data-lectoro-ai-active="true"]
   border-radius: 4px;
   color: #fff;
 }
-#__qt_tooltip .__qt_dictionary-example summary {
-  display: list-item;
-  cursor: pointer;
-  color: #fff;
-}
-#__qt_tooltip .__qt_dictionary-example > div {
+#__qt_tooltip .__qt_dictionary-definition,
+#__qt_tooltip .__qt_dictionary-synonyms {
   color: #c4c9dc;
-  margin-top: 6px;
-}
-#__qt_tooltip .__qt_dictionary-example summary:focus-visible {
-  outline: 2px solid #8ce6d3;
-  outline-offset: 3px;
+  margin: 10px 0;
 }

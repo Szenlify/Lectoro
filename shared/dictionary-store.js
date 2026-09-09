@@ -10,6 +10,28 @@
     const validText = (value, max = 200) => typeof value === "string" && !!value.trim() && value.length <= max && !/[\u0000-\u001f]/.test(value);
 
     function validatePack(pack, source, target, version) {
+        // Compact files contain only word -> {t,d,s,e}; identity comes from the
+        // checksum-verified catalog. Keep them compact in IndexedDB as well.
+        if (isObject(pack) && pack.schemaVersion === undefined) {
+            const terms = Object.entries(pack);
+            if (!terms.length || terms.length > 200000) throw new Error("Invalid compact dictionary count");
+            const single = (s) => validText(s, 80) && /^[\p{L}\p{M}]+$/u.test(s);
+            for (const [word, entry] of terms) {
+                if (!validText(word, 80) || !isObject(entry) || Object.keys(entry).sort().join() !== "d,e,s,t" ||
+                    !single(entry.t) || !validText(entry.d, 300) ||
+                    !Array.isArray(entry.s) || entry.s.length < 2 || entry.s.length > 4 ||
+                    !entry.s.every(s => validText(s, 80)) || new Set(entry.s.map(s => s.toLowerCase())).size !== entry.s.length ||
+                    !Array.isArray(entry.e) || entry.e.length !== 3 || !entry.e.every(e => validText(e, 300)) || new Set(entry.e).size !== entry.e.length) {
+                    throw new Error("Invalid compact dictionary entry");
+                }
+            }
+            return { schemaVersion: 2, sourceLanguage: source, targetLanguage: target, version, entries: pack };
+        }
+        if (pack?.schemaVersion === 2) {
+            if (pack.sourceLanguage !== source || pack.targetLanguage !== target || pack.version !== version) throw new Error("Dictionary identity mismatch");
+            if (!isObject(pack.entries) || pack.entries.schemaVersion !== undefined) throw new Error("Invalid compact dictionary data");
+            return validatePack(pack.entries, source, target, version);
+        }
         if (!isObject(pack) || pack.schemaVersion !== 1 || pack.sourceLanguage !== source || pack.targetLanguage !== target || pack.version !== version) {
             throw new Error("Dictionary identity mismatch");
         }
