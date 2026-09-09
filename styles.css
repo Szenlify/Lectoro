@@ -216,6 +216,10 @@
   padding: 12px 14px 14px;
   max-height: min(400px, calc(100vh - 140px)) !important;
   overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(174, 182, 200, 0.35) transparent;
   box-sizing: border-box !important;
 }
 
@@ -243,7 +247,7 @@
 }
 
 #__qt_tooltip .__qt_text {
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.5;
   word-break: break-word;
 }
@@ -2290,6 +2294,9 @@ body[data-lectoro-ai-active="true"]
   cursor: pointer;
   list-style: none;
   border-radius: 3px;
+}
+#__qt_tooltip .__qt_example-reveal {
+  box-sizing: border-box;
 }
 #__qt_tooltip .__qt_example-reveal summary::before {
   content: "";

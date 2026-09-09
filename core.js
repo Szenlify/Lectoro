@@ -1109,8 +1109,49 @@
         }
     }
 
+    function attachTranslationReveal(details) {
+        const summary = details.querySelector("summary");
+        const translation = details.querySelector(`.${PREFIX}example-translation`);
+        if (!summary || !translation || details.dataset.revealBound) return;
+        details.dataset.revealBound = "true";
+        let animation = null;
+        let fade = null;
+        let expanded = details.open;
+        summary.addEventListener("click", (event) => {
+            if (event.target.closest("button")) return;
+            event.preventDefault();
+            const from = details.getBoundingClientRect().height;
+            const opacity = details.open ? getComputedStyle(translation).opacity : "0";
+            animation?.cancel();
+            fade?.cancel();
+            expanded = !expanded;
+            translation.inert = !expanded;
+            if (globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches || !details.animate) {
+                details.open = expanded;
+                details.style.overflow = "";
+                return;
+            }
+            // Measure both native states, then retain open content while its height changes.
+            details.open = expanded;
+            const to = details.getBoundingClientRect().height;
+            details.open = true;
+            details.style.overflow = "hidden";
+            const options = { duration: 240, easing: "cubic-bezier(0.22, 1, 0.36, 1)", fill: "both" };
+            animation = details.animate([{height: `${from}px`}, {height: `${to}px`}], options);
+            fade = translation.animate([{opacity}, {opacity: expanded ? 1 : 0}], options);
+            animation.onfinish = () => {
+                details.open = expanded;
+                details.style.overflow = "";
+                animation.cancel();
+                fade.cancel();
+                animation = fade = null;
+            };
+        });
+    }
+
     function attachTooltipHandlers() {
         if (!tooltipEl) return;
+        tooltipEl.querySelectorAll(`.${PREFIX}example-reveal`).forEach(attachTranslationReveal);
 
         tooltipEl.querySelectorAll(`.${PREFIX}save-example`).forEach((btn) => {
             btn.addEventListener("click", (ev) => {
