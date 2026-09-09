@@ -20,12 +20,14 @@ Potrzebujesz zainstalowanego Pythona 3.10 lub nowszego.
 Jeżeli nie masz jeszcze folderu `.venv`, utwórz go:
 
 ```powershell
+python3 -m venv .venv
 python -m venv .venv
 ```
 
 Zainstaluj zależności:
 
 ```powershell
+./.venv/bin/python3 -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
@@ -37,6 +39,7 @@ Jedyna bezpośrednia zależność to `wordfreq`, używana jako lista angielskich
 Wpisz lokalnie swój klucz zamiast `TWOJ_KLUCZ`:
 
 ```powershell
+export GEMINI_API_KEY="TWOJ_KLUCZ"
 $env:GEMINI_API_KEY = "TWOJ_KLUCZ"
 ```
 
@@ -64,6 +67,7 @@ statusy są zapisywane jako osobne linie. Eksport trafia do `dist/dictionaries/`
 ## 5. Generuj 50 000 słów
 
 ```powershell
+./.venv/bin/python3 generate_dictionary.py --count 10000
 .\.venv\Scripts\python.exe generate_dictionary.py --count 50000
 ```
 
