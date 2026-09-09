@@ -9,7 +9,7 @@ import urllib.error
 from pathlib import Path
 from unittest.mock import patch
 
-from generate_dictionary import APIError, Progress, export, main, open_database, prepare, request_entry, run, run_reverse, validate_entry
+from generate_dictionary import APIError, LANGUAGES, Progress, choose_language, export, main, open_database, prepare, request_entry, run, run_reverse, validate_entry
 
 
 ENTRY = {"t": "praca", "d": {"s": "an activity you do as part of your job", "t": "czynność wykonywana w ramach pracy"},
@@ -20,6 +20,40 @@ ENTRY = {"t": "praca", "d": {"s": "an activity you do as part of your job", "t":
 
 
 class CompactTests(unittest.TestCase):
+    def test_language_selection_and_unicode_pairs_share_catalog_safely(self):
+        with patch("builtins.input", side_effect=["invalid", "2"]), patch("builtins.print"):
+            self.assertEqual(choose_language("Language", "en"), "ja")
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            expected = set()
+            samples = {"en":"work", "ja":"仕事", "de":"Arbeit", "ko":"일", "fr":"travail", "nl":"werk",
+                       "pl":"praca", "es":"trabajo", "it":"lavoro", "cs":"práce", "pt":"trabalho"}
+            for source in LANGUAGES:
+                target = "en" if source == "pl" else "pl"
+                word = samples[source].lower()
+                words = root / f"{source}.txt"
+                words.write_text(word + "\n", encoding="utf-8")
+                args = argparse.Namespace(work=root/source, output=root/"dist"/"dictionaries", words=words,
+                    count=1, source_lang=source, target_lang=target, model="test", interval=0, export_every=1)
+                db = open_database(args.work)
+                prepare(db, args)
+                entry = {"t":"work" if source == "pl" else "praca", "d":{"s":"Simple definition.","t":"Prosta definicja."},
+                         "s":[],"e":[{"s":f"{word} {i}.","t":f"Przykład {i}."} for i in range(3)]}
+                with patch("generate_dictionary.request_json", return_value=entry) as request:
+                    self.assertEqual(request_entry(word, args), entry)
+                self.assertIn(f"{LANGUAGES[source]}-to-{LANGUAGES[target]}",request.call_args.kwargs["prompt"])
+                with db:
+                    db.execute("UPDATE words SET entry=?",(json.dumps(entry),))
+                with patch("builtins.print"):
+                    export(db,args)
+                expected.update((f"{source}-{target}",f"{target}-{source}"))
+                catalog = json.loads((args.output/"catalog.json").read_text())
+                self.assertEqual(set(catalog["pairs"]),expected)
+                args.target_lang = "de" if target != "de" else "fr"
+                with self.assertRaisesRegex(ValueError,"inna pare"):
+                    prepare(db,args)
+                db.close()
+
     def test_progress_counts_unresolved_words_not_failed_attempts(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
@@ -88,7 +122,7 @@ class CompactTests(unittest.TestCase):
                 calls.append("reverse")
                 return True
             with patch("generate_dictionary.DIRECTORY", root), patch.dict("os.environ", {"GEMINI_API_KEY":"test"}), patch("sys.argv", [
-                "generate_dictionary.py", "--count", "1", "--words", str(words)
+                "generate_dictionary.py", "--source-lang", "en", "--target-lang", "pl", "--count", "1", "--words", str(words)
             ]), patch("generate_dictionary.run", forward), patch("generate_dictionary.run_reverse", reverse):
                 with self.assertRaises(SystemExit) as stopped:
                     main()
@@ -287,7 +321,7 @@ class CompactTests(unittest.TestCase):
                 db.execute("UPDATE words SET entry=? WHERE word='work'", (json.dumps(ENTRY),))
             db.close()
             with patch("generate_dictionary.DIRECTORY", root), patch("sys.argv", [
-                "generate_dictionary.py", "--count", "1", "--words", str(words), "--export-only",
+                "generate_dictionary.py", "--source-lang", "en", "--target-lang", "pl", "--count", "1", "--words", str(words), "--export-only",
             ]), patch("generate_dictionary.request_entry", side_effect=AssertionError("No API during export")), patch("builtins.print"):
                 main()
             output = root / "dist" / "dictionaries"

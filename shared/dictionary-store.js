@@ -18,7 +18,7 @@
         if (isObject(pack) && pack.schemaVersion === undefined) {
             const terms = Object.entries(pack);
             if (!terms.length || terms.length > 200000) throw new Error("Invalid compact dictionary count");
-            const single = (s) => validText(s, 80) && /^[\p{L}\p{M}]+$/u.test(s);
+            const single = (s) => validText(s, 80) && /^\p{L}[\p{L}\p{M}'’\-]*[\p{L}\p{M}]$|^\p{L}$/u.test(s);
             for (const [word, entry] of terms) {
                 const legacy = Array.isArray(entry?.e) && entry.e.every(e => typeof e === "string");
                 if (!validText(word, 80) || !isObject(entry) || Object.keys(entry).sort().join() !== "d,e,s,t" ||
