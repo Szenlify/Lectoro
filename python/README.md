@@ -53,8 +53,11 @@ Ta komenda już korzysta z płatnego API:
 ```
 
 Model jest domyślnie ustawiony na `gemini-2.5-flash-lite`. W konsoli zobaczysz aktualne słowo,
-liczbę zapisanych wpisów, procent, liczbę błędów i prób, tempo oraz orientacyjny czas do końca.
-Komunikat `EKSPORT` podaje ścieżkę do pliku JSON. Sprawdź jego treść przed większym uruchomieniem.
+liczbę zapisanych wpisów, pasek 0–100%, liczbę błędów i prób, tempo oraz orientacyjny czas do końca.
+W terminalu jeden wiersz aktualizuje się na miejscu, również podczas oczekiwania na API.
+Błędy trafiają także do `work/compact/errors.log`; ostatni błąd pozostaje w statusie
+(długi wiersz jest skracany do szerokości terminala). Po przekierowaniu wyjścia do pliku
+statusy są zapisywane jako osobne linie. Eksport trafia do `dist/dictionaries/`.
 
 ## 5. Generuj 50 000 słów
 
@@ -63,8 +66,9 @@ Komunikat `EKSPORT` podaje ścieżkę do pliku JSON. Sprawdź jego treść przed
 ```
 
 Poprawne wpisy z próby 10 słów zostaną wykorzystane. Skrypt nie płaci ponownie za ich generowanie.
-Domyślnie robi 5 sekund przerwy po udanym zapytaniu. Jeśli limity Twojego konta pozwalają,
-możesz skrócić przerwę:
+Domyślnie następne zapytanie startuje od razu po zakończeniu poprzedniego (`--interval 0`).
+Oczekiwanie po błędach i limitach API nadal działa. Jeśli chcesz ograniczyć tempo,
+możesz ustawić przerwę po udanych zapytaniach:
 
 ```powershell
 .\.venv\Scripts\python.exe generate_dictionary.py --count 50000 --interval 1
@@ -80,14 +84,20 @@ Zatrzymaj przez `Ctrl+C`. Aktywne zapytanie może najpierw czekać na timeout (d
 Aby wznowić, uruchom ponownie komendę z tym samym `--count` i folderem pracy.
 Po otwarciu nowego terminala ustaw ponownie klucz z kroku 3.
 
-Błędy sieci, HTTP 429 i niepoprawne wpisy są ponawiane automatycznie. HTTP 429 powoduje
-przerwę co najmniej 15 minut; podczas czekania nadal pojawiają się komunikaty.
-Błędy zapisu podczas pracy też są ponawiane. Brak zależności, dostępu do bazy przy starcie
-lub niepoprawny klucz wymagają naprawienia konfiguracji.
+Błędne wpisy są ponawiane od razu, ze wskazówką dla modelu opisującą błąd walidacji.
+Domyślnie limit wynosi 3 próby na brakujące hasło w jednym uruchomieniu
+(`--max-attempts 3`). Po wyczerpaniu prób generator przechodzi do pozostałych słów.
+Błędy sieci mają rosnące opóźnienie, a HTTP 429 co najmniej 30 sekund; dłuższy
+numeryczny `Retry-After` serwera jest respektowany. Po wyczerpaniu prób dla błędu
+API/sieci skrypt kończy pracę z zapisanym wynikiem częściowym. HTTP 400/401/403/404
+zatrzymują generowanie od razu, aby można było poprawić klucz, model lub konfigurację.
+Błędy zapisu są ponawiane maksymalnie 3 razy.
 
 **50 000 oznacza liczbę wybranych haseł.** Nie każde ma jeden polski odpowiednik. Brak synonimów jest dozwolony (`s: []`).
-Niepoprawne wpisy nie są zapisywane; mogą pozostać w kolejce do weryfikacji i być ponawiane
-bez końca. Wtedy możesz zatrzymać skrypt i wykorzystać częściowy słownik. Walidacja sprawdza
+Niepoprawne wpisy nie są zapisywane. Jeśli pozostały braki, skrypt eksportuje poprawne
+wpisy, zapisuje listę w `work/compact/pending.json` i kończy się kodem 2 ze statusem
+`WYNIK CZESCIOWY` (bez udawania 100%). Ponowne uruchomienie próbuje tylko brakujących
+haseł; poprawne wpisy pozostają w bazie. Walidacja sprawdza
 format, długość i duplikaty, ale nie gwarantuje poprawności językowej odpowiedzi modelu.
 
 ### Eksport zapisanych wpisów bez wywoływania API

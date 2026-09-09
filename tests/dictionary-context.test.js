@@ -1,4 +1,4 @@
-const test = require('node:test');
+﻿const test = require('node:test');
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const {load, loadFunction} = require('./helpers');
@@ -68,7 +68,7 @@ test('pack validator bounds optional definitions and examples while accepting ol
 });
 
 test('hover renders definition and escaped source examples without example translations', () => {
-  const context=vm.createContext({PREFIX:'__qt_',escapeHtml:U.escapeHtml,escapeAttr:U.escapeAttr,speakButtonHtml:(text,lang)=>`<button class="__qt_speak" data-lang="${lang}">TTS</button>`});
+  const context=vm.createContext({PREFIX:'__qt_',SVG:C.SVG_ICONS,escapeHtml:U.escapeHtml,escapeAttr:U.escapeAttr,speakButtonHtml:(text,lang)=>`<button class="__qt_speak" data-lang="${lang}">TTS</button>`});
   loadFunction(context,'core.js','buildDictionaryDetailsHtml');
   const result=dictionary.lookupDetails('like',target,['I','like','music'],1);
   result.senses=result.senses.map(s=>({...s,examples:[{source:'<img src=x onerror=alert(1)>',target:'Przykład'}]}));
@@ -97,7 +97,7 @@ test('example save translates the sentence once, prevents double clicks and allo
     closest:()=>({querySelector:()=>status}),
   };
   const context = vm.createContext({
-    PREFIX:'__qt_', cleanCardText:s=>String(s || '').trim(),
+    PREFIX:'__qt_',SVG:C.SVG_ICONS, cleanCardText:s=>String(s || '').trim(),
     window:{location:{href:'https://example.com'}},
     SharedTranslatorService:{async translate(text, target, source){
       calls++;
@@ -131,7 +131,7 @@ test('subtitle hover passes the exact word occurrence and ignores stale async re
   let request, rendered, resolve;
   const waiting=new Promise(r=>{resolve=r;});
   const context=vm.createContext({
-    PREFIX:'__qt_', activeWordSpans:[first,second], activeText:'like like',
+    PREFIX:'__qt_',SVG:C.SVG_ICONS, activeWordSpans:[first,second], activeText:'like like',
     isSubHovering:true,lastHoveredSubWord:second,
     ensureSubtitleUiTracking(){},
     QT:{showLoading(){},showTooltip(html){rendered=html;},buildTooltipHtml(data){return data;},attachTooltipHandlers(){},escapeHtml:U.escapeHtml},
@@ -171,3 +171,4 @@ test('S shows one equivalent while hover shows lexical alternatives without gram
   const phrase=dictionary.lookupWordByWord(['give','up'],{'give up':'poddać się / zrezygnować'});
   assert.equal(phrase[0].translated,'poddać się');
 });
+

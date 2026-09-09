@@ -8,6 +8,8 @@ import os
 import random
 import re
 import sqlite3
+import shutil
+import sys
 import time
 import urllib.error
 import urllib.request
@@ -108,28 +110,36 @@ def validate_entry(word, entry):
             not all(valid_text(s, 80) for s in synonyms) or
             len({s.casefold() for s in synonyms}) != len(synonyms) or word.casefold() in {s.casefold() for s in synonyms}):
         raise ValueError("Wymagane 0-3 rozne synonimy")
-    if (not isinstance(examples, list) or len(examples) != 3 or
-            not all(isinstance(e, dict) and set(e) == {"source", "target"} and
-                    valid_text(e["source"], 300) and valid_text(e["target"], 300) and
-                    re.search(r"(?<!\w)" + re.escape(word) + r"(?!\w)", e["source"], re.I) for e in examples) or
-            len({e["source"].casefold() for e in examples}) != 3):
-        raise ValueError("Wymagane 3 rozne zdania z polskim tlumaczeniem")
+    if not isinstance(examples, list) or len(examples) != 3:
+        raise ValueError("e must contain exactly 3 example objects")
+    for index, example in enumerate(examples, 1):
+        if not isinstance(example, dict) or set(example) != {"source", "target"}:
+            raise ValueError(f"Example {index} must have source and target fields")
+        if not valid_text(example["source"], 300) or not valid_text(example["target"], 300):
+            raise ValueError(f"Example {index}: source and Polish target must be nonempty plain text, at most 300 characters")
+        if not re.search(r"(?<!\w)" + re.escape(word) + r"(?!\w)", example["source"], re.I):
+            raise ValueError(f"Example {index}: source must contain exact word '{word}', not an inflected form")
+    if len({e["source"].casefold() for e in examples}) != 3:
+        raise ValueError("The 3 source examples must be different")
     if len(encode({word: entry})) > 1200:
         raise ValueError("Wpis przekracza 1200 bajtow; definicja i zdania musza byc krotsze")
     return entry
 
 
 class APIError(Exception):
-    def __init__(self, message, retry_after=0):
+    def __init__(self, message, retry_after=0, status=None):
         super().__init__(message)
         self.retry_after = retry_after
+        self.status = status
 
 
 def request_entry(word, args):
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{args.model}:generateContent"
     headers = {"Content-Type": "application/json", "x-goog-api-key": os.environ["GEMINI_API_KEY"]}
     body = {"systemInstruction": {"parts": [{"text": PROMPT}]},
-            "contents": [{"parts": [{"text": json.dumps({"word": word})}]}],
+            "contents": [{"parts": [{"text": json.dumps({"word": word,
+                "previousValidationError": getattr(args, "validation_feedback", {}).get(word),
+                "instruction": "Fix the previous validation error if present. Return a complete entry."})}]}],
             "generationConfig": {"responseMimeType": "application/json", "responseJsonSchema": SCHEMA,
                                  "temperature": 0.3, "maxOutputTokens": 4096}}
     request = urllib.request.Request(url, data=json.dumps(body).encode(), headers=headers, method="POST")
@@ -144,7 +154,7 @@ def request_entry(word, args):
         delay = float(delay) if re.fullmatch(r"\d+(?:\.\d+)?", delay) else 0
         error.close()
         # Never print response bodies or request URLs containing credentials.
-        raise APIError(f"HTTP {error.code}; sprawdz serwer/model/klucz lub limit API", max(delay, 900 if error.code == 429 else 60)) from None
+        raise APIError(f"HTTP {error.code}; sprawdz serwer/model/klucz lub limit API", delay, error.code) from None
     candidates = result.get("candidates", [])
     if not candidates or candidates[0].get("finishReason") != "STOP":
         raise ValueError("Gemini nie dokonczyl odpowiedzi")
@@ -196,7 +206,51 @@ def prepare(db, args):
             print(f"NOWY FORMAT: {len(legacy)} wpisow wymaga ponownego wygenerowania z tlumaczeniami; kopia w legacy_entries", flush=True)
 
 
-def export(db, args):
+class Progress:
+    def __init__(self, db, args):
+        self.db, self.args = db, args
+        self.started = time.monotonic()
+        self.initial = self.stats()[1]
+        self.last_error = ""
+        self.width = 0
+
+    def stats(self):
+        return self.db.execute("SELECT count(*),count(entry),coalesce(sum(errors),0),coalesce(sum(attempts),0) FROM words JOIN selected USING(word)").fetchone()
+
+    def update(self, status, error=False):
+        status = " ".join(str(status).replace(os.environ.get("GEMINI_API_KEY") or "\0", "[REDACTED]").split())
+        if error:
+            self.last_error = status
+            with (self.args.work / "errors.log").open("a", encoding="utf-8") as log:
+                log.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} {status}\n")
+        total, done, errors, attempts = self.stats()
+        ratio = done / max(1, total)
+        speed = (done - self.initial) * 3600 / max(1, time.monotonic() - self.started)
+        eta = f"{(total-done)/speed:.1f}h" if speed else "?"
+        bar = "#" * int(ratio * 12) + "-" * (12 - int(ratio * 12))
+        percent = int(ratio * 10000) / 100
+        line = f"[{bar}] {percent:.2f}% {done}/{total} | bledy {errors} | {status} | proby {attempts} | {speed:.0f}/h | ETA {eta}"
+        if self.last_error and not error:
+            line += f" | ostatni blad: {self.last_error}"
+        if sys.stdout.isatty():
+            limit = max(1, shutil.get_terminal_size((120, 24)).columns - 1)
+            line = line if len(line) <= limit else line[:max(0, limit-3)] + "..."
+            print("\r" + line + " " * max(0, min(self.width, limit) - len(line)), end="", flush=True)
+            self.width = len(line)
+        else:
+            print(line, flush=True)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        if self.width:
+            print(flush=True)
+
+
+def export(db, args, progress=None):
+    write_json(args.work / "pending.json", [{"word": w, "errors": n, "error": e} for w, n, e in db.execute(
+        "SELECT word,errors,error FROM words JOIN selected USING(word) WHERE entry IS NULL ORDER BY ordinal")])
     entries = {w: json.loads(e) for w, e in db.execute(
         "SELECT word,entry FROM words JOIN selected USING(word) WHERE entry IS NOT NULL ORDER BY word")}
     if not entries:
@@ -226,63 +280,89 @@ def export(db, args):
     write_json(args.output / "sources-en-pl.json", {"wordlist": str(args.words) if args.words else WORDFREQ_SOURCE,
                "generator": "gemini", "model": args.model, "reviewStatus": "machine-generated; not human reviewed"})
     write_json(catalog_path, catalog)
-    write_json(args.work / "pending.json", [{"word": w, "errors": n, "error": e} for w, n, e in db.execute(
-        "SELECT word,errors,error FROM words JOIN selected USING(word) WHERE entry IS NULL ORDER BY ordinal")])
-    print(f"EKSPORT {len(entries)} wpisow | JSON {len(raw)/1048576:.2f} MiB | gzip {len(compressed)/1048576:.2f} MiB | {destination}", flush=True)
+    if progress:
+        progress.update(f"Eksport {len(entries)} wpisow ({len(raw)/1048576:.2f} MiB)")
+    else:
+        print(f"EKSPORT {len(entries)} wpisow | JSON {len(raw)/1048576:.2f} MiB | gzip {len(compressed)/1048576:.2f} MiB | {destination}", flush=True)
 
 
 def run(db, args, generate=request_entry):
-    started, new, last_export = time.monotonic(), 0, 0
+    new, last_export = 0, 0
     next_request = 0
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+    attempts_this_run = {}
+    args.validation_feedback = {}
+    max_attempts = getattr(args, "max_attempts", 3)
+    db.execute("CREATE TEMP TABLE IF NOT EXISTS deferred(word TEXT PRIMARY KEY)")
+    db.execute("DELETE FROM deferred")
+    # Old versions delayed content-validation failures for many minutes.
+    db.execute("UPDATE words SET next_try=0 WHERE entry IS NULL AND error LIKE 'Wymagane %'")
+    db.commit()
+    with Progress(db, args) as progress, concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        progress.update("Start")
         while True:
             total, done, errors, attempts = db.execute("SELECT count(*),count(entry),coalesce(sum(errors),0),coalesce(sum(attempts),0) FROM words JOIN selected USING(word)").fetchone()
-            speed = new * 3600 / max(1, time.monotonic() - started)
-            eta = f"{(total-done)/speed:.1f}h" if speed else "?"
-            print(f"POSTEP {done}/{total} ({done/total:.2%}) | bledy {errors} | proby {attempts} | {speed:.1f} slow/h | ETA {eta}", flush=True)
             if done == total:
-                export(db, args)
-                return
-            row = db.execute("SELECT word,errors,next_try FROM words JOIN selected USING(word) WHERE entry IS NULL ORDER BY next_try,ordinal LIMIT 1").fetchone()
+                export(db, args, progress)
+                progress.update("Gotowe - dist/dictionaries" if args.output == DIRECTORY / "dist" / "dictionaries" else f"Gotowe - {args.output}")
+                return True
+            row = db.execute("SELECT word,errors,next_try FROM words JOIN selected USING(word) WHERE entry IS NULL AND word NOT IN (SELECT word FROM deferred) ORDER BY next_try,ordinal LIMIT 1").fetchone()
+            if row is None:
+                export(db, args, progress)
+                progress.update(f"WYNIK CZESCIOWY: brakuje {total-done}; szczegoly: pending.json / errors.log")
+                return False
             word, failures, ready = row
             wait = max(ready, next_request) - time.time()
             if wait > 0:
-                print(f"CZEKAM {wait:.0f}s | automatyczne wznowienie; Ctrl+C zapisuje i zatrzymuje", flush=True)
-                time.sleep(min(wait, 30))
+                progress.update(f"Czekam {wait:.0f}s (limit API/siec lub --interval); wznowie")
+                time.sleep(min(wait, 1 if sys.stdout.isatty() else 30))
                 continue
             with db:
                 db.execute("UPDATE words SET attempts=attempts+1 WHERE word=?", (word,))
-            print(f"GENERUJE {word}", flush=True)
+            attempts_this_run[word] = attempts_this_run.get(word, 0) + 1
+            progress.update(f"Generuje {word}")
             future = pool.submit(generate, word, args)
             while True:
                 try:
-                    entry = future.result(timeout=15)
+                    entry = future.result(timeout=1 if sys.stdout.isatty() else 15)
                     break
                 except concurrent.futures.TimeoutError:
                     if future.done():
                         break
-                    print(f"API pracuje nad {word} | zapisane {done}/{total} | bledy {errors}", flush=True)
+                    progress.update(f"API pracuje: {word}")
                 except Exception:
                     break
             try:
                 entry = validate_entry(word, future.result())
             except Exception as error:
-                delay = min(3600, 30 * 2 ** min(failures, 7)) + random.uniform(0, 5)
+                transient = isinstance(error, (APIError, OSError, TimeoutError))
+                delay = min(300, 5 * 2 ** (attempts_this_run[word]-1)) + random.uniform(0, 2) if transient else 0
                 if isinstance(error, APIError):
-                    next_request = time.time() + max(delay, error.retry_after)
-                elif isinstance(error, (OSError, TimeoutError)):
+                    delay = max(delay, error.retry_after, 30 if error.status == 429 else 0)
+                if transient:
                     next_request = time.time() + delay
                 message = str(error).replace(os.environ.get("GEMINI_API_KEY") or "\0", "[REDACTED]")[:300]
                 with db:
                     db.execute("UPDATE words SET errors=errors+1,next_try=?,error=? WHERE word=?", (time.time()+delay, message, word))
-                print(f"BLAD {word}: {message} | ponowienie za >= {delay:.0f}s; przechodze dalej", flush=True)
+                    if attempts_this_run[word] >= max_attempts:
+                        db.execute("INSERT OR IGNORE INTO deferred VALUES (?)", (word,))
+                if isinstance(error, ValueError):
+                    args.validation_feedback[word] = message
+                progress.update(f"BLAD {word} ({attempts_this_run[word]}/{max_attempts}): {message}", error=True)
+                if isinstance(error, APIError) and error.status in (400, 401, 403, 404):
+                    export(db, args, progress)
+                    progress.update(f"STOP HTTP {error.status}: sprawdz klucz/model; zapisano wynik czesciowy")
+                    return False
+                if transient and attempts_this_run[word] >= max_attempts:
+                    export(db, args, progress)
+                    progress.update("STOP: powtarzajace sie bledy API/sieci; zapisano wynik czesciowy")
+                    return False
             else:
                 with db:
                     db.execute("UPDATE words SET entry=?,error=NULL,next_try=0 WHERE word=?", (json.dumps(entry, ensure_ascii=False, separators=(",", ":")), word))
                 new += 1
-                print(f"OK {word} -> {entry['t']}", flush=True)
+                progress.update(f"OK {word} -> {entry['t']}")
                 if new - last_export >= args.export_every:
-                    export(db, args)
+                    export(db, args, progress)
                     last_export = new
                 next_request = time.time() + args.interval
 
@@ -296,12 +376,13 @@ def main():
     parser.add_argument("--output", type=Path, default=DIRECTORY / "dist" / "dictionaries",
                         help="Folder do wgrania w calosci do R2 (domyslnie: dist/dictionaries)")
     parser.add_argument("--timeout", type=float, default=120)
-    parser.add_argument("--interval", type=float, default=5, help="Minimalna przerwa pomiedzy udanymi zapytaniami")
+    parser.add_argument("--interval", type=float, default=0, help="Przerwa po udanym zapytaniu w sekundach (domyslnie 0); bledy maja osobne ponowienia")
     parser.add_argument("--export-every", type=int, default=250)
     parser.add_argument("--export-only", action="store_true")
+    parser.add_argument("--max-attempts", type=int, default=3, help="Maksymalna liczba prob na brakujace haslo w jednym uruchomieniu (domyslnie 3)")
     args = parser.parse_args()
-    if not 1 <= args.count <= 50000 or args.timeout <= 0 or args.interval < 0 or args.export_every < 1:
-        parser.error("count: 1-50000; timeout/export-every > 0; interval >= 0")
+    if not 1 <= args.count <= 50000 or args.timeout <= 0 or args.interval < 0 or args.export_every < 1 or not 1 <= args.max_attempts <= 20:
+        parser.error("count: 1-50000; timeout/export-every > 0; interval >= 0; max-attempts: 1-20")
     if not args.export_only and not os.environ.get("GEMINI_API_KEY", "").strip():
         parser.error('Ustaw klucz w PowerShell: $env:GEMINI_API_KEY = "TWOJ_KLUCZ"')
     with job_lock(args.work):
@@ -312,12 +393,18 @@ def main():
                 export(db, args)
             else:
                 # Retry storage/export errors too; SQLite keeps committed entries intact.
+                storage_failures = 0
                 while True:
                     try:
-                        run(db, args)
+                        if not run(db, args):
+                            raise SystemExit(2)
                         break
                     except (OSError, sqlite3.Error) as error:
                         db.rollback()
+                        storage_failures += 1
+                        if storage_failures >= 3:
+                            print(f"STOP: 3 bledy zapisu: {error}. Zachowaj SQLite i sprawdz dysk.", flush=True)
+                            raise SystemExit(2)
                         print(f"BLAD ZAPISU: {error}; zwolnij miejsce/sprawdz dysk. Ponowienie za 30s", flush=True)
                         time.sleep(30)
         except KeyboardInterrupt:

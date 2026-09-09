@@ -2,13 +2,14 @@ import argparse
 import gzip
 import hashlib
 import json
+import io
 import tempfile
 import unittest
 import urllib.error
 from pathlib import Path
 from unittest.mock import patch
 
-from generate_dictionary import APIError, main, open_database, prepare, request_entry, run, validate_entry
+from generate_dictionary import APIError, Progress, main, open_database, prepare, request_entry, run, validate_entry
 
 
 ENTRY = {"t": "praca", "d": "an activity you do as part of your job",
@@ -19,6 +20,77 @@ ENTRY = {"t": "praca", "d": "an activity you do as part of your job",
 
 
 class CompactTests(unittest.TestCase):
+    def test_invalid_entries_stop_without_sleep_and_export_pending(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            words = root / "words.txt"
+            words.write_text("work\n", encoding="utf-8")
+            args = argparse.Namespace(work=root / "work", output=root / "out", words=words,
+                                      count=1, model="test", interval=0, export_every=1)
+            db = open_database(args.work)
+            prepare(db, args)
+            with db:
+                db.execute("UPDATE words SET errors=11,next_try=9999999999,error='Wymagane 3 rozne zdania'")
+            calls = []
+            def invalid(word, options):
+                calls.append(options.validation_feedback.get(word))
+                return {**ENTRY, "e": [{**e, "source": "Missing exact term."} for e in ENTRY["e"]]}
+            with patch("builtins.print"), patch("generate_dictionary.time.sleep") as sleep:
+                self.assertFalse(run(db, args, invalid))
+            sleep.assert_not_called()
+            self.assertEqual(len(calls), 3)
+            self.assertIn("exact word 'work'", calls[1])
+            self.assertEqual(json.loads((args.work / "pending.json").read_text())[0]["word"], "work")
+            self.assertFalse((args.output / "catalog.json").exists())
+            with patch("builtins.print"):
+                self.assertTrue(run(db, args, lambda *_: ENTRY))
+            self.assertEqual(json.loads((args.work / "pending.json").read_text()), [])
+            db.close()
+
+    def test_invalid_api_key_stops_after_one_attempt(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            words = root / "words.txt"
+            words.write_text("work\n", encoding="utf-8")
+            args = argparse.Namespace(work=root / "work", output=root / "out", words=words,
+                                      count=1, model="test", interval=0, export_every=1)
+            db = open_database(args.work)
+            prepare(db, args)
+            def denied(*_):
+                raise APIError("HTTP 403", status=403)
+            with patch("builtins.print"), patch("generate_dictionary.time.sleep") as sleep:
+                self.assertFalse(run(db, args, denied))
+            sleep.assert_not_called()
+            self.assertEqual(db.execute("SELECT attempts FROM words").fetchone()[0], 1)
+            db.close()
+
+    def test_live_progress_and_success_without_sleep(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            words = root / "words.txt"
+            words.write_text("work\njob\n", encoding="utf-8")
+            args = argparse.Namespace(work=root / "work", output=root / "out", words=words,
+                                      count=2, model="test", interval=0, export_every=1)
+            db = open_database(args.work)
+            prepare(db, args)
+            output = io.StringIO()
+            output.isatty = lambda: True
+            def generate(word, _):
+                return {**ENTRY, "s": [], "e": [{**e, "source": e["source"].replace("work", word)} for e in ENTRY["e"]]}
+            with patch("generate_dictionary.sys.stdout", output), patch("generate_dictionary.time.sleep") as sleep:
+                run(db, args, generate)
+            sleep.assert_not_called()
+            self.assertIn("0.00% 0/2", output.getvalue())
+            self.assertIn("100.00% 2/2", output.getvalue())
+            self.assertEqual(output.getvalue().count("\n"), 1)
+            self.assertGreater(output.getvalue().count("\r"), 2)
+            with patch.dict("os.environ", {"GEMINI_API_KEY": "test-secret"}), patch("builtins.print"):
+                Progress(db, args).update("Failure test-secret\nnew line", error=True)
+            log = (args.work / "errors.log").read_text()
+            self.assertIn("[REDACTED] new line", log)
+            self.assertNotIn("test-secret", log)
+            db.close()
+
     def test_legacy_entries_are_backed_up_and_regenerated(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)

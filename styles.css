@@ -264,7 +264,8 @@
   gap: 6px;
 }
 
-#__qt_tooltip .__qt_speak {
+#__qt_tooltip .__qt_speak,
+#__qt_tooltip .__qt_save-example {
   flex-shrink: 0;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -278,7 +279,8 @@
   transition: all 0.2s ease;
 }
 
-#__qt_tooltip .__qt_speak:hover {
+#__qt_tooltip .__qt_speak:hover,
+#__qt_tooltip .__qt_save-example:hover:not(:disabled) {
   color: #fff;
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.15);
@@ -2274,9 +2276,26 @@ body[data-lectoro-ai-active="true"]
   min-width: 0;
 }
 #__qt_tooltip .__qt_example-reveal summary {
+  position: relative;
+  padding-inline-start: 18px;
   cursor: pointer;
   list-style: none;
   border-radius: 3px;
+}
+#__qt_tooltip .__qt_example-reveal summary::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 2px;
+  top: 0.45em;
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid #aeb6c8;
+  border-bottom: 1.5px solid #aeb6c8;
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+}
+#__qt_tooltip .__qt_example-reveal[open] summary::before {
+  transform: rotate(45deg);
 }
 #__qt_tooltip .__qt_example-reveal summary::-webkit-details-marker {
   display: none;
@@ -2318,25 +2337,6 @@ body[data-lectoro-ai-active="true"]
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   font-size: 12px;
 }
-#__qt_tooltip .__qt_save-example {
-  flex: 0 0 auto;
-  min-height: 28px;
-  min-width: 28px;
-  padding: 0 3px;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  background: transparent;
-  color: #c8d1e3;
-  font: inherit;
-  font-size: 24px;
-  line-height: 1;
-  cursor: pointer;
-}
-#__qt_tooltip .__qt_save-example:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.07);
-  border-color: rgba(255, 255, 255, 0.28);
-  color: #fff;
-}
 #__qt_tooltip .__qt_save-example:focus-visible {
   outline: 2px solid #70baef;
   outline-offset: 3px;
@@ -2351,9 +2351,14 @@ body[data-lectoro-ai-active="true"]
   opacity: 1;
 }
 #__qt_tooltip .__qt_example-status {
+  flex: 1;
+  min-width: 0;
+  align-self: center;
+  margin-inline-end: auto;
+  text-align: start;
   font-size: 11px;
   color: #b7bdcd;
 }
-#__qt_tooltip .__qt_example-status:not(:empty) {
-  margin-top: 10px;
+#__qt_tooltip .__qt_example-status:empty {
+  display: none;
 }

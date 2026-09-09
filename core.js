@@ -797,13 +797,13 @@
                 (example) => `
       <div class="${P}dictionary-example">
         <div class="${P}example-content">
-          ${example.target ? `<details class="${P}example-reveal"><summary lang="${escapeAttr(srcLang)}" dir="auto" title="Show translation">${escapeHtml(example.source)}</summary><div class="${P}example-translation"><p lang="${escapeAttr(targetLang)}" dir="auto">${escapeHtml(example.target)}</p>${speakButtonHtml(example.target, targetLang, "Play translation")}</div></details>` : `<p lang="${escapeAttr(srcLang)}" dir="auto">${escapeHtml(example.source)}</p>`}
+          ${example.target ? `<details class="${P}example-reveal"><summary lang="${escapeAttr(srcLang)}" dir="auto" title="Show translation">${escapeHtml(example.source)}</summary><div class="${P}example-translation">${speakButtonHtml(example.target, targetLang, "Play translation")}<p lang="${escapeAttr(targetLang)}" dir="auto">${escapeHtml(example.target)}</p></div></details>` : `<p lang="${escapeAttr(srcLang)}" dir="auto">${escapeHtml(example.source)}</p>`}
         </div>
         ${speakButtonHtml(example.source, srcLang, "Play example")}
-        <button type="button" class="${P}save-example" data-src="${escapeAttr(example.source)}" data-translated="${escapeAttr(example.target)}" data-src-lang="${escapeAttr(srcLang)}" data-tgt-lang="${escapeAttr(targetLang)}" title="Add sentence to review" aria-label="${escapeAttr(`Add to review: ${example.source}`)}" aria-pressed="false">☆</button>
+        <button type="button" class="${P}save-example" data-src="${escapeAttr(example.source)}" data-translated="${escapeAttr(example.target)}" data-src-lang="${escapeAttr(srcLang)}" data-tgt-lang="${escapeAttr(targetLang)}" title="Add sentence to review" aria-label="${escapeAttr(`Add to review: ${example.source}`)}" aria-pressed="false">${SVG.SAVE}</button>
       </div>`,
             )
-            .join("")}${synonyms}<div class="${P}example-status" role="status" aria-live="polite"></div></section>`;
+            .join("")}${synonyms}</section>`;
     }
 
     function buildTooltipHtml({
@@ -817,6 +817,7 @@
         const dataAttrs = `data-src="${escapeAttr(original)}" data-translated="${escapeAttr(translated)}" data-src-lang="${escapeAttr(srcLang)}" data-tgt-lang="${escapeAttr(targetLang)}"`;
 
         const saveFooterHtml = buildSaveFooterHtml(dataAttrs, {
+            showExampleStatus: true,
             aiLabel: "AI Sentence",
             saveTitle: "Save word",
             aiTitle: "Generate AI sentence (Gemini)",
@@ -858,6 +859,7 @@
             saveTitle = "Save word",
             saveKeyHint = "",
             isSaved = false,
+            showExampleStatus = false,
             showAi = true,
             aiLabel = "AI Sentence",
             aiTitle = "Generate AI sentence (Gemini)",
@@ -892,6 +894,7 @@
 
         return `
             <div class="${P}save-footer${extraClassAttr}">
+                ${showExampleStatus ? `<div class="${P}example-status" role="status" aria-live="polite"></div>` : ""}
                 <button class="${P}save-word-btn ${P}save-footer-btn ${isSaved ? "saved" : ""}" ${dataAttrs} ${isSaved ? "disabled" : ""} title="${escapeAttr(saveTitle)}">
                     ${saveBtnContent}
                 </button>
@@ -1005,9 +1008,9 @@
     async function handleSaveExampleClick(btn) {
         if (btn.disabled) return;
         btn.disabled = true;
-        btn.textContent = "☆";
+        btn.innerHTML = SVG.SAVE;
         btn.setAttribute("aria-busy", "true");
-        const status = btn.closest(`.${PREFIX}dictionary-details`)?.querySelector(`.${PREFIX}example-status`);
+        const status = btn.closest(`#${PREFIX}tooltip`)?.querySelector(`.${PREFIX}example-status`);
         if (status) status.textContent = "";
         try {
             const original = cleanCardText(btn.dataset.src);
@@ -1023,7 +1026,7 @@
                 sentence: "", sentenceTranslated: "", aiSentence: "", aiSentenceTranslated: "",
                 screenshot: "", url: window.location.href, timestamp: Date.now(), downloaded: false,
             });
-            btn.textContent = "★";
+            btn.innerHTML = SVG.SAVE;
             btn.setAttribute("aria-pressed", "true");
             btn.classList.add("saved");
             btn.title = "Sentence saved to review";
@@ -1031,7 +1034,7 @@
             if (status) status.textContent = "Sentence saved to review.";
         } catch (error) {
             btn.disabled = false;
-            btn.textContent = "☆";
+            btn.innerHTML = SVG.SAVE;
             btn.title = error?.message || "Could not save sentence";
             if (status) status.textContent = btn.title;
         } finally {
@@ -1121,7 +1124,7 @@
                 for (const btn of exampleButtons) {
                     if (!words.some(w => w.original === cleanCardText(btn.dataset.src) &&
                         w.srcLang === btn.dataset.srcLang && w.tgtLang === btn.dataset.tgtLang)) continue;
-                    btn.textContent = "★";
+                    btn.innerHTML = SVG.SAVE;
                     btn.classList.add("saved");
                     btn.disabled = true;
                     btn.title = "Sentence saved to review";
