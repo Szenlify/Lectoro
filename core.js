@@ -763,12 +763,18 @@
         const P = PREFIX;
         const seen = new Set();
         const sense = dictionary.senses[0];
-        const definition =
-            typeof sense.definition === "string"
-                ? (sense.definitionTranslated
-                    ? `<details class="${P}dictionary-definition ${P}example-reveal"><summary lang="${escapeAttr(srcLang)}" dir="auto" title="Show translation">${escapeHtml(sense.definition)}</summary><div class="${P}example-translation">${speakButtonHtml(sense.definitionTranslated, targetLang, "Play definition translation")}<p lang="${escapeAttr(targetLang)}" dir="auto">${escapeHtml(sense.definitionTranslated)}</p></div></details>`
-                    : `<p class="${P}dictionary-definition" lang="${escapeAttr(srcLang)}" dir="auto">${escapeHtml(sense.definition)}</p>`)
-                : "";
+        function textRows(source, target, extra = "", definition = false) {
+            const text = `<span class="${P}dictionary-line-text" lang="${escapeAttr(srcLang)}" dir="auto">${escapeHtml(source)}</span>`;
+            const actions = `${extra}${speakButtonHtml(source, srcLang, definition ? "Play definition" : "Play example")}`;
+            const className = definition ? `${P}dictionary-definition` : `${P}dictionary-example`;
+            if (!target) return `<div class="${className} ${P}dictionary-line">${text}${actions}</div>`;
+            return `<details class="${className} ${P}example-reveal">
+                <summary class="${P}dictionary-line" title="Show translation">${text}${actions}</summary>
+                <div class="${P}example-translation"><p lang="${escapeAttr(targetLang)}" dir="auto">${escapeHtml(target)}</p>${speakButtonHtml(target, targetLang, definition ? "Play definition translation" : "Play translation")}</div>
+            </details>`;
+        }
+        const definition = typeof sense.definition === "string"
+            ? textRows(sense.definition, sense.definitionTranslated, "", true) : "";
         const synonyms =
             Array.isArray(sense.synonyms) && sense.synonyms.length
                 ? `<p class="${P}dictionary-synonyms" lang="${escapeAttr(srcLang)}" dir="auto"><span class="${P}dictionary-caption">Synonyms</span> ${sense.synonyms
@@ -795,16 +801,8 @@
         if (!examples.length && !definition && !synonyms) return "";
         return `<section class="${P}dictionary-details" aria-label="Dictionary details">${definition}${examples.length ? `<div class="${P}dictionary-caption">Examples</div>` : ""}${examples
             .slice(0, 3)
-            .map(
-                (example) => `
-      <div class="${P}dictionary-example">
-        <div class="${P}example-content">
-          ${example.target ? `<details class="${P}example-reveal"><summary lang="${escapeAttr(srcLang)}" dir="auto" title="Show translation">${escapeHtml(example.source)}</summary><div class="${P}example-translation">${speakButtonHtml(example.target, targetLang, "Play translation")}<p lang="${escapeAttr(targetLang)}" dir="auto">${escapeHtml(example.target)}</p></div></details>` : `<p lang="${escapeAttr(srcLang)}" dir="auto">${escapeHtml(example.source)}</p>`}
-        </div>
-        ${speakButtonHtml(example.source, srcLang, "Play example")}
-        <button type="button" class="${P}save-example" data-src="${escapeAttr(example.source)}" data-translated="${escapeAttr(example.target)}" data-src-lang="${escapeAttr(srcLang)}" data-tgt-lang="${escapeAttr(targetLang)}" title="Add sentence to review" aria-label="${escapeAttr(`Add to review: ${example.source}`)}" aria-pressed="false">${SVG.SAVE}</button>
-      </div>`,
-            )
+            .map((example) => textRows(example.source, example.target,
+                `<button type="button" class="${P}save-example" data-src="${escapeAttr(example.source)}" data-translated="${escapeAttr(example.target)}" data-src-lang="${escapeAttr(srcLang)}" data-tgt-lang="${escapeAttr(targetLang)}" title="Add sentence to review" aria-label="${escapeAttr(`Add to review: ${example.source}`)}" aria-pressed="false">${SVG.SAVE}</button>`))
             .join("")}${synonyms}</section>`;
     }
 
@@ -1117,6 +1115,7 @@
         tooltipEl.querySelectorAll(`.${PREFIX}save-example`).forEach((btn) => {
             btn.addEventListener("click", (ev) => {
                 ev.stopPropagation();
+                ev.preventDefault();
                 handleSaveExampleClick(btn);
             });
         });
@@ -1139,6 +1138,7 @@
         tooltipEl.querySelectorAll(`.${PREFIX}speak`).forEach((btn) => {
             btn.addEventListener("click", (ev) => {
                 ev.stopPropagation();
+                ev.preventDefault();
                 handleTooltipSpeakClick(btn);
             });
         });

@@ -311,6 +311,25 @@ body::before {
     width: 100%;
     box-sizing: border-box;
 }
+.settings-dual-row.language-direction-row {
+    grid-template-columns: minmax(0, 1fr) 30px minmax(0, 1fr);
+}
+.swap-languages {
+    align-self: end;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 38px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    background: transparent;
+    color: #aeb6c8;
+    cursor: pointer;
+}
+.swap-languages:hover { color: #fff; background: rgba(255, 255, 255, 0.07); }
+.swap-languages:focus-visible { outline: 2px solid #4ecdc4; outline-offset: 2px; }
+.swap-languages:disabled { opacity: 0.5; cursor: wait; }
 
 .settings-dual-row .setting-group {
     margin-bottom: 0 !important;

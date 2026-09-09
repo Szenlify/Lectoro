@@ -9,17 +9,147 @@ import urllib.error
 from pathlib import Path
 from unittest.mock import patch
 
-from generate_dictionary import APIError, Progress, main, open_database, prepare, request_entry, run, validate_entry
+from generate_dictionary import APIError, Progress, export, main, open_database, prepare, request_entry, run, run_reverse, validate_entry
 
 
-ENTRY = {"t": "praca", "d": {"source": "an activity you do as part of your job", "target": "czynność wykonywana w ramach pracy"},
+ENTRY = {"t": "praca", "d": {"s": "an activity you do as part of your job", "t": "czynność wykonywana w ramach pracy"},
          "s": ["job", "labor", "employment"],
-         "e": [{"source": "I have work today.", "target": "Mam dziś pracę."},
-               {"source": "Her work is important.", "target": "Jej praca jest ważna."},
-               {"source": "We work every day.", "target": "Pracujemy codziennie."}]}
+         "e": [{"s": "I have work today.", "t": "Mam dziś pracę."},
+               {"s": "Her work is important.", "t": "Jej praca jest ważna."},
+               {"s": "We work every day.", "t": "Pracujemy codziennie."}]}
 
 
 class CompactTests(unittest.TestCase):
+    def test_fixed_release_replaces_content_and_cleans_only_generated_folders(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            words = root / "words.txt"
+            words.write_text("work\n", encoding="utf-8")
+            args = argparse.Namespace(work=root / "work", output=root / "out", words=words,
+                                      count=1, model="test", interval=0, export_every=1)
+            db = open_database(args.work)
+            prepare(db, args)
+            with db:
+                db.execute("UPDATE words SET entry=?", (json.dumps(ENTRY),))
+            old = args.output / "releases" / ("compact-" + "a" * 20)
+            old.mkdir(parents=True)
+            (old / "en-pl.json").write_text("{}")
+            with patch("builtins.print"):
+                export(db, args)
+                run_reverse(db, args, lambda *_: [])
+                with db:
+                    db.execute("UPDATE words SET entry=?", (json.dumps({**ENTRY, "s": []}),))
+                export(db, args)
+            self.assertEqual([p.name for p in old.parent.iterdir()], ["compact"])
+            catalog = json.loads((args.output / "catalog.json").read_text())
+            item = catalog["pairs"]["en-pl"]
+            self.assertEqual(item["path"], "releases/compact/en-pl.json")
+            raw = (args.output / item["path"]).read_bytes()
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), item["sha256"])
+            self.assertEqual(json.loads(raw)["work"]["s"], [])
+            self.assertTrue((old.parent / "compact" / "pl-en.json").exists())
+            db.close()
+
+    def test_main_runs_reverse_after_partial_forward(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            words = root / "words.txt"
+            words.write_text("work\n", encoding="utf-8")
+            calls = []
+            def forward(db, args):
+                self.assertFalse(args.bidirectional)
+                args.forward_blocked = False
+                calls.append("forward")
+                return False
+            def reverse(db, args):
+                calls.append("reverse")
+                return True
+            with patch("generate_dictionary.DIRECTORY", root), patch.dict("os.environ", {"GEMINI_API_KEY":"test"}), patch("sys.argv", [
+                "generate_dictionary.py", "--count", "1", "--words", str(words)
+            ]), patch("generate_dictionary.run", forward), patch("generate_dictionary.run_reverse", reverse):
+                with self.assertRaises(SystemExit) as stopped:
+                    main()
+            self.assertEqual(stopped.exception.code, 2)
+            self.assertEqual(calls, ["forward", "reverse"])
+
+    def test_reverse_runs_before_missing_words_and_after_each_success(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            words = root / "words.txt"
+            words.write_text("work\njob\nthe\n", encoding="utf-8")
+            args = argparse.Namespace(work=root / "work", output=root / "out", words=words,
+                                      count=3, model="test", interval=0, export_every=250, max_attempts=2, bidirectional=True)
+            db = open_database(args.work)
+            prepare(db, args)
+            # Existing files with verbose keys must also be usable without regeneration.
+            old = {**ENTRY, "d": {"source": ENTRY["d"]["s"], "target": ENTRY["d"]["t"]},
+                   "e": [{"source": e["s"], "target": e["t"]} for e in ENTRY["e"]]}
+            with db:
+                db.execute("UPDATE words SET entry=? WHERE word='work'", (json.dumps(old),))
+            events = []
+            def forward(word, _):
+                events.append("en:" + word)
+                if word == "the":
+                    raise ValueError("No valid entry")
+                return {**ENTRY, "s": [], "e": [{**e, "s": e["s"].replace("work", word)} for e in ENTRY["e"]]}
+            def reverse(word, _):
+                events.append("pl:" + word)
+                return []
+            with patch("builtins.print"):
+                self.assertFalse(run(db, args, forward, reverse))
+            self.assertEqual(events, ["pl:work", "en:job", "pl:job", "en:the", "en:the"])
+            catalog = json.loads((args.output / "catalog.json").read_text())
+            self.assertEqual(set(catalog["pairs"]), {"en-pl", "pl-en"})
+            for item in catalog["pairs"].values():
+                raw = (args.output / item["path"]).read_bytes()
+                self.assertNotIn(b'"source":', raw)
+                self.assertNotIn(b'"target":', raw)
+                self.assertEqual(hashlib.sha256(raw).hexdigest(), item["sha256"])
+            db.close()
+
+    def test_reverse_preserves_colliding_senses_and_resumes_synonyms(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            words = root / "words.txt"
+            words.write_text("work\njob\n", encoding="utf-8")
+            args = argparse.Namespace(work=root / "work", output=root / "out", words=words,
+                                      count=2, model="test", interval=0, export_every=1, max_attempts=2)
+            db = open_database(args.work)
+            prepare(db, args)
+            with db:
+                for word in ("work", "job"):
+                    entry = {**ENTRY, "s": [], "e": [{**e, "s": e["s"].replace("work", word)} for e in ENTRY["e"]]}
+                    db.execute("UPDATE words SET entry=? WHERE word=?", (json.dumps(entry), word))
+            def synonyms(word, entry):
+                if word == "work":
+                    return [entry["t"]]  # Invalid: the original word is not its own synonym.
+                return []
+            with patch("builtins.print"), patch("generate_dictionary.time.sleep") as sleep:
+                self.assertFalse(run_reverse(db, args, synonyms))
+            sleep.assert_not_called()
+            self.assertEqual(len(json.loads((args.work / "pending-pl-en.json").read_text())), 1)
+            calls = []
+            def retry(word, entry):
+                calls.append(word)
+                return ["zajęcie"]
+            with patch("builtins.print"):
+                self.assertTrue(run_reverse(db, args, retry))
+                self.assertTrue(run_reverse(db, args, lambda *_: self.fail("Saved synonyms must be reused")))
+            self.assertEqual(calls, ["work"])
+            catalog = json.loads((args.output / "catalog.json").read_text())
+            self.assertEqual(set(catalog["pairs"]), {"en-pl", "pl-en"})
+            item = catalog["pairs"]["pl-en"]
+            raw = (args.output / item["path"]).read_bytes()
+            self.assertEqual(item["sha256"], hashlib.sha256(raw).hexdigest())
+            self.assertEqual(item["bytes"], len(raw))
+            entry = json.loads(raw)["praca"]
+            self.assertEqual(set(entry), {"t", "d", "s", "e"})
+            self.assertEqual(entry["t"], "job")
+            self.assertEqual(entry["d"]["s"], ENTRY["d"]["t"])
+            self.assertEqual(entry["e"][0]["s"], ENTRY["e"][0]["t"])
+            self.assertNotIn(b'"senseId"', raw)
+            db.close()
+
     def test_definition_upgrade_preserves_existing_content(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
@@ -29,13 +159,13 @@ class CompactTests(unittest.TestCase):
                                       count=1, model="test", interval=0, export_every=1)
             db = open_database(args.work)
             prepare(db, args)
-            old = {**ENTRY, "d": ENTRY["d"]["source"]}
+            old = {**ENTRY, "d": ENTRY["d"]["s"]}
             with db:
                 db.execute("UPDATE words SET entry=?", (json.dumps(old),))
             db.close()
             db = open_database(args.work)
             prepare(db, args)
-            with patch("generate_dictionary.request_json", return_value={"target": ENTRY["d"]["target"]}) as api, patch("builtins.print"):
+            with patch("generate_dictionary.request_json", return_value={"t": ENTRY["d"]["t"]}) as api, patch("builtins.print"):
                 self.assertTrue(run(db, args, request_entry))
             self.assertEqual(api.call_count, 1)
             self.assertEqual(api.call_args.kwargs["context"]["definition"], old["d"])
@@ -56,7 +186,7 @@ class CompactTests(unittest.TestCase):
             calls = []
             def invalid(word, options):
                 calls.append(options.validation_feedback.get(word))
-                return {**ENTRY, "e": [{**e, "source": "Missing exact term."} for e in ENTRY["e"]]}
+                return {**ENTRY, "e": [{**e, "s": "Missing exact term."} for e in ENTRY["e"]]}
             with patch("builtins.print"), patch("generate_dictionary.time.sleep") as sleep:
                 self.assertFalse(run(db, args, invalid))
             sleep.assert_not_called()
@@ -98,7 +228,7 @@ class CompactTests(unittest.TestCase):
             output = io.StringIO()
             output.isatty = lambda: True
             def generate(word, _):
-                return {**ENTRY, "s": [], "e": [{**e, "source": e["source"].replace("work", word)} for e in ENTRY["e"]]}
+                return {**ENTRY, "s": [], "e": [{**e, "s": e["s"].replace("work", word)} for e in ENTRY["e"]]}
             with patch("generate_dictionary.sys.stdout", output), patch("generate_dictionary.time.sleep") as sleep:
                 run(db, args, generate)
             sleep.assert_not_called()
@@ -122,7 +252,7 @@ class CompactTests(unittest.TestCase):
                                       words=words, count=1, model="test", interval=0, export_every=1)
             db = open_database(args.work)
             prepare(db, args)
-            legacy = {**ENTRY, "e": [e["source"] for e in ENTRY["e"]]}
+            legacy = {**ENTRY, "e": [e["s"] for e in ENTRY["e"]]}
             with db:
                 db.execute("UPDATE words SET entry=?", (json.dumps(legacy),))
             db.close()
@@ -185,7 +315,7 @@ class CompactTests(unittest.TestCase):
             validate_entry("work", {**ENTRY, "s": synonyms})
         for patch_value in ({"t": "praca / pracować"}, {"t": "ciężka praca"}, {"s": ["job", "Job"]},
                             {"s": ["work", "job"]}, {"s": ["job", "labor", "employment", "task"]},
-                            {"e": ["Hello."] * 3}, {"e": [{"source": "I work.", "target": ""}] * 3}, {"d": "<script>"}):
+                            {"e": ["Hello."] * 3}, {"e": [{"s": "I work.", "t": ""}] * 3}, {"d": "<script>"}):
             with self.subTest(patch_value=patch_value), self.assertRaises(ValueError):
                 validate_entry("work", {**ENTRY, **patch_value})
 

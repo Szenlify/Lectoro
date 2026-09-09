@@ -4,10 +4,13 @@
     const BASE_URL = "https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev/dictionaries/";
     const MAX_PACK_BYTES = 32 * 1024 * 1024;
     const MAX_CACHE_BYTES = 128 * 1024 * 1024;
-    const CHECK_INTERVAL = 6 * 60 * 60 * 1000;
+    const CHECK_INTERVAL = 60 * 1000;
     const RETRY_INTERVAL = 5 * 60 * 1000;
     const isObject = (value) => !!value && typeof value === "object" && !Array.isArray(value);
     const validText = (value, max = 200) => typeof value === "string" && !!value.trim() && value.length <= max && !/[\u0000-\u001f]/.test(value);
+    const validPair = (value, max) => isObject(value) && (
+        Object.keys(value).sort().join() === "s,t" ? validText(value.s, max) && validText(value.t, max) :
+        Object.keys(value).sort().join() === "source,target" && validText(value.source, max) && validText(value.target, max));
 
     function validatePack(pack, source, target, version) {
         // Compact files contain only word -> {t,d,s,e}; identity comes from the
@@ -19,13 +22,12 @@
             for (const [word, entry] of terms) {
                 const legacy = Array.isArray(entry?.e) && entry.e.every(e => typeof e === "string");
                 if (!validText(word, 80) || !isObject(entry) || Object.keys(entry).sort().join() !== "d,e,s,t" ||
-                    !single(entry.t) || !(validText(entry.d, 300) || (isObject(entry.d) &&
-                        Object.keys(entry.d).sort().join() === "source,target" && validText(entry.d.source, 300) && validText(entry.d.target, 300))) ||
+                    !single(entry.t) || !(validText(entry.d, 300) || validPair(entry.d, 300)) ||
                     !Array.isArray(entry.s) || entry.s.length > (legacy ? 4 : 3) ||
                     !entry.s.every(s => validText(s, 80)) || new Set(entry.s.map(s => s.toLowerCase())).size !== entry.s.length ||
                     !Array.isArray(entry.e) || entry.e.length !== 3 || !entry.e.every(e => legacy ? validText(e, 300) :
-                        isObject(e) && Object.keys(e).sort().join() === "source,target" && validText(e.source, 300) && validText(e.target, 300)) ||
-                    new Set(entry.e.map(e => (legacy ? e : e.source).toLowerCase())).size !== entry.e.length) {
+                        validPair(e, 300)) ||
+                    new Set(entry.e.map(e => (legacy ? e : e.s ?? e.source).toLowerCase())).size !== entry.e.length) {
                     throw new Error("Invalid compact dictionary entry");
                 }
             }
@@ -48,11 +50,15 @@
                 if (!isObject(sense) || !validText(sense.senseId) || !Array.isArray(sense.translations) || !sense.translations.length || sense.translations.length > 16 || !sense.translations.every((t) => validText(t, 500))) {
                     throw new Error("Invalid dictionary sense");
                 }
-                for (const [field, limit] of [["definition", 500], ["partOfSpeech", 50], ["reviewStatus", 200]]) {
+                for (const [field, limit] of [["definition", 500], ["definitionTranslated", 500], ["partOfSpeech", 50], ["reviewStatus", 200]]) {
                     if (sense[field] !== undefined && !validText(sense[field], limit)) throw new Error("Invalid dictionary sense metadata");
                 }
+                if (sense.synonyms !== undefined && (!Array.isArray(sense.synonyms) || sense.synonyms.length > 3 ||
+                    !sense.synonyms.every(s => validText(s, 80)) || new Set(sense.synonyms.map(s => s.toLowerCase())).size !== sense.synonyms.length)) {
+                    throw new Error("Invalid dictionary synonyms");
+                }
                 if (sense.examples !== undefined && (!Array.isArray(sense.examples) || sense.examples.length > 4 ||
-                    !sense.examples.every((example) => isObject(example) && validText(example.source, 500) && validText(example.target, 500)))) {
+                    !sense.examples.every((example) => validPair(example, 500)))) {
                     throw new Error("Invalid dictionary examples");
                 }
             }
@@ -184,14 +190,14 @@
             root.console?.warn("Dictionary could not be saved for offline use.");
         });
 
-        async function loadCatalog() {
-            if (catalogPromise && now() < catalogUntil) return catalogPromise;
+        async function loadCatalog(force = false) {
+            if (!force && catalogPromise && now() < catalogUntil) return catalogPromise;
             catalogUntil = now() + CHECK_INTERVAL;
             catalogPromise = (async () => {
                 const saved = await read("catalog");
                 let previous;
                 try { if (saved?.data) previous = validateCatalog(saved.data); } catch (_) {}
-                if (previous && now() - saved.checkedAt < CHECK_INTERVAL) {
+                if (!force && previous && now() - saved.checkedAt < CHECK_INTERVAL) {
                     catalogUntil = saved.checkedAt + CHECK_INTERVAL;
                     return previous;
                 }
@@ -212,7 +218,9 @@
             const saved = await read(pair);
             let previous = null;
             try { if (saved?.data) previous = validatePack(saved.data, source, target, saved.data.version); } catch (_) {}
-            const catalog = await loadCatalog();
+            let catalog = await loadCatalog();
+            // A newly uploaded reverse pair may be missing from the cached catalog.
+            if (catalog && !catalog.pairs[pair]) catalog = await loadCatalog(true);
             const item = catalog?.pairs[pair];
             if (!item) return previous;
             if (previous && saved.sha256 === item.sha256 && previous.version === item.version) {
@@ -220,7 +228,10 @@
                 return previous;
             }
             try {
-                const bytes = await fetchBytes(item.path, item.bytes);
+                // Fixed paths are overwritten: bind the request to the catalog checksum
+                // so a previously cached response cannot stand in for this revision.
+                const path = item.version === "compact" ? `${item.path}?sha256=${item.sha256}` : item.path;
+                const bytes = await fetchBytes(path, item.bytes);
                 if (bytes.length !== item.bytes) throw new Error("Dictionary size mismatch");
                 const digest = await root.crypto.subtle.digest("SHA-256", bytes);
                 const sha256 = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
@@ -244,7 +255,7 @@
                 active.delete(pair); active.set(pair, cached);
                 return cached.promise;
             }
-            const entry = { until: now() + RETRY_INTERVAL, promise: loadPair(source, target) };
+            const entry = { until: now() + CHECK_INTERVAL, promise: loadPair(source, target) };
             active.delete(pair); active.set(pair, entry);
             // At most two parsed pairs in worker memory; IndexedDB retains the rest.
             while (active.size > 2) active.delete(active.keys().next().value);

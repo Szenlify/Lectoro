@@ -62,6 +62,66 @@ test("bilingual compact entries preserve translations and accept zero to three s
     }
 });
 
+test("short bilingual keys work in both directions and reject mixed aliases", () => {
+    const env = environment({serve:()=>{throw Error('unused');}});
+    const examples = [1,2,3].map(n=>({s:`Work example ${n}.`,t:`Przykład pracy ${n}.`}));
+    const entry = {t:'praca',d:{s:'What you do in a job.',t:'To, co robisz w pracy.'},s:[],e:examples};
+    const forward = env.api.validatePack({work:entry},'en','pl','v1');
+    const details = dictionary.lookupDetails('work', dictionary.compilePack(forward));
+    assert.equal(details.senses[0].definition,entry.d.s);
+    assert.equal(details.senses[0].examples[0].target,examples[0].t);
+    const reverse = {schemaVersion:1,sourceLanguage:'pl',targetLanguage:'en',version:'v1',entries:{praca:[{
+        senseId:'work',translations:['work'],definition:entry.d.t,definitionTranslated:entry.d.s,synonyms:[],
+        examples:examples.map(e=>({s:e.t,t:e.s}))
+    }]}};
+    env.api.validatePack(reverse,'pl','en','v1');
+    assert.equal(dictionary.lookupDetails('praca',dictionary.compilePack(reverse)).senses[0].examples[0].source,examples[0].t);
+    assert.throws(()=>env.api.validatePack({work:{...entry,d:{s:'Text',target:'Tekst'}}},'en','pl','v1'));
+});
+
+test("switching to a newly published reverse pair refreshes a cached catalog", async () => {
+    const old = artifact(pack());
+    const raw = Buffer.from(JSON.stringify({praca:{t:'work',d:{s:'To, co robisz.',t:'What you do.'},s:[],
+        e:[1,2,3].map(n=>({s:`Praca ${n}.`,t:`Work ${n}.`}))}}));
+    const catalog = {schemaVersion:1,pairs:{...old.catalog.pairs,'pl-en':{
+        path:'releases/compact-reverse/pl-en.json',version:'compact-reverse',bytes:raw.length,
+        sha256:createHash('sha256').update(raw).digest('hex'),entryCount:1}}};
+    const records = new Map([['catalog',{key:'catalog',data:old.catalog,checkedAt:1000000}]]);
+    const env = environment({records,serve:url=>new Response(url.endsWith('catalog.json') ? JSON.stringify(catalog) : raw)});
+    const [details] = await env.context.LocalDictionary.lookupWords(['praca'],'en','pl',{details:true});
+    assert.equal(details.primaryTranslation,'work');
+    assert.equal(details.senses[0].definition,'To, co robisz.');
+    assert.equal(env.calls.filter(url=>url.endsWith('catalog.json')).length,1);
+});
+
+test("fixed compact paths refresh both UI directions by checksum and survive partial uploads", async () => {
+    let time = 1000000, revision = 1, broken = false;
+    const build = (pair) => {
+        const reverse = pair === 'pl-en';
+        const entry = {t:reverse?'work':'praca',d:{s:`Definition ${revision}`,t:`Definicja ${revision}`},s:[],
+            e:[1,2,3].map(n=>({s:`Example ${n}`,t:`Przykład ${n}`}))};
+        const raw = Buffer.from(JSON.stringify({[reverse?'praca':'work']:entry}));
+        return {raw,item:{version:'compact',path:`releases/compact/${pair}.json`,bytes:raw.length,
+            sha256:createHash('sha256').update(raw).digest('hex'),entryCount:1}};
+    };
+    const env = environment({clock:()=>time,serve:url=>{
+        if(url.endsWith('catalog.json')) return new Response(JSON.stringify({schemaVersion:1,pairs:{
+            'en-pl':build('en-pl').item,'pl-en':build('pl-en').item}}));
+        const pair = url.includes('/pl-en.json')?'pl-en':'en-pl';
+        const data = build(pair);
+        assert.equal(new URL(url).searchParams.get('sha256'),data.item.sha256);
+        return new Response(broken ? Buffer.alloc(data.raw.length,32) : data.raw);
+    }});
+    const lookup = async (word,target,source) => (await env.context.LocalDictionary.lookupWords([word],target,source,{details:true}))[0];
+    assert.equal((await lookup('work','pl','en')).senses[0].definition,'Definition 1');
+    assert.equal((await lookup('praca','en','pl')).primaryTranslation,'work');
+    revision = 2; time += 60001; broken = true;
+    assert.equal((await lookup('work','pl','en')).senses[0].definition,'Definition 1');
+    broken = false; time += 60001;
+    assert.equal((await lookup('work','pl','en')).senses[0].definition,'Definition 2');
+    assert.equal((await lookup('praca','en','pl')).senses[0].definition,'Definition 2');
+});
+
 test("compact R2 JSON supports details, inflections and offline restart", async () => {
     const entry = {t: "praca", d: "an activity you do as part of your job", s: ["job", "labor"], e: ["My work is important.", "I have work today.", "We work every day."]};
     const raw = Buffer.from(JSON.stringify({work: entry}));

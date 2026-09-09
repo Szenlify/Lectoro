@@ -1,5 +1,23 @@
 // ── Settings: load & save language ────────────────────────────────
 const learningLangSelect = document.getElementById("learningLang");
+const swapLanguagesButton = document.getElementById("swapLanguages");
+async function swapTranslationLanguages() {
+    if (swapLanguagesButton.disabled) return;
+    swapLanguagesButton.disabled = true;
+    const learningLang = select.value;
+    const targetLang = learningLangSelect.value;
+    try {
+        await chrome.storage.local.set({ learningLang, targetLang });
+        learningLangSelect.value = learningLang;
+        select.value = targetLang;
+        flashSaved();
+    } catch (error) {
+        swapLanguagesButton.title = "Could not swap languages. Try again.";
+    } finally {
+        swapLanguagesButton.disabled = false;
+    }
+}
+swapLanguagesButton.addEventListener("click", swapTranslationLanguages);
 learningLangSelect.replaceChildren(...Array.from(select.options, (option) => option.cloneNode(true)));
 whenPopupReady((data) => {
     const defaults = LectoroConstants.DEFAULT_READING_SETTINGS;

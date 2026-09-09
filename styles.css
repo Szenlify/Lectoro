@@ -258,6 +258,7 @@
 }
 
 #__qt_tooltip .__qt_word-actions {
+  margin-left: auto;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -2255,21 +2256,29 @@ body[data-lectoro-ai-active="true"]
   overflow-wrap: anywhere;
 }
 #__qt_tooltip .__qt_dictionary-example {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
   padding: 10px 0;
   color: #e4e7ef;
 }
 #__qt_tooltip .__qt_dictionary-example + .__qt_dictionary-example {
   border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
-#__qt_tooltip .__qt_dictionary-example p {
+#__qt_tooltip .__qt_example-translation p {
   flex: 1;
   min-width: 0;
   margin: 0;
   font: inherit;
   color: inherit;
+}
+#__qt_tooltip .__qt_dictionary-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+#__qt_tooltip .__qt_dictionary-line-text {
+  flex: 1;
+  min-width: 0;
 }
 #__qt_tooltip .__qt_example-content {
   flex: 1;
@@ -2358,6 +2367,15 @@ body[data-lectoro-ai-active="true"]
   text-align: start;
   font-size: 11px;
   color: #b7bdcd;
+}
+#__qt_tooltip .__qt_definition-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+#__qt_tooltip .__qt_definition-row .__qt_dictionary-definition {
+  flex: 1;
+  min-width: 0;
 }
 #__qt_tooltip .__qt_example-status:empty {
   display: none;

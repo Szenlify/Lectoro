@@ -131,9 +131,11 @@ python/
       catalog.json
       sources-en-pl.json
       releases/
-        compact-HASH/
+        compact/
           en-pl.json
           en-pl.json.gz
+          pl-en.json
+          pl-en.json.gz
 ```
 
 Foldery wyniku powstają po pierwszym poprawnym eksporcie. W `work/` mogą być także zachowane
@@ -142,11 +144,13 @@ bazy i listy ze starszego generatora; obecny korzysta z `work/compact/`.
 `en-pl.json` zawiera wyłącznie mapę słów w takim formacie:
 
 ```json
-{"work":{"t":"praca","d":{"source":"an activity you do as part of your job","target":"czynność wykonywana w ramach pracy"},"s":["job","labor","employment"],"e":[{"source":"I have work today.","target":"Mam dziś pracę."},{"source":"Her work is important.","target":"Jej praca jest ważna."},{"source":"We work every day.","target":"Pracujemy codziennie."}]}}
+{"work":{"t":"praca","d":{"s":"an activity you do as part of your job","t":"czynność wykonywana w ramach pracy"},"s":["job","labor","employment"],"e":[{"s":"I have work today.","t":"Mam dziś pracę."},{"s":"Her work is important.","t":"Jej praca jest ważna."},{"s":"We work every day.","t":"Pracujemy codziennie."}]}}
 ```
 
-Każdy eksport może tworzyć nowe wydanie `compact-HASH`. **Aktualne wydanie wskazuje
-`catalog.json`; nie wybieraj folderu na podstawie nazwy ani kolejności alfabetycznej.**
+Każdy eksport nadpisuje pliki w jednym folderze `releases/compact/`.
+Katalog zapisuje aktualny rozmiar i SHA-256 każdego słownika. Po udanym eksporcie
+stare lokalne foldery `compact-HASH` i `reverse-HASH` zawierające wyłącznie pliki
+generatora są usuwane. Foldery na R2 trzeba usunąć osobno.
 
 Starsze wpisy bez tłumaczeń przykładów lub z czterema synonimami generator automatycznie
 kolejkuje do ponownego wygenerowania przy zwykłym uruchomieniu. To wymaga zapytań do API;
@@ -154,17 +158,45 @@ kopia starych wpisów zostaje w tabeli `legacy_entries` w SQLite. Sam `--export-
 nie uzupełnia tłumaczeń i odrzuca wpisy w starym formacie. Dla testowej bazy uruchom
 `generate_dictionary.py --count 10 --export-every 10` i wgraj nowy folder `dictionaries`.
 
-Definicja ma format `d: {source, target}`: tekst angielski i jego polskie tłumaczenie.
+Definicja ma format `d: {s, t}`: tekst angielski i jego polskie tłumaczenie.
+Nowe definicje mają być jednym krótkim zdaniem, prostym językiem (najlepiej 5–12 słów,
+maksymalnie 120 znaków na język). Starsze poprawne definicje pozostają zachowane.
+W definicjach i przykładach `s` oznacza tekst źródłowy, a `t` tłumaczenie.
+Główne `s` wpisu nadal oznacza listę synonimów — nie ma konfliktu, bo jest na innym
+poziomie JSON. Starsze `source`/`target` są odczytywane i skracane podczas eksportu.
 Jeśli istniejący wpis ma poprawne przykłady i synonimy, ale definicję jako pojedynczy tekst,
 zwykłe uruchomienie generatora uzupełni przez Gemini tylko polską definicję. Pozostała treść
 zostaje zachowana; kopia wpisu jest w tabeli `definition_upgrades`. Przerwaną aktualizację
 można wznowić tą samą komendą. `--export-only` nie wykonuje tłumaczeń.
 W hoverze polską definicję rozwija się kliknięciem definicji angielskiej.
 Te pary definicji i przykładów można później wykorzystać do indeksu PL → EN;
-polskie synonimy wymagają osobnego uzupełnienia dla danego znaczenia.
+polskie synonimy są automatycznie uzupełniane dla danego znaczenia.
+
+### Automatyczny PL → EN
+
+Zwykła komenda `generate_dictionary.py --count 20` najpierw kończy próby EN → PL,
+a następnie odwraca gotowe wpisy do PL → EN, również przy częściowym wyniku EN → PL.
+Błąd klucza lub powtarzające się problemy API zatrzymują oba etapy.
+Nie ma dodatkowej komendy. Gemini generuje wyłącznie
+0–3 polskie synonimy dla każdego odwracanego znaczenia; definicje i przykłady są
+odwracane lokalnie. PL → EN ma ten sam format compact co EN → PL:
+`{"hasło":{"t":"translation","d":{"s":"definicja","t":"definition"},"s":[],"e":[...]}}`.
+JSON nie zawiera `senseId` ani dodatkowej otoczki. Dla polskiego hasła z kilkoma
+angielskimi odpowiednikami eksport wybiera pierwszy gotowy wpis w kolejności
+alfabetycznej angielskich haseł. Pozostałe dane pozostają w bazie i EN → PL.
+
+Synonimy i próby są zapisywane w tabeli `reverse_jobs` w SQLite. Ponowne uruchomienie
+pomija ukończone wpisy; zmiana danych źródłowych wymaga nowych synonimów. Błędy
+odwracania trafiają do `pending-pl-en.json` i `errors.log`. Brakujące hasła EN → PL nie blokują odwracania gotowych wpisów.
+Limit prób polskich synonimów obowiązuje przez całe uruchomienie.
+
+Gotowy `dist/dictionaries/catalog.json` wskazuje oba kierunki. Wgraj cały folder
+`dictionaries` na R2. `--export-only` eksportuje również zapisany PL → EN bez API.
+Definicje w obu językach mają przyciski TTS w hoverze.
 
 W hoverze kliknięcie przykładowego zdania rozwija tłumaczenie. Oba teksty mają TTS,
-a gwiazdka zapisuje zdanie z tłumaczeniem do powtórek i staje się żółta.
+a ikona zapisu dodaje zdanie z tłumaczeniem do powtórek i staje się żółta.
+W ustawieniach przycisk strzałek między językami zamienia kierunek tłumaczenia.
 Aby wyświetlić dokładny plik do wysłania:
 
 ```powershell
@@ -199,7 +231,7 @@ Użyj dotychczasowego `--count` (powyżej: test 10 słów). Postęp pozostaje w
 
 | Kolejność | Plik na komputerze, względem `python/` | Klucz obiektu w R2 |
 | --- | --- | --- |
-| 1 | `dist/dictionaries/releases/compact-HASH/en-pl.json` | `dictionaries/releases/compact-HASH/en-pl.json` |
+| 1 | `dist/dictionaries/releases/compact/en-pl.json` i `pl-en.json` | `dictionaries/releases/compact/en-pl.json` i `pl-en.json` |
 | 2 | `dist/dictionaries/sources-en-pl.json` | `dictionaries/sources-en-pl.json` |
 | 3 — na końcu | `dist/dictionaries/catalog.json` | `dictionaries/catalog.json` |
 
@@ -211,7 +243,11 @@ Jeśli katalog na CDN zawiera inne pary języków, zachowaj ich wpisy w `pairs` 
 Dla plików JSON ustaw `Content-Type: application/json`. Zalecane nagłówki cache:
 
 - `catalog.json` i `sources-en-pl.json`: `Cache-Control: no-cache`;
-- wersjonowany `en-pl.json`: `Cache-Control: public,max-age=31536000,immutable`.
+- `en-pl.json` i `pl-en.json`: `Cache-Control: no-cache` (stałe adresy, zmienna zawartość).
+
+Nie ustawiaj `immutable` dla tych plików. Najpierw przesyłaj słowniki, potem katalog.
+Podczas przesyłania rozszerzenie może chwilowo odrzucić plik z inną sumą kontrolną;
+wtedy korzysta z wcześniejszej zapisanej wersji, jeśli jest dostępna.
 
 Bucket musi pozwalać na publiczny odczyt tych obiektów. W razie ograniczeń CORS dopuść GET
 z rozszerzenia. Nie zmieniaj zawartości `en-pl.json` po eksporcie: jego rozmiar i SHA-256
@@ -240,7 +276,10 @@ i ścieżką `pairs.en-pl.path`. Oba powinny odpowiadać i zawierać właściwy 
 
 Adres R2 jest już skonfigurowany w `../shared/dictionary-store.js`. Po pobraniu aplikacja
 sprawdza rozmiar, sumę SHA-256 i format, a potem zapisuje słownik offline w IndexedDB.
-Sprawdzenie nowego katalogu może nastąpić dopiero po wygaśnięciu cache, do 6 godzin.
+Podczas korzystania ze słownika katalog jest sprawdzany przy kolejnym wyszukiwaniu
+po upływie minuty. Stałe pliki `releases/compact/en-pl.json` i `pl-en.json` są pobierane
+z parametrem SHA-256 z katalogu, aby rozróżniać aktualizacje pod tym samym adresem.
+Jeśli upload jest niekompletny, aplikacja zachowuje ostatni poprawny słownik.
 Na wideo sprawdź słowo obecne w pliku: pod pojedynczym tłumaczeniem powinny być definicja,
 synonimy i trzy przykłady. Nie trzeba generować niczego przez API przy najechaniu na słowo.
 
