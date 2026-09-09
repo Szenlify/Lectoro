@@ -30,6 +30,19 @@
 
 16. Cloud Sync przyciski kolo siebie sync oraz singout a przycisk delete account umieścic na samym dole settings z wyjasnieniem ze sybskrybcja zostanie anulowana itp
 
+17. quizy czesto maja problem z wygenerowaniem quizu dopiero po kroryms kliknieciu załapuje // Successfully generated: update local quota
+      await recordExportSuccess("quiz");
+    } catch (err) {
+      console.error("Quiz export error:", err);
+      if (!GeminiProxy?.isLimitError?.(err)) {
+        alert("Quiz generation error: " + (err.message || err));
+
+        popup.html
+Stack Trace
+popup/export.js:1059 (anonymous function)
+
+
+
 17. opis wszystkich kosztów i zweryfikowanie marży projektu:
 cloudflare, kazde uzycie firebase firebase, 	
 createStripePortalSession, 	
