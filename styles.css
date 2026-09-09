@@ -1880,12 +1880,12 @@ body[data-lectoro-sub-translate-active="true"]
   display: inline-flex !important;
   align-items: center !important;
   gap: 5px !important;
-  padding: 6px 14px !important;
+  padding: 5px 10px !important;
   border: 1px solid rgba(255, 255, 255, 0.12) !important;
   border-radius: 9px !important;
   background: rgba(255, 255, 255, 0.06) !important;
   color: rgba(255, 255, 255, 0.7) !important;
-  font-size: var(--lectoro-ai-meta-font-size, 11px) !important;
+  font-size: 11px !important;
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
   cursor: pointer !important;
