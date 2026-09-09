@@ -799,7 +799,7 @@
                 return true;
             });
         if (!examples.length && !definition && !synonyms) return "";
-        return `<section class="${P}dictionary-details" aria-label="Dictionary details">${definition}${examples.length ? `<div class="${P}dictionary-caption">Examples</div>` : ""}${examples
+        return `<section class="${P}dictionary-details" aria-label="Dictionary details">${definition ? `<div class="${P}dictionary-caption">Definition</div>${definition}` : ""}${examples.length ? `<div class="${P}dictionary-caption">Examples</div>` : ""}${examples
             .slice(0, 3)
             .map((example) => textRows(example.source, example.target,
                 `<button type="button" class="${P}save-example" data-src="${escapeAttr(example.source)}" data-translated="${escapeAttr(example.target)}" data-src-lang="${escapeAttr(srcLang)}" data-tgt-lang="${escapeAttr(targetLang)}" title="Add sentence to review" aria-label="${escapeAttr(`Add to review: ${example.source}`)}" aria-pressed="false">${SVG.SAVE}</button>`))

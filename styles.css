@@ -2260,7 +2260,7 @@ body[data-lectoro-ai-active="true"]
   overflow-wrap: anywhere;
 }
 #__qt_tooltip .__qt_dictionary-example {
-  padding: 10px 0;
+  padding: 7px 0;
   color: #e4e7ef;
 }
 #__qt_tooltip .__qt_dictionary-example + .__qt_dictionary-example {
@@ -2274,9 +2274,10 @@ body[data-lectoro-ai-active="true"]
   color: inherit;
 }
 #__qt_tooltip .__qt_dictionary-line {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 24px;
   align-items: flex-start;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
   box-sizing: border-box;
 }
@@ -2326,11 +2327,34 @@ body[data-lectoro-ai-active="true"]
   outline-offset: 3px;
 }
 #__qt_tooltip .__qt_example-translation {
-  display: flex;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 24px;
+  gap: 6px;
   align-items: flex-start;
-  margin-top: 8px;
+  padding-inline-start: 18px;
+  margin-top: 5px;
   color: #aeb6c8;
+}
+#__qt_tooltip .__qt_dictionary-example.__qt_dictionary-line,
+#__qt_tooltip .__qt_dictionary-example > .__qt_dictionary-line,
+#__qt_tooltip .__qt_dictionary-example > .__qt_example-translation {
+  grid-template-columns: minmax(0, 1fr) 24px 24px;
+}
+#__qt_tooltip .__qt_example-translation > .__qt_speak {
+  grid-column: -2;
+}
+#__qt_tooltip .__qt_dictionary-details .__qt_speak,
+#__qt_tooltip .__qt_dictionary-details .__qt_save-example {
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  padding: 3px;
+  border-radius: 6px;
+}
+#__qt_tooltip .__qt_dictionary-details .__qt_speak svg,
+#__qt_tooltip .__qt_dictionary-details .__qt_save-example svg {
+  width: 16px;
+  height: 16px;
 }
 #__qt_tooltip .__qt_dictionary-definition {
   color: #b7bdcd;
