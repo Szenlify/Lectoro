@@ -519,9 +519,11 @@
                     );
                     requireTextFields(result, [
                         "translation",
-                        "explanation",
                         "badge",
                     ]);
+                    // A useful translation can be complete without an extra explanation.
+                    if (typeof result.explanation !== "string")
+                        throw new Error("AI returned an invalid explanation.");
                     if (!Array.isArray(result.items))
                         throw new Error(
                             "AI returned invalid explanation items.",
@@ -548,8 +550,7 @@
                         !types.has(item.type) ||
                         typeof item.meaning !== "string" ||
                         !item.meaning.trim() ||
-                        typeof item.explanation !== "string" ||
-                        !item.explanation.trim()
+                        typeof item.explanation !== "string"
                     )
                         return false;
                     const term = item.term.trim();

@@ -886,8 +886,12 @@ async function aiTranslateReviewCard() {
         (reviewDirection === "reverse" && reviewAnswerShown);
     if (!originalSideShown) return;
 
-    const srcL = w.srcLang || "en";
-    const tgtL = w.tgtLang || "pl";
+    const settings = w.srcLang && w.tgtLang
+        ? null
+        : await SharedTranslatorService.getReadingSettings();
+    if (reviewQueue[reviewIndex] !== w) return;
+    const srcL = w.srcLang || settings.learningLang;
+    const tgtL = w.tgtLang || settings.targetLang;
     const qWord = w.original;
     const qSentence = String(w.sentence || "").trim();
     if (!qWord) return;
@@ -910,7 +914,7 @@ async function aiTranslateReviewCard() {
                 popupSpeak(speakText, res.targetLang || tgtL, {
                     forceBrowser: true,
                     useConfiguredRate: true,
-                    sourceLang: w.srcLang || "en",
+                    sourceLang: res.srcLang || srcL,
                     originalText: w.original || "",
                 }).catch(() => {});
             }
@@ -947,10 +951,10 @@ async function aiTranslateReviewCard() {
                     AIPrompts.validateLanguage(result, tgtL);
                     const required = [
                         "word_translation",
-                        "explanation",
                         ...(qSentence ? ["sentence_translation"] : []),
                     ];
                     if (
+                        typeof result.explanation !== "string" ||
                         required.some(
                             (key) =>
                                 typeof result[key] !== "string" ||
@@ -979,7 +983,7 @@ async function aiTranslateReviewCard() {
         const explanation = parsed.explanation || "";
 
         state.status = "done";
-        state.result = { wordTr, sentTr, explanation, targetLang: tgtL };
+        state.result = { wordTr, sentTr, explanation, srcLang: srcL, targetLang: tgtL };
 
         // Bail out silently if the user already moved to a different card
         // while the request was in flight.
@@ -998,7 +1002,7 @@ async function aiTranslateReviewCard() {
             popupSpeak(speakText, tgtL, {
                 forceBrowser: true,
                 useConfiguredRate: true,
-                sourceLang: w.srcLang || "en",
+                sourceLang: srcL,
                 originalText: w.original || "",
             }).catch((ttsErr) => {
                 console.warn("[Lectoro] AI Review TTS error:", ttsErr);

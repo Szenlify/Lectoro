@@ -228,7 +228,7 @@ test("segments validation keeps phrase spans compatible with the client", () => 
     assert.throws(() => validateResult(job, { phrases: [{ start: -1, length: 2, t: "x" }] }));
 });
 
-test("word dictionary behavior remains case-insensitive and reviewed", async () => {
+test("word dictionary behavior remains case-insensitive with one checked generation", async () => {
     const { deps, count, objects } = fixture();
     for (const word of ["abandon", "ABANDON", "AbAnDoN"]) {
         const result = await handleLiveTranslation({ ...body, text: word }, deps);
@@ -236,7 +236,7 @@ test("word dictionary behavior remains case-insensitive and reviewed", async () 
     }
     assert.equal(objects.size, 1);
     assert.equal(count.reserved, 1);
-    assert.equal(count.generated, 2, "one generation + one review for a new dictionary word");
+    assert.equal(count.generated, 1, "one checked response for a new dictionary word");
 });
 
 test("legacy unverified word entry is repaired with one review", async () => {
@@ -277,7 +277,6 @@ test("concurrent users cannot generate the same word twice", async () => {
     const waiting = new Promise(resolve => { started = resolve; });
     const original = deps.generate;
     deps.generate = async payload => {
-        if (payload.generationConfig.responseSchema.required.includes("valid")) return original(payload);
         started();
         await new Promise(resolve => { release = resolve; });
         return original(payload);
@@ -293,8 +292,11 @@ test("concurrent users cannot generate the same word twice", async () => {
 test("200 source characters are cached; 201 bypass translation R2 and shared lock", async () => {
     for (const length of [200, 201]) {
         const { deps, count, objects } = fixture();
-        deps.generate = async () => {
+        deps.generate = async payload => {
             count.generated++;
+            if (length > 200) {
+                assert.deepEqual(Object.keys(payload.generationConfig.responseSchema.properties), ["t"], "uncached text never requests unused phrases");
+            }
             return response({ t: "z".repeat(250), phrases: [] });
         };
         if (length > 200) {
@@ -309,6 +311,76 @@ test("200 source characters are cached; 201 bypass translation R2 and shared loc
         assert.equal(objects.size, length === 200 ? 1 : 0);
         assert.equal(count.generated, length === 200 ? 1 : 2);
     }
+});
+
+test("R2 only receives phrase spans actually present as complete words in the source", async () => {
+    const cases = [
+        ["They take off at noon.", "take off", "wystartować", true],
+        ["They take it off.", "take off", "zdjąć", false],
+        ["Take. Off we go.", "take off", "wystartować", false],
+        ["Retake offcuts.", "take off", "wystartować", false],
+        ["They stay home.", "give up", "poddać się", false],
+        ["She's playing devil's advocate.", "devil’s advocate", "adwokat diabła", true],
+        ["GET\tUP!", "get up", "wstać", true],
+        ["We leave at the drop of a hat.", "at the drop of a hat", "bez wahania", false],
+        ["Tout à coup, il part.", "tout à coup", "nagle", true, "fr"],
+    ];
+    for (const [input, source, translated, stored, sourceLang = "en"] of cases) {
+        const { deps, count, objects } = fixture();
+        deps.generate = async () => response({ t: "Poprawne tłumaczenie.", phrases: [{ s: source, t: translated, explanation: "discard this" }] });
+        const request = { ...body, kind: "sentence", text: input, sourceLang };
+        const result = await handleLiveTranslation(request, deps);
+        assert.deepEqual(result.result, { t: "Poprawne tłumaczenie." });
+        const phraseObjects = [...objects.entries()].filter(([key]) => key.startsWith("dictionaries/phrase/"));
+        assert.equal(phraseObjects.length, stored ? 1 : 0, input);
+        assert.equal(count.writes, stored ? 2 : 1, input);
+        if (stored) {
+            assert.deepEqual(phraseObjects[0][1], { [source]: { t: translated } });
+            assert.ok(phraseObjects[0][0].startsWith(`dictionaries/phrase/${sourceLang}-pl/`));
+        }
+    }
+});
+
+test("a checked dictionary response is validated and stripped before any R2 write", async () => {
+    for (const invalid of [false, true]) {
+        const { deps, count, objects } = fixture();
+        deps.generate = async payload => {
+            count.generated++;
+            assert.deepEqual(payload.generationConfig.responseSchema.required, ["valid", "entry"]);
+            assert.equal(payload.generationConfig.thinkingConfig.thinkingBudget, 0);
+            return response({ valid: true, entry: { ...entry, e: invalid ? [] : entry.e, explanation: "unused" }, reason: "unused" });
+        };
+        if (invalid) {
+            await assert.rejects(handleLiveTranslation(body, deps), /Invalid generated dictionary entry/);
+            assert.equal(objects.size, 0);
+            assert.equal(count.refunded, 1);
+        } else {
+            const result = await handleLiveTranslation(body, deps);
+            assert.deepEqual(result.result, { abandon: entry });
+            assert.deepEqual(objects.get(prepare(body, "u1").key), { abandon: entry });
+            assert.equal(count.refunded, 0);
+        }
+        assert.equal(count.generated, 1);
+    }
+});
+
+test("overlapping phrase variants never create extra R2 objects", async () => {
+    const { deps, count, objects } = fixture();
+    deps.generate = async () => response({
+        t: "Nie trać nadziei i wstań.",
+        phrases: [
+            { s: "give up", t: "poddać się" },
+            { s: "give up hope", t: "stracić nadzieję" },
+            { s: "up hope", t: "nadzieja" },
+            { s: "get up", t: "wstać" },
+        ],
+    });
+    await handleLiveTranslation({ ...body, kind: "sentence", text: "Don't give up hope and get up." }, deps);
+    assert.deepEqual(objects.get(phraseKey("give up")), { "give up": { t: "poddać się" } });
+    assert.deepEqual(objects.get(phraseKey("get up")), { "get up": { t: "wstać" } });
+    assert.equal(objects.has(phraseKey("give up hope")), false);
+    assert.equal(objects.has(phraseKey("up hope")), false);
+    assert.equal(count.writes, 3, "one sentence and two non-overlapping expressions");
 });
 
 test("paths remain shared, language-pair isolated, and translations path is unchanged", () => {
