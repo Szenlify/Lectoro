@@ -3106,7 +3106,7 @@ html[data-lectoro-ai-limit-reached] #exportQuiz {
     height: 28px;
     border: 1px solid rgba(129, 140, 248, 0.25);
     border-radius: 50%;
-    background: rgba(15, 15, 30, 0.85);
+    background: rgba(15, 30, 20, 0.85);
     backdrop-filter: blur(8px);
     color: #c7d2fe;
     cursor: pointer;
