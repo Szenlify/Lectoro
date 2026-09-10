@@ -275,35 +275,59 @@
         if (options.wordByWord && options.contextual) {
             if (!words.length) return [];
             const tokens = words.map(word => word.normalize("NFKC").trim());
-            const sentence = (options.context || tokens.join(" ")).normalize("NFKC").trim();
-            const decodePhrases = data => {
-                if (data?.phraseAnalysis !== 2 || typeof data?.t !== "string" || !data.t.trim() || !Array.isArray(data.phrases) || data.phrases.length > 12) throw new Error("Invalid subtitle phrase analysis.");
-                const result = words.map(() => null);
-                let next = 0;
-                for (const phrase of data.phrases) {
-                    if (!phrase || !Number.isInteger(phrase.start) || phrase.start < next || !Number.isInteger(phrase.length) || phrase.length < 2 || phrase.start + phrase.length > words.length ||
-                        typeof phrase.t !== "string" || !phrase.t.trim() || phrase.t.length > 300 || /[<>\x00-\x1f]/u.test(phrase.t)) throw new Error("Invalid subtitle phrase.");
-                    result[phrase.start] = { translated: phrase.t, length: phrase.length };
-                    next = phrase.start + phrase.length;
+            const normalizePhrase = (value) => String(value || "")
+                .normalize("NFKC")
+                .toLowerCase()
+                .replace(/['‘]/g, "’")
+                .replace(/[^\p{L}\p{M}\p{N}’ -]+/gu, " ")
+                .replace(/\s+/g, " ")
+                .trim();
+
+            // R2 phrase lookup is read-only and never invokes AI. Check 4/3/2-word
+            // windows, then keep the longest non-overlapping matches.
+            const candidates = [];
+            for (let start = 0; start < tokens.length - 1; start++) {
+                for (let length = Math.min(4, tokens.length - start); length >= 2; length--) {
+                    const source = normalizePhrase(tokens.slice(start, start + length).join(" "));
+                    if (!source || source.split(/\s+/u).length < 2) continue;
+                    candidates.push({ start, length, source });
                 }
-                return result;
-            };
-            let data = await root.DictionaryStore?.getAnalysis?.(sourceLang, targetLang, sentence, tokens);
-            let phrases;
-            if (data) { try { phrases = decodePhrases(data); } catch (_) {} }
-            if (!phrases) {
-                if (!root.GeminiProxy?.liveTranslation) throw new Error("Sign in to detect subtitle expressions.");
-                data = await root.GeminiProxy.liveTranslation("segments", sentence, sourceLang, targetLang, tokens);
-                phrases = decodePhrases(data);
-                await root.DictionaryStore?.putAnalysis?.(sourceLang, targetLang, sentence, tokens, data);
             }
-            // Independent words still come from the existing live dictionary.
-            // Only detected expressions use the phrase translation from the analysis.
+
+            const matches = [];
+            await Promise.all(candidates.map(async (candidate) => {
+                try {
+                    const entry = await root.DictionaryStore?.getPhrase?.(sourceLang, targetLang, candidate.source);
+                    if (entry?.t) matches.push({ ...candidate, translated: entry.t });
+                } catch (_) {
+                    // Phrase lookup failure must never break word-by-word translation.
+                }
+            }));
+
+            matches.sort((a, b) => b.length - a.length || a.start - b.start);
+            const phrases = words.map(() => null);
+            const occupied = new Set();
+            for (const match of matches) {
+                let overlaps = false;
+                for (let i = match.start; i < match.start + match.length; i++) {
+                    if (occupied.has(i)) { overlaps = true; break; }
+                }
+                if (overlaps) continue;
+                phrases[match.start] = { translated: match.translated, length: match.length };
+                for (let i = match.start; i < match.start + match.length; i++) occupied.add(i);
+            }
+
+            // Do not translate words already covered by a phrase. Remaining single
+            // words come only from the existing live dictionary/cache.
             const singles = [...tokens];
             phrases.forEach((phrase, start) => {
                 if (phrase) singles.fill("", start, start + phrase.length);
             });
-            const known = await lookupWords(singles, targetLang, sourceLang, { wordByWord: true, localOnly: true, generateMissing: false });
+            const known = await lookupWords(singles, targetLang, sourceLang, {
+                wordByWord: true,
+                localOnly: false,
+                generateMissing: false,
+            });
             return known.map((value, index) => phrases[index] || value);
         }
         const context = options.contextWords || contextTokens(options.context);

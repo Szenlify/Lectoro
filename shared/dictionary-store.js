@@ -240,6 +240,75 @@
             await save({ key: liveKey(source, target, word), data: entry,
                 bytes: new TextEncoder().encode(JSON.stringify(entry)).length, lastUsed: now() });
         }
+        const normalizePhrase = (value) => String(value || "")
+            .normalize("NFKC")
+            .toLowerCase()
+            .replace(/['‘]/g, "’")
+            .replace(/[^\p{L}\p{M}\p{N}’ -]+/gu, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+        const phraseKey = (source, target, phrase) => `phrase-r2:${JSON.stringify([source, target, phrase])}`;
+        const phraseMemory = new Map(), phraseRequests = new Map(), phraseMisses = new Map();
+        const phraseQueue = [];
+        let phraseRunning = 0;
+        function rememberPhrase(key, entry) {
+            phraseMemory.set(key, entry);
+            if (phraseMemory.size > 1000) phraseMemory.delete(phraseMemory.keys().next().value);
+            return entry;
+        }
+        function validatePhraseObject(data, phrase) {
+            if (!isObject(data)) return null;
+            const direct = data[phrase];
+            const fallback = Object.keys(data).length === 1 ? data[Object.keys(data)[0]] : null;
+            const entry = isObject(direct) ? direct : isObject(fallback) ? fallback : null;
+            if (!entry || !validText(entry.t, 300)) return null;
+            return { t: entry.t };
+        }
+        async function getPhrase(source, target, phrase, { localOnly = false } = {}) {
+            const supported = root.LectoroConstants?.SUPPORTED_LANGUAGES;
+            if (!supported || !Object.hasOwn(supported, source) || !Object.hasOwn(supported, target) || source === target) return null;
+            phrase = normalizePhrase(phrase);
+            if (!phrase || phrase.length > 300 || phrase.split(/\s+/u).length < 2) return null;
+            const key = phraseKey(source, target, phrase);
+            if (phraseMemory.has(key)) return phraseMemory.get(key);
+            const record = await read(key);
+            if (record?.data?.t) {
+                try { return rememberPhrase(key, validatePhraseObject({ [phrase]: record.data }, phrase)); } catch (_) {}
+            }
+            if (localOnly) return null;
+            const missUntil = phraseMisses.get(key) || 0;
+            if (missUntil > now()) return null;
+            if (phraseRequests.has(key)) return phraseRequests.get(key);
+            const task = (async () => {
+                if (phraseRunning >= 8) await new Promise(resolve => phraseQueue.push(resolve));
+                else phraseRunning++;
+                try {
+                    const digest = await root.crypto.subtle.digest("SHA-256", new TextEncoder().encode(phrase));
+                    const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+                    let data;
+                    try { data = decode(await fetchBytes(`phrase/${source}-${target}/${hash}.json`, 4096)); }
+                    catch (error) {
+                        if (error.status === 404) {
+                            phraseMisses.set(key, now() + 5000);
+                            return null;
+                        }
+                        throw error;
+                    }
+                    const entry = validatePhraseObject(data, phrase);
+                    if (!entry) return null;
+                    phraseMisses.delete(key);
+                    rememberPhrase(key, entry);
+                    await save({ key, data: entry, bytes: new TextEncoder().encode(JSON.stringify(entry)).length, lastUsed: now() });
+                    return entry;
+                } finally {
+                    if (phraseQueue.length) phraseQueue.shift()();
+                    else phraseRunning--;
+                }
+            })().finally(() => phraseRequests.delete(key));
+            phraseRequests.set(key, task);
+            return task;
+        }
+
         const analysisKey = (source, target, context, words) => `phrase-analysis-v2:${JSON.stringify([source, target, context, words])}`;
         async function getAnalysis(source, target, context, words) {
             const key = analysisKey(source, target, context, words);
@@ -252,7 +321,7 @@
             rememberLive(key, data);
             await save({ key, data, bytes: new TextEncoder().encode(JSON.stringify(data)).length, lastUsed: now() });
         }
-        return Object.freeze({ getLive, putLive, getAnalysis, putAnalysis });
+        return Object.freeze({ getLive, putLive, getPhrase, getAnalysis, putAnalysis });
     }
 
     root.DictionaryStore = createStore();
