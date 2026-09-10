@@ -639,6 +639,7 @@
 
         const livePending = new Map();
         function liveTranslation(kind, text, sourceLang, targetLang) {
+            if (kind === "word") text = text.normalize("NFKC").trim().toLowerCase();
             const key = JSON.stringify([kind, text, sourceLang, targetLang]);
             if (livePending.has(key)) return livePending.get(key);
             const pending = (async () => {
@@ -649,13 +650,17 @@
                 do {
                     const controller = new AbortController();
                     const timer = setTimeout(() => controller.abort(), Math.max(1, deadline - Date.now()));
-                    let response;
+                    let response, data;
                     try {
                         response = await fetch(PROXY_URL, { method: "POST", signal: controller.signal,
                             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
                             body: JSON.stringify({ action: "liveTranslation", kind, text, sourceLang, targetLang }) });
+                        data = await response.json();
+                    } catch (error) {
+                        if (controller.signal.aborted) throw Object.assign(new Error("Translation timed out. Please try again."), { code: "TRANSLATION_TIMEOUT" });
+                        if (error instanceof SyntaxError) throw Object.assign(new Error("Translation service returned an invalid response. Please try again."), { code: "INVALID_TRANSLATION_RESPONSE" });
+                        throw error;
                     } finally { clearTimeout(timer); }
-                    const data = await response.json();
                     if (response.ok) {
                         if (data.usage) await setCachedUsage(data.usage);
                         return data.result;
@@ -663,7 +668,7 @@
                     if (response.status !== 409 || data.code !== "TRANSLATION_PENDING") {
                         if (data.usage) await setCachedUsage(data.usage);
                         throw Object.assign(new Error(data.error || "Translation failed."), {
-                            code: data.code || (response.status === 429 || response.status === 503 ? "RATE_LIMITED" : "AI_REQUEST_FAILED"), status: response.status });
+                            code: data.code || (response.status === 429 ? "RATE_LIMITED" : "AI_REQUEST_FAILED"), status: response.status });
                     }
                     await new Promise(resolve => setTimeout(resolve, 1000));
                 } while (Date.now() < deadline);

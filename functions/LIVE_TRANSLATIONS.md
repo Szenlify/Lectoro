@@ -52,7 +52,7 @@ jest tłumaczone jako cały tekst przez cache `dictionaries/translations`, bez
 tworzenia hasła słownikowego dla całej frazy.
 Nie trzeba uruchamiać Pythona ani aktualizować sum SHA dużych słowników.
 Hash słowa to SHA-256 UTF-8 po normalizacji NFKC i usunięciu skrajnych spacji;
-wielkość liter jest zachowana. Rozszerzenie usuwa też skrajną interpunkcję przed wyszukiwaniem.
+klucz jest sprowadzany do małych liter. Rozszerzenie usuwa też skrajną interpunkcję przed wyszukiwaniem.
 
 Obsługiwane są wszystkie obecne języki aplikacji: cs, de, en, es, fr, it, ja,
 ko, nl, pl, pt, w obu kierunkach. Zmieniając listę języków aplikacji, zaktualizuj
@@ -97,3 +97,39 @@ API użyte w implementacji:
 - https://ai.google.dev/gemini-api/docs/models/gemini-2.5-flash-lite
 - https://ai.google.dev/gemini-api/docs/structured-output
 - https://developers.cloudflare.com/r2/api/s3/api/
+
+## Dictionary language validation
+
+Before a new live word entry is saved, a separate AI review checks every field:
+`t`, `d.t` and `e[].t` must use the target language; `d.s`, `s[]` and `e[].s`
+must use the source language. It also checks translation accuracy and a shared
+meaning. Dictionary keys use NFKC, trimming and lowercase on both client and
+server, so `wounds`, `WOUNDS` and `wOunDS` share the same R2 object, offline
+cache and in-flight request. Definitions, examples and sentence translations
+retain natural capitalization. Existing lowercase objects are reused; uppercase
+legacy objects are no longer addressed.
+The review returns the complete corrected entry in the same response. A new
+entry needs at most two AI calls (generation and review); an unmarked legacy
+entry goes directly to review and needs only one. Accepted cached entries need
+no AI calls. If review fails or is malformed, nothing is saved and the usage
+reservation is refunded. The user's usage is reserved only once. AI review reduces errors but cannot
+guarantee perfect language identification or translation.
+
+Only the backend adds `languageValidation: 1` to an accepted entry. Unmarked
+legacy live entries in R2 or IndexedDB are treated as missing and replaced on
+next online lookup through the normal authenticated generation flow. Their
+replacement requires available AI usage. Paths stay unchanged; no bulk deletion
+is performed. New R2 objects use `If-None-Match: *`; replacement uses the ETag
+from the last read in `If-Match`, so repairing an existing entry does not fail
+just because its file already exists and cannot overwrite a concurrent update.
+See [R2 conditional operations](https://developers.cloudflare.com/r2/api/s3/api/).
+Deploy the backend before releasing the updated extension.
+
+Word generation/review calls each have a 12-second network timeout; R2 reads
+and writes each have a 5-second request timeout. The client deadline also covers
+reading the response body. Backend errors identify the failing stage without
+exposing provider details, and concurrent update conflicts use the existing
+bounded polling flow. Verified IndexedDB entries are promoted into the bounded
+in-memory cache to avoid reading IndexedDB again on each hover.
+This validation applies to live dictionary words; sentence translations and
+the standalone Python pack generator do not use this review step.

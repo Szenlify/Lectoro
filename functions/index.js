@@ -199,7 +199,7 @@ function elevenLabsClientError(details) {
     };
 }
 
-async function fetchGeminiWithRetry(geminiKey, payload, maxRetries = 2) {
+async function fetchGeminiWithRetry(geminiKey, payload, maxRetries = 2, timeoutMs) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${encodeURIComponent(geminiKey)}`;
     let lastError = null;
     let lastStatus = 0;
@@ -215,7 +215,7 @@ async function fetchGeminiWithRetry(geminiKey, payload, maxRetries = 2) {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
-                signal: AbortSignal.timeout(payload.generationConfig?.responseMimeType === "text/plain" ? 12000 : 25000),
+                signal: AbortSignal.timeout(timeoutMs ?? (payload.generationConfig?.responseMimeType === "text/plain" ? 12000 : 25000)),
             });
 
             if (response.ok) {
@@ -317,15 +317,20 @@ exports.geminiProxy = onRequest(
         }
 
         if (req.body?.action === "liveTranslation") {
-            const { handleLiveTranslation } = require("./live-translation");
+            const { handleLiveTranslation, translationError } = require("./live-translation");
             const { getTranslationJson, putTranslationJson } = require("./r2-storage");
+            const etags = new Map();
             try {
                 const result = await handleLiveTranslation(req.body, {
                     uid, db,
                     usage: { plan, used: aiUsed, limit: aiLimit, remaining: Math.max(0, aiLimit - aiUsed) },
-                    read: key => getTranslationJson(getR2Config(), key),
-                    write: (key, value) => putTranslationJson(getR2Config(), key, value),
-                    generate: payload => fetchGeminiWithRetry(getGeminiApiKey(), payload, 0),
+                    read: async key => {
+                        const record = await getTranslationJson(getR2Config(), key, { withMetadata: true });
+                        etags.set(key, record?.etag);
+                        return record?.value ?? null;
+                    },
+                    write: (key, value) => putTranslationJson(getR2Config(), key, value, { etag: etags.get(key) }),
+                    generate: payload => fetchGeminiWithRetry(getGeminiApiKey(), payload, 0, req.body.kind === "word" ? 12000 : 25000),
                     rollback: () => rollbackAiReservation(db, userRef, month),
                     reserve: () => db.runTransaction(async tx => {
                         const snap = await tx.get(userRef);
@@ -340,8 +345,9 @@ exports.geminiProxy = onRequest(
                 });
                 return res.status(200).json(result);
             } catch (error) {
-                console.warn("[liveTranslation]", error.message);
-                return res.status(error.status || 503).json({ error: error.status ? error.message : "Translation unavailable. Please try again.", code: error.code || "LIVE_TRANSLATION_FAILED", ...(error.usage ? { usage: error.usage } : {}) });
+                console.warn("[liveTranslation]", error.stage || "request", error.message);
+                const { status, ...failure } = translationError(error);
+                return res.status(status).json(failure);
             }
         }
 

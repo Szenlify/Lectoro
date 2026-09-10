@@ -188,33 +188,40 @@
 
         const liveKey = (source, target, word) => `live-r2:${JSON.stringify([source, target, word])}`;
         const liveMemory = new Map(), liveRequests = new Map();
+        function rememberLive(key, entry) {
+            liveMemory.set(key, entry);
+            if (liveMemory.size > 500) liveMemory.delete(liveMemory.keys().next().value);
+            return entry;
+        }
         const liveQueue = [];
         let liveRunning = 0;
         function validateLive(entry) {
             if (!isObject(entry) || !validText(entry.t, 120) || !validPair(entry.d, 300) ||
-                !Array.isArray(entry.s) || entry.s.length > 3 || !entry.s.every(v => validText(v, 80)) ||
+                !Array.isArray(entry.s) || entry.s.length > (entry.languageValidation === 1 ? 2 : 3) || !entry.s.every(v => validText(v, 80)) ||
                 !Array.isArray(entry.e) || entry.e.length !== 3 || !entry.e.every(v => validPair(v, 300))) throw new Error("Invalid live entry");
             return entry;
         }
         async function getLive(source, target, word, { localOnly = false } = {}) {
             const supported = root.LectoroConstants?.SUPPORTED_LANGUAGES;
             if (!supported || !Object.hasOwn(supported, source) || !Object.hasOwn(supported, target) || source === target || !validText(word, 120)) return null;
+            word = word.normalize("NFKC").trim().toLowerCase();
             const key = liveKey(source, target, word);
             if (liveMemory.has(key)) return liveMemory.get(key);
             const record = await read(key);
-            try { return validateLive(record?.data); } catch (_) {}
+            try { if (record?.data?.languageValidation === 1) return rememberLive(key, validateLive(record.data)); } catch (_) {}
             if (localOnly) return null;
             if (liveRequests.has(key)) return liveRequests.get(key);
             const task = (async () => {
                 if (liveRunning >= 6) await new Promise(resolve => liveQueue.push(resolve));
                 else liveRunning++;
                 try {
-                    const digest = await root.crypto.subtle.digest("SHA-256", new TextEncoder().encode(word.normalize("NFKC").trim()));
+                    const digest = await root.crypto.subtle.digest("SHA-256", new TextEncoder().encode(word));
                     const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
                     let data;
                     try { data = decode(await fetchBytes(`live/${source}-${target}/${hash}.json`, 65536)); }
                     catch (error) { if (error.status === 404) return null; throw error; }
                     const entry = validateLive(data?.[word]);
+                    if (entry.languageValidation !== 1) return null;
                     await putLive(source, target, word, entry);
                     return entry;
                 } finally {
@@ -226,9 +233,10 @@
             return task;
         }
         async function putLive(source, target, word, entry) {
+            word = word.normalize("NFKC").trim().toLowerCase();
             validateLive(entry);
-            liveMemory.set(liveKey(source, target, word), entry);
-            if (liveMemory.size > 500) liveMemory.delete(liveMemory.keys().next().value);
+            if (entry.languageValidation !== 1) throw new Error("Dictionary entry has not passed language verification");
+            rememberLive(liveKey(source, target, word), entry);
             await save({ key: liveKey(source, target, word), data: entry,
                 bytes: new TextEncoder().encode(JSON.stringify(entry)).length, lastUsed: now() });
         }

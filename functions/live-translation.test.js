@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { prepare, validateEntry, handleLiveTranslation } = require("./live-translation");
-const entry = { t: "porzucić coś", d: { s: "To leave something behind.", t: "Zostawić coś za sobą." }, s: ["desert"], e: [
+const { prepare, validateEntry, handleLiveTranslation, translationError } = require("./live-translation");
+const entry = { languageValidation: 1, t: "porzucić coś", d: { s: "To leave something behind.", t: "Zostawić coś za sobą." }, s: ["desert"], e: [
     { s: "They abandon the house.", t: "Porzucają dom." },
     { s: "Do not abandon us.", t: "Nie porzucaj nas." },
     { s: "We abandon the plan.", t: "Porzucamy plan." },
@@ -32,7 +32,7 @@ function fixture() {
         read: async key => objects.get(key), write: async (key, value) => objects.set(key, value),
         reserve: async () => { count.reserved++; return { used: count.reserved, limit: 10 }; },
         rollback: async () => { count.refunded++; },
-        generate: async () => { count.generated++; return { candidates: [{ finishReason: "STOP", content: { parts: [{ text: JSON.stringify(entry) }] } }] }; },
+        generate: async payload => { if (payload.generationConfig.responseSchema.required.includes("valid")) return { candidates: [{ finishReason: "STOP", content: { parts: [{ text: JSON.stringify({ valid: true, entry }) }] } }] }; count.generated++; return { candidates: [{ finishReason: "STOP", content: { parts: [{ text: JSON.stringify(entry) }] } }] }; },
     };
     return { deps, count, objects, records };
 }
@@ -46,12 +46,86 @@ test("generates compact JSON once, persists it and serves cache before quota", a
     assert.equal(second.cached, true);
     assert.deepEqual(count, { reserved: 1, refunded: 0, generated: 1 });
 });
+test("wounds in every letter case shares one backend entry and quota reservation", async () => {
+    const { deps, count, objects } = fixture();
+    const variants = ["wounds", "WOUNDS", "wOunDS"];
+    for (const text of variants) {
+        const result = await handleLiveTranslation({ ...body, text }, deps);
+        assert.deepEqual(Object.keys(result.result), ["wounds"]);
+        assert.equal(prepare({ ...body, text }, "u1").input, "wounds");
+    }
+    assert.equal(objects.size, 1);
+    assert.equal(count.reserved, 1);
+    assert.equal(count.generated, 1);
+    const sentence = prepare({ ...body, kind: "sentence", text: "WOUNDS heal." }, "u1");
+    assert.equal(sentence.input, "WOUNDS heal.");
+    assert.notEqual(sentence.key, prepare({ ...body, kind: "sentence", text: "wounds heal." }, "u1").key);
+});
+test("legacy wrong-language fields are repaired with one review before replacing R2 data", async () => {
+    const { deps, objects, count } = fixture();
+    const request = { ...body, text: "Polish" };
+    const key = prepare(request, "u1").key;
+    const bad = { ...entry, t: "Polish language" };
+    delete bad.languageValidation;
+    objects.set(key, { polish: bad });
+    const good = { ...bad, t: "język polski" };
+    const responses = [{ valid: true, entry: good }];
+    const prompts = [];
+    deps.generate = async payload => {
+        prompts.push(payload.contents[0].parts[0].text);
+        assert.equal(objects.get(key).polish.t, "Polish language", "do not save before review");
+        return { candidates: [{ finishReason: "STOP", content: { parts: [{ text: JSON.stringify(responses.shift()) }] } }] };
+    };
+    const result = await handleLiveTranslation(request, deps);
+    assert.equal(result.result.polish.t, "język polski");
+    assert.equal(objects.get(key).polish.languageValidation, 1);
+    assert.equal(prompts.length, 1, "repair legacy entries with one AI call");
+    assert.match(prompts[0], /Polish language/);
+    assert.equal(count.reserved, 1);
+    assert.equal(count.refunded, 0);
+});
+test("new entries need only generation and review, even when review corrects them", async () => {
+    const { deps, objects } = fixture();
+    const responses = [{ ...entry, t: "wrong language" }, { valid: true, entry }];
+    let calls = 0;
+    deps.generate = async () => {
+        calls++;
+        return { candidates: [{ finishReason: "STOP", content: { parts: [{ text: JSON.stringify(responses.shift()) }] } }] };
+    };
+    const result = await handleLiveTranslation(body, deps);
+    assert.deepEqual(result.result, { abandon: entry });
+    assert.equal(calls, 2);
+    assert.equal(objects.size, 1);
+});
+test("public errors distinguish timeouts, stale writes, bad requests and service stages", () => {
+    assert.equal(translationError({ name: "TimeoutError" }).code, "TRANSLATION_TIMEOUT");
+    assert.equal(translationError({ $metadata: { httpStatusCode: 412 } }).code, "TRANSLATION_PENDING");
+    assert.equal(translationError({ status: 400, message: "Invalid request" }).status, 400);
+    assert.equal(translationError({ status: 429 }).code, "RATE_LIMITED");
+    for (const stage of ["storage", "cache", "generation", "verification"]) {
+        const result = translationError({ stage, message: "private provider details" });
+        assert.ok(result.code.includes(stage.toUpperCase()));
+        assert.ok(!result.error.includes("private provider details"));
+    }
+});
+test("failed or malformed language reviews never save entries and refund usage", async () => {
+    for (const verdict of [{ valid: false, issues: ["d.t and e[1].t are in the wrong language"] }, { valid: "true", issues: [] }]) {
+        const { deps, count, objects } = fixture();
+        deps.generate = async payload => ({ candidates: [{ finishReason: "STOP", content: { parts: [{ text: JSON.stringify(
+            payload.generationConfig.responseSchema.required.includes("valid") ? verdict : entry
+        ) }] } }] });
+        await assert.rejects(handleLiveTranslation(body, deps), /verify/);
+        assert.equal(objects.size, 0);
+        assert.equal(count.reserved, 1);
+        assert.equal(count.refunded, 1);
+    }
+});
 test("concurrent users cannot generate the same word twice", async () => {
     const { deps, count } = fixture();
     let release, started;
     const waiting = new Promise(resolve => { started = resolve; });
     const original = deps.generate;
-    deps.generate = async (...args) => { started(); await new Promise(resolve => { release = resolve; }); return original(...args); };
+    deps.generate = async (...args) => { if (args[0].generationConfig.responseSchema.required.includes("valid")) return original(...args); started(); await new Promise(resolve => { release = resolve; }); return original(...args); };
     const first = handleLiveTranslation(body, deps);
     await waiting;
     await assert.rejects(handleLiveTranslation(body, { ...deps, uid: "u2" }), { code: "TRANSLATION_PENDING" });
@@ -75,9 +149,9 @@ test("quota refusal never generates, cache read failure never charges", async ()
         assert.equal(count.generated, 0); assert.equal(count.refunded, 0); assert.equal(records.size, 0);
     }
 });
-test("language pairs and case are isolated; both cache folders are shared and have no version prefix", () => {
+test("language pairs are isolated and word case is normalized; both cache folders are shared and have no version prefix", () => {
     assert.notEqual(prepare(body, "a").key, prepare({ ...body, targetLang: "de" }, "a").key);
-    assert.notEqual(prepare(body, "a").key, prepare({ ...body, text: "Abandon" }, "a").key);
+    assert.equal(prepare(body, "a").key, prepare({ ...body, text: "Abandon" }, "a").key);
     assert.equal(prepare(body, "a").key, prepare(body, "b").key);
     assert.equal(prepare({ ...body, kind: "sentence" }, "a").key, prepare({ ...body, kind: "sentence" }, "b").key);
     assert.match(prepare(body, "a").key, /^dictionaries\/live\/en-pl\/[a-f0-9]{64}\.json$/);

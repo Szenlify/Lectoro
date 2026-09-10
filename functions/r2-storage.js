@@ -294,27 +294,28 @@ async function deleteAllUserImages(config, uid) {
     }
 }
 
-async function getTranslationJson(config, key) {
+async function getTranslationJson(config, key, { withMetadata = false } = {}) {
     const client = getR2Client(config);
     if (!client) throw new Error("R2 is not configured.");
     const { GetObjectCommand } = getS3Sdk();
     try {
-        const response = await client.send(new GetObjectCommand({ Bucket: config.bucketName, Key: key }));
+        const response = await client.send(new GetObjectCommand({ Bucket: config.bucketName, Key: key }), { abortSignal: AbortSignal.timeout(5000) });
         if (response.ContentLength > 65536) throw new Error("Translation cache entry too large.");
-        return JSON.parse((await streamToBuffer(response.Body)).toString("utf8"));
+        const value = JSON.parse((await streamToBuffer(response.Body)).toString("utf8"));
+        return withMetadata ? { value, etag: response.ETag } : value;
     } catch (error) {
         if (error.name === "NoSuchKey" || error.$metadata?.httpStatusCode === 404) return null;
         throw error;
     }
 }
 
-async function putTranslationJson(config, key, value) {
+async function putTranslationJson(config, key, value, { etag } = {}) {
     const client = getR2Client(config);
     if (!client) throw new Error("R2 is not configured.");
     const { PutObjectCommand } = getS3Sdk();
     await client.send(new PutObjectCommand({ Bucket: config.bucketName, Key: key,
         Body: JSON.stringify(value), ContentType: "application/json; charset=utf-8",
-        CacheControl: "no-store", IfNoneMatch: "*" }));
+        CacheControl: "no-store", ...(etag ? { IfMatch: etag } : { IfNoneMatch: "*" }) }), { abortSignal: AbortSignal.timeout(5000) });
 }
 
 module.exports = {

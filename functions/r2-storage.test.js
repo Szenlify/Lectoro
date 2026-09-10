@@ -60,7 +60,7 @@ test("translation objects distinguish missing data from denied access and use co
             S3Client: class { async send(command) {
                 calls.push(command.input);
                 if (failure) throw failure;
-                return { ContentLength: 10, Body: Buffer.from('{"t":"dom"}') };
+                return { ContentLength: 10, ETag: '"old-version"', Body: Buffer.from('{"t":"dom"}') };
             } },
             GetObjectCommand: class { constructor(input) { this.input = input; } },
             PutObjectCommand: class { constructor(input) { this.input = input; } },
@@ -69,6 +69,12 @@ test("translation objects distinguish missing data from denied access and use co
     const { getTranslationJson, putTranslationJson } = require("./r2-storage");
     const config = { accountId: "test", accessKeyId: "test", secretAccessKey: "test", bucketName: "test" };
     assert.deepEqual(await getTranslationJson(config, "words/test.json"), { t: "dom" });
+    const record = await getTranslationJson(config, "words/test.json", { withMetadata: true });
+    assert.deepEqual(record, { value: { t: "dom" }, etag: '"old-version"' });
+    await putTranslationJson(config, "words/test.json", { t: "poprawiony" }, { etag: record.etag });
+    assert.equal(calls.at(-1).IfMatch, '"old-version"');
+    assert.equal(calls.at(-1).IfNoneMatch, undefined);
+    assert.equal(calls.at(-1).Body, '{"t":"poprawiony"}');
     failure = { name: "NoSuchKey", $metadata: { httpStatusCode: 404 } };
     assert.equal(await getTranslationJson(config, "words/missing.json"), null);
     failure = Object.assign(new Error("Denied"), { $metadata: { httpStatusCode: 403 } });
@@ -79,4 +85,5 @@ test("translation objects distinguish missing data from denied access and use co
     assert.equal(calls.at(-1).Body, '{"t":"dom"}');
     failure = Object.assign(new Error("Already exists"), { $metadata: { httpStatusCode: 412 } });
     await assert.rejects(putTranslationJson(config, "words/test.json", { t: "overwrite" }), /Already exists/);
+    await assert.rejects(putTranslationJson(config, "words/test.json", { t: "overwrite" }, { etag: '"stale-version"' }), /Already exists/);
 });

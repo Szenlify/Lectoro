@@ -45,8 +45,16 @@ popup/export.js:1059 (anonymous function)
 19. usun calkowicie z projektu 
         "https://translate.googleapis.com/*",
         "https://translate.google.com/*",
+    niech zawsze liczy uzycia AI nie wazne czy tekst jest w R2 czy nie
+    dla kazdego planu
     
-  
+20. Usun przycisk  <div class="setting-group">
+                    <label for="voiceSelect">TTS Reader Voice</label>
+                    <select id="voiceSelect">
+                        <option value="">🔊 Default</option>
+                    </select>
+                </div>
+                
 
 
 
