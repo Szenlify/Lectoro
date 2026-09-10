@@ -4,7 +4,7 @@ const { readJsonResponse } = require("./ai-response");
 
 const LANGUAGES = new Set(["cs", "de", "en", "es", "fr", "it", "ja", "ko", "nl", "pl", "pt"]);
 const MAX_SENTENCE_PHRASES = 8;
-const MAX_PHRASE_WORDS = 4;
+const MAX_PHRASE_WORDS = 3;
 const MAX_PHRASE_LOOKUPS = 24;
 const PHRASE_READ_CONCURRENCY = 8;
 
@@ -82,7 +82,8 @@ function prepare(body, uid) {
         // Long selections are never saved to R2, so do not ask for unused phrase analysis.
         const collectPhrases = Array.from(body.text).length <= 200;
         const phraseRules = collectPhrases
-            ? `\nphrases: only high-confidence reusable phrasal verbs, idioms, fixed expressions or lexical compounds; otherwise []. Usually 0-3, at most ${MAX_SENTENCE_PHRASES}; never fill a quota. s: the smallest complete expression copied from Input, ${MAX_PHRASE_WORDS} words maximum, at least 2 contiguous words. Keep its actual inflection; do not invent a lemma or join separated words. Exclude ordinary word combinations, names, sentence fragments and extra subjects, objects, auxiliaries or modifiers. Keep words required by the expression itself. No duplicates or overlapping variants. t: one brief ${targetLang} equivalent for that expression alone in its used sense, without surrounding sentence details. Do not store literal uses as idioms, source copies, explanations or uncertain/context-dependent fragments.`
+            ? `\nphrases controls word-by-word grouping: keep words separate by default. Merge ONLY genuine phrasal verbs or idioms whose contextual meaning would be lost by translating each word independently, e.g. take off, get up, give up, spill the beans. A frequent combination is not enough: red car, very good, my friend and go home stay separate. Exclude literal collocations, transparent compounds, names and ordinary grammatical groups; target-language word order or inflection is not a reason to merge. When unsure, omit. Return [] if none qualify; at most ${MAX_SENTENCE_PHRASES}, never fill a quota. s: smallest complete expression copied from Input, 2-${MAX_PHRASE_WORDS} contiguous words, actual inflection. No invented lemmas, joining separated words, extra subjects, objects, auxiliaries or modifiers; retain only words essential to the expression. No duplicates or overlapping variants.
+Each phrases[].t is a reusable dictionary meaning in ${targetLang}, NOT a fragment copied or adapted from the sentence translation. Use context only to recognize the expression; choose its standard dictionary meanings independently of this scene. Use the natural dictionary form in ${targetLang} (infinitive for verbs where applicable), without the scene's person, tense, commands, objects or referents. Prefer one concise equivalent. For a genuinely polysemous expression, give up to 3 distinct common equivalents separated by " / " (one space on each side), most common first; do not invent a vague umbrella meaning or list synonyms, rare senses or explanations. Omit expressions that cannot be represented reliably this way. These rules apply only to phrases[].t; the top-level t remains the complete natural translation of this particular sentence.`
             : "";
         return {
             key, input, kind, sourceLang, targetLang, schema: collectPhrases ? sentenceSchema : translationSchema,
