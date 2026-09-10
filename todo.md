@@ -42,6 +42,9 @@
 Stack Trace
 popup/export.js:1059 (anonymous function)
 
+
+
+
 18. usunac calkowicie 15,000 chars/h translate dla free
 19. usun calkowicie z projektu 
         "https://translate.googleapis.com/*",
@@ -55,35 +58,6 @@ popup/export.js:1059 (anonymous function)
                         <option value="">🔊 Default</option>
                     </select>
                 </div>
-
-
-EN → PL
-EN
-i
-
-PL
-ja
-
-Overview
-The first letter of the English alphabet.
-
-Pierwsza litera alfabetu angielskiego.
-
-
-Synonyms
-a, A
-
-Examples
-The word 'apple' starts with i.
-
-
-I is a vowel.
-
-
-She wrote the letter i.
-
-                
-
 
 
 17. opis wszystkich kosztów i zweryfikowanie marży projektu:

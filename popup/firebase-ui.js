@@ -177,11 +177,10 @@ async function renderSyncUI() {
     if (accountDeletion) {
         accountDeletion.hidden = false;
         accountDeletion.innerHTML = `
-            <button id="firebaseDeleteAccount" class="account-delete-btn" ${firebaseUiAction ? "disabled" : ""} aria-describedby="accountDeletionDescription">
-                ${deletingAccount ? "Deleting account..." : "Delete account"}
-            </button>
             <p id="accountDeletionDescription">Permanently delete your account and synced words and screenshots. This cannot be undone. If you have an active subscription, cancel it in your billing settings before deleting your account to stop future charges.</p>
-            ${firebaseUiFeedback?.type === "error" ? `<div class="sync-status sync-status-error" role="alert">${escapeSyncHtml(firebaseUiFeedback.message)}</div>` : ""}`;
+            ${firebaseUiFeedback?.type === "error" ? `<div class="sync-status sync-status-error" role="alert">${escapeSyncHtml(firebaseUiFeedback.message)}</div>` : ""}<button id="firebaseDeleteAccount" class="account-delete-btn" ${firebaseUiAction ? "disabled" : ""} aria-describedby="accountDeletionDescription">
+                ${deletingAccount ? "Deleting account..." : "Delete account"}
+            </button>`;
     }
 
     document

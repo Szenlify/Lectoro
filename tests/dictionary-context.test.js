@@ -1,4 +1,4 @@
-﻿const test = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const {load, loadFunction} = require('./helpers');
@@ -174,4 +174,29 @@ test('S shows one equivalent while hover shows lexical alternatives without gram
   const phrase=dictionary.lookupWordByWord(['give','up'],{'give up':'poddać się / zrezygnować'});
   assert.equal(phrase[0].translated,'poddać się');
 });
+
+test('buildTooltipHtml displays full translation with lexical alternatives on hover', () => {
+  const C = require('../shared/constants');
+  const context = vm.createContext({
+    C,
+    PREFIX: '__qt_',
+    SVG: C.SVG_ICONS,
+    langTag: (code) => code.toUpperCase(),
+    escapeHtml: U.escapeHtml,
+    escapeAttr: U.escapeAttr,
+    speakButtonHtml: (text, lang, title) => `<button data-text="${text}">${title}</button>`,
+    buildDictionaryDetailsHtml: () => '',
+    buildSaveFooterHtml: (dataAttrs) => `<footer ${dataAttrs}></footer>`,
+  });
+  loadFunction(context, 'core.js', 'buildTooltipHtml');
+  const html = context.buildTooltipHtml({
+    srcLang: 'en',
+    targetLang: 'pl',
+    original: 'my',
+    translated: 'mój / moja / moje',
+  });
+  assert.ok(html.includes('mój / moja / moje</span>'));
+  assert.ok(html.includes('data-translated="mój / moja / moje"'));
+});
+
 

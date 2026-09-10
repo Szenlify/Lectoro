@@ -298,7 +298,7 @@
             await Promise.all(candidates.map(async (candidate) => {
                 try {
                     const entry = await root.DictionaryStore?.getPhrase?.(sourceLang, targetLang, candidate.source);
-                    if (entry?.t) matches.push({ ...candidate, translated: entry.t });
+                    if (entry?.t) matches.push({ ...candidate, translated: singleTranslation(entry.t) || String(entry.t).split("/")[0].trim() });
                 } catch (_) {
                     // Phrase lookup failure must never break word-by-word translation.
                 }
@@ -343,7 +343,7 @@
             if (!entry) return;
             const dictionary = compilePack({ schemaVersion: 2, sourceLanguage: sourceLang, entries: { [word]: entry } });
             result[i] = options.details ? lookupDetails(word, dictionary, context, options.wordIndex)
-                : options.wordByWord ? { translated: entry.t, length: 1 } : entry.t;
+                : options.wordByWord ? { translated: singleTranslation(entry.t) || String(entry.t).split("/")[0].trim(), length: 1 } : entry.t;
         }));
         return result;
     }

@@ -599,4 +599,60 @@ test("prepare and validateEntry handle polysemous word 'like' with slash-separat
     assert.deepEqual(validated.s, ["similar to", "as"]);
 });
 
+test("prepare maps language codes to full names and enforces source/target language isolation for it -> ja", () => {
+    const jobWord = prepare({
+        kind: "word",
+        text: "perso",
+        sourceLang: "it",
+        targetLang: "ja",
+    }, "u1");
+
+    assert.ok(jobWord.prompt.includes("source language Italian (it) to the target language Japanese (ja)"));
+    assert.ok(jobWord.prompt.includes("written in Italian (field s)"));
+    assert.ok(jobWord.prompt.includes("translated into Japanese (field t)"));
+    assert.ok(jobWord.prompt.includes("All fields labeled s (entry.d.s, entry.s, entry.e[].s) MUST be written in Italian, NEVER in English"));
+    assert.ok(jobWord.prompt.includes("All fields labeled t (entry.t, entry.d.t, entry.e[].t) MUST be written in Japanese"));
+    assert.ok(jobWord.prompt.includes("NEVER assume English when source language is Italian"));
+
+    const jobSentence = prepare({
+        kind: "sentence",
+        text: "Ho perso le chiavi.",
+        sourceLang: "it",
+        targetLang: "ja",
+    }, "u1");
+
+    assert.ok(jobSentence.prompt.includes("selected source language Italian (it) to the target language Japanese (ja)"));
+
+    // Validation rejects untranslated Italian word when target is Japanese
+    assert.throws(
+        () => validateEntry({
+            t: "perso", // untranslated
+            d: { s: "Che non si trova.", t: "見つからない。" },
+            s: ["smarrito"],
+            e: [
+                { s: "Ho perso le chiavi.", t: "鍵をなくした。" },
+                { s: "È perso nel bosco.", t: "森で迷った。" },
+                { s: "Tutto è perso.", t: "すべて失われた。" },
+            ],
+        }, "perso", "it", "ja"),
+        /not translated into target language/
+    );
+
+    // Validation accepts proper Italian -> Japanese entry
+    const validItJa = validateEntry({
+        t: "失われた / 迷子になった",
+        d: { s: "Che non si trova più.", t: "見つからない。" },
+        s: ["smarrito"],
+        e: [
+            { s: "Ho perso le chiavi.", t: "鍵をなくした。" },
+            { s: "È perso nel bosco.", t: "森で迷った。" },
+            { s: "Tutto è perso.", t: "すべて失われた。" },
+        ],
+    }, "perso", "it", "ja");
+    assert.equal(validItJa.t, "失われた / 迷子になった");
+    assert.equal(validItJa.d.s, "Che non si trova più.");
+    assert.equal(validItJa.d.t, "見つからない。");
+});
+
+
 

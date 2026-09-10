@@ -2992,6 +2992,8 @@
             if (modeRevision !== subtitleModeRevision) return;
             const { translated, length = 1 } = value || {};
             if (typeof translated !== "string" || !translated.trim()) return;
+            const displayTranslated = translated.split("/")[0].trim();
+            if (!displayTranslated) return;
             let members = wordSpans.slice(i, i + length);
             if (members.some((member) => !member.isConnected)) {
                 const liveSpans = Array.from(
@@ -3013,7 +3015,7 @@
             if (length === 1) targetSpan.classList.add(WORD_CLOUD_HIGHLIGHT_CLASS);
             const cloud = document.createElement("div");
             cloud.className = WORD_CLOUD_CLASS;
-            cloud.textContent = translated;
+            cloud.textContent = displayTranslated;
             cloud.style.fontSize = cloudFontSize + "px";
             cloud.style.animationDelay = i * 0.02 + "s";
             parent.appendChild(cloud);

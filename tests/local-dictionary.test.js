@@ -80,3 +80,29 @@ test("simple English words and contractions are skipped only in automatic word-b
     assert.deepEqual(dictionary.lookupWordByWord(["you"], { key: "znaczenie" }, { key: "you" }),
         [{ translated: "znaczenie", length: 1 }]);
 });
+
+test("word-by-word returns only the first translation and trims slash alternatives", async () => {
+    const C = require("../shared/constants");
+    globalThis.LectoroConstants = C;
+    globalThis.SharedUtils = U;
+    globalThis.DictionaryStore = {
+        getLive: async (source, target, word) => {
+            if (word === "car") return { languageValidation: 1, t: "samochód / auto", d: { s: "A car", t: "Samochód" }, s: [], e: [] };
+            if (word === "my") return { languageValidation: 1, t: "mój / moja / moje", d: { s: "My", t: "Mój" }, s: [], e: [] };
+            return null;
+        },
+        getPhrase: async (source, target, phrase) => {
+            if (phrase === "give up") return { t: "poddać się / zrezygnować" };
+            return null;
+        },
+    };
+
+    const resSingle = await dictionary.lookupWords(["car"], "pl", "en", { wordByWord: true, localOnly: true });
+    assert.equal(resSingle[0].translated, "samochód");
+    assert.equal(resSingle[0].length, 1);
+
+    const resPhrase = await dictionary.lookupWords(["give", "up"], "pl", "en", { wordByWord: true, contextual: true });
+    assert.equal(resPhrase[0].translated, "poddać się");
+    assert.equal(resPhrase[0].length, 2);
+});
+
