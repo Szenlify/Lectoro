@@ -57,47 +57,30 @@ popup/export.js:1059 (anonymous function)
                 </div>
 
 
-mam bład:
-podczas tlumaczenia textu a niktore sie tlumacza i pokazuje a niektore jes blad i nic nie pokazuje:
-Translation unavailable
-Could not translate subtitles. Please try again.
-Try again
+EN → PL
+EN
+i
 
-zrob tak zeby uzytkownik zawsze dostawal wynik jesli cos pojdzie nie tak to to co jest w bazie danych
+PL
+ja
 
-oraz przemysl co zrobic zeby wszystko bylo lekkie, szybkie, dobrze tlumaczylo 
+Overview
+The first letter of the English alphabet.
 
-i popraw zeby bylo przy tysiacach uzytkownikow mniej kosztowne czyli tylko tryb AI Translate full sentence generuje dictionaries/phrase a tlumaczenie Word-by-word translation kozysta z dictionaries/phrase
+Pierwsza litera alfabetu angielskiego.
 
-a dictionaries/translations
-ma przechowywac lekka strukture:
-{
-  "t": "JAK WRESZCIE ZACZYNAJĄ GOIĆ SIĘ RANY"
-}
 
-teraz ma:
- {
-  "t": "JAK WRESZCIE ZACZYNAJĄ GOIĆ SIĘ RANY",
-  "phrases": [
-    {
-      "start": 4,
-      "length": 3,
-      "source": "starting to heal",
-      "t": "zaczynają goić się"
-    }
-  ],
-  "tokens": [
-    "LIKE",
-    "THE",
-    "WOUNDS",
-    "FINALLY",
-    "STARTING",
-    "TO",
-    "HEAL"
-  ],
-  "phraseAnalysis": 2
-}
+Synonyms
+a, A
 
+Examples
+The word 'apple' starts with i.
+
+
+I is a vowel.
+
+
+She wrote the letter i.
 
                 
 
