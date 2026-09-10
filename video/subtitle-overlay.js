@@ -2949,12 +2949,28 @@
             span.setAttribute?.("aria-busy", "true");
         }
         try {
+            // contextual=true may read already-generated dictionaries/phrase entries,
+            // but the backend no longer generates phrase analysis for Word-by-word mode.
             translations = await SharedTranslatorService.lookupWords(
                 wordSpans.map((span) => span.textContent.trim()),
                 targetLang,
                 learningLang,
-                { wordByWord: true, contextual: true, context: fullText },
+                { wordByWord: true, contextual: true, context: fullText, generateMissing: false },
             );
+        } catch (error) {
+            // Degrade to known single-word cache entries instead of failing the whole subtitle.
+            console.warn("[Lectoro] Contextual word lookup failed; using cached words only:", error);
+            try {
+                translations = await SharedTranslatorService.lookupWords(
+                    wordSpans.map((span) => span.textContent.trim()),
+                    targetLang,
+                    learningLang,
+                    { wordByWord: true, generateMissing: false },
+                );
+            } catch (fallbackError) {
+                console.warn("[Lectoro] Cached word lookup failed:", fallbackError);
+                translations = Array(wordSpans.length).fill(null);
+            }
         } finally {
             for (const span of wordSpans) {
                 if (span.dataset.wordCloudLoading !== pendingOwner) continue;
@@ -3006,46 +3022,9 @@
         };
         translations.forEach((value, i) => renderTranslation(i, value));
         ensureSubtitleUiTracking();
-        const covered = new Set();
-        translations.forEach((value, i) => {
-            for (let offset = 1; offset < (value?.length || 1); offset++) covered.add(i + offset);
-        });
-        const missing = wordSpans.map((span, i) => ({ span, i }))
-            .filter(({ span, i }) => !translations[i] && !covered.has(i)
-                && SharedTranslatorService.dictionaryTerm(span.textContent)
-                && !(learningLang === "en" && SharedUtils.isSimpleWord(span.textContent)));
-        const loadingClass = `${PREFIX}word-cloud-loading`;
-        const loadingOwner = String(modeRevision);
-        for (const { span } of missing) {
-            span.dataset.wordCloudLoading = loadingOwner;
-            span.classList.add(loadingClass);
-            span.setAttribute?.("aria-busy", "true");
-        }
-        const stopLoading = (span) => {
-            // A previous session's response must not clear a new session's animation.
-            if (span.dataset.wordCloudLoading !== loadingOwner) return;
-            delete span.dataset.wordCloudLoading;
-            span.classList.remove(loadingClass);
-            span.removeAttribute?.("aria-busy");
-        };
-        // Three requests at a time; render each completed word without delaying known entries.
-        let next = 0;
-        let generationError = null;
-        await Promise.all(Array.from({ length: Math.min(3, missing.length) }, async () => {
-            while (next < missing.length && modeRevision === subtitleModeRevision && !generationError) {
-                const { span, i } = missing[next++];
-                try {
-                    const [value] = await SharedTranslatorService.lookupWords([span.textContent.trim()], targetLang, learningLang,
-                        { wordByWord: true, generateMissing: true });
-                    renderTranslation(i, value);
-                } catch (error) { generationError = error; }
-                finally { stopLoading(span); }
-            }
-        }));
-        missing.forEach(({ span }) => stopLoading(span));
-        if (generationError && modeRevision === subtitleModeRevision) {
-            throw generationError;
-        }
+        // Automatic Word-by-word mode is cache-only. Missing words are intentionally
+        // left untranslated here; hover/explicit dictionary actions may still generate them.
+        // This prevents one subtitle from creating many AI calls at scale.
     }
 
     function captureSubtitleLayout(elements = null) {

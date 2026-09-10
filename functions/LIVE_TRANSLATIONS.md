@@ -1,46 +1,59 @@
 # Tłumaczenia generowane podczas oglądania
 
-S continues to translate independent words through the existing live dictionary:
-local entries first, then R2 and generation for missing words. It additionally
-analyzes the full subtitle to find genuine multiword expressions such as `get up`.
-The analysis returns the complete sentence translation (`t`) and only detected
-phrases (`phrases` with `start`, `length`, `t`). It does not translate every word
-again. The UI combines detected expressions and keeps the other words separate.
-Simple-word filtering runs after phrase detection, so `get` and `up` can form
-one expression even if they would be skipped independently.
+## Aktualny przepływ: lekki cache + frazy współdzielone
 
-Storage:
-- Full sentence: `dictionaries/translations/<source>-<target>/<sha256(sentence)>.json`.
-  Data includes `t`, `phrases`, `tokens`, and `phraseAnalysis: 2`. Ordinary sentence
-  translation requests reuse `t` from the same file. An older record containing
-  only `t` is enriched on the next phrase-analysis request.
-- Extracted expression: `dictionaries/phrase/<source>-<target>/<sha256(phrase)>.json`.
-  For example, `{ "get up": { "t": "wstać" } }`.
-  Phrase keys use normalized lowercase text and collapsed whitespace. Phrase
-  files contain only `t`: no context, tokens or verification metadata. Existing
-  records are replaced by reviewed corrections, removing legacy context fields;
-  conditional writes protect concurrent updates.
-  The sentence retains its contextual phrase translations, since an expression
-  can have different meanings in different sentences.
-- Independent words remain in `dictionaries/live/...`.
+**AI Translate full sentence (`kind: sentence`)** jest jedynym automatycznym trybem,
+który generuje nowe wpisy `dictionaries/phrase`. Przy braku cache wykonuje jedno
+wywołanie AI, które zwraca pełne tłumaczenie `t` oraz maksymalnie 8 rzeczywistych
+fraz wielowyrazowych. Nie ma osobnego drugiego AI-review dla fraz.
 
-No new `dictionaries/segments` objects are written. The internal request kind
-`segments` now means sentence translation plus phrase extraction. At most 12
-non-overlapping multi-token expressions are accepted per subtitle, with at most
-150 displayed tokens and 4000 characters. An empty phrase list is valid.
-Detected phrases undergo one batched language review which corrects translations
-in the selected target language. A normalized source copy is rejected even if
-AI approves it. Rejected or malformed reviews save nothing and refund usage.
-AI review reduces language mistakes but is not an absolute semantic guarantee.
-Legacy analyses are re-reviewed on access; the local analysis cache uses a new
-namespace to avoid displaying old unverified results. This is migration on use,
-not a bulk rewrite of the bucket. Generation and review each have a 12-second
-timeout. The complete analysis uses one AI reservation; single-word generation retains
-its existing usage rules. Analysis results also have an offline local cache.
-Phrases are saved before the sentence is marked analyzed, so failed extraction
-storage can be retried. The bounded analysis can be cached above 200 characters;
-the existing limit for ordinary sentence translation requests remains unchanged.
-Deploy the backend before updating the extension.
+Zapis pełnego zdania jest zawsze lekki:
+
+```json
+{
+  "t": "JAK WRESZCIE ZACZYNAJĄ GOIĆ SIĘ RANY"
+}
+```
+
+Ścieżka:
+`dictionaries/translations/<source>-<target>/<sha256(sentence)>.json`.
+Nowy kod nie zapisuje tam `phrases`, `tokens` ani `phraseAnalysis`. Stare cięższe
+obiekty pozostają zgodne w odczycie: jeśli mają poprawne `t`, wynik jest używany
+bez ponownego AI. Nie wykonujemy masowej migracji R2.
+
+Wykryte przez AI frazy są zapisywane osobno jako współdzielony cache:
+`dictionaries/phrase/<source>-<target>/<sha256(normalized-phrase)>.json`, np.
+`{ "get up": { "t": "wstać" } }`. Klucz frazy jest normalizowany NFKC,
+małymi literami i ze zredukowanymi spacjami. Frazy są dodatkiem do wyniku:
+błąd zapisu frazy nie może unieważnić poprawnego tłumaczenia całego zdania.
+
+**Word-by-word (`kind: segments`) nie generuje AI.** Ten request jest read-only:
+sprawdza istniejące `dictionaries/phrase` dla ograniczonej liczby kandydatów
+(max 24 odczyty fraz na napis, maksymalnie 8 równolegle), wybiera najdłuższe
+niezachodzące dopasowania i zwraca je do UI. Błędy pojedynczych odczytów fraz są
+ignorowane, więc użytkownik nadal dostaje wszystkie dostępne słowa/frazy.
+Automatyczny Word-by-word korzysta tylko z istniejących cache; brakujące słowo
+nie uruchamia AI. Generowanie brakującego wpisu `dictionaries/live` pozostaje
+możliwe przy świadomej akcji użytkownika, np. hover/wybór słowa.
+
+### Odporność na błędy
+
+1. R2 jest sprawdzane przed rezerwacją AI. Trafienie istniejącego `t` kończy
+   request bez AI i bez zużycia kolejnego limitu.
+2. Jeśli AI zwróci poprawne `t`, ale frazy są niepoprawne, frazy są odrzucane,
+   a `t` nadal jest zwracane i może być zapisane.
+3. Jeśli zapis `dictionaries/phrase` albo zapis cache zdania zawiedzie po
+   otrzymaniu poprawnego `t`, użytkownik nadal dostaje tłumaczenie zamiast
+   `Translation unavailable`.
+4. Jeśli generowanie/validation zawiedzie, backend wykonuje ostatni odczyt
+   `dictionaries/translations` i zwraca zapisane `t`, jeżeli pojawiło się w bazie.
+5. Po stronie rozszerzenia błąd contextual Word-by-word degraduje się do zwykłych
+   wpisów cache. Błąd backendowego tłumaczenia zdania ma końcowy fallback do
+   istniejącego tłumacza `QT.translate`, zamiast od razu pokazywać pusty ekran.
+
+Dzięki temu koszt przy tysiącach użytkowników przesuwa się z „AI na każdy napis /
+każde brakujące słowo” na współdzielone cache: nowe pełne zdanie to maksymalnie
+jedno AI, cache-hit to zero AI, Word-by-word to zero AI.
 
 The following single-word dictionary flow applies to hover and word selection:
 
@@ -49,10 +62,10 @@ z tłumaczeniami. Dopuszczamy tłumaczenie kilkoma słowami. Słownik wybiera je
 powszechne znaczenie; tłumaczenie całego zdania uwzględnia kontekst tego zdania.
 Proste angielskie słowa nadal są pomijane zgodnie z dotychczasową logiką.
 
-**AI Translate full sentence** używa tej samej akcji backendu, z osobnym typem
-`sentence`. Gość i użytkownik bez dostępnych środków AI zachowują dotychczasowe
-tłumaczenie Google; wyczerpany limit nie blokuje odczytu istniejącego wyniku R2.
-Awaria Gemini/R2 jest pokazywana z możliwością ponowienia.
+**AI Translate full sentence** używa akcji backendu `sentence`. Trafienie R2 jest
+zwracane przed rezerwacją AI. Nowa generacja tworzy `t` i może przy okazji zasilić
+`dictionaries/phrase`; do `dictionaries/translations` trafia wyłącznie `{ "t": "..." }`.
+Po poprawnym wygenerowaniu `t` awaria zapisu cache/fraz nie zamienia wyniku na błąd UI.
 
 ## Zapis
 
@@ -100,10 +113,13 @@ Firebase ID tokenu i używa istniejących sekretów `LECTORO_GEMINI_API_KEY`,
 na GetObject i PutObject w używanym buckecie. Klucze nie trafiają do rozszerzenia.
 
 R2 jest sprawdzane przed rezerwacją limitu AI. Jedno nowe hasło lub nowe zdanie
-zużywa jedno użycie AI; trafienie w cache nie zużywa kolejnego. Rezerwacja jest
-transakcyjna. Błąd generowania, walidacji lub zapisu zwalnia rezerwację.
-Blokada Firestore w `liveTranslationLocks` zapobiega równoczesnemu generowaniu
-tego samego klucza między instancjami. Zapis R2 używa `If-None-Match: *`.
+zużywa jedno użycie AI; trafienie w cache nie zużywa kolejnego. `sentence` wykonuje
+jedno wywołanie generacji (pełne `t` + opcjonalne frazy), bez drugiego review AI.
+`segments` nie rezerwuje użycia i nigdy nie wywołuje AI. Rezerwacja słowa/zdania
+jest transakcyjna; błąd generowania lub walidacji zwalnia rezerwację. Jeśli AI
+zwróciło poprawne `t`, ale sam zapis R2 zawiedzie, wynik jest zwracany użytkownikowi
+zamiast błędu i użycie pozostaje zużyte. Blokada Firestore w `liveTranslationLocks`
+zapobiega równoczesnemu generowaniu tego samego klucza między instancjami.
 
 ## Uruchomienie
 

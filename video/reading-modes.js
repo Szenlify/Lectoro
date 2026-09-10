@@ -8,22 +8,51 @@
         const { targetLang, learningLang } = await root.SharedTranslatorService.getReadingSettings();
         if (revision !== ui.subtitleModeRevision || !String(text || "").trim())
             return null;
-        const response = await root.SharedUtils.sendRuntimeMessage({
-            type: root.LectoroConstants.MESSAGE_TYPES.TRANSLATE_SUBTITLE,
-            text: String(text).trim(),
-            targetLang,
-            sourceLang: learningLang,
-        });
+
+        let response = null;
+        let requestError = null;
+        try {
+            response = await root.SharedUtils.sendRuntimeMessage({
+                type: root.LectoroConstants.MESSAGE_TYPES.TRANSLATE_SUBTITLE,
+                text: String(text).trim(),
+                targetLang,
+                sourceLang: learningLang,
+            });
+        } catch (error) {
+            requestError = error;
+        }
+
         if (revision !== ui.subtitleModeRevision) return null;
         const result = response?.result;
         if (result?.status === "limit") {
             ui.showSubtitleLimitOverlay(result.quota, layout);
             return { ...result, limitReached: true };
         }
-        if (result?.status !== "success" || !result.translated?.trim()) {
-            throw new Error("No translation received. Please try again.");
+        if (result?.status === "success" && result.translated?.trim()) {
+            return { ...result, translatedText: result.translated };
         }
-        return { ...result, translatedText: result.translated };
+
+        // Do not replace a subtitle with an error screen when the AI/backend path is unavailable.
+        // The backend already prefers shared R2 data; this is the final client-side translation fallback.
+        try {
+            const fallback = await root.QT?.translate?.(String(text).trim(), targetLang);
+            if (revision !== ui.subtitleModeRevision) return null;
+            if (fallback?.translated?.trim()) {
+                return {
+                    status: "success",
+                    translated: fallback.translated,
+                    translatedText: fallback.translated,
+                    detectedLang: fallback.detectedLang || learningLang,
+                    targetLang,
+                    fallback: true,
+                };
+            }
+        } catch (fallbackError) {
+            console.warn("[Lectoro] Subtitle fallback translation failed:", fallbackError);
+        }
+
+        if (requestError) throw requestError;
+        throw new Error("No translation received. Please try again.");
     }
 
     async function start(video) {
