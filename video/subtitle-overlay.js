@@ -1759,7 +1759,7 @@
             isSaved,
             showAi: true,
             aiLabel: "AI Sentence",
-            aiTitle: "Generate smart AI sentence (Gemini)",
+            aiTitle: "Generate smart AI sentence",
             isAiSaved,
         });
 
