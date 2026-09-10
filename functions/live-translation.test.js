@@ -117,6 +117,29 @@ test("Word-by-word segments only read dictionaries/phrase and never reserve or g
     assert.equal(count.writes, 0);
 });
 
+
+test("Word-by-word finds CAN'T GET UP and CAN’T GET UP through the same stored phrase hash", async () => {
+    const expectedHash = "4ec1cdd6a186d7baaf1c6bc5fbe457058dc75beebcccf1defc676c00bdb87bf9";
+    for (const apostropheVariant of ["CAN’T", "CAN'T"]) {
+        const { deps, count, objects } = fixture();
+        const storedKey = `dictionaries/phrase/en-pl/${expectedHash}.json`;
+        objects.set(storedKey, { "can’t get up": { t: "nie mogę wstać" } });
+        deps.reserve = async () => { throw new Error("segments must not reserve AI"); };
+        deps.generate = async () => { throw new Error("segments must not generate AI"); };
+
+        const words = ["I’VE", "HAD", "MY", "SHARE", "OF", "MONDAY", "MORNINGS", "WHEN", "I", apostropheVariant, "GET", "UP"];
+        const request = { ...body, kind: "segments", text: words.join(" "), words };
+        const result = await handleLiveTranslation(request, deps);
+
+        assert.deepEqual(result.result.phrases, [{
+            start: 9, length: 3, source: "can’t get up", t: "nie mogę wstać",
+        }]);
+        assert.equal(count.reserved, 0);
+        assert.equal(count.generated, 0);
+        assert.equal(count.writes, 0);
+    }
+});
+
 test("Word-by-word phrase lookup is best-effort when R2 reads fail", async () => {
     const { deps, count } = fixture();
     deps.read = async () => { count.reads++; throw new Error("R2 temporarily unavailable"); };

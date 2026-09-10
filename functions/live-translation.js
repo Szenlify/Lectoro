@@ -14,7 +14,10 @@ const sentenceText = (value, max) => typeof value === "string" && value.trim() =
 const normalizePhrase = (value) => String(value || "")
     .normalize("NFKC")
     .toLowerCase()
-    .replace(/[^\p{L}\p{M}\p{N}'’ -]+/gu, " ")
+    // Canonicalize ASCII apostrophe to the typographic apostrophe used by subtitle sources.
+    // This makes CAN'T GET UP and CAN’T GET UP share the same R2 phrase hash.
+    .replace(/'/gu, "’")
+    .replace(/[^\p{L}\p{M}\p{N}’ -]+/gu, " ")
     .replace(/\s+/gu, " ")
     .trim();
 const normalizedComparable = (value) => String(value || "")
