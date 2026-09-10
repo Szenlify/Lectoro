@@ -1,4 +1,4 @@
-1. Jesli mam ustawione system voice ale w bazie danych mam dany glos z tym zdaniem to pusc zamiast system vocal glos elevenlabs nie generuj nowego, tylko w powtorkach i dla płatnych uzytkowników
+1. Jesli mam konto płatne (nie free) zawsze przy czytaniu textu najpierw niech sprawdzi cashe pozniej zapytanie link do R2 jesli 404 bład to wtedy system voice niezaleznie w jakies funkcji czy to powtorki czy to text na internecie wszedzie gdzie uzywa sie TTS. w powtorkach tylko tam moze byc generowany glos elevenlabs i wysylaby do R2 claudflare bazy, jesli glos w bazie danych nie naliczaj znakow
 
 2. Jak sa właczone dwa tryby tryb translate full sentence oraz translate word by word wtedy na netflixie style zaczynaja znikać tych trybów zaraz po wyświetleniu
 
@@ -6,7 +6,8 @@
 
 4. sprawdz api jak w cloud firebase to wyglada przed publikacją
 
-5. guzik sync co ile czasu sie samo synchronizuje
+5. guzik sync co ile czasu sie samo synchronizuje automatycznie (czy w ogole to robi)
+16. Cloud Sync usunac sync wymyslic sposob zeby automatycznie to robilo np po wykryciu zmiany po 3 minutach samo niech sie synchronizuje
 
 6. zgodnosc z CWS
 
@@ -28,7 +29,7 @@
 
 15. tooltipy dla przycisków z opisem co robią
 
-16. Cloud Sync usunac sync wymyslic sposob zeby automatycznie to robilo np po wykryciu zmiany po 3 minutach samo niech sie synchronizuje
+
 
 17. quizy czesto maja problem z wygenerowaniem quizu dopiero po kroryms kliknieciu załapuje // Successfully generated: update local quota
       await recordExportSuccess("quiz");
@@ -54,6 +55,50 @@ popup/export.js:1059 (anonymous function)
                         <option value="">🔊 Default</option>
                     </select>
                 </div>
+
+
+mam bład:
+podczas tlumaczenia textu a niktore sie tlumacza i pokazuje a niektore jes blad i nic nie pokazuje:
+Translation unavailable
+Could not translate subtitles. Please try again.
+Try again
+
+zrob tak zeby uzytkownik zawsze dostawal wynik jesli cos pojdzie nie tak to to co jest w bazie danych
+
+oraz przemysl co zrobic zeby wszystko bylo lekkie, szybkie, dobrze tlumaczylo 
+
+i popraw zeby bylo przy tysiacach uzytkownikow mniej kosztowne czyli tylko tryb AI Translate full sentence generuje dictionaries/phrase a tlumaczenie Word-by-word translation kozysta z dictionaries/phrase
+
+a dictionaries/translations
+ma przechowywac lekka strukture:
+{
+  "t": "JAK WRESZCIE ZACZYNAJĄ GOIĆ SIĘ RANY"
+}
+
+teraz ma:
+ {
+  "t": "JAK WRESZCIE ZACZYNAJĄ GOIĆ SIĘ RANY",
+  "phrases": [
+    {
+      "start": 4,
+      "length": 3,
+      "source": "starting to heal",
+      "t": "zaczynają goić się"
+    }
+  ],
+  "tokens": [
+    "LIKE",
+    "THE",
+    "WOUNDS",
+    "FINALLY",
+    "STARTING",
+    "TO",
+    "HEAL"
+  ],
+  "phraseAnalysis": 2
+}
+
+
                 
 
 
