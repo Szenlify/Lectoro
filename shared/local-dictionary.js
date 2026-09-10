@@ -234,7 +234,7 @@
     const livePending = new Map();
     let liveRunning = 0;
     const liveQueue = [];
-    async function generateLive(word, source, target) {
+    async function generateLive(word, source, target, context = null) {
         const key = JSON.stringify([word, source, target]);
         if (livePending.has(key)) return livePending.get(key);
         const task = (async () => {
@@ -243,7 +243,7 @@
             try {
                 const saved = await root.DictionaryStore?.getLive?.(source, target, word, { localOnly: true });
                 if (saved) return saved;
-                const result = await root.GeminiProxy.liveTranslation("word", word, source, target);
+                const result = await root.GeminiProxy.liveTranslation("word", word, source, target, undefined, context);
                 const entry = result?.[word];
                 if (!entry) throw new Error("Missing generated entry.");
                 await root.DictionaryStore.putLive(source, target, word, entry);
@@ -338,7 +338,7 @@
             if (!word || word.length > 120 || !/^[\p{L}\p{M}][\p{L}\p{M}\p{N}'’ -]*$/u.test(word)) return;
             let entry = await root.DictionaryStore?.getLive?.(sourceLang, targetLang, word, { localOnly: options.localOnly === true });
             if (!entry && !options.localOnly && options.generateMissing !== false && root.GeminiProxy?.liveTranslation) {
-                entry = await generateLive(word, sourceLang, targetLang);
+                entry = await generateLive(word, sourceLang, targetLang, options.context);
             }
             if (!entry) return;
             const dictionary = compilePack({ schemaVersion: 2, sourceLanguage: sourceLang, entries: { [word]: entry } });

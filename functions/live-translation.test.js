@@ -243,7 +243,16 @@ test("legacy unverified word entry is repaired with one review", async () => {
     const { deps, count, objects } = fixture();
     const request = { ...body, text: "Polish" };
     const key = prepare(request, "u1").key;
-    const bad = { ...entry, t: "Polish language" };
+    const bad = {
+        ...entry,
+        t: "Polish language",
+        d: { s: "The Slavic language spoken in Poland.", t: "Język słowiański używany w Polsce." },
+        e: [
+            { s: "She speaks Polish well.", t: "Dobrze mówi po polsku." },
+            { s: "I am learning Polish.", t: "Uczę się polskiego." },
+            { s: "This is a Polish book.", t: "To jest polska książka." },
+        ],
+    };
     delete bad.languageValidation;
     objects.set(key, { polish: bad });
     const good = { ...bad, t: "język polski" };
@@ -402,3 +411,192 @@ test("public errors still hide provider details and identify failure stages", ()
         assert.ok(!result.error.includes("private provider details"));
     }
 });
+
+test("dictionary schema orders definition d before translation t, and pronoun i gets strict guardrails", () => {
+    const jobI = prepare({ kind: "word", text: "i", sourceLang: "en", targetLang: "pl" }, "u1");
+    assert.deepEqual(Object.keys(jobI.schema.properties.entry.properties), ["d", "t", "s", "e"]);
+    assert.ok(jobI.prompt.includes('Special rule for English "i"'));
+    assert.ok(jobI.prompt.includes("CRITICAL: Define and exemplify ONLY the source term Input"));
+
+    const jobAbandon = prepare({ kind: "word", text: "abandon", sourceLang: "en", targetLang: "pl" }, "u1");
+    assert.ok(!jobAbandon.prompt.includes('Special rule for English "i"'));
+    assert.ok(jobAbandon.prompt.includes("CRITICAL: Define and exemplify ONLY the source term Input"));
+});
+
+test("validateEntry rejects alphabet letter hallucinations and strips synonyms for English pronoun i", () => {
+    const hallucinatedI = {
+        t: "ja",
+        d: { s: "The first letter of the English alphabet.", t: "Pierwsza litera alfabetu angielskiego." },
+        s: ["a", "A"],
+        e: [
+            { s: "The word 'apple' starts with i.", t: "Słowo 'apple' zaczyna się na i." },
+            { s: "I is a vowel.", t: "I jest samogłoską." },
+            { s: "She wrote the letter i.", t: "Napisała literę i." },
+        ],
+    };
+    assert.throws(
+        () => validateEntry(hallucinatedI, "i", "en"),
+        /English pronoun 'I' must not be defined as an alphabet letter/
+    );
+
+    const validI = {
+        t: "ja",
+        d: { s: "Used by a speaker to refer to himself or herself.", t: "Używane przez osobę mówiącą w odniesieniu do siebie." },
+        s: ["myself", "a"],
+        e: [
+            { s: "I am ready.", t: "Jestem gotowy." },
+            { s: "Yesterday I saw a movie.", t: "Wczoraj widziałem film." },
+            { s: "Can I help you?", t: "Czy mogę ci pomóc?" },
+        ],
+    };
+    const validated = validateEntry(validI, "i", "en");
+    assert.equal(validated.t, "ja");
+    assert.deepEqual(validated.s, [], "synonyms must be emptied for closed-class / single-letter words");
+    assert.equal(validated.e.length, 3);
+});
+
+test("validateEntry rejects examples that do not contain the input term and strips closed-class synonyms", () => {
+    const hallucinatedIt = {
+        t: "to",
+        d: { s: "A preposition indicating movement toward a place or person.", t: "Przyimek wskazujący ruch..." },
+        s: ["towards", "into"],
+        e: [
+            { s: "He went to the store.", t: "Poszedł do sklepu." },
+            { s: "She spoke to her friend.", t: "Rozmawiała ze swoją przyjaciółką." },
+            { s: "The train is going to London.", t: "Pociąg jedzie do Londynu." },
+        ],
+    };
+    assert.throws(
+        () => validateEntry(hallucinatedIt, "it", "en"),
+        /examples do not contain the input term/
+    );
+
+    const validIt = {
+        t: "to",
+        d: { s: "Used to refer to an inanimate thing or situation previously mentioned.", t: "Używane w odniesieniu do rzeczy lub sytuacji..." },
+        s: ["this"],
+        e: [
+            { s: "Give it to me.", t: "Daj mi to." },
+            { s: "Where is it?", t: "Gdzie to jest?" },
+            { s: "It is raining.", t: "Pada deszcz." },
+        ],
+    };
+    const validatedIt = validateEntry(validIt, "it", "en");
+    assert.equal(validatedIt.t, "to");
+    assert.deepEqual(validatedIt.s, [], "pronoun 'it' has synonyms stripped");
+});
+
+test("prepare includes context sentence when provided for a word and applies article rules", () => {
+    const jobWithContext = prepare({
+        kind: "word",
+        text: "the",
+        sourceLang: "en",
+        targetLang: "pl",
+        context: "Look at the dog.",
+    }, "u1");
+    assert.ok(jobWithContext.prompt.includes('Context sentence where "the" was found: "Look at the dog."'));
+    assert.ok(jobWithContext.prompt.includes('Special rule for English article "the"'));
+    assert.ok(jobWithContext.prompt.includes('For "the" into Polish, use "ten"'));
+});
+
+test("validateEntry rejects English function words translating to themselves", () => {
+    const selfTranslatedThe = {
+        t: "the",
+        d: { s: "The definite article.", t: "Rodzajnik określony." },
+        s: [],
+        e: [
+            { s: "Look at the dog.", t: "Spójrz na tego psa." },
+            { s: "The sun is shining.", t: "Słońce świeci." },
+            { s: "Open the door.", t: "Otwórz drzwi." },
+        ],
+    };
+    assert.throws(
+        () => validateEntry(selfTranslatedThe, "the", "en", "pl"),
+        /English function word 'the' cannot translate to itself/
+    );
+
+    const validThe = {
+        t: "ten",
+        d: { s: "The definite article, denoting a particular person or thing.", t: "Rodzajnik określony..." },
+        s: [],
+        e: [
+            { s: "Look at the dog.", t: "Spójrz na tego psa." },
+            { s: "The sun is shining.", t: "Słońce świeci." },
+            { s: "Open the door.", t: "Otwórz drzwi." },
+        ],
+    };
+    const validated = validateEntry(validThe, "the", "en", "pl");
+    assert.equal(validated.t, "ten");
+});
+
+test("validateEntry handles typographic apostrophes and inflected forms", () => {
+    const contractionWithCurlyInExamples = {
+        t: "nie",
+        d: { s: "Contraction of do not.", t: "Skrót od do not." },
+        s: [],
+        e: [
+            { s: "Please don’t do that.", t: "Proszę nie rób tego." },
+            { s: "I don’t know.", t: "Nie wiem." },
+            { s: "They don’t care.", t: "Nie zależy im." },
+        ],
+    };
+    // straight apostrophe input matches curly apostrophe examples
+    const validated1 = validateEntry(contractionWithCurlyInExamples, "don't", "en", "pl");
+    assert.equal(validated1.t, "nie");
+
+    // curly apostrophe input matches straight apostrophe examples
+    const contractionWithStraightInExamples = {
+        t: "nie",
+        d: { s: "Contraction of do not.", t: "Skrót od do not." },
+        s: [],
+        e: [
+            { s: "Please don't do that.", t: "Proszę nie rób tego." },
+            { s: "I don't know.", t: "Nie wiem." },
+            { s: "They don't care.", t: "Nie zależy im." },
+        ],
+    };
+    const validated2 = validateEntry(contractionWithStraightInExamples, "don’t", "en", "pl");
+    assert.equal(validated2.t, "nie");
+
+    // Inflected word where 1 example contains the inflected form
+    const inflectedEntry = {
+        t: "poszedł",
+        d: { s: "Past tense of go.", t: "Czas przeszły od go." },
+        s: ["departed"],
+        e: [
+            { s: "Yesterday I went to the store.", t: "Wczoraj poszedłem do sklepu." },
+            { s: "I want to go home.", t: "Chcę iść do domu." },
+            { s: "Let's go together.", t: "Chodźmy razem." },
+        ],
+    };
+    const validated3 = validateEntry(inflectedEntry, "went", "en", "pl");
+    assert.equal(validated3.t, "poszedł");
+});
+
+test("prepare and validateEntry handle polysemous word 'like' with slash-separated equivalents", () => {
+    const job = prepare({
+        kind: "word",
+        text: "like",
+        sourceLang: "en",
+        targetLang: "pl",
+        context: "She looks like her mother.",
+    }, "u1");
+    assert.ok(job.prompt.includes('Special rule for English "like"'));
+    assert.ok(job.prompt.includes('"jak / lubić"'));
+
+    const polysemousLike = {
+        t: "jak / lubić",
+        d: { s: "To resemble or be similar to someone or something.", t: "Być podobnym do kogoś lub czegoś." },
+        s: ["similar to", "as"],
+        e: [
+            { s: "She looks like her mother.", t: "Ona wygląda jak jej matka." },
+            { s: "He acts like a child.", t: "On zachowuje się jak dziecko." },
+            { s: "This tastes like chicken.", t: "To smakuje jak kurczak." },
+        ],
+    };
+    const validated = validateEntry(polysemousLike, "like", "en", "pl");
+    assert.equal(validated.t, "jak / lubić");
+    assert.deepEqual(validated.s, ["similar to", "as"]);
+});
+
+

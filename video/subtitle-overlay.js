@@ -951,7 +951,7 @@
                     contextWords: contextSpans.map((span) => span.textContent.trim()), wordIndex,
                 } : {}),
             });
-            const translated = dictionary?.primaryTranslation || dictionary?.translated;
+            const translated = dictionary?.translated || dictionary?.primaryTranslation;
             if (!isSubHovering || lastHoveredSubWord !== wordSpan) return;
             if (!translated) {
                 QT.showTooltip(`<div class="${PREFIX}body">No dictionary entry yet.</div>`, rect, placement);

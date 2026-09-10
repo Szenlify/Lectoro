@@ -345,7 +345,7 @@ exports.geminiProxy = onRequest(
                 });
                 return res.status(200).json(result);
             } catch (error) {
-                console.warn("[liveTranslation]", error.stage || "request", error.message);
+                console.warn("[liveTranslation]", error.stage || "request", error.message, "input:", JSON.stringify(req.body?.text));
                 const { status, ...failure } = translationError(error);
                 return res.status(status).json(failure);
             }

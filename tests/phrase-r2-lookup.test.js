@@ -4,8 +4,9 @@ const vm = require('node:vm');
 const fs = require('node:fs');
 const { webcrypto } = require('node:crypto');
 
-const storeCode = fs.readFileSync(__dirname + '/dictionary-store.js', 'utf8');
-const dictCode = fs.readFileSync(__dirname + '/local-dictionary.js', 'utf8');
+const path = require('node:path');
+const storeCode = fs.readFileSync(path.join(__dirname, '../shared/dictionary-store.js'), 'utf8');
+const dictCode = fs.readFileSync(path.join(__dirname, '../shared/local-dictionary.js'), 'utf8');
 
 function createRuntime(phrases) {
   const requests = [];
