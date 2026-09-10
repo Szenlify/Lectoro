@@ -1,12 +1,128 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { prepare, validateEntry, handleLiveTranslation, translationError } = require("./live-translation");
+const { prepare, validateEntry, validateResult, handleLiveTranslation, translationError } = require("./live-translation");
 const entry = { languageValidation: 1, t: "porzucić coś", d: { s: "To leave something behind.", t: "Zostawić coś za sobą." }, s: ["desert"], e: [
     { s: "They abandon the house.", t: "Porzucają dom." },
     { s: "Do not abandon us.", t: "Nie porzucaj nas." },
     { s: "We abandon the plan.", t: "Porzucamy plan." },
 ] };
+const analysisResponse = (payload, data) => payload.generationConfig.responseSchema.required.includes("valid") ? { valid: true, entry: data } : data;
 const body = { kind: "word", text: "abandon", sourceLang: "en", targetLang: "pl" };
+test("subtitle analysis saves the whole translation and separate lowercase phrases", async () => {
+    const { deps, count, objects } = fixture();
+    const request = { ...body, kind: "segments", text: "Get up now.", words: ["Get", "up", "now."] };
+    const analyzed = { t: "Wstan teraz.", phrases: [{ start: 0, length: 2, t: "wstawac" }] };
+    let calls = 0;
+    deps.generate = async payload => {
+        calls++;
+        if (calls === 1) assert.match(payload.contents[0].parts[0].text, /Do NOT translate independent words/);
+        return { candidates: [{ finishReason: "STOP", content: { parts: [{ text: JSON.stringify(payload.generationConfig.responseSchema.required.includes("valid") ? { valid: true, entry: analyzed } : analyzed) }] } }] };
+    };
+    const result = await handleLiveTranslation(request, deps);
+    assert.equal(result.result.t, analyzed.t);
+    assert.equal(result.result.phrases[0].source, "get up");
+    assert.equal((await handleLiveTranslation(request, deps)).cached, true);
+    assert.equal(calls, 2);
+    assert.equal(count.reserved, 1);
+    assert.equal(objects.size, 2);
+    const sentenceJob = prepare({ ...request, kind: "sentence" }, "u1");
+    const job = prepare(request, "u1");
+    assert.equal(job.key, sentenceJob.key);
+    assert.equal(objects.get(sentenceJob.key).t, analyzed.t);
+    const phraseKey = [...objects.keys()].find(key => key.startsWith("dictionaries/phrase/en-pl/"));
+    assert.equal(objects.get(phraseKey)["get up"].t, "wstawac");
+    assert.ok(![...objects.keys()].some(key => key.includes("/segments/") || key.includes("/live/")));
+    assert.notEqual(job.key, prepare({ ...request, text: "Please get up now." }, "u1").key);
+    assert.notEqual(job.key, prepare({ ...request, targetLang: "de" }, "u1").key);
+    assert.deepEqual((await handleLiveTranslation({ ...request, kind: "sentence" }, deps)).result, { t: analyzed.t });
+    assert.equal(calls, 2, "sentence translation reuses the same saved file");
+});
+
+test("phrase analysis permits independent words and no phrases, but rejects invalid spans", () => {
+    const request = { ...body, kind: "segments", text: "Please take off now", words: ["Please", "take", "off", "now"] };
+    const job = prepare(request, "u1");
+    assert.equal(validateResult(job, { t: "translation", phrases: [] }).phrases.length, 0);
+    assert.equal(validateResult(job, { t: "translation", phrases: [{ start: 1, length: 2, t: "x" }] }).phrases[0].source, "take off");
+    for (const phrases of [[{ start: -1, length: 2, t: "x" }], [{ start: 0, length: 5, t: "x" }],
+        [{ start: 0, length: 1, t: "x" }], [{ start: 0, length: 0, t: "x" }],
+        [{ start: 0, length: 2, t: "x" }, { start: 1, length: 2, t: "x" }]]) {
+        assert.throws(() => validateResult(job, { t: "translation", phrases }));
+    }
+    for (const words of [[], [""], [null], Array(151).fill("word")]) assert.throws(() => prepare({ ...request, words }, "u1"));
+    for (const sourceLang of ["en", "de", "fr", "es", "ja", "ko", "cs", "nl", "it", "pt"]) {
+        assert.match(prepare({ ...request, sourceLang }, "u1").prompt, new RegExp(`from ${sourceLang} to pl`));
+    }
+});
+test("legacy sentence cache is enriched and phrase write conflicts do not fail translation", async () => {
+    const { deps, objects } = fixture();
+    const request = { ...body, kind: "segments", text: "GET UP now", words: ["GET", "UP", "now"] };
+    const key = prepare(request, "u1").key;
+    objects.set(key, { t: "Old sentence translation" });
+    const originalWrite = deps.write;
+    deps.write = async (key, value) => {
+        if (key.includes("/phrase/")) throw Object.assign(new Error("Already saved by another request"), { $metadata: { httpStatusCode: 412 } });
+        return originalWrite(key, value);
+    };
+    deps.generate = async payload => ({ candidates: [{ finishReason: "STOP", content: { parts: [{ text: JSON.stringify(analysisResponse(payload, { t: "Wstań teraz", phrases: [{ start: 0, length: 2, t: "wstać" }] })) }] } }] });
+    const result = await handleLiveTranslation(request, deps);
+    assert.equal(result.cached, false);
+    assert.equal(objects.get(key).phraseAnalysis, 2);
+    assert.equal(result.result.phrases[0].source, "get up");
+    assert.equal((await handleLiveTranslation(request, deps)).cached, true);
+});
+test("phrase storage errors refund usage and do not mark the sentence as fully saved", async () => {
+    const { deps, count, objects } = fixture();
+    const request = { ...body, kind: "segments", text: "Get up", words: ["Get", "up"] };
+    deps.generate = async payload => ({ candidates: [{ finishReason: "STOP", content: { parts: [{ text: JSON.stringify(analysisResponse(payload, { t: "Wstań", phrases: [{ start: 0, length: 2, t: "wstać" }] })) }] } }] });
+    deps.write = async () => { throw Error("Storage unavailable"); };
+    await assert.rejects(handleLiveTranslation(request, deps), /Storage unavailable/);
+    assert.equal(count.refunded, 1);
+    assert.equal(objects.size, 0);
+});
+test("legacy come undone is reviewed once, corrected and saved with only t", async () => {
+    const { deps, objects, count } = fixture();
+    const request = { ...body, kind: "segments", text: "AND I COME UNDONE", words: ["AND", "I", "COME", "UNDONE"] };
+    const job = prepare(request, "u1");
+    const old = { t: "I załamuję się", phrases: [{ start: 2, length: 2, t: "come undone" }], tokens: request.words, phraseAnalysis: 1 };
+    objects.set(job.key, old);
+    const key = `dictionaries/phrase/en-pl/${require("node:crypto").createHash("sha256").update("come undone").digest("hex")}.json`;
+    objects.set(key, { "come undone": { t: "come undone", context: request.text } });
+    let calls = 0;
+    deps.generate = async payload => {
+        calls++;
+        assert.ok(payload.generationConfig.responseSchema.required.includes("valid"));
+        assert.match(payload.contents[0].parts[0].text, /from en to pl/);
+        return { candidates: [{ finishReason: "STOP", content: { parts: [{ text: JSON.stringify({ valid: true,
+            entry: { ...old, phrases: [{ start: 2, length: 2, t: "załamać się" }] } }) }] } }] };
+    };
+    await handleLiveTranslation(request, deps);
+    assert.deepEqual(objects.get(key), { "come undone": { t: "załamać się" } });
+    assert.equal(objects.get(job.key).phraseAnalysis, 2);
+    assert.equal((await handleLiveTranslation(request, deps)).cached, true);
+    assert.equal(calls, 1);
+    assert.equal(count.reserved, 1);
+});
+test("a reviewer cannot approve an untranslated phrase by returning valid=true", async () => {
+    for (const translation of ["come undone", "COME UNDONE!", "Come   undone"]) {
+        const { deps, objects, count } = fixture();
+        const request = { ...body, kind: "segments", text: "I come undone", words: ["I", "come", "undone"] };
+        const data = { t: "Załamuję się", phrases: [{ start: 1, length: 2, t: translation }] };
+        deps.generate = async payload => ({ candidates: [{ finishReason: "STOP", content: { parts: [{ text: JSON.stringify(analysisResponse(payload, data)) }] } }] });
+        await assert.rejects(handleLiveTranslation(request, deps), { code: "PHRASE_VALIDATION_FAILED" });
+        assert.equal(objects.size, 0);
+        assert.equal(count.refunded, 1);
+    }
+});
+test("a rejected phrase language review saves nothing", async () => {
+    const { deps, objects, count } = fixture();
+    deps.generate = async payload => ({ candidates: [{ finishReason: "STOP", content: { parts: [{ text: JSON.stringify(
+        payload.generationConfig.responseSchema.required.includes("valid") ? { valid: false, entry: null }
+            : { t: "Wstań", phrases: [{ start: 0, length: 2, t: "get up" }] }
+    ) }] } }] });
+    await assert.rejects(handleLiveTranslation({ ...body, kind: "segments", text: "Get up", words: ["Get", "up"] }, deps), { code: "PHRASE_VALIDATION_FAILED" });
+    assert.equal(objects.size, 0);
+    assert.equal(count.refunded, 1);
+});
 test("synonyms are limited to two and requested in the source language", () => {
     for (const s of [[], ["desert"], ["desert", "leave"]]) {
         assert.deepEqual(validateEntry({ ...entry, s }).s, s);

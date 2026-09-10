@@ -330,7 +330,7 @@ exports.geminiProxy = onRequest(
                         return record?.value ?? null;
                     },
                     write: (key, value) => putTranslationJson(getR2Config(), key, value, { etag: etags.get(key) }),
-                    generate: payload => fetchGeminiWithRetry(getGeminiApiKey(), payload, 0, req.body.kind === "word" ? 12000 : 25000),
+                    generate: payload => fetchGeminiWithRetry(getGeminiApiKey(), payload, 0, req.body.kind === "sentence" ? 25000 : 12000),
                     rollback: () => rollbackAiReservation(db, userRef, month),
                     reserve: () => db.runTransaction(async tx => {
                         const snap = await tx.get(userRef);

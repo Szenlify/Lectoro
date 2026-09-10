@@ -431,6 +431,47 @@ test("word clouds skip simple words and highlight every token of a dictionary ph
     assert.equal(state.errors.length, 0);
 });
 
+test("S requests the complete context and renders get up as one expression", async () => {
+    const state = app({ wordCloudMode: true, subtitleTTS: false });
+    const words = ["Get", "up", "now"];
+    const spans = words.map(element);
+    const line = element();
+    spans.forEach(span => { line.appendChild(span); line.appendChild(element(" ")); });
+    state.context.activeWordSpans = spans;
+    state.context.activeText = "Get up now";
+    let calls = 0;
+    state.context.SharedTranslatorService.lookupWords = async (tokens, target, source, options) => {
+        calls++;
+        assert.equal(options.contextual, true);
+        assert.equal(options.context, "Get up now");
+        assert.deepEqual(Array.from(tokens), words);
+        return [{ translated: "wstań", length: 2 }, null, { translated: "teraz", length: 1 }];
+    };
+    await state.start();
+    assert.equal(calls, 1);
+    assert.equal(state.errors.length, 0);
+    const clouds = state.context.wordCloudEls;
+    assert.equal(clouds.length, 2);
+    assert.equal(clouds[0].cloud.textContent, "wstań");
+    assert.deepEqual(Array.from(clouds[0].members), spans.slice(0, 2));
+    assert.equal(clouds[0].wrappers.length, 1);
+    assert.ok(spans.every(span => !span.classList.contains(`${C.PREFIX}word-cloud-loading`)));
+});
+
+test("closing S while expression analysis is pending prevents stale grouped clouds", async () => {
+    const state = app({ wordCloudMode: true, subtitleTTS: false });
+    const pending = deferred();
+    let started = false;
+    state.context.SharedTranslatorService.lookupWords = async () => { started = true; return pending.promise; };
+    const running = state.start();
+    while (!started) await tick();
+    state.context.subtitleModeRevision++;
+    pending.resolve([{ translated: "zwrot", length: 2 }, null]);
+    await running;
+    assert.equal(state.context.wordCloudEls.length, 0);
+    assert.ok(state.context.activeWordSpans.every(span => !span.classList.contains(`${C.PREFIX}word-cloud-loading`)));
+});
+
 test("blessing in disguise has a continuous background, centered cloud and reversible grouping", async () => {
     const state = app({ wordCloudMode: true, subtitleTTS: false });
     const words = ["blessing", "in", "disguise"];

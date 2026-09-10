@@ -272,6 +272,40 @@
         sourceLang = languageCode(sourceLang);
         if (!Object.hasOwn(root.LectoroConstants.SUPPORTED_LANGUAGES, targetLang) || !Object.hasOwn(root.LectoroConstants.SUPPORTED_LANGUAGES, sourceLang)) return words.map(() => null);
         if (sourceLang === targetLang) return words.map((word) => options.wordByWord ? null : options.details ? { translated: word, senses: [], selection: "dictionary" } : word);
+        if (options.wordByWord && options.contextual) {
+            if (!words.length) return [];
+            const tokens = words.map(word => word.normalize("NFKC").trim());
+            const sentence = (options.context || tokens.join(" ")).normalize("NFKC").trim();
+            const decodePhrases = data => {
+                if (data?.phraseAnalysis !== 2 || typeof data?.t !== "string" || !data.t.trim() || !Array.isArray(data.phrases) || data.phrases.length > 12) throw new Error("Invalid subtitle phrase analysis.");
+                const result = words.map(() => null);
+                let next = 0;
+                for (const phrase of data.phrases) {
+                    if (!phrase || !Number.isInteger(phrase.start) || phrase.start < next || !Number.isInteger(phrase.length) || phrase.length < 2 || phrase.start + phrase.length > words.length ||
+                        typeof phrase.t !== "string" || !phrase.t.trim() || phrase.t.length > 300 || /[<>\x00-\x1f]/u.test(phrase.t)) throw new Error("Invalid subtitle phrase.");
+                    result[phrase.start] = { translated: phrase.t, length: phrase.length };
+                    next = phrase.start + phrase.length;
+                }
+                return result;
+            };
+            let data = await root.DictionaryStore?.getAnalysis?.(sourceLang, targetLang, sentence, tokens);
+            let phrases;
+            if (data) { try { phrases = decodePhrases(data); } catch (_) {} }
+            if (!phrases) {
+                if (!root.GeminiProxy?.liveTranslation) throw new Error("Sign in to detect subtitle expressions.");
+                data = await root.GeminiProxy.liveTranslation("segments", sentence, sourceLang, targetLang, tokens);
+                phrases = decodePhrases(data);
+                await root.DictionaryStore?.putAnalysis?.(sourceLang, targetLang, sentence, tokens, data);
+            }
+            // Independent words still come from the existing live dictionary.
+            // Only detected expressions use the phrase translation from the analysis.
+            const singles = [...tokens];
+            phrases.forEach((phrase, start) => {
+                if (phrase) singles.fill("", start, start + phrase.length);
+            });
+            const known = await lookupWords(singles, targetLang, sourceLang, { wordByWord: true, localOnly: true, generateMissing: false });
+            return known.map((value, index) => phrases[index] || value);
+        }
         const context = options.contextWords || contextTokens(options.context);
         const result = words.map(() => null);
         await Promise.all(words.map(async (raw, i) => {

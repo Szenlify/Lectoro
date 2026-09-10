@@ -1,14 +1,48 @@
 # Tłumaczenia generowane podczas oglądania
 
-Po S tryb **Word-by-word translation** najpierw pokazuje lokalnie zapisane wpisy live.
-Pozostałe hasła odczytuje z pojedynczych plików R2; dopiero HTTP 404 pozwala na
-generowanie przez Gemini, maksymalnie trzy jednocześnie w workerze
-rozszerzenia. Każdy wynik pojawia się osobno, bez czekania na pozostałe.
-Zamknięcie trybu lub zmiana języka blokuje wyświetlenie spóźnionych wyników.
-Trwające żądanie może nadal dokończyć zapis na serwerze.
-Podczas oczekiwania słowo ma delikatnie pulsujące niebieskie tło. Animacja znika
-po wyniku, błędzie albo zamknięciu trybu; przy ograniczeniu ruchu jest zastępowana
-stałym podświetleniem.
+S continues to translate independent words through the existing live dictionary:
+local entries first, then R2 and generation for missing words. It additionally
+analyzes the full subtitle to find genuine multiword expressions such as `get up`.
+The analysis returns the complete sentence translation (`t`) and only detected
+phrases (`phrases` with `start`, `length`, `t`). It does not translate every word
+again. The UI combines detected expressions and keeps the other words separate.
+Simple-word filtering runs after phrase detection, so `get` and `up` can form
+one expression even if they would be skipped independently.
+
+Storage:
+- Full sentence: `dictionaries/translations/<source>-<target>/<sha256(sentence)>.json`.
+  Data includes `t`, `phrases`, `tokens`, and `phraseAnalysis: 2`. Ordinary sentence
+  translation requests reuse `t` from the same file. An older record containing
+  only `t` is enriched on the next phrase-analysis request.
+- Extracted expression: `dictionaries/phrase/<source>-<target>/<sha256(phrase)>.json`.
+  For example, `{ "get up": { "t": "wstać" } }`.
+  Phrase keys use normalized lowercase text and collapsed whitespace. Phrase
+  files contain only `t`: no context, tokens or verification metadata. Existing
+  records are replaced by reviewed corrections, removing legacy context fields;
+  conditional writes protect concurrent updates.
+  The sentence retains its contextual phrase translations, since an expression
+  can have different meanings in different sentences.
+- Independent words remain in `dictionaries/live/...`.
+
+No new `dictionaries/segments` objects are written. The internal request kind
+`segments` now means sentence translation plus phrase extraction. At most 12
+non-overlapping multi-token expressions are accepted per subtitle, with at most
+150 displayed tokens and 4000 characters. An empty phrase list is valid.
+Detected phrases undergo one batched language review which corrects translations
+in the selected target language. A normalized source copy is rejected even if
+AI approves it. Rejected or malformed reviews save nothing and refund usage.
+AI review reduces language mistakes but is not an absolute semantic guarantee.
+Legacy analyses are re-reviewed on access; the local analysis cache uses a new
+namespace to avoid displaying old unverified results. This is migration on use,
+not a bulk rewrite of the bucket. Generation and review each have a 12-second
+timeout. The complete analysis uses one AI reservation; single-word generation retains
+its existing usage rules. Analysis results also have an offline local cache.
+Phrases are saved before the sentence is marked analyzed, so failed extraction
+storage can be retried. The bounded analysis can be cached above 200 characters;
+the existing limit for ordinary sentence translation requests remains unchanged.
+Deploy the backend before updating the extension.
+
+The following single-word dictionary flow applies to hover and word selection:
 
 Nowe wpisy zawierają `t`, `d`, `s`, `e`, w tym definicję i trzy przykłady wraz
 z tłumaczeniami. Dopuszczamy tłumaczenie kilkoma słowami. Słownik wybiera jedno
@@ -42,7 +76,7 @@ Obowiązują nadal limity AI, zwrot użycia po błędzie i lokalny cache rozszer
 Rozszerzenie nie pobiera `catalog.json`, plików `releases/...` ani lokalnych
 pakietów `dictionaries/<język>.json`. Stare pakiety w IndexedDB są ignorowane.
 Jedynym źródłem haseł są pojedyncze pliki `dictionaries/live` i ich lokalne kopie.
-Hover, zaznaczenie słowa, S i pozostałe opcje tłumaczenia pojedynczych słów
+Hover, zaznaczenie słowa i pozostałe opcje tłumaczenia pojedynczych słów
 korzystają z tej samej kolejności: lokalna kopia live → plik live na R2 → Gemini
 przy braku wpisu. Odczyt istniejącego pliku R2 nie wymaga logowania;
 wygenerowanie brakującego wpisu wymaga konta i limitu AI.

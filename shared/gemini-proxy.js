@@ -638,9 +638,9 @@
         }
 
         const livePending = new Map();
-        function liveTranslation(kind, text, sourceLang, targetLang) {
+        function liveTranslation(kind, text, sourceLang, targetLang, words) {
             if (kind === "word") text = text.normalize("NFKC").trim().toLowerCase();
-            const key = JSON.stringify([kind, text, sourceLang, targetLang]);
+            const key = JSON.stringify([kind, text, sourceLang, targetLang, words]);
             if (livePending.has(key)) return livePending.get(key);
             const pending = (async () => {
                 const token = await getToken();
@@ -654,7 +654,7 @@
                     try {
                         response = await fetch(PROXY_URL, { method: "POST", signal: controller.signal,
                             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                            body: JSON.stringify({ action: "liveTranslation", kind, text, sourceLang, targetLang }) });
+                            body: JSON.stringify({ action: "liveTranslation", kind, text, sourceLang, targetLang, ...(kind === "segments" ? { words } : {}) }) });
                         data = await response.json();
                     } catch (error) {
                         if (controller.signal.aborted) throw Object.assign(new Error("Translation timed out. Please try again."), { code: "TRANSLATION_TIMEOUT" });

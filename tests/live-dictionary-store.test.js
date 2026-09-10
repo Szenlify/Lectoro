@@ -77,6 +77,49 @@ test("word clouds first render local entries and then read only missing live fil
     assert.equal((await env.lookup(["unknown"], "pl", "en", { generateMissing: false }))[0], null);
     assert.equal(env.calls.length, 1);
 });
+test("contextual lookup preserves get up as one unit before skipping simple words and caches it offline", async () => {
+    const env = environment();
+    let calls = 0;
+    const words = ["Get", "up", "now"];
+    const options = { wordByWord: true, contextual: true, context: "Get up now" };
+    env.context.GeminiProxy = { liveTranslation: async (kind, context, source, target, tokens) => {
+        calls++;
+        assert.equal(kind, "segments");
+        assert.equal(context, options.context);
+        assert.deepEqual(Array.from(tokens), words);
+        return { phraseAnalysis: 2, t: "Wstan teraz", phrases: [{ start: 0, length: 2, t: "wstań" }] };
+    } };
+    const result = await env.lookup(words, "pl", "en", options);
+    assert.equal(result[0].length, 2);
+    assert.equal(result[0].translated, "wstań");
+    assert.equal(result[1], null);
+    assert.equal(calls, 1);
+    assert.equal(env.calls.length, 0, "do not fetch individual words");
+    const offline = environment({ records: env.records });
+    assert.equal((await offline.lookup(words, "pl", "en", options))[0].length, 2);
+    assert.equal(offline.calls.length, 0);
+});
+test("phrase analysis does not replace individual-word translations from the dictionary", async () => {
+    const env = environment();
+    await env.store.putLive("en", "pl", "window", { ...entry, t: "okno" });
+    let calls = 0;
+    env.context.GeminiProxy = { liveTranslation: async kind => {
+        calls++;
+        assert.equal(kind, "segments");
+        return { phraseAnalysis: 2, t: "Wstań przy oknie.", phrases: [{ start: 0, length: 2, t: "wstań" }] };
+    } };
+    const words = ["Get", "up", "near", "the", "window"];
+    const options = { wordByWord: true, contextual: true, context: words.join(" ") };
+    const result = await env.lookup(words, "pl", "en", options);
+    assert.equal(result[0].length, 2);
+    assert.equal(result[1], null);
+    assert.equal(result[4].translated, "okno");
+    assert.equal(result[4].length, 1);
+    assert.equal(calls, 1);
+    const offline = environment({ records: env.records });
+    assert.equal((await offline.lookup(words, "pl", "en", options))[4].translated, "okno");
+    assert.equal(offline.calls.length, 0);
+});
 test("mixed-case words share concurrent generation, R2 reads and offline cache", async () => {
     const env = environment();
     let generated = 0;

@@ -2940,12 +2940,29 @@
         const { targetLang, learningLang } = await SharedTranslatorService.getReadingSettings();
         if (modeRevision !== subtitleModeRevision) return;
 
-        const translations = await SharedTranslatorService.lookupWords(
-            wordSpans.map((span) => span.textContent.trim()),
-            targetLang,
-            learningLang,
-            { wordByWord: true, generateMissing: false, localOnly: true },
-        );
+        const pendingClass = `${PREFIX}word-cloud-loading`;
+        const pendingOwner = String(modeRevision);
+        let translations;
+        for (const span of wordSpans) {
+            span.dataset.wordCloudLoading = pendingOwner;
+            span.classList.add(pendingClass);
+            span.setAttribute?.("aria-busy", "true");
+        }
+        try {
+            translations = await SharedTranslatorService.lookupWords(
+                wordSpans.map((span) => span.textContent.trim()),
+                targetLang,
+                learningLang,
+                { wordByWord: true, contextual: true, context: fullText },
+            );
+        } finally {
+            for (const span of wordSpans) {
+                if (span.dataset.wordCloudLoading !== pendingOwner) continue;
+                delete span.dataset.wordCloudLoading;
+                span.classList.remove(pendingClass);
+                span.removeAttribute?.("aria-busy");
+            }
+        }
         if (modeRevision !== subtitleModeRevision) return;
 
         const subFontSizePx =

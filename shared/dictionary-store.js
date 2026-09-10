@@ -240,7 +240,19 @@
             await save({ key: liveKey(source, target, word), data: entry,
                 bytes: new TextEncoder().encode(JSON.stringify(entry)).length, lastUsed: now() });
         }
-        return Object.freeze({ getLive, putLive });
+        const analysisKey = (source, target, context, words) => `phrase-analysis-v2:${JSON.stringify([source, target, context, words])}`;
+        async function getAnalysis(source, target, context, words) {
+            const key = analysisKey(source, target, context, words);
+            if (liveMemory.has(key)) return liveMemory.get(key);
+            const record = await read(key);
+            return record?.data ? rememberLive(key, record.data) : null;
+        }
+        async function putAnalysis(source, target, context, words, data) {
+            const key = analysisKey(source, target, context, words);
+            rememberLive(key, data);
+            await save({ key, data, bytes: new TextEncoder().encode(JSON.stringify(data)).length, lastUsed: now() });
+        }
+        return Object.freeze({ getLive, putLive, getAnalysis, putAnalysis });
     }
 
     root.DictionaryStore = createStore();
