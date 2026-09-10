@@ -7,6 +7,17 @@ const entry = { t: "porzucić coś", d: { s: "To leave something behind.", t: "Z
     { s: "We abandon the plan.", t: "Porzucamy plan." },
 ] };
 const body = { kind: "word", text: "abandon", sourceLang: "en", targetLang: "pl" };
+test("synonyms are limited to two and requested in the source language", () => {
+    for (const s of [[], ["desert"], ["desert", "leave"]]) {
+        assert.deepEqual(validateEntry({ ...entry, s }).s, s);
+    }
+    assert.throws(() => validateEntry({ ...entry, s: ["desert", "leave", "forsake"] }));
+    for (const [sourceLang, targetLang] of [["en", "pl"], ["de", "en"]]) {
+        const job = prepare({ ...body, sourceLang, targetLang }, "u1");
+        assert.equal(job.schema.properties.s.maxItems, 2);
+        assert.ok(job.prompt.includes(`synonyms in ${sourceLang} (the source language), never translations in ${targetLang}`));
+    }
+});
 function fixture() {
     const records = new Map(), objects = new Map();
     let transactions = Promise.resolve();

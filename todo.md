@@ -42,6 +42,11 @@ Stack Trace
 popup/export.js:1059 (anonymous function)
 
 18. usunac calkowicie 15,000 chars/h translate dla free
+19. usun calkowicie z projektu 
+        "https://translate.googleapis.com/*",
+        "https://translate.google.com/*",
+    
+  
 
 
 

@@ -1,7 +1,7 @@
 # Słownik EN → PL przez Gemini 2.5 Flash-Lite
 
 Generator używa Twojego płatnego klucza Gemini. Zapisuje jeden polski odpowiednik,
-definicję po angielsku i po polsku, 0–3 angielskie synonimy i trzy angielskie zdania z polskimi tłumaczeniami. Gotowy JSON jest pobierany
+definicję po angielsku i po polsku, 0–2 synonimy w języku źródłowym i trzy angielskie zdania z polskimi tłumaczeniami. Gotowy JSON jest pobierany
 przez Lectoro z R2, a szczegóły pojawiają się pod tłumaczeniem słowa na wideo.
 
 ## 1. Otwórz PowerShell w folderze `python`
@@ -164,7 +164,7 @@ Katalog zapisuje aktualny rozmiar i SHA-256 każdego słownika. Po udanym ekspor
 stare lokalne foldery `compact-HASH` i `reverse-HASH` zawierające wyłącznie pliki
 generatora są usuwane. Foldery na R2 trzeba usunąć osobno.
 
-Starsze wpisy bez tłumaczeń przykładów lub z czterema synonimami generator automatycznie
+Starsze wpisy bez tłumaczeń przykładów lub z wi?cej ni? dwoma synonimami generator automatycznie
 kolejkuje do ponownego wygenerowania przy zwykłym uruchomieniu. To wymaga zapytań do API;
 kopia starych wpisów zostaje w tabeli `legacy_entries` w SQLite. Sam `--export-only`
 nie uzupełnia tłumaczeń i odrzuca wpisy w starym formacie. Dla testowej bazy uruchom

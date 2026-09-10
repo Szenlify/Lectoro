@@ -97,7 +97,7 @@ SCHEMA = {"type": "object", "required": ["t", "d", "s", "e"], "additionalPropert
           "properties": {"t": {"type": "string"}, "d": {
               "type": "object", "required": ["s", "t"], "additionalProperties": False,
               "properties": {"s": {"type": "string"}, "t": {"type": "string"}}},
-                         "s": {"type": "array", "minItems": 0, "maxItems": 3, "items": {"type": "string"}},
+                         "s": {"type": "array", "minItems": 0, "maxItems": 2, "items": {"type": "string"}},
                          "e": {"type": "array", "minItems": 3, "maxItems": 3, "items": {
                              "type": "object", "required": ["s", "t"], "additionalProperties": False,
                              "properties": {"s": {"type": "string"}, "t": {"type": "string"}}}}}}
@@ -107,7 +107,8 @@ t: exactly ONE Polish word, letters only, no spaces, alternatives, punctuation o
 d: object with s (simple English definition) and t (its simple Polish translation).
 Use one short sentence, everyday A1/A2 words, ideally 5-12 words, at most 120 characters per language.
 Both definitions describe the SAME meaning. Avoid technical or dictionary-style wording.
-s: 0-3 distinct genuine English synonyms of this meaning, not the input word, at most 80 characters each.
+s: 0-2 distinct genuine English synonyms of this meaning, not the input word, at most 80 characters each.
+Synonyms must be in English (the source language), never Polish (the target language).
 Use an empty array if there are no suitable synonyms.
 e: exactly 3 objects with s (a natural English sentence containing the exact input word)
 and t (its accurate Polish translation). Each text is at most 300 characters.
@@ -145,10 +146,10 @@ def validate_entry(word, entry):
             not all(valid_text(definition[key], 300) for key in ("s", "t"))):
         raise ValueError("d must contain s (source-language definition) and t (target-language translation), each 1-300 characters")
     synonyms, examples = entry["s"], entry["e"]
-    if (not isinstance(synonyms, list) or not 0 <= len(synonyms) <= 3 or
+    if (not isinstance(synonyms, list) or not 0 <= len(synonyms) <= 2 or
             not all(valid_text(s, 80) for s in synonyms) or
             len({s.casefold() for s in synonyms}) != len(synonyms) or word.casefold() in {s.casefold() for s in synonyms}):
-        raise ValueError("Wymagane 0-3 rozne synonimy")
+        raise ValueError("Wymagane 0-2 rozne synonimy")
     if not isinstance(examples, list) or len(examples) != 3:
         raise ValueError("e must contain exactly 3 example objects")
     for index, example in enumerate(examples, 1):

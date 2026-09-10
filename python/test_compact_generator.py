@@ -13,7 +13,7 @@ from generate_dictionary import APIError, LANGUAGES, Progress, choose_language, 
 
 
 ENTRY = {"t": "praca", "d": {"s": "an activity you do as part of your job", "t": "czynność wykonywana w ramach pracy"},
-         "s": ["job", "labor", "employment"],
+         "s": ["job", "labor"],
          "e": [{"s": "I have work today.", "t": "Mam dziś pracę."},
                {"s": "Her work is important.", "t": "Jej praca jest ważna."},
                {"s": "We work every day.", "t": "Pracujemy codziennie."}]}
@@ -355,10 +355,10 @@ class CompactTests(unittest.TestCase):
 
     def test_rejects_alternatives_duplicates_and_missing_word(self):
         self.assertEqual(validate_entry("work", ENTRY), ENTRY)
-        for synonyms in ([], ["job"], ["job", "labor", "employment"]):
+        for synonyms in ([], ["job"], ["job", "labor"]):
             validate_entry("work", {**ENTRY, "s": synonyms})
         for patch_value in ({"t": "praca / pracować"}, {"t": "ciężka praca"}, {"s": ["job", "Job"]},
-                            {"s": ["work", "job"]}, {"s": ["job", "labor", "employment", "task"]},
+                            {"s": ["work", "job"]}, {"s": ["job", "labor", "employment"]},
                             {"e": ["Hello."] * 3}, {"e": [{"s": "I work.", "t": ""}] * 3}, {"d": "<script>"}):
             with self.subTest(patch_value=patch_value), self.assertRaises(ValueError):
                 validate_entry("work", {**ENTRY, **patch_value})
