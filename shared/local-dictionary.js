@@ -1,8 +1,7 @@
-/** Local lookup of downloaded directed pairs, with bundled English starter data. */
+/** Per-term live dictionary lookup. No catalog, language packs or bundled downloads. */
 (function (root) {
     "use strict";
     const utils = root.SharedUtils || (typeof module !== "undefined" && module.exports ? require("./utils") : null);
-    const dictionaries = new Map();
     const indexes = new WeakMap();
     const compiled = new WeakMap();
     const languages = new WeakMap();
@@ -88,19 +87,6 @@
         languages.set(dictionary, pack.sourceLanguage);
         compiled.set(pack, dictionary);
         return dictionary;
-    }
-
-    async function loadDictionary(language) {
-        if (!Object.hasOwn(root.LectoroConstants.SUPPORTED_LANGUAGES, language)) return {};
-        if (!dictionaries.has(language)) {
-            const pending = fetch(chrome.runtime.getURL(`dictionaries/${language}.json`))
-                .then(async (response) => {
-                    if (!response.ok) throw new Error("Local dictionary could not be loaded.");
-                    return response.json();
-                }).catch((error) => { dictionaries.delete(language); throw error; });
-            dictionaries.set(language, pending);
-        }
-        return dictionaries.get(language);
     }
 
     function indexDictionary(dictionary) {
@@ -245,6 +231,32 @@
         return result;
     }
 
+    const livePending = new Map();
+    let liveRunning = 0;
+    const liveQueue = [];
+    async function generateLive(word, source, target) {
+        const key = JSON.stringify([word, source, target]);
+        if (livePending.has(key)) return livePending.get(key);
+        const task = (async () => {
+            if (liveRunning >= 3) await new Promise(resolve => liveQueue.push(resolve));
+            else liveRunning++;
+            try {
+                const saved = await root.DictionaryStore?.getLive?.(source, target, word, { localOnly: true });
+                if (saved) return saved;
+                const result = await root.GeminiProxy.liveTranslation("word", word, source, target);
+                const entry = result?.[word];
+                if (!entry) throw new Error("Missing generated entry.");
+                await root.DictionaryStore.putLive(source, target, word, entry);
+                return entry;
+            } finally {
+                if (liveQueue.length) liveQueue.shift()();
+                else liveRunning--;
+            }
+        })().finally(() => livePending.delete(key));
+        livePending.set(key, task);
+        return task;
+    }
+
     async function lookupWords(words, targetLang, sourceLang = "en", options = {}) {
         if (!Array.isArray(words) || words.length > 500 || words.some((w) => typeof w !== "string" || w.length > 200)) {
             throw new Error("Invalid dictionary lookup.");
@@ -260,16 +272,22 @@
         sourceLang = languageCode(sourceLang);
         if (!Object.hasOwn(root.LectoroConstants.SUPPORTED_LANGUAGES, targetLang) || !Object.hasOwn(root.LectoroConstants.SUPPORTED_LANGUAGES, sourceLang)) return words.map(() => null);
         if (sourceLang === targetLang) return words.map((word) => options.wordByWord ? null : options.details ? { translated: word, senses: [], selection: "dictionary" } : word);
-        const pack = await root.DictionaryStore?.getPair(sourceLang, targetLang);
-        // Missing non-English pairs are never guessed through a reverse English lookup.
-        const target = pack ? compilePack(pack) : sourceLang === "en" ? await loadDictionary(targetLang) : {};
-        if (options.details) {
-            const context = options.contextWords || contextTokens(options.context);
-            return words.map((word) => lookupDetails(word, target, context, options.wordIndex));
-        }
-        return options?.wordByWord
-            ? lookupWordByWord(words, target)
-            : words.map((word) => lookup(word, target));
+        const context = options.contextWords || contextTokens(options.context);
+        const result = words.map(() => null);
+        await Promise.all(words.map(async (raw, i) => {
+            if (options.wordByWord && sourceLang === "en" && utils.isSimpleWord(raw)) return;
+            const word = raw.normalize("NFKC").trim().replace(/^[^\p{L}\p{M}]+|[^\p{L}\p{M}\p{N}]+$/gu, "");
+            if (!word || word.length > 120 || !/^[\p{L}\p{M}][\p{L}\p{M}\p{N}'’ -]*$/u.test(word)) return;
+            let entry = await root.DictionaryStore?.getLive?.(sourceLang, targetLang, word, { localOnly: options.localOnly === true });
+            if (!entry && !options.localOnly && options.generateMissing !== false && root.GeminiProxy?.liveTranslation) {
+                entry = await generateLive(word, sourceLang, targetLang);
+            }
+            if (!entry) return;
+            const dictionary = compilePack({ schemaVersion: 2, sourceLanguage: sourceLang, entries: { [word]: entry } });
+            result[i] = options.details ? lookupDetails(word, dictionary, context, options.wordIndex)
+                : options.wordByWord ? { translated: entry.t, length: 1 } : entry.t;
+        }));
+        return result;
     }
 
     root.LocalDictionary = Object.freeze({ lookupWords, lookup, candidates, lookupWordByWord, compilePack, lookupDetails, rankSenses });

@@ -335,6 +335,12 @@
         }
 
         const transportCache = createTranslateCache();
+        function dictionaryTerm(text) {
+            if (/\s/u.test(String(text || "").trim())) return null;
+            const term = String(text || "").normalize("NFKC").trim()
+                .replace(/^[^\p{L}\p{M}]+|[^\p{L}\p{M}\p{N}]+$/gu, "");
+            return term.length <= 120 && /^[\p{L}\p{M}][\p{L}\p{M}\p{N}'’\-]*$/u.test(term) ? term : null;
+        }
         async function translate(
             text,
             targetLang = null,
@@ -346,6 +352,7 @@
             const settings = await getReadingSettings();
             sourceLang = Constants.normalizeSupportedLanguage(sourceLang || settings.learningLang);
             targetLang = Constants.normalizeSupportedLanguage(targetLang || settings.targetLang, settings.targetLang);
+            if (sourceLang === targetLang) return { translated: text, detectedLang: sourceLang };
             if (shouldProxy()) {
                 const response = await Utils.sendRuntimeMessage({
                     type: MSG.GOOGLE_TRANSLATE,
@@ -367,8 +374,29 @@
         }
 
         async function fetchPreferredTranslation(text, targetLang, sourceLang) {
+            // Selection, saved words and other single-word actions use the same live dictionary as hover.
+            const term = dictionaryTerm(text);
+            if (term && globalThis.LocalDictionary) {
+                try {
+                    const [translated] = await globalThis.LocalDictionary.lookupWords([term], targetLang, sourceLang);
+                    if (translated) return { translated, detectedLang: sourceLang, provider: "dictionary" };
+                } catch (error) {
+                    if (!["AUTH_REQUIRED", "AI_LIMIT_REACHED"].includes(error.code)) throw error;
+                    return fetchTranslation(text, targetLang, sourceLang);
+                }
+            }
             const user = typeof FirebaseSync !== "undefined" ? await FirebaseSync.getUser() : null;
             if (!user || typeof GeminiProxy === "undefined") return fetchTranslation(text, targetLang, sourceLang);
+            if (typeof GeminiProxy.liveTranslation === "function") {
+                try {
+                    const result = await GeminiProxy.liveTranslation("sentence", text, sourceLang, targetLang);
+                    if (!result?.t?.trim()) throw new Error("Empty sentence translation.");
+                    return { translated: result.t, detectedLang: sourceLang, provider: "gemini" };
+                } catch (error) {
+                    if (GeminiProxy.isLimitError(error) || error.code === "AUTH_REQUIRED") return fetchTranslation(text, targetLang, sourceLang);
+                    throw error;
+                }
+            }
             const usage = await GeminiProxy.getCachedUsage();
             if (usage?.uid === user.uid && usage?.month === Utils.currentMonth() &&
                 Number.isFinite(usage.limit) && usage.used >= usage.limit) {
@@ -574,6 +602,7 @@
         }
 
         return Object.freeze({
+            dictionaryTerm,
             translate,
             lookupWords,
             createTranslateCache,

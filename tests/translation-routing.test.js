@@ -19,8 +19,8 @@ function app({ initial = {}, user = { uid: "reader" }, respond } = {}) {
             calls.push({ url, body });
             await tick();
             if (url === C.ENDPOINTS.GEMINI_PROXY) {
-                assert.equal(body.action, undefined, "translation must not send a separate usage request");
-                return respond ? respond(body) : { ok: true, json: async () => ({ text: "Cześć!", usage: { plan: "free", used: 1, limit: 100 } }) };
+                assert.equal(body.action, "liveTranslation", "translation checks the server cache in the generation request");
+                return respond ? respond(body) : { ok: true, json: async () => ({ result: { t: "Cześć!" }, usage: { plan: "free", used: 1, limit: 100 } }) };
             }
             return { ok: true, json: async () => [[["Google result"]], null, "no"] };
         },
@@ -32,35 +32,41 @@ function app({ initial = {}, user = { uid: "reader" }, respond } = {}) {
     return { context, store, calls, service: context.SharedTranslatorService };
 }
 
-test("signed-in translations use one plain-text AI request and a persistent shared cache", async () => {
+test("signed-in translations use one server cache request and a persistent local cache", async () => {
     const state = app();
     const results = await Promise.all([state.service.translate("Hello!", "pl"), state.service.translate("Hello!", "pl")]);
     assert.equal(results[0].translated, "Cześć!");
     assert.equal(results[0].detectedLang, "en");
     assert.equal(state.calls.length, 1);
     const body = state.calls[0].body;
-    assert.equal(body.temperature, 0);
-    assert.equal(body.responseFormat, "text");
-    assert.ok(body.prompt.includes("Polish"));
-    assert.ok(body.maxOutputTokens <= 1024);
+    assert.equal(body.kind, "sentence");
+    assert.equal(body.text, "Hello!");
+    assert.equal(body.targetLang, "pl");
+    assert.equal(body.prompt, undefined);
     const restarted = app({ initial: state.store.data });
     assert.equal((await restarted.service.translate("Hello!", "pl")).translated, "Cześć!");
     assert.equal(restarted.calls.length, 0);
     await state.service.translate("Hello!", "de");
     assert.equal(state.calls.length, 2);
-    assert.ok(state.calls[1].body.prompt.includes("German"));
+    assert.equal(state.calls[1].body.targetLang, "de");
 });
 
-test("guests and current exhausted accounts use Google without contacting Firebase", async () => {
+test("guests use Google without contacting Firebase", async () => {
     for (const options of [
         { user: null },
-        { initial: { aiUsageCache: { uid: "reader", month: U.currentMonth(), used: 100, limit: 100 } } },
     ]) {
         const state = app(options);
         assert.equal((await state.service.translate("Hello!", "pl")).translated, "Google result");
         assert.equal(state.calls.length, 1);
         assert.ok(state.calls[0].url.startsWith(C.ENDPOINTS.GOOGLE_TRANSLATE));
     }
+});
+
+test("exhausted accounts can still retrieve a saved server translation", async () => {
+    const state = app({ initial: { aiUsageCache: { uid: "reader", month: U.currentMonth(), used: 100, limit: 100 } } });
+    assert.equal((await state.service.translate("Hello!", "pl")).translated, "Cześć!");
+    assert.equal(state.calls.length, 1);
+    assert.equal(state.calls[0].body.action, "liveTranslation");
 });
 
 test("a stale month or another account's exhausted cache cannot disable AI", async () => {
@@ -75,12 +81,13 @@ test("a stale month or another account's exhausted cache cannot disable AI", asy
     }
 });
 
-test("server quota rejection falls back once and records exhaustion locally", async () => {
-    const state = app({ respond: () => ({ ok: false, status: 429, json: async () => ({ code: "AI_LIMIT_REACHED", plan: "free", used: 100, limit: 100 }) }) });
+test("server quota rejection falls back while other sentences still check shared cache", async () => {
+    const state = app({ respond: () => ({ ok: false, status: 429, json: async () => ({ code: "AI_LIMIT_REACHED", usage: { plan: "free", used: 100, limit: 100 } }) }) });
     assert.equal((await state.service.translate("Hello!", "pl")).translated, "Google result");
     await state.service.translate("Another sentence", "pl");
-    assert.equal(state.calls.filter((call) => call.url === C.ENDPOINTS.GEMINI_PROXY).length, 1);
-    assert.equal(state.calls.length, 3);
+    assert.equal(state.calls.filter((call) => call.url === C.ENDPOINTS.GEMINI_PROXY).length, 2);
+    assert.equal(state.calls.length, 4);
+    assert.equal(state.store.data.aiUsageCache.used, 100);
 });
 
 test("a busy AI service keeps credits and permits an explicit retry without Google fallback", async () => {
@@ -89,7 +96,7 @@ test("a busy AI service keeps credits and permits an explicit retry without Goog
         initial: { aiUsageCache: { uid: "reader", month: U.currentMonth(), used: 2, limit: 100 } },
         respond: () => fail
             ? { ok: false, status: 429, json: async () => ({ error: "Busy" }) }
-            : { ok: true, json: async () => ({ text: "Cześć!", usage: { used: 3, limit: 100 } }) },
+            : { ok: true, json: async () => ({ result: { t: "Cześć!" }, usage: { used: 3, limit: 100 } }) },
     });
     await assert.rejects(state.service.translate("Hello!", "pl"), { code: "RATE_LIMITED" });
     assert.equal(state.store.data.aiUsageCache.used, 2);
@@ -128,10 +135,12 @@ test("the learning language controls Google requests and labels instead of detec
 test("AI uses the selected source language and caches each language pair separately", async () => {
     const state = app({ initial: { learningLang: "en" } });
     await state.service.translate("president", "pl");
-    assert.ok(state.calls[0].body.prompt.includes("from English into Polish"));
+    assert.equal(state.calls[0].body.sourceLang, "en");
+    assert.equal(state.calls[0].body.targetLang, "pl");
     await state.store.local.set({ learningLang: "fr" });
     assert.equal((await state.service.translate("president", "pl")).detectedLang, "fr");
-    assert.ok(state.calls[1].body.prompt.includes("from French into Polish"));
+    assert.equal(state.calls[1].body.sourceLang, "fr");
+    assert.equal(state.calls[1].body.targetLang, "pl");
     await state.store.local.set({ learningLang: "en" });
     assert.equal((await state.service.translate("president", "pl")).detectedLang, "en");
     assert.equal(state.calls.length, 2);
@@ -148,4 +157,15 @@ test("legacy detected-language caches are ignored and retired settings use suppo
     assert.notEqual(result.translated, "old");
     assert.equal(result.detectedLang, "en");
     assert.equal(state.calls.length, 1);
+});
+
+test("other single-word actions read live dictionary before any sentence or Google request", async () => {
+    const state = app({ user: null });
+    const words = [];
+    state.context.LocalDictionary = { lookupWords: async (input, target, source) => {
+        words.push([Array.from(input), target, source]); return ["dom"];
+    } };
+    const result = await state.service.translate("house", "pl", "en");
+    assert.equal(result.translated, "dom"); assert.equal(result.provider, "dictionary");
+    assert.deepEqual(words, [[["house"], "pl", "en"]]); assert.equal(state.calls.length, 0);
 });

@@ -1,37 +1,15 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const path = require("node:path");
-const vm = require("node:vm");
-const { load } = require("./helpers");
-const C = require("../shared/constants");
 const U = require("../shared/utils");
 const dictionary = require("../shared/local-dictionary");
-const pl = require("../dictionaries/pl.json");
-
-test("every supported language contains the starter entries and permits new user entries", () => {
-    const directory = path.join(__dirname, "../dictionaries");
-    const files = fs.readdirSync(directory);
-    for (const language of Object.keys(C.SUPPORTED_LANGUAGES)) {
-        assert.ok(files.includes(`${language}.json`), language);
-        const entries = JSON.parse(fs.readFileSync(path.join(directory, `${language}.json`), "utf8"));
-        assert.ok(Object.keys(entries).length >= 20, language);
-        for (const key of "apple book cat dog house water food friend school work play walk run read write eat drink make happy child".split(" ")) {
-            assert.ok(Object.hasOwn(entries, key), `${language}:${key}`);
-        }
-        assert.ok(Object.values(entries).every((value) => typeof value === "string" && value.trim()));
-    }
-});
-
-test("language registry, settings and dictionary files contain the supported languages", () => {
-    const expected = "en ja de ko fr nl he pl es it cs pt".split(" ");
-    assert.deepEqual(Object.keys(C.SUPPORTED_LANGUAGES).sort(), [...expected].sort());
-    const files = fs.readdirSync(path.join(__dirname, "../dictionaries")).filter((file) => file.endsWith(".json"));
-    assert.deepEqual(files.sort(), expected.map((code) => `${code}.json`).sort());
-    const html = fs.readFileSync(path.join(__dirname, "../popup.html"), "utf8");
-    const select = html.match(/<select id="targetLang"[^>]*>([\s\S]*?)<\/select>/)[1];
-    assert.deepEqual(Array.from(select.matchAll(/<option value="([^"]+)"/g), (match) => match[1]), expected);
-});
+// Engine fixtures are independent of downloadable dictionaries.
+const pl = {
+    apple: "fruit", book: "volume", play: "have fun", walk: "go on foot", run: "move fast",
+    write: "put into words", make: "create", child: "young person", eat: "consume", business: "commerce",
+    Monday: "first weekday", January: "first month", May: "fifth month", may: "might", you: "the reader",
+    "give up": "stop trying", "look forward to": "anticipate",
+    "don't judge a book by its cover": "do not judge appearances",
+};
 
 test("English inflections resolve only to existing entries, with exact matches taking precedence", () => {
     for (const [word, lemma] of Object.entries({
@@ -50,38 +28,7 @@ test("English inflections resolve only to existing entries, with exact matches t
     }
 });
 
-test("one lazy local file read per language; unknown words never request a remote service", async () => {
-    const urls = [];
-    const context = vm.createContext({
-        LectoroConstants: C,
-        SharedUtils: U,
-        chrome: { runtime: { getURL: (file) => `chrome-extension://test/${file}` } },
-        fetch: async (url) => {
-            urls.push(url);
-            assert.ok(url.startsWith("chrome-extension://test/dictionaries/"));
-            return { ok: true, json: async () => pl };
-        },
-    });
-    load(context, "shared/local-dictionary.js");
-    const service = context.LocalDictionary;
-    const result = await Promise.all([
-        service.lookupWords(["apples", "zzqvxx"], "pl", "en-US"),
-        service.lookupWords(["running"], "pl"),
-    ]);
-    assert.deepEqual(Array.from(result[0]), ["jabłko", null]);
-    assert.equal(urls.length, 1);
-    assert.deepEqual(Array.from(await service.lookupWords(["jabłko"], "pl", "pl")), ["jabłko"]);
-    assert.equal(urls.length, 1);
-    await assert.rejects(service.lookupWords(["apple".repeat(100)], "pl"));
-    const grouped = await service.lookupWords(["you", "gave", "up"], "pl", "en", { wordByWord: true });
-    assert.equal(grouped[0], null);
-    assert.equal(grouped[1].translated, pl["give up"]);
-    assert.equal(grouped[1].length, 2);
-    assert.equal(grouped[2], null);
-    assert.equal(urls.length, 1);
-});
-
-test("every Polish phrase is matched as a whole with its exact JSON translation", () => {
+test("every fixture phrase is matched as a whole with its exact translation", () => {
     for (const [phrase, translated] of Object.entries(pl).filter(([key]) => key.includes(" "))) {
         const words = phrase.split(" ");
         const results = dictionary.lookupWordByWord(words, pl);

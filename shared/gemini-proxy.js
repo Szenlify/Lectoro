@@ -637,7 +637,44 @@
             }
         }
 
+        const livePending = new Map();
+        function liveTranslation(kind, text, sourceLang, targetLang) {
+            const key = JSON.stringify([kind, text, sourceLang, targetLang]);
+            if (livePending.has(key)) return livePending.get(key);
+            const pending = (async () => {
+                const token = await getToken();
+                if (!token) throw Object.assign(new Error("Sign in to generate translations."), { code: "AUTH_REQUIRED" });
+                // Let the server check shared cache BEFORE quota, even when local credits are exhausted.
+                const deadline = Date.now() + 45000;
+                do {
+                    const controller = new AbortController();
+                    const timer = setTimeout(() => controller.abort(), Math.max(1, deadline - Date.now()));
+                    let response;
+                    try {
+                        response = await fetch(PROXY_URL, { method: "POST", signal: controller.signal,
+                            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                            body: JSON.stringify({ action: "liveTranslation", kind, text, sourceLang, targetLang }) });
+                    } finally { clearTimeout(timer); }
+                    const data = await response.json();
+                    if (response.ok) {
+                        if (data.usage) await setCachedUsage(data.usage);
+                        return data.result;
+                    }
+                    if (response.status !== 409 || data.code !== "TRANSLATION_PENDING") {
+                        if (data.usage) await setCachedUsage(data.usage);
+                        throw Object.assign(new Error(data.error || "Translation failed."), {
+                            code: data.code || (response.status === 429 || response.status === 503 ? "RATE_LIMITED" : "AI_REQUEST_FAILED"), status: response.status });
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                } while (Date.now() < deadline);
+                throw new Error("Translation timed out. Please try again.");
+            })().finally(() => livePending.delete(key));
+            livePending.set(key, pending);
+            return pending;
+        }
+
         return Object.freeze({
+            liveTranslation,
             request,
             requestJSON,
             uploadCardImage,

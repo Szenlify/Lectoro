@@ -263,9 +263,14 @@ test("HTTP 429 produces one visible error, no original-as-translation and no quo
     assert.equal(state.charged(), 0);
 });
 
-test("missing dictionary words are skipped without a network fallback", async () => {
+test("missing dictionary words are generated after known words are rendered", async () => {
     const state = app({ wordCloudMode: true, subtitleTTS: false });
-    state.context.SharedTranslatorService.lookupWords = async () => [{ translated: "pl:important", length: 1 }, null];
+    state.context.SharedTranslatorService.lookupWords = async (words, target, source, options) => {
+        if (!options.generateMissing) return [{ translated: "pl:important", length: 1 }, null];
+        assert.deepEqual(Array.from(words), ["example"]);
+        assert.equal(state.context.wordCloudEls.length, 1);
+        return [{ translated: "pl:example", length: 1 }];
+    };
     await state.start();
     assert.equal(state.errors.length, 0);
     assert.equal(state.urls.length, 0);
@@ -274,7 +279,7 @@ test("missing dictionary words are skipped without a network fallback", async ()
             state.context.wordCloudEls,
             ({ cloud }) => cloud.textContent,
         ),
-        ["pl:important"],
+        ["pl:important", "pl:example"],
     );
 });
 
@@ -334,6 +339,68 @@ test("speech failure does not replace a valid sentence translation with an error
     assert.equal(state.errors.length, 0);
 });
 
+test("late generated words do not repaint a closed subtitle session", async () => {
+    const state = app({ wordCloudMode: true, subtitleTTS: false });
+    const pending = deferred();
+    let generating = false;
+    state.context.SharedTranslatorService.lookupWords = async (words, target, source, options) => {
+        if (!options.generateMissing) return [{ translated: "known", length: 1 }, null];
+        generating = true;
+        return pending.promise;
+    };
+    const running = state.start();
+    while (!generating) await tick();
+    const before = state.context.wordCloudEls.length;
+    state.context.subtitleModeRevision++;
+    pending.resolve([{ translated: "late", length: 1 }]);
+    await running;
+    assert.equal(state.context.wordCloudEls.length, before);
+});
+
+test("word loading pulses stop on success and failure, including words still in the queue", async () => {
+    for (const fail of [false, true]) {
+        const state = app({ wordCloudMode: true, subtitleTTS: false });
+        const pending = deferred(); let started = false;
+        state.context.activeWordSpans = ["apple", "house", "book", "window"].map(element);
+        state.context.SharedTranslatorService.lookupWords = async (words, target, source, options) => {
+            if (!options.generateMissing) return words.map(() => null);
+            started = true; return pending.promise;
+        };
+        const running = state.start();
+        while (!started) await tick();
+        const loading = `${C.PREFIX}word-cloud-loading`;
+        assert.ok(state.context.activeWordSpans.every(span => span.classList.contains(loading)));
+        if (fail) pending.reject(Error("Offline"));
+        else pending.resolve([{ translated: "gotowe", length: 1 }]);
+        await running;
+        assert.ok(state.context.activeWordSpans.every(span => !span.classList.contains(loading)));
+        assert.equal(state.errors.length, fail ? 1 : 0);
+    }
+});
+
+test("closing S removes pulses immediately; an old result cannot clear a newer pulse", async () => {
+    const state = app({ wordCloudMode: true, subtitleTTS: false });
+    const pending = deferred(); let started = false;
+    state.context.SharedTranslatorService.lookupWords = async (words, target, source, options) => {
+        if (!options.generateMissing) return words.map(() => null);
+        started = true; return pending.promise;
+    };
+    const running = state.start();
+    while (!started) await tick();
+    const loading = `${C.PREFIX}word-cloud-loading`;
+    state.context.document.querySelectorAll = () => state.context.activeWordSpans;
+    loadFunction(state.context, overlayFile, "removeWordClouds");
+    state.context.removeWordClouds();
+    assert.ok(state.context.activeWordSpans.every(span => !span.classList.contains(loading)));
+    state.context.subtitleModeRevision++;
+    const span = state.context.activeWordSpans[0];
+    span.dataset.wordCloudLoading = String(state.context.subtitleModeRevision);
+    span.classList.add(loading);
+    pending.resolve([{ translated: "old", length: 1 }]);
+    await running;
+    assert.ok(span.classList.contains(loading));
+});
+
 test("word clouds skip simple words and highlight every token of a dictionary phrase", async () => {
     const state = app({ wordCloudMode: true, subtitleTTS: false });
     const dictionary = require("../shared/local-dictionary");
@@ -352,6 +419,7 @@ test("word clouds skip simple words and highlight every token of a dictionary ph
         assert.equal(targetLang, "pl");
         assert.equal(sourceLang, "en");
         assert.equal(options.wordByWord, true);
+        if (options.generateMissing) return requested.map(() => null);
         assert.deepEqual(Array.from(requested), words);
         assert.ok(spans.every((span) => !span.classList.contains("highlight")));
         return dictionary.lookupWordByWord(requested, { apple: "jabłko", "look forward to": "wyczekiwać z niecierpliwością" });
@@ -379,7 +447,7 @@ test("blessing in disguise has a continuous background, centered cloud and rever
     state.context.activeText = words.join(" ");
     state.context.window.innerWidth = 1000;
     state.context.SharedTranslatorService.lookupWords = async (requested) =>
-        require("../shared/local-dictionary").lookupWordByWord(requested, require("../dictionaries/pl.json"));
+        require("../shared/local-dictionary").lookupWordByWord(requested, { "blessing in disguise": "szczęście w nieszczęściu" });
     loadFunction(state.context, overlayFile, "positionWordCloud");
     loadFunction(state.context, overlayFile, "removeWordClouds");
     state.context.document.querySelectorAll = () => [];

@@ -1,5 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const Module = require("node:module");
 const {
     computeTextHash,
     getCachedAudio,
@@ -47,4 +48,35 @@ test("deleteCardImages gracefully returns 0 when R2 is unconfigured", async () =
 test("deleteAllUserImages gracefully returns 0 when R2 is unconfigured", async () => {
     const result = await deleteAllUserImages({}, "user123");
     assert.equal(result, 0);
+});
+
+test("translation objects distinguish missing data from denied access and use conditional writes", async t => {
+    const calls = [];
+    let failure;
+    const original = Module._load;
+    t.mock.method(Module, "_load", function(name, ...args) {
+        if (name !== "@aws-sdk/client-s3") return original.call(this, name, ...args);
+        return {
+            S3Client: class { async send(command) {
+                calls.push(command.input);
+                if (failure) throw failure;
+                return { ContentLength: 10, Body: Buffer.from('{"t":"dom"}') };
+            } },
+            GetObjectCommand: class { constructor(input) { this.input = input; } },
+            PutObjectCommand: class { constructor(input) { this.input = input; } },
+        };
+    });
+    const { getTranslationJson, putTranslationJson } = require("./r2-storage");
+    const config = { accountId: "test", accessKeyId: "test", secretAccessKey: "test", bucketName: "test" };
+    assert.deepEqual(await getTranslationJson(config, "words/test.json"), { t: "dom" });
+    failure = { name: "NoSuchKey", $metadata: { httpStatusCode: 404 } };
+    assert.equal(await getTranslationJson(config, "words/missing.json"), null);
+    failure = Object.assign(new Error("Denied"), { $metadata: { httpStatusCode: 403 } });
+    await assert.rejects(getTranslationJson(config, "words/denied.json"), /Denied/);
+    failure = null;
+    await putTranslationJson(config, "words/test.json", { t: "dom" });
+    assert.equal(calls.at(-1).IfNoneMatch, "*");
+    assert.equal(calls.at(-1).Body, '{"t":"dom"}');
+    failure = Object.assign(new Error("Already exists"), { $metadata: { httpStatusCode: 412 } });
+    await assert.rejects(putTranslationJson(config, "words/test.json", { t: "overwrite" }), /Already exists/);
 });

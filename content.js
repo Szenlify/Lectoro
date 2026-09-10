@@ -218,15 +218,15 @@
             const targetLang = await getTargetLang();
             let dictionary = null;
             let result = null;
-            if (text.length <= 200) {
+            const term = SharedTranslatorService.dictionaryTerm(text);
+            if (term) {
                 const { learningLang } = await SharedTranslatorService.getReadingSettings();
-                try {
-                    [dictionary] = await SharedTranslatorService.lookupWords([text], targetLang, learningLang, {
-                        details: true,
-                        context: (anchorEl?.textContent || text).slice(0, 10000),
-                    });
-                    if (dictionary) result = { translated: dictionary.translated, detectedLang: learningLang };
-                } catch (_) { /* Keep ordinary selection translation available if the dictionary cannot load. */ }
+                [dictionary] = await SharedTranslatorService.lookupWords([term], targetLang, learningLang, {
+                    details: true,
+                    context: (anchorEl?.textContent || text).slice(0, 10000),
+                });
+                if (dictionary) result = { translated: dictionary.translated, detectedLang: learningLang };
+                else throw new Error("No dictionary entry available. Please try again.");
             }
             const { translated, detectedLang } = result || await googleTranslate(text, targetLang);
             if (revision !== selectionRevision) return;

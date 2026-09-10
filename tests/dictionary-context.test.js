@@ -50,10 +50,13 @@ test('word-by-word uses the same ranking without changing span alignment', () =>
 });
 
 test('detailed lookup travels through the public service and rejects oversized context', async () => {
-  const context=vm.createContext({LectoroConstants:C,SharedUtils:U,DictionaryStore:{getPair:async()=>pack}});
+  const context=vm.createContext({LectoroConstants:C,SharedUtils:U,DictionaryStore:{getLive:async()=>({
+    t:'lubić',d:{s:'To enjoy something.',t:'Czerpać z czegoś przyjemność.'},s:[],
+    e:[{s:'I like music.',t:'Lubię muzykę.'}]
+  })}});
   load(context,'shared/local-dictionary.js');
   const [result]=await context.LocalDictionary.lookupWords(['like'],'pl','en',{details:true,context:'I like music'});
-  assert.equal(result.selectedSenseId,'like.primary');
+  assert.equal(result.primaryTranslation,'lubić');
   assert.ok(result.senses[0].examples.length);
   await assert.rejects(context.LocalDictionary.lookupWords(['like'],'pl','en',{details:true,context:'x'.repeat(10001)}));
   await assert.rejects(context.LocalDictionary.lookupWords(['like'],'pl','en',{details:true,contextWords:[{}]}));

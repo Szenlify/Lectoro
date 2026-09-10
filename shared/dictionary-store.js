@@ -1,11 +1,9 @@
-/** Versioned R2 data only. This module runs in the extension service worker. */
+/** Individual R2 live entries and their offline cache, owned by the service worker. */
 (function (root) {
     "use strict";
     const BASE_URL = "https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev/dictionaries/";
     const MAX_PACK_BYTES = 32 * 1024 * 1024;
     const MAX_CACHE_BYTES = 128 * 1024 * 1024;
-    const CHECK_INTERVAL = 60 * 1000;
-    const RETRY_INTERVAL = 5 * 60 * 1000;
     const isObject = (value) => !!value && typeof value === "object" && !Array.isArray(value);
     const validText = (value, max = 200) => typeof value === "string" && !!value.trim() && value.length <= max && !/[\u0000-\u001f]/.test(value);
     const validPair = (value, max) => isObject(value) && (
@@ -150,15 +148,13 @@
     }
 
     function createStore({ persistence = createPersistence(), fetcher = (...args) => root.fetch(...args), now = Date.now } = {}) {
-        const active = new Map();
-        let catalogPromise, catalogUntil = 0;
 
         async function fetchBytes(path, limit) {
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), 20000);
             try {
                 const response = await fetcher(BASE_URL + path, { signal: controller.signal, credentials: "omit", redirect: "error", cache: "no-cache" });
-                if (!response.ok) throw new Error(`Dictionary HTTP ${response.status}`);
+                if (!response.ok) throw Object.assign(new Error(`Dictionary HTTP ${response.status}`), { status: response.status });
                 const declared = Number(response.headers.get("content-length"));
                 if (declared > limit) throw new Error("Dictionary download too large");
                 const reader = response.body.getReader();
@@ -190,78 +186,53 @@
             root.console?.warn("Dictionary could not be saved for offline use.");
         });
 
-        async function loadCatalog(force = false) {
-            if (!force && catalogPromise && now() < catalogUntil) return catalogPromise;
-            catalogUntil = now() + CHECK_INTERVAL;
-            catalogPromise = (async () => {
-                const saved = await read("catalog");
-                let previous;
-                try { if (saved?.data) previous = validateCatalog(saved.data); } catch (_) {}
-                if (!force && previous && now() - saved.checkedAt < CHECK_INTERVAL) {
-                    catalogUntil = saved.checkedAt + CHECK_INTERVAL;
-                    return previous;
-                }
-                try {
-                    const data = validateCatalog(decode(await fetchBytes("catalog.json", 256 * 1024)));
-                    await save({ key: "catalog", data, checkedAt: now() });
-                    return data;
-                } catch (_) {
-                    catalogUntil = now() + RETRY_INTERVAL;
-                    return previous || null;
-                }
-            })();
-            return catalogPromise;
+        const liveKey = (source, target, word) => `live-r2:${JSON.stringify([source, target, word])}`;
+        const liveMemory = new Map(), liveRequests = new Map();
+        const liveQueue = [];
+        let liveRunning = 0;
+        function validateLive(entry) {
+            if (!isObject(entry) || !validText(entry.t, 120) || !validPair(entry.d, 300) ||
+                !Array.isArray(entry.s) || entry.s.length > 3 || !entry.s.every(v => validText(v, 80)) ||
+                !Array.isArray(entry.e) || entry.e.length !== 3 || !entry.e.every(v => validPair(v, 300))) throw new Error("Invalid live entry");
+            return entry;
         }
-
-        async function loadPair(source, target) {
-            const pair = `${source}-${target}`;
-            const saved = await read(pair);
-            let previous = null;
-            try { if (saved?.data) previous = validatePack(saved.data, source, target, saved.data.version); } catch (_) {}
-            let catalog = await loadCatalog();
-            // A newly uploaded reverse pair may be missing from the cached catalog.
-            if (catalog && !catalog.pairs[pair]) catalog = await loadCatalog(true);
-            const item = catalog?.pairs[pair];
-            if (!item) return previous;
-            if (previous && saved.sha256 === item.sha256 && previous.version === item.version) {
-                await save({ ...saved, lastUsed: now() });
-                return previous;
-            }
-            try {
-                // Fixed paths are overwritten: bind the request to the catalog checksum
-                // so a previously cached response cannot stand in for this revision.
-                const path = item.version === "compact" ? `${item.path}?sha256=${item.sha256}` : item.path;
-                const bytes = await fetchBytes(path, item.bytes);
-                if (bytes.length !== item.bytes) throw new Error("Dictionary size mismatch");
-                const digest = await root.crypto.subtle.digest("SHA-256", bytes);
-                const sha256 = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
-                if (sha256 !== item.sha256) throw new Error("Dictionary checksum mismatch");
-                const data = validatePack(decode(bytes), source, target, item.version);
-                if (Object.keys(data.entries).length !== item.entryCount) throw new Error("Dictionary count mismatch");
-                await save({ key: pair, data, sha256, bytes: bytes.length, lastUsed: now() });
-                return data;
-            } catch (_) {
-                root.console?.warn(`Dictionary ${pair} unavailable; using saved or bundled data.`);
-                return previous;
-            }
-        }
-
-        async function getPair(source, target) {
+        async function getLive(source, target, word, { localOnly = false } = {}) {
             const supported = root.LectoroConstants?.SUPPORTED_LANGUAGES;
-            if (!supported || !Object.hasOwn(supported, source) || !Object.hasOwn(supported, target) || source === target) return null;
-            const pair = `${source}-${target}`;
-            const cached = active.get(pair);
-            if (cached && now() < cached.until) {
-                active.delete(pair); active.set(pair, cached);
-                return cached.promise;
-            }
-            const entry = { until: now() + CHECK_INTERVAL, promise: loadPair(source, target) };
-            active.delete(pair); active.set(pair, entry);
-            // At most two parsed pairs in worker memory; IndexedDB retains the rest.
-            while (active.size > 2) active.delete(active.keys().next().value);
-            return entry.promise;
+            if (!supported || !Object.hasOwn(supported, source) || !Object.hasOwn(supported, target) || source === target || !validText(word, 120)) return null;
+            const key = liveKey(source, target, word);
+            if (liveMemory.has(key)) return liveMemory.get(key);
+            const record = await read(key);
+            try { return validateLive(record?.data); } catch (_) {}
+            if (localOnly) return null;
+            if (liveRequests.has(key)) return liveRequests.get(key);
+            const task = (async () => {
+                if (liveRunning >= 6) await new Promise(resolve => liveQueue.push(resolve));
+                else liveRunning++;
+                try {
+                    const digest = await root.crypto.subtle.digest("SHA-256", new TextEncoder().encode(word.normalize("NFKC").trim()));
+                    const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+                    let data;
+                    try { data = decode(await fetchBytes(`live/${source}-${target}/${hash}.json`, 65536)); }
+                    catch (error) { if (error.status === 404) return null; throw error; }
+                    const entry = validateLive(data?.[word]);
+                    await putLive(source, target, word, entry);
+                    return entry;
+                } finally {
+                    if (liveQueue.length) liveQueue.shift()();
+                    else liveRunning--;
+                }
+            })().finally(() => liveRequests.delete(key));
+            liveRequests.set(key, task);
+            return task;
         }
-        return Object.freeze({ getPair });
+        async function putLive(source, target, word, entry) {
+            validateLive(entry);
+            liveMemory.set(liveKey(source, target, word), entry);
+            if (liveMemory.size > 500) liveMemory.delete(liveMemory.keys().next().value);
+            await save({ key: liveKey(source, target, word), data: entry,
+                bytes: new TextEncoder().encode(JSON.stringify(entry)).length, lastUsed: now() });
+        }
+        return Object.freeze({ getLive, putLive });
     }
 
     root.DictionaryStore = createStore();

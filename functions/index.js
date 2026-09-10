@@ -243,7 +243,7 @@ exports.geminiProxy = onRequest(
     {
         region: "europe-west1",
         cors: false,
-        timeoutSeconds: 30,
+        timeoutSeconds: 60,
         maxInstances: 10,
         concurrency: 80,
         memory: "256MiB",
@@ -314,6 +314,35 @@ exports.geminiProxy = onRequest(
                     remaining: Math.max(0, aiLimit - aiUsed),
                 },
             });
+        }
+
+        if (req.body?.action === "liveTranslation") {
+            const { handleLiveTranslation } = require("./live-translation");
+            const { getTranslationJson, putTranslationJson } = require("./r2-storage");
+            try {
+                const result = await handleLiveTranslation(req.body, {
+                    uid, db,
+                    usage: { plan, used: aiUsed, limit: aiLimit, remaining: Math.max(0, aiLimit - aiUsed) },
+                    read: key => getTranslationJson(getR2Config(), key),
+                    write: (key, value) => putTranslationJson(getR2Config(), key, value),
+                    generate: payload => fetchGeminiWithRetry(getGeminiApiKey(), payload, 0),
+                    rollback: () => rollbackAiReservation(db, userRef, month),
+                    reserve: () => db.runTransaction(async tx => {
+                        const snap = await tx.get(userRef);
+                        const data = snap.data() || {};
+                        const used = usageForMonth(data.aiCallsThisMonth, data.aiCallsResetDate, month);
+                        const validation = checkAiLimit({ plan, used });
+                        if (!validation.allowed) throw Object.assign(new Error(validation.message), { status: 429, code: validation.code,
+                            usage: { plan, used, limit: aiLimit, remaining: 0 } });
+                        tx.set(userRef, { aiCallsThisMonth: used + 1, aiCallsResetDate: month }, { merge: true });
+                        return { plan, used: used + 1, limit: aiLimit, remaining: Math.max(0, aiLimit - used - 1) };
+                    }),
+                });
+                return res.status(200).json(result);
+            } catch (error) {
+                console.warn("[liveTranslation]", error.message);
+                return res.status(error.status || 503).json({ error: error.status ? error.message : "Translation unavailable. Please try again.", code: error.code || "LIVE_TRANSLATION_FAILED", ...(error.usage ? { usage: error.usage } : {}) });
+            }
         }
 
         if (req.body?.action === "uploadCardImage") {

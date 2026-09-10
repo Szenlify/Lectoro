@@ -2811,9 +2811,12 @@
         });
         wordCloudEls = [];
         document
-            .querySelectorAll(`.${WORD_CLOUD_HIGHLIGHT_CLASS}`)
+            .querySelectorAll(`.${WORD_CLOUD_HIGHLIGHT_CLASS}, .${PREFIX}word-cloud-loading`)
             .forEach((el) => {
                 el.classList.remove(WORD_CLOUD_HIGHLIGHT_CLASS);
+                el.classList.remove(`${PREFIX}word-cloud-loading`);
+                delete el.dataset.wordCloudLoading;
+                el.removeAttribute?.("aria-busy");
             });
         wordCloudActive = false;
     }
@@ -2941,7 +2944,7 @@
             wordSpans.map((span) => span.textContent.trim()),
             targetLang,
             learningLang,
-            { wordByWord: true },
+            { wordByWord: true, generateMissing: false, localOnly: true },
         );
         if (modeRevision !== subtitleModeRevision) return;
 
@@ -2952,8 +2955,9 @@
             Math.min(18, Math.round(subFontSizePx * 0.55)),
         );
 
-        wordSpans.forEach((span, i) => {
-            const { translated, length = 1 } = translations[i] || {};
+        const renderTranslation = (i, value) => {
+            if (modeRevision !== subtitleModeRevision) return;
+            const { translated, length = 1 } = value || {};
             if (typeof translated !== "string" || !translated.trim()) return;
             let members = wordSpans.slice(i, i + length);
             if (members.some((member) => !member.isConnected)) {
@@ -2982,8 +2986,49 @@
             parent.appendChild(cloud);
             wordCloudEls.push({ cloud, span: targetSpan, members, wrappers });
             positionWordCloud(cloud, targetSpan, members);
-        });
+        };
+        translations.forEach((value, i) => renderTranslation(i, value));
         ensureSubtitleUiTracking();
+        const covered = new Set();
+        translations.forEach((value, i) => {
+            for (let offset = 1; offset < (value?.length || 1); offset++) covered.add(i + offset);
+        });
+        const missing = wordSpans.map((span, i) => ({ span, i }))
+            .filter(({ span, i }) => !translations[i] && !covered.has(i)
+                && SharedTranslatorService.dictionaryTerm(span.textContent)
+                && !(learningLang === "en" && SharedUtils.isSimpleWord(span.textContent)));
+        const loadingClass = `${PREFIX}word-cloud-loading`;
+        const loadingOwner = String(modeRevision);
+        for (const { span } of missing) {
+            span.dataset.wordCloudLoading = loadingOwner;
+            span.classList.add(loadingClass);
+            span.setAttribute?.("aria-busy", "true");
+        }
+        const stopLoading = (span) => {
+            // A previous session's response must not clear a new session's animation.
+            if (span.dataset.wordCloudLoading !== loadingOwner) return;
+            delete span.dataset.wordCloudLoading;
+            span.classList.remove(loadingClass);
+            span.removeAttribute?.("aria-busy");
+        };
+        // Three requests at a time; render each completed word without delaying known entries.
+        let next = 0;
+        let generationError = null;
+        await Promise.all(Array.from({ length: Math.min(3, missing.length) }, async () => {
+            while (next < missing.length && modeRevision === subtitleModeRevision && !generationError) {
+                const { span, i } = missing[next++];
+                try {
+                    const [value] = await SharedTranslatorService.lookupWords([span.textContent.trim()], targetLang, learningLang,
+                        { wordByWord: true, generateMissing: true });
+                    renderTranslation(i, value);
+                } catch (error) { generationError = error; }
+                finally { stopLoading(span); }
+            }
+        }));
+        missing.forEach(({ span }) => stopLoading(span));
+        if (generationError && modeRevision === subtitleModeRevision) {
+            throw generationError;
+        }
     }
 
     function captureSubtitleLayout(elements = null) {
@@ -3404,7 +3449,11 @@
 
     function showReadingError(error, layout = translationAnchorLayout) {
         const rateLimited = error?.code === "RATE_LIMITED" || error?.status === 429;
-        const message = rateLimited
+        const message = error?.code === "AI_LIMIT_REACHED"
+            ? "Your monthly AI limit has been reached. Saved translations remain available."
+            : error?.code === "AUTH_REQUIRED"
+                ? "Sign in to generate missing translations."
+            : rateLimited
             ? "Translation service is busy. Please try again shortly."
             : error?.runtimeError
                 ? "Extension connection lost. Refresh this video page and try again."

@@ -2063,6 +2063,36 @@ html.__qt_netflix-capturing [id^="__qt_"] {
 }
 
 /* Highlighted word under cloud */
+.__qt_word-cloud-loading {
+  position: relative !important;
+  isolation: isolate;
+  border-radius: 3px;
+}
+
+.__qt_word-cloud-loading::before {
+  content: "";
+  position: absolute;
+  inset: -1px -2px;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: rgba(100, 165, 255, 0.38);
+  box-shadow: 0 0 0 1px rgba(100, 165, 255, 0.18);
+  animation: __qt_word-loading-pulse 1.25s ease-in-out infinite;
+}
+
+@keyframes __qt_word-loading-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .__qt_word-cloud-loading::before {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
 .__qt_word-cloud-highlight {
   background: rgba(74, 108, 247, 0.35) !important;
   box-shadow: 0 0 0 2px rgba(74, 108, 247, 0.25);

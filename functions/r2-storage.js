@@ -294,7 +294,32 @@ async function deleteAllUserImages(config, uid) {
     }
 }
 
+async function getTranslationJson(config, key) {
+    const client = getR2Client(config);
+    if (!client) throw new Error("R2 is not configured.");
+    const { GetObjectCommand } = getS3Sdk();
+    try {
+        const response = await client.send(new GetObjectCommand({ Bucket: config.bucketName, Key: key }));
+        if (response.ContentLength > 65536) throw new Error("Translation cache entry too large.");
+        return JSON.parse((await streamToBuffer(response.Body)).toString("utf8"));
+    } catch (error) {
+        if (error.name === "NoSuchKey" || error.$metadata?.httpStatusCode === 404) return null;
+        throw error;
+    }
+}
+
+async function putTranslationJson(config, key, value) {
+    const client = getR2Client(config);
+    if (!client) throw new Error("R2 is not configured.");
+    const { PutObjectCommand } = getS3Sdk();
+    await client.send(new PutObjectCommand({ Bucket: config.bucketName, Key: key,
+        Body: JSON.stringify(value), ContentType: "application/json; charset=utf-8",
+        CacheControl: "no-store", IfNoneMatch: "*" }));
+}
+
 module.exports = {
+    getTranslationJson,
+    putTranslationJson,
     computeTextHash,
     getCachedAudio,
     saveCachedAudio,
