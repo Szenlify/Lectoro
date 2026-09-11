@@ -648,9 +648,11 @@
             .map((l) => (typeof l === "string" ? cleanCardText(l) : ""))
             .filter(Boolean);
 
-        const cleanTrans = currentDualSubtitles && typeof translationText === "string" ? cleanCardText(translationText) : "";
+        const cleanTrans = (currentDualSubtitles && rawCleanLines.length > 0 && typeof translationText === "string")
+            ? cleanCardText(translationText)
+            : "";
 
-        if (rawCleanLines.length === 0 && !cleanTrans) {
+        if (rawCleanLines.length === 0) {
             activeLines = [];
             activeText = "";
             activeTranslationText = "";
@@ -873,14 +875,16 @@
         if (changes[dualSubsKey] && typeof changes[dualSubsKey].newValue === "boolean") {
             currentDualSubtitles = changes[dualSubsKey].newValue;
             if (!currentDualSubtitles && activeTranslationText) {
-                renderSubtitles(activeLines, { translationText: "" });
+                renderCustomSubtitles(activeLines, { translationText: "" });
             } else if (currentDualSubtitles && !activeTranslationText && activeLines.length > 0) {
                 let transText = "";
+                const video = getPlayerRegistry()?.getVideo();
                 if (globalThis.LectoroYouTubeAdapter?.isPage?.()) {
-                    const video = getPlayerRegistry()?.getVideo();
                     transText = globalThis.LectoroYouTubeAdapter.getCurrentTranslationText?.(video) || "";
+                } else if (isNetflixPage() || globalThis.LectoroNetflixAdapter?.isPage?.()) {
+                    transText = globalThis.LectoroNetflixAdapter?.getCurrentTranslationText?.(video) || "";
                 }
-                renderSubtitles(activeLines, { translationText: transText });
+                renderCustomSubtitles(activeLines, { translationText: transText });
             }
         }
         if (shouldSync) {
@@ -904,10 +908,14 @@
                 : [];
         }
 
-        let transText = currentDualSubtitles ? (payload?.translationText || "") : "";
-        if (!transText && currentDualSubtitles && globalThis.LectoroYouTubeAdapter?.isPage?.()) {
+        let transText = (currentDualSubtitles && lines.length > 0) ? (payload?.translationText || "") : "";
+        if (!transText && currentDualSubtitles && lines.length > 0) {
             const video = payload?.video || getPlayerRegistry()?.getVideo();
-            transText = globalThis.LectoroYouTubeAdapter.getCurrentTranslationText?.(video) || "";
+            if (globalThis.LectoroYouTubeAdapter?.isPage?.()) {
+                transText = globalThis.LectoroYouTubeAdapter.getCurrentTranslationText?.(video) || "";
+            } else if (isNetflixPage() || globalThis.LectoroNetflixAdapter?.isPage?.()) {
+                transText = globalThis.LectoroNetflixAdapter?.getCurrentTranslationText?.(video) || "";
+            }
         }
         renderCustomSubtitles(lines, { translationText: transText });
     });
@@ -1031,6 +1039,7 @@
 
     async function triggerWordHover(wordSpan) {
         if (!wordSpan || !wordSpan.isConnected) return;
+        if (wordSpan.closest?.(`.${PREFIX}custom-sub-translation-line, .${PREFIX}custom-sub-translation, [data-sub-type='translation']`)) return;
         if (subClickLocked) return;
 
         setHoveredWord(wordSpan);
@@ -1051,15 +1060,18 @@
     }
 
     document.addEventListener("focusin", (event) => {
+        if (event.target.closest?.(`.${PREFIX}custom-sub-translation-line, .${PREFIX}custom-sub-translation, [data-sub-type='translation']`)) return;
         if (event.target.classList?.contains(SUB_WORD_CLASS)) {
             if (subCloseTimer !== null) { clearTimeout(subCloseTimer); subCloseTimer = null; }
             if (lastHoveredSubWord !== event.target || !isSubHovering) void triggerWordHover(event.target);
         }
     });
     document.addEventListener("focusout", (event) => {
+        if (event.target.closest?.(`.${PREFIX}custom-sub-translation-line, .${PREFIX}custom-sub-translation, [data-sub-type='translation']`)) return;
         if (event.target.classList?.contains(SUB_WORD_CLASS) || QT.getTooltipEl()?.contains(event.target)) scheduleCloseSubTooltip();
     });
     document.addEventListener("keydown", async (event) => {
+        if (event.target.closest?.(`.${PREFIX}custom-sub-translation-line, .${PREFIX}custom-sub-translation, [data-sub-type='translation']`)) return;
         if (!event.target.classList?.contains(SUB_WORD_CLASS) || !["Enter", " "].includes(event.key)) return;
         event.preventDefault();
         event.stopPropagation();
@@ -1070,6 +1082,9 @@
     document.addEventListener(
         "mousemove",
         (e) => {
+            if (e.target?.closest?.(`.${PREFIX}custom-sub-translation-line, .${PREFIX}custom-sub-translation, [data-sub-type='translation']`)) {
+                return;
+            }
             const registry = getPlayerRegistry();
             const activeVideo = registry?.getVideo();
             if (!activeVideo?.isConnected) {
@@ -1201,6 +1216,8 @@
     });
 
     async function handleSubWordClick(wordSpan) {
+        if (!wordSpan || !wordSpan.isConnected) return;
+        if (wordSpan.closest?.(`.${PREFIX}custom-sub-translation-line, .${PREFIX}custom-sub-translation, [data-sub-type='translation']`)) return;
         cleanupReading();
         clearTimeout(subHoverTimer);
         clearTimeout(subCloseTimer);
@@ -1233,6 +1250,7 @@
     document.addEventListener(
         "pointerdown",
         (e) => {
+            if (e.target?.closest?.(`.${PREFIX}custom-sub-translation-line, .${PREFIX}custom-sub-translation, [data-sub-type='translation']`)) return;
             if (!aiTooltipActive) return;
             const targetWrap =
                 e.target?.closest?.(
@@ -1255,6 +1273,7 @@
     document.addEventListener(
         "click",
         (e) => {
+            if (e.target?.closest?.(`.${PREFIX}custom-sub-translation-line, .${PREFIX}custom-sub-translation, [data-sub-type='translation']`)) return;
             const registry = getPlayerRegistry();
             const video = registry?.getVideo();
             if (!video?.isConnected) return;

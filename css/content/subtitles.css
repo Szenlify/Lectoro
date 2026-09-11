@@ -94,12 +94,13 @@
   font-size: calc(var(--lectoro-sub-font-size, 26px) * 0.6) !important;
   color: #d1d5db !important;
   font-weight: var(--lx-weight-500) !important;
-  white-space: normal !important;
+  white-space: pre-line !important;
   word-break: normal !important;
   overflow-wrap: break-word !important;
   text-wrap: balance !important;
-  pointer-events: auto !important;
-  user-select: text !important;
+  pointer-events: none !important;
+  user-select: none !important;
+  cursor: default !important;
   z-index: 1 !important;
 }
 #__qt_custom_subtitles_layer .__qt_custom-sub-translation {

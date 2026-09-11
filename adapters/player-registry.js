@@ -523,6 +523,7 @@
                     elements: [],
                     session,
                     video: session.video,
+                    translationText: "",
                 });
             }
             return;
@@ -576,6 +577,9 @@
             }
         }
         const fullText = lines.join(" ").trim();
+        const translationText = (lines.length > 0 && typeof captionAdapter?.getCurrentTranslationText === "function")
+            ? (captionAdapter.getCurrentTranslationText(session.video) || "")
+            : "";
         if (typeof subtitleChangeCallback === "function") {
             subtitleChangeCallback({
                 lines,
@@ -583,6 +587,7 @@
                 elements: adapterElements,
                 session,
                 video: session.video,
+                translationText,
             });
         }
     }

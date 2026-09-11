@@ -1136,6 +1136,7 @@
 
   function splitIntoWordSpans(el, wordClass) {
     if (!el || isOwnUI(el)) return;
+    if (el.closest?.(".__qt_custom-sub-translation-line, .__qt_custom-sub-translation, [data-sub-type='translation']")) return;
     const text = el.textContent;
     if (!text || !text.trim()) return;
 
@@ -1194,23 +1195,34 @@
     if (!x && !y) return null;
     const els = document.elementsFromPoint(x, y);
     for (const el of els) {
+      if (el.closest?.(".__qt_custom-sub-translation-line, .__qt_custom-sub-translation, [data-sub-type='translation']")) {
+        continue;
+      }
       if (el.classList?.contains(wordClass)) return el;
       const closest = el.closest?.(`.${wordClass}`);
-      if (closest) return closest;
+      if (closest && !closest.closest?.(".__qt_custom-sub-translation-line, .__qt_custom-sub-translation, [data-sub-type='translation']")) {
+        return closest;
+      }
     }
 
     // Instant Tokenization Fallback:
     // If cursor is over any subtitle cue that hasn't been tokenized yet, tokenize immediately!
     for (const el of els) {
       if (isOwnUI(el)) continue;
+      if (el.closest?.(".__qt_custom-sub-translation-line, .__qt_custom-sub-translation, [data-sub-type='translation']")) {
+        continue;
+      }
       const subContainer = el.closest?.(SUBTITLE_CONTAINER_SELECTOR);
       if (subContainer) {
         const target =
           el.tagName === "SPAN" || el.tagName === "DIV" ? el : el.querySelector?.("span, div");
         if (target && target.textContent?.trim() && !target.querySelector(`.${wordClass}`)) {
+          if (target.closest?.(".__qt_custom-sub-translation-line, .__qt_custom-sub-translation, [data-sub-type='translation']")) {
+            continue;
+          }
           splitIntoWordSpans(target, wordClass);
           const newlyFound = Array.from(document.elementsFromPoint(x, y)).find((n) =>
-            n.classList?.contains(wordClass),
+            n.classList?.contains(wordClass) && !n.closest?.(".__qt_custom-sub-translation-line, .__qt_custom-sub-translation, [data-sub-type='translation']"),
           );
           if (newlyFound) return newlyFound;
         }
