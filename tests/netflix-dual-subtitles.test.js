@@ -496,3 +496,38 @@ test("SubtitleOverlay: hover words is blocked on translation elements", () => {
     assert.equal(transLine.dataset.subType, "translation");
 });
 
+test("NetflixAdapter: translation is strictly paired and synchronized with original cue, never flipping early or late", () => {
+    const { adapter } = setupNetflixAdapterEnv();
+
+    adapter.setCueIndex([
+        { startTime: 10.0, endTime: 13.0, text: "Wait, don't do that!", lines: ["Wait, don't do that!"] },
+        { startTime: 14.0, endTime: 17.0, text: "Let's go home now.", lines: ["Let's go home now."] },
+    ]);
+
+    // Polish translation track has slightly different cue timings (e.g. ends earlier / starts later)
+    adapter.setTranslationCueIndex([
+        { startTime: 10.2, endTime: 12.6, text: "Czekaj, nie rób tego!", lines: ["Czekaj, nie rób tego!"] },
+        { startTime: 13.8, endTime: 16.8, text: "Chodźmy już do domu.", lines: ["Chodźmy już do domu."] },
+    ]);
+    adapter.isCcActive = () => true;
+
+    // Frame 1: Video time is 10.1s, original text is on screen:
+    const trans1 = adapter.getCurrentTranslationText({ currentTime: 10.1 }, ["Wait, don't do that!"]);
+    assert.equal(trans1, "Czekaj, nie rób tego!");
+
+    // Frame 2: Video time advances to 12.8s (after Polish cue end 12.6s, but before English ends at 13.0s):
+    // As long as the original cue is still on screen, translation MUST stay locked to it!
+    const trans2 = adapter.getCurrentTranslationText({ currentTime: 12.8 }, ["Wait, don't do that!"]);
+    assert.equal(trans2, "Czekaj, nie rób tego!", "Translation must not disappear or flip while original cue is still active");
+
+    // Frame 3: Video time advances to 13.9s (where Polish cue 2 has started, but original cue 2 has NOT started yet):
+    // Original subtitle is absent (silence between 13.0 and 14.0):
+    const transSilence = adapter.getCurrentTranslationText({ currentTime: 13.9 }, []);
+    assert.equal(transSilence, "", "Translation must never appear early before original cue begins");
+
+    // Frame 4: Original cue 2 begins at 14.0s:
+    const trans3 = adapter.getCurrentTranslationText({ currentTime: 14.0 }, ["Let's go home now."]);
+    assert.equal(trans3, "Chodźmy już do domu.", "Translation must switch synchronously with original cue 2");
+});
+
+

@@ -578,7 +578,7 @@
         }
         const fullText = lines.join(" ").trim();
         const translationText = (lines.length > 0 && typeof captionAdapter?.getCurrentTranslationText === "function")
-            ? (captionAdapter.getCurrentTranslationText(session.video) || "")
+            ? (captionAdapter.getCurrentTranslationText(session.video, lines) || "")
             : "";
         if (typeof subtitleChangeCallback === "function") {
             subtitleChangeCallback({

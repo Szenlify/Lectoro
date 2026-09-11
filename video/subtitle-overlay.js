@@ -914,7 +914,7 @@
             if (globalThis.LectoroYouTubeAdapter?.isPage?.()) {
                 transText = globalThis.LectoroYouTubeAdapter.getCurrentTranslationText?.(video) || "";
             } else if (isNetflixPage() || globalThis.LectoroNetflixAdapter?.isPage?.()) {
-                transText = globalThis.LectoroNetflixAdapter?.getCurrentTranslationText?.(video) || "";
+                transText = globalThis.LectoroNetflixAdapter?.getCurrentTranslationText?.(video, lines) || "";
             }
         }
         renderCustomSubtitles(lines, { translationText: transText });

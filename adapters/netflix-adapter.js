@@ -34,6 +34,7 @@
     let currentLearningLang = "en";
     let liveTranslationCache = new Map();
     let liveTranslationPending = new Set();
+    const pairedTranslationMap = new Map();
     let trackRequestSequence = 0;
     let manifestRevision = 0;
     let optimisticSeek = null;
@@ -92,6 +93,7 @@
                     translationCueIndexKey = "";
                     translationCueIndexPromise = null;
                     liveTranslationCache.clear();
+                    pairedTranslationMap.clear();
                     settingsChanged = true;
                 }
             }
@@ -100,6 +102,7 @@
                 if (newLearning && newLearning !== currentLearningLang) {
                     currentLearningLang = newLearning;
                     liveTranslationCache.clear();
+                    pairedTranslationMap.clear();
                     settingsChanged = true;
                 }
             }
@@ -702,14 +705,19 @@
             if (service && typeof service.translate === "function") {
                 const res = await service.translate(text, targetLang, learningLang || "auto");
                 if (res && typeof res.translated === "string" && res.translated.trim()) {
-                    liveTranslationCache.set(text, res.translated.trim());
+                    const transText = res.translated.trim();
+                    liveTranslationCache.set(text, transText);
+                    const cleanFn = SharedUtils?.cleanCardText || ((s) => s);
+                    const norm = cleanFn(text).toLowerCase().replace(/\s+/g, " ").trim();
+                    if (norm) pairedTranslationMap.set(norm, transText);
                     if (globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
                         const activeLines = globalThis.LectoroSubtitleOverlay.getActiveLines?.() || [];
                         const activeText = (activeLines.join(" ") || "").trim();
-                        if (activeText && activeText === text.trim()) {
+                        const activeNorm = cleanFn(activeText).toLowerCase().replace(/\s+/g, " ").trim();
+                        if (activeNorm && (activeNorm === norm || activeNorm.includes(norm) || norm.includes(activeNorm))) {
                             globalThis.LectoroSubtitleOverlay.renderCustomSubtitles(
                                 activeLines,
-                                { translationText: res.translated.trim() },
+                                { translationText: transText },
                             );
                         }
                     }
@@ -754,10 +762,17 @@
             cueIndex = [];
             cueIndexKey = "";
             cueIndexPromise = null;
+            translationCueIndex = [];
+            translationCueIndexKey = "";
+            translationCueIndexPromise = null;
+            pairedTranslationMap.clear();
             manifestRevision += 1;
             optimisticSeek = null;
             if (nextState.playerReady && nextState.isCcActive) {
                 ensureSubtitleIndex().catch(() => { });
+                if (dualSubtitlesEnabled) {
+                    ensureTranslationSubtitleIndex().catch(() => { });
+                }
             } else {
                 if (globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
                     globalThis.LectoroSubtitleOverlay.renderCustomSubtitles([]);
@@ -881,7 +896,33 @@
         return getDomSubtitleText(video);
     }
 
-    function getCurrentTranslationText(video = null) {
+    function findBestTranslationCueForOrigCue(origCue) {
+        if (!origCue || translationCueIndex.length === 0) return null;
+        const oStart = Number.isFinite(origCue.startTime) ? origCue.startTime : 0;
+        const oEnd = Number.isFinite(origCue.endTime) ? origCue.endTime : oStart + 3;
+        const mid = (oStart + oEnd) / 2;
+
+        // 1. Check cue directly covering midpoint
+        const midCue = findIndexedTranslationCueAt(mid);
+        if (midCue) return midCue;
+
+        // 2. Find cue in translationCueIndex with maximum temporal overlap
+        let bestCue = null;
+        let maxOverlap = 0;
+        for (const tCue of translationCueIndex) {
+            if (tCue.endTime < oStart - 0.5) continue;
+            if (tCue.startTime > oEnd + 0.5) break;
+            const tEnd = Number.isFinite(tCue.endTime) ? tCue.endTime : tCue.startTime + 3;
+            const overlap = Math.min(oEnd, tEnd) - Math.max(oStart, tCue.startTime);
+            if (overlap > maxOverlap) {
+                maxOverlap = overlap;
+                bestCue = tCue;
+            }
+        }
+        return bestCue;
+    }
+
+    function getCurrentTranslationText(video = null, currentLines = null) {
         const ccActive = (typeof this?.isCcActive === "function" && this !== globalThis) ? this.isCcActive(video) : isCcActive(video);
         if (!ccActive) return "";
         if (!dualSubtitlesEnabled) return "";
@@ -894,9 +935,15 @@
             time = optimisticSeek.targetTime;
         }
 
-        // 1. Verify that there is an active original subtitle cue on screen
+        // 1. Determine active original subtitle text directly from caller or fallback
         let origText = "";
-        if (optimisticSeek) {
+        if (Array.isArray(currentLines) && currentLines.length > 0) {
+            origText = currentLines.join(" ");
+        } else if (typeof currentLines === "string" && currentLines.trim()) {
+            origText = currentLines.trim();
+        }
+
+        if (!origText && optimisticSeek) {
             const cue = findIndexedCueAt(optimisticSeek.targetTime);
             if (cue?.text) origText = cue.text;
         }
@@ -927,28 +974,70 @@
             return "";
         }
 
-        // 2. Official indexed translation track
-        if (translationCueIndex.length > 0 && Number.isFinite(time)) {
-            const cue = findIndexedTranslationCueAt(time);
-            if (cue) {
-                if (Array.isArray(cue.lines) && cue.lines.length > 0) {
-                    return cue.lines.join("\n");
-                }
-                if (cue.text) return cue.text;
-            }
+        const cleanFn = SharedUtils?.cleanCardText || ((s) => s);
+        const normOrig = cleanFn(origText).toLowerCase().replace(/\s+/g, " ").trim();
+
+        // 2. Check if we already have a locked paired translation for this active original cue
+        if (normOrig && pairedTranslationMap.has(normOrig)) {
+            return pairedTranslationMap.get(normOrig) || "";
         }
 
-        // 3. Fallback to live translation of current original subtitle text
         const targetLang = currentTargetLang || "pl";
         const activeLang = activeTextTrackState?.track?.bcp47 || activeTextTrackState?.track?.language || "";
         if (activeLang && normalizedValue(activeLang) === normalizedValue(targetLang)) {
             return "";
         }
 
-        if (liveTranslationCache.has(origText)) {
-            return liveTranslationCache.get(origText) || "";
+        // 3. Official indexed translation track: match against original cue timeline
+        if (translationCueIndex.length > 0) {
+            let matchedTransCue = null;
+
+            // Step 3a: If original cues are indexed, find the corresponding origCue and its best overlapping translation cue
+            if (cueIndex.length > 0 && Number.isFinite(time)) {
+                let origCue = null;
+                const searchStart = Math.max(0, time - 4);
+                const searchEnd = time + 4;
+                for (const c of cueIndex) {
+                    if (c.endTime < searchStart) continue;
+                    if (c.startTime > searchEnd) break;
+                    const cNorm = cleanFn(c.text).toLowerCase().replace(/\s+/g, " ").trim();
+                    if (cNorm === normOrig || cNorm.includes(normOrig) || normOrig.includes(cNorm)) {
+                        origCue = c;
+                        break;
+                    }
+                }
+                if (!origCue) {
+                    origCue = findIndexedCueAt(time);
+                }
+                if (origCue) {
+                    matchedTransCue = findBestTranslationCueForOrigCue(origCue);
+                }
+            }
+
+            // Step 3b: If no origCue found in index, find translation cue directly at time
+            if (!matchedTransCue && Number.isFinite(time)) {
+                matchedTransCue = findIndexedTranslationCueAt(time);
+            }
+
+            if (matchedTransCue) {
+                const transText = Array.isArray(matchedTransCue.lines) && matchedTransCue.lines.length > 0
+                    ? matchedTransCue.lines.join("\n")
+                    : (matchedTransCue.text || "");
+                if (transText) {
+                    if (normOrig) pairedTranslationMap.set(normOrig, transText);
+                    return transText;
+                }
+            }
         }
 
+        // 4. Fallback to live translation of current original subtitle text
+        if (liveTranslationCache.has(origText)) {
+            const cached = liveTranslationCache.get(origText) || "";
+            if (cached && normOrig) pairedTranslationMap.set(normOrig, cached);
+            return cached;
+        }
+
+        // 5. Trigger live translation and prefetch next cues
         translateLiveCue(origText, targetLang, currentLearningLang || activeLang || "en");
 
         if (cueIndex.length > 0 && Number.isFinite(time)) {
@@ -1485,6 +1574,8 @@
         isDualSubtitlesEnabled: () => dualSubtitlesEnabled,
         setDualSubtitlesEnabled: (val) => { dualSubtitlesEnabled = !!val; },
         getLiveTranslationCache: () => liveTranslationCache,
+        getPairedTranslationMap: () => pairedTranslationMap,
+        clearPairedTranslations: () => pairedTranslationMap.clear(),
         setActiveTextTrackState: (s) => { activeTextTrackState = Object.assign(activeTextTrackState, s); },
         getActiveTextTrackState: () => activeTextTrackState,
     };
