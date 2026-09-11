@@ -21,15 +21,81 @@
     const NAV_EVENT = EVT.YOUTUBE_NAVIGATION;
 
     let cueIndex = [];
+    let translationCueIndex = [];
     let currentVideoId = "";
     let currentDisplayedText = "";
+    let currentDisplayedTranslation = "";
     let availableTracks = [];
     let activeTrack = null;
+    let translationTrack = null;
     let isFetchingTrack = false;
+    let isFetchingTranslationTrack = false;
     let playbackRafId = null;
     let boundVideo = null;
     let trackRequestSeq = 0;
     let isCcActive = false;
+    let currentTargetLang = "pl";
+    let currentLearningLang = "en";
+    const liveTranslationCache = new Map();
+    const liveTranslationPending = new Set();
+    const DUAL_SUBS_KEY = LectoroConstants?.STORAGE_KEYS?.DUAL_SUBTITLES || "dualSubtitles";
+    let dualSubtitlesEnabled = true;
+
+    if (typeof chrome !== "undefined" && chrome?.storage?.local) {
+        chrome.storage.local.get({ [DUAL_SUBS_KEY]: true }, (data) => {
+            if (typeof data?.[DUAL_SUBS_KEY] === "boolean") {
+                dualSubtitlesEnabled = data[DUAL_SUBS_KEY];
+            }
+        });
+    }
+
+    async function getTargetLanguage() {
+        if (typeof globalThis.SharedTranslatorService?.getTargetLang === "function") {
+            try {
+                const lang = await globalThis.SharedTranslatorService.getTargetLang();
+                if (lang) { currentTargetLang = lang; return lang; }
+            } catch (_) {}
+        }
+        if (typeof chrome !== "undefined" && chrome?.storage?.local) {
+            try {
+                const data = await chrome.storage.local.get({
+                    [LectoroConstants.STORAGE_KEYS.TARGET_LANG]: LectoroConstants.DEFAULT_READING_SETTINGS.targetLang,
+                });
+                const lang = data[LectoroConstants.STORAGE_KEYS.TARGET_LANG] || "pl";
+                currentTargetLang = lang;
+                return lang;
+            } catch (_) {}
+        }
+        return currentTargetLang || "pl";
+    }
+
+    async function getLearningLanguage() {
+        if (typeof globalThis.SharedTranslatorService?.getLearningLang === "function") {
+            try {
+                const lang = await globalThis.SharedTranslatorService.getLearningLang();
+                if (lang) { currentLearningLang = lang; return lang; }
+            } catch (_) {}
+        }
+        return currentLearningLang || "en";
+    }
+
+    async function translateLiveCue(text, targetLang, learningLang) {
+        if (!text || !targetLang || liveTranslationCache.has(text) || liveTranslationPending.has(text)) return;
+        liveTranslationPending.add(text);
+        try {
+            const service = globalThis.SharedTranslatorService;
+            if (service && typeof service.translate === "function") {
+                const res = await service.translate(text, targetLang, learningLang || "auto");
+                if (res && typeof res.translated === "string" && res.translated.trim()) {
+                    liveTranslationCache.set(text, res.translated.trim());
+                    const video = boundVideo || document.querySelector("video");
+                    if (video) syncActiveCue(video);
+                }
+            }
+        } catch (_) {} finally {
+            liveTranslationPending.delete(text);
+        }
+    }
 
     function getSubtitleService() {
         return globalThis.SharedSubtitleService;
@@ -40,7 +106,7 @@
     }
 
     function isShortsPage(video = null) {
-        if (typeof window !== "undefined" && window.location.pathname.includes("/shorts/")) {
+        if (typeof window !== "undefined" && window.location?.pathname?.includes("/shorts/")) {
             return true;
         }
         if (video && video.closest?.("ytd-shorts, ytd-reel-video-renderer, #shorts-player")) {
@@ -118,15 +184,25 @@
         if (video) syncActiveCue(video);
     }
 
-    function findActiveCue(currentTime) {
-        if (!cueIndex || cueIndex.length === 0) return null;
+    function setTranslationCueIndex(cues, videoId = "") {
+        if (!Array.isArray(cues) || cues.length === 0) return;
+        translationCueIndex = cues;
+        if (videoId) currentVideoId = videoId;
+        currentDisplayedTranslation = "";
+
+        const video = boundVideo || document.querySelector("video");
+        if (video) syncActiveCue(video);
+    }
+
+    function findActiveCueInIndex(cues, currentTime) {
+        if (!Array.isArray(cues) || cues.length === 0) return null;
 
         let low = 0;
-        let high = cueIndex.length - 1;
+        let high = cues.length - 1;
 
         while (low <= high) {
             const mid = (low + high) >> 1;
-            const cue = cueIndex[mid];
+            const cue = cues[mid];
 
             if (currentTime >= cue.startTime && currentTime <= cue.endTime) {
                 return cue;
@@ -140,15 +216,62 @@
 
         // Neighborhood tolerance check (±0.05s) to prevent sub-frame flickering without bleeding into gaps
         const start = Math.max(0, high - 1);
-        const end = Math.min(cueIndex.length - 1, low + 1);
+        const end = Math.min(cues.length - 1, low + 1);
         for (let i = start; i <= end; i++) {
-            const cue = cueIndex[i];
+            const cue = cues[i];
             if (currentTime >= cue.startTime - 0.05 && currentTime <= cue.endTime + 0.05) {
                 return cue;
             }
         }
 
         return null;
+    }
+
+    function findActiveCue(currentTime) {
+        return findActiveCueInIndex(cueIndex, currentTime);
+    }
+
+    function syncNativeDomSubtitles(origText, transText) {
+        try {
+            const container = document.querySelector(".ytp-caption-window-container");
+            if (!container) return;
+
+            let transContainer = container.querySelector(".ytp-caption-translation-container");
+            if (!transText) {
+                if (transContainer) transContainer.style.display = "none";
+                return;
+            }
+
+            if (!transContainer) {
+                transContainer = document.createElement("div");
+                transContainer.className = "ytp-caption-translation-container";
+                transContainer.setAttribute("dir", "auto");
+                transContainer.style.setProperty("display", "block", "important");
+                transContainer.style.setProperty("text-align", "center", "important");
+                transContainer.style.setProperty("margin-top", "4px", "important");
+                transContainer.style.setProperty("pointer-events", "none", "important");
+
+                const span = document.createElement("span");
+                span.className = "ytp-caption-translation-text";
+                span.style.setProperty("font-size", "60%", "important");
+                span.style.setProperty("color", "#d1d5db", "important");
+                span.style.setProperty("background-color", "rgba(8, 8, 8, 0.75)", "important");
+                span.style.setProperty("padding", "1px 6px", "important");
+                span.style.setProperty("border-radius", "4px", "important");
+                span.style.setProperty("display", "inline-block", "important");
+                span.style.setProperty("text-shadow", "0 2px 4px rgba(0,0,0,0.85), 0 0 2px rgba(0,0,0,0.9)", "important");
+                transContainer.appendChild(span);
+
+                const windowEl = container.querySelector(".caption-window") || container;
+                windowEl.appendChild(transContainer);
+            }
+
+            transContainer.style.display = "block";
+            const textEl = transContainer.querySelector(".ytp-caption-translation-text");
+            if (textEl && textEl.textContent !== transText) {
+                textEl.textContent = transText;
+            }
+        } catch (_) {}
     }
 
     function getDomSubtitleText() {
@@ -188,37 +311,86 @@
 
         // Subtitles only display if CC is actively enabled (or on YouTube Shorts)
         if (!checkIsCcActive(video)) {
-            if (currentDisplayedText !== "" || (globalThis.LectoroSubtitleOverlay?.getActiveLines?.()?.length > 0)) {
+            if (
+                currentDisplayedText !== "" ||
+                currentDisplayedTranslation !== "" ||
+                (globalThis.LectoroSubtitleOverlay?.getActiveLines?.()?.length > 0)
+            ) {
                 currentDisplayedText = "";
+                currentDisplayedTranslation = "";
                 if (globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
                     globalThis.LectoroSubtitleOverlay.renderCustomSubtitles([]);
                 }
+                syncNativeDomSubtitles("", "");
             }
             return;
         }
 
         const time = video.currentTime;
-        let targetText = "";
+        let targetOrigText = "";
+        let targetTransText = "";
 
+        // 1. Original cue lookup
         if (cueIndex.length > 0) {
-            const activeCue = findActiveCue(time);
+            const activeCue = findActiveCueInIndex(cueIndex, time);
             if (activeCue && activeCue.text) {
-                targetText = activeCue.text;
+                targetOrigText = activeCue.text;
             }
         } else {
             // Fallback to DOM player text ONLY if timedtext has not loaded
             const domText = getDomSubtitleText();
-            if (domText) targetText = domText;
+            if (domText) targetOrigText = domText;
+        }
+
+        // 2. Translation cue lookup (only if dual subtitles is enabled)
+        if (dualSubtitlesEnabled) {
+            if (translationCueIndex.length > 0) {
+                const activeTransCue = findActiveCueInIndex(translationCueIndex, time);
+                if (activeTransCue && activeTransCue.text) {
+                    targetTransText = activeTransCue.text;
+                }
+            } else if (targetOrigText) {
+                if (liveTranslationCache.has(targetOrigText)) {
+                    targetTransText = liveTranslationCache.get(targetOrigText);
+                } else {
+                    translateLiveCue(targetOrigText, currentTargetLang || "pl", activeTrack?.languageCode || "en");
+                }
+
+                // Pre-fetch next 2 upcoming cues so translation is ready ahead of time
+                if (cueIndex.length > 0) {
+                    const currentIdx = cueIndex.findIndex((c) => time >= c.startTime && time <= c.endTime);
+                    if (currentIdx >= 0) {
+                        for (let i = 1; i <= 2; i++) {
+                            const nextCue = cueIndex[currentIdx + i];
+                            if (nextCue?.text && !liveTranslationCache.has(nextCue.text)) {
+                                translateLiveCue(nextCue.text, currentTargetLang || "pl", activeTrack?.languageCode || "en");
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         const overlayText = globalThis.LectoroSubtitleOverlay?.getActiveText?.() ?? "";
-        if (targetText !== currentDisplayedText || (targetText && overlayText !== targetText)) {
-            currentDisplayedText = targetText;
+        const overlayTranslation = globalThis.LectoroSubtitleOverlay?.getActiveTranslationText?.() ?? "";
+
+        if (
+            targetOrigText !== currentDisplayedText ||
+            targetTransText !== currentDisplayedTranslation ||
+            (targetOrigText && overlayText !== targetOrigText) ||
+            (targetTransText && overlayTranslation !== targetTransText)
+        ) {
+            currentDisplayedText = targetOrigText;
+            currentDisplayedTranslation = targetTransText;
+
             if (globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
                 globalThis.LectoroSubtitleOverlay.renderCustomSubtitles(
-                    targetText ? [targetText] : [],
+                    targetOrigText ? [targetOrigText] : [],
+                    { translationText: targetTransText },
                 );
             }
+
+            syncNativeDomSubtitles(targetOrigText, targetTransText);
         }
     }
 
@@ -250,8 +422,12 @@
         boundVideo = video;
 
         video.addEventListener("play", () => {
-            if (cueIndex.length === 0 && checkIsCcActive(video)) {
-                requestTracklistFromBridge();
+            if ((cueIndex.length === 0 || translationCueIndex.length === 0) && checkIsCcActive(video)) {
+                if (availableTracks.length > 0) {
+                    handleTracksAvailable({ tracks: availableTracks, isCcActive: true });
+                } else {
+                    requestTracklistFromBridge();
+                }
             }
             startPlaybackLoop(video);
         });
@@ -322,81 +498,86 @@
         return tracks[0];
     }
 
-    async function fetchTimedTextViaBridge(url) {
-        const requestId = `${Date.now()}-${++trackRequestSeq}`;
-        return new Promise((resolve) => {
-            const onResponse = (event) => {
-                if (event?.detail?.requestId === requestId) {
-                    window.removeEventListener(FETCH_RESPONSE_EVENT, onResponse);
-                    clearTimeout(timer);
-                    resolve(event.detail.text || "");
-                }
-            };
-            const timer = setTimeout(() => {
-                window.removeEventListener(FETCH_RESPONSE_EVENT, onResponse);
-                resolve("");
-            }, 6000);
 
-            window.addEventListener(FETCH_RESPONSE_EVENT, onResponse);
-            window.dispatchEvent(
-                new CustomEvent(FETCH_REQUEST_EVENT, {
-                    detail: { requestId, url },
-                }),
-            );
-        });
+
+    function selectTranslationTrack(tracks, targetLang = "pl", originalTrack = null) {
+        if (!Array.isArray(tracks) || tracks.length === 0) return null;
+        const tgt = (targetLang || "pl").toLowerCase();
+
+        // 1. Direct manual track in target language (e.g. lang=pl)
+        // /api/timedtext?v=xxx&lang=pl ← oryginał (np. polski) i wyświetlaj jako "tłumaczenie"
+        const directManual = tracks.find(
+            (t) =>
+                t !== originalTrack &&
+                t.kind !== "asr" &&
+                (t.languageCode?.toLowerCase() === tgt ||
+                 t.vssId?.toLowerCase()?.includes(`.${tgt}`)),
+        );
+        if (directManual && directManual.baseUrl) {
+            return {
+                ...directManual,
+                isAutoTranslated: false,
+                targetLang: tgt,
+            };
+        }
+
+        // 2. Direct ASR track in target language
+        const directAsr = tracks.find(
+            (t) =>
+                t !== originalTrack &&
+                (t.languageCode?.toLowerCase() === tgt ||
+                 t.vssId?.toLowerCase()?.includes(`.${tgt}`)),
+        );
+        if (directAsr && directAsr.baseUrl) {
+            return {
+                ...directAsr,
+                isAutoTranslated: false,
+                targetLang: tgt,
+            };
+        }
+
+        // 3. Translated track via &tlang=targetLang from original track
+        // lub /api/timedtext?v=xxx&lang=en&tlang=pl ← tłumaczenie
+        const baseTrack = (originalTrack && originalTrack.baseUrl)
+            ? originalTrack
+            : (selectBestCaptionTrack(tracks) || tracks[0]);
+        if (baseTrack && baseTrack.baseUrl) {
+            let transUrl = baseTrack.baseUrl;
+            if (transUrl.includes("tlang=")) {
+                transUrl = transUrl.replace(/tlang=[^&]+/, `tlang=${tgt}`);
+            } else {
+                const sep = transUrl.includes("?") ? "&" : "?";
+                transUrl = `${transUrl}${sep}tlang=${tgt}`;
+            }
+
+            return {
+                baseUrl: transUrl,
+                languageCode: tgt,
+                name: `Translation (${tgt})`,
+                kind: baseTrack.kind || "",
+                vssId: baseTrack.vssId ? `${baseTrack.vssId}.t.${tgt}` : `t.${tgt}`,
+                isTranslatable: false,
+                isAutoTranslated: true,
+                targetLang: tgt,
+            };
+        }
+
+        return null;
     }
 
     async function loadCaptionTrack(track, videoId = "") {
-        if (!track || !track.baseUrl || isFetchingTrack) return;
-        isFetchingTrack = true;
+        if (!track) return;
+        activeTrack = track;
+    }
 
-        try {
-            const service = getSubtitleService();
-            const baseUrl = track.baseUrl;
-            const sep = baseUrl.includes("?") ? "&" : "?";
+    async function loadTranslationCaptionTrack(track, videoId = "") {
+        if (!track) return;
+        translationTrack = track;
+    }
 
-            // Candidate URLs in priority order
-            const candidateUrls = [
-                baseUrl.includes("fmt=") ? baseUrl : `${baseUrl}${sep}fmt=json3`,
-                baseUrl.includes("fmt=") ? baseUrl.replace(/fmt=[^&]+/, "fmt=vtt") : `${baseUrl}${sep}fmt=vtt`,
-                baseUrl.includes("fmt=") ? baseUrl.replace(/fmt=[^&]+/, "fmt=srv3") : `${baseUrl}${sep}fmt=srv3`,
-                baseUrl.replace(/[?&]fmt=[^&]+/, ""),
-            ];
-
-            let loadedCues = [];
-
-            for (const url of candidateUrls) {
-                if (!url) continue;
-
-                // 1. Try bridge fetch in MAIN world (authenticated session)
-                let text = await fetchTimedTextViaBridge(url);
-
-                // 2. Direct fetch fallback
-                if (!text) {
-                    try {
-                        const res = await fetch(url, { credentials: "include" });
-                        if (res.ok) text = await res.text();
-                    } catch (_) {}
-                }
-
-                if (text && service) {
-                    const cues = service.parseTimedText(text);
-                    if (cues.length > 0) {
-                        loadedCues = cues;
-                        break;
-                    }
-                }
-            }
-
-            if (loadedCues.length > 0) {
-                activeTrack = track;
-                setCueIndex(loadedCues, videoId || currentVideoId);
-            }
-        } catch (error) {
-            console.warn("[Lectoro] Failed to load YouTube caption track:", error);
-        } finally {
-            isFetchingTrack = false;
-        }
+    async function loadDualCaptionTracks(origTrack, transTrack, videoId = "") {
+        if (origTrack) activeTrack = origTrack;
+        if (transTrack) translationTrack = transTrack;
     }
 
     function requestTracklistFromBridge() {
@@ -421,10 +602,13 @@
         );
     }
 
-    function handleTracksAvailable(detail) {
+    async function handleTracksAvailable(detail) {
         if (!detail) return;
         const videoId = detail.videoId || getVideoIdFromUrl();
         const tracks = detail.tracks;
+        if (Array.isArray(tracks) && tracks.length > 0) {
+            availableTracks = tracks;
+        }
         const isShorts = detail.isShorts || isShortsPage();
         const ccState = isShorts
             ? true
@@ -435,20 +619,34 @@
 
         if (!ccState) {
             currentDisplayedText = "";
+            currentDisplayedTranslation = "";
             activeTrack = null;
+            translationTrack = null;
             if (globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
                 globalThis.LectoroSubtitleOverlay.renderCustomSubtitles([]);
             }
+            syncNativeDomSubtitles("", "");
             stopPlaybackLoop();
             return;
         }
 
-        if (Array.isArray(tracks) && tracks.length > 0) {
-            availableTracks = tracks;
-            const chosen = detail.activeTrack || selectBestCaptionTrack(tracks);
-            if (chosen && (!activeTrack || chosen.vssId !== activeTrack.vssId || videoId !== currentVideoId)) {
-                loadCaptionTrack(chosen, videoId);
+        const effectiveTracks = (Array.isArray(tracks) && tracks.length > 0) ? tracks : availableTracks;
+        if (Array.isArray(effectiveTracks) && effectiveTracks.length > 0) {
+            const learningLang = await getLearningLanguage();
+
+            let chosenOrig = detail.activeTrack;
+            if (chosenOrig && !chosenOrig.baseUrl) {
+                chosenOrig = effectiveTracks.find(
+                    (t) =>
+                        (chosenOrig.vssId && t.vssId === chosenOrig.vssId) ||
+                        (chosenOrig.languageCode && t.languageCode === chosenOrig.languageCode)
+                ) || chosenOrig;
             }
+            if (!chosenOrig || !chosenOrig.baseUrl) {
+                chosenOrig = selectBestCaptionTrack(effectiveTracks, learningLang);
+            }
+            activeTrack = chosenOrig;
+
             const video = boundVideo || document.querySelector("video");
             if (video && !video.paused) startPlaybackLoop(video);
         }
@@ -463,14 +661,21 @@
             isCcActive = active;
             if (!active) {
                 currentDisplayedText = "";
+                currentDisplayedTranslation = "";
                 activeTrack = null;
+                translationTrack = null;
                 stopPlaybackLoop();
                 if (globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
                     globalThis.LectoroSubtitleOverlay.renderCustomSubtitles([]);
                 }
+                syncNativeDomSubtitles("", "");
             } else {
-                if (cueIndex.length === 0) {
-                    requestTracklistFromBridge();
+                if (cueIndex.length === 0 || translationCueIndex.length === 0) {
+                    if (availableTracks.length > 0) {
+                        handleTracksAvailable({ tracks: availableTracks, isCcActive: true });
+                    } else {
+                        requestTracklistFromBridge();
+                    }
                 } else if (video) {
                     syncActiveCue(video);
                     if (!video.paused) startPlaybackLoop(video);
@@ -512,15 +717,35 @@
 
     // ── Bridge Event Listeners ────────────────────────────────────
 
-    window.addEventListener(TIMED_TEXT_EVENT, (event) => {
+    window.addEventListener(TIMED_TEXT_EVENT, async (event) => {
         const detail = event?.detail;
         if (!detail || !detail.text) return;
 
         const service = getSubtitleService();
         const cues = service ? service.parseTimedText(detail.text) : [];
-        if (cues.length > 0) {
+        if (cues.length === 0) return;
+
+        const url = detail.url || "";
+        const targetLang = await getTargetLanguage();
+
+        const isTranslation =
+            url.includes("tlang=") ||
+            (targetLang && (
+                url.includes(`lang=${targetLang}`) ||
+                url.includes(`vss_id=.${targetLang}`) ||
+                url.includes(`vss_id=%2E${targetLang}`) ||
+                url.includes(`vss_id=a.${targetLang}`) ||
+                url.includes(`vss_id=a%2E${targetLang}`)
+            ));
+
+        if (isTranslation) {
+            setTranslationCueIndex(cues, detail.videoId || currentVideoId);
+        } else {
             setCueIndex(cues, detail.videoId || currentVideoId);
         }
+
+        const video = boundVideo || document.querySelector("video");
+        if (video) syncActiveCue(video);
     });
 
     window.addEventListener(TRACKS_EVENT, (event) => {
@@ -532,17 +757,45 @@
         if (newVideoId !== currentVideoId) {
             currentVideoId = newVideoId;
             cueIndex = [];
+            translationCueIndex = [];
             currentDisplayedText = "";
+            currentDisplayedTranslation = "";
             activeTrack = null;
+            translationTrack = null;
             availableTracks = [];
             stopPlaybackLoop();
             if (globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
                 globalThis.LectoroSubtitleOverlay.renderCustomSubtitles([]);
             }
+            syncNativeDomSubtitles("", "");
             requestTracklistFromBridge();
             setTimeout(observeContentCcButton, 300);
         }
     });
+
+    if (typeof chrome !== "undefined" && chrome?.storage?.onChanged) {
+        chrome.storage.onChanged.addListener(async (changes, area) => {
+            if (area !== "local") return;
+            const targetLangKey = LectoroConstants?.STORAGE_KEYS?.TARGET_LANG || "targetLang";
+            if (changes[targetLangKey]) {
+                const newTargetLang = changes[targetLangKey].newValue;
+                if (newTargetLang) {
+                    currentTargetLang = newTargetLang;
+                    liveTranslationCache.clear();
+                    const video = boundVideo || document.querySelector("video");
+                    if (video) syncActiveCue(video);
+                }
+            }
+            if (changes[DUAL_SUBS_KEY] && typeof changes[DUAL_SUBS_KEY].newValue === "boolean") {
+                dualSubtitlesEnabled = changes[DUAL_SUBS_KEY].newValue;
+                if (!dualSubtitlesEnabled) {
+                    currentDisplayedTranslation = "";
+                }
+                const video = boundVideo || document.querySelector("video");
+                if (video) syncActiveCue(video);
+            }
+        });
+    }
 
     // Initial check on load
     setTimeout(() => {
@@ -632,6 +885,7 @@
         id: "youtube",
         name: "YouTube",
         getSubtitleLanguage: () => activeTrack?.languageCode || "",
+        getTranslationLanguage: () => translationTrack?.languageCode || "",
         playerSelector: "#movie_player, .html5-video-player, ytd-shorts",
         containerSelector: ".ytp-caption-window-container",
         cueSelector: ".caption-visual-line, .ytp-caption-segment",
@@ -671,20 +925,43 @@
         },
         hasTimedText: () => cueIndex.length > 0 && checkIsCcActive(boundVideo || document.querySelector("video")),
         getCueIndex: () => (checkIsCcActive(boundVideo || document.querySelector("video")) ? cueIndex : []),
+        getTranslationCueIndex: () => (checkIsCcActive(boundVideo || document.querySelector("video")) ? translationCueIndex : []),
         getAllCues: () => (checkIsCcActive(boundVideo || document.querySelector("video")) ? cueIndex : []),
         getCurrentSubtitleText: (video) => {
             if (!checkIsCcActive(video)) return "";
             const time = video?.currentTime ?? (boundVideo?.currentTime || 0);
-            const cue = findActiveCue(time);
+            const cue = findActiveCueInIndex(cueIndex, time);
             if (cue && cue.text) return cue.text;
             return getDomSubtitleText();
+        },
+        getCurrentTranslationText: (video) => {
+            if (!checkIsCcActive(video)) return "";
+            if (!dualSubtitlesEnabled) return "";
+            const time = video?.currentTime ?? (boundVideo?.currentTime || 0);
+            if (translationCueIndex.length > 0) {
+                const cue = findActiveCueInIndex(translationCueIndex, time);
+                if (cue && cue.text) return cue.text;
+            }
+            if (currentDisplayedText && liveTranslationCache.has(currentDisplayedText)) {
+                return liveTranslationCache.get(currentDisplayedText) || "";
+            }
+            return currentDisplayedTranslation || "";
         },
         getAdjacentSubtitleTime,
         requestSeek,
         pauseVideo,
         playVideo,
         setCueIndex,
+        setTranslationCueIndex,
         loadCaptionTrack,
+        loadTranslationCaptionTrack,
+        loadDualCaptionTracks,
+        selectBestCaptionTrack,
+        selectTranslationTrack,
+        isDualSubtitlesEnabled: () => dualSubtitlesEnabled,
+        setDualSubtitlesEnabled: (val) => { dualSubtitlesEnabled = !!val; },
+        translateLiveCue,
+        getLiveTranslationCache: () => liveTranslationCache,
     };
 
     globalThis.LectoroYouTubeAdapter = YouTubeAdapter;

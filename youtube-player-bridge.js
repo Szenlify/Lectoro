@@ -143,9 +143,43 @@
         name,
         kind: t.kind || (t.vssId?.startsWith("a.") ? "asr" : ""),
         vssId: t.vssId || "",
-        isTranslatable: !!t.isTranslatable,
+        isTranslatable: t.isTranslatable !== false,
       };
     });
+  }
+
+  function extractTranslationLanguages() {
+    const player = getYouTubePlayer();
+    try {
+      const playerResponse = player?.getPlayerResponse?.();
+      const translationLanguages =
+        playerResponse?.captions?.playerCaptionsTracklistRenderer
+          ?.translationLanguages;
+      if (Array.isArray(translationLanguages) && translationLanguages.length > 0) {
+        return translationLanguages;
+      }
+    } catch (_) {}
+
+    try {
+      const initResponse = window.ytInitialPlayerResponse;
+      const translationLanguages =
+        initResponse?.captions?.playerCaptionsTracklistRenderer
+          ?.translationLanguages;
+      if (Array.isArray(translationLanguages) && translationLanguages.length > 0) {
+        return translationLanguages;
+      }
+    } catch (_) {}
+
+    try {
+      const configLangs =
+        window.ytplayer?.config?.args?.raw_player_response?.captions
+          ?.playerCaptionsTracklistRenderer?.translationLanguages;
+      if (Array.isArray(configLangs) && configLangs.length > 0) {
+        return configLangs;
+      }
+    } catch (_) {}
+
+    return [];
   }
 
   function getActiveTrack() {
@@ -153,11 +187,20 @@
     try {
       const track = player?.getOption?.("captions", "track");
       if (track && typeof track === "object" && track.languageCode) {
+        const allTracks = extractCaptionTracks();
+        const matched = allTracks.find(
+          (t) =>
+            (track.vssId && t.vssId === track.vssId) ||
+            (track.languageCode && t.languageCode === track.languageCode)
+        );
+        if (matched && matched.baseUrl) return matched;
+        const videoId = getCurrentVideoId();
         return {
           languageCode: track.languageCode,
           name: track.languageName || track.displayName || "",
           kind: track.kind || "",
           vssId: track.vssId || "",
+          baseUrl: track.baseUrl || (videoId ? `https://www.youtube.com/api/timedtext?v=${videoId}&lang=${track.languageCode}${track.vssId ? `&vss_id=${encodeURIComponent(track.vssId)}` : ""}` : ""),
         };
       }
     } catch (_) {}
@@ -206,9 +249,11 @@
     const isCcActive = isCcEnabled();
     const isShorts = isYouTubeShorts();
 
+    const translationLanguages = extractTranslationLanguages();
+
     window.dispatchEvent(
       new CustomEvent(TRACKS_EVENT, {
-        detail: {videoId, tracks, activeTrack, isCcActive, isShorts},
+        detail: {videoId, tracks, translationLanguages, activeTrack, isCcActive, isShorts},
       })
     );
   }
@@ -285,9 +330,23 @@
     window.fetch = async function (...args) {
       const response = await originalFetch.apply(this, args);
       try {
-        const requestUrl =
-          typeof args[0] === "string" ? args[0] : args[0]?.url || "";
-        if (requestUrl.includes("/api/timedtext")) {
+        let requestUrl = "";
+        if (typeof args[0] === "string") {
+          requestUrl = args[0];
+        } else if (args[0] instanceof URL) {
+          requestUrl = args[0].href;
+        } else if (args[0] && typeof args[0].url === "string") {
+          requestUrl = args[0].url;
+        } else if (args[0]) {
+          requestUrl = String(args[0]);
+        }
+        // ONLY intercept successful player requests for original captions (ignore our own bridge fetches or errors)
+        if (
+          response.ok &&
+          requestUrl.includes("/api/timedtext") &&
+          !requestUrl.includes("tlang=") &&
+          !requestUrl.includes("__lectoro_bridge")
+        ) {
           const clone = response.clone();
           clone
             .text()
@@ -319,20 +378,27 @@
     return originalXhrOpen.call(this, method, url, ...rest);
   };
   XMLHttpRequest.prototype.send = function (...args) {
-    if (this.__lectoro_url && this.__lectoro_url.includes("/api/timedtext")) {
+    if (
+      this.__lectoro_url &&
+      this.__lectoro_url.includes("/api/timedtext") &&
+      !this.__lectoro_url.includes("tlang=") &&
+      !this.__lectoro_url.includes("__lectoro_bridge")
+    ) {
       this.addEventListener("load", () => {
         try {
-          const text = this.responseText;
-          if (text) {
-            window.dispatchEvent(
-              new CustomEvent(TIMED_TEXT_EVENT, {
-                detail: {
-                  url: this.__lectoro_url,
-                  text,
-                  videoId: getCurrentVideoId(),
-                },
-              })
-            );
+          if (this.status >= 200 && this.status < 300) {
+            const text = this.responseText;
+            if (text) {
+              window.dispatchEvent(
+                new CustomEvent(TIMED_TEXT_EVENT, {
+                  detail: {
+                    url: this.__lectoro_url,
+                    text,
+                    videoId: getCurrentVideoId(),
+                  },
+                })
+              );
+            }
           }
         } catch (_) {}
       });
@@ -350,9 +416,11 @@
     const isCcActive = isCcEnabled();
     const isShorts = isYouTubeShorts();
 
+    const translationLanguages = extractTranslationLanguages();
+
     window.dispatchEvent(
       new CustomEvent(TRACK_RESPONSE_EVENT, {
-        detail: {requestId, videoId, tracks, activeTrack, isCcActive, isShorts},
+        detail: {requestId, videoId, tracks, translationLanguages, activeTrack, isCcActive, isShorts},
       })
     );
   });
@@ -361,12 +429,23 @@
     const {requestId, url} = event?.detail || {};
     if (!requestId || !url) return;
 
-    try {
-      const res = await fetch(url, {credentials: "include"});
-      const text = await res.text();
+    // Never fetch timedtext URLs - Lectoro intercepts YouTube's native XHR and translates via SharedTranslatorService
+    if (isTimedTextUrl(url)) {
       window.dispatchEvent(
         new CustomEvent(FETCH_RESPONSE_EVENT, {
-          detail: {requestId, text, ok: res.ok},
+          detail: {requestId, text: "", ok: false, status: 204},
+        })
+      );
+      return;
+    }
+
+    try {
+      const fetchFn = typeof originalFetch === "function" ? originalFetch : window.fetch;
+      const res = await fetchFn(url, {credentials: "include"});
+      const text = res.ok ? await res.text() : "";
+      window.dispatchEvent(
+        new CustomEvent(FETCH_RESPONSE_EVENT, {
+          detail: {requestId, text, ok: res.ok, status: res.status},
         })
       );
     } catch (error) {

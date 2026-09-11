@@ -108,6 +108,7 @@
     TTS_MODE: "ttsMode",
     EL_VOICE_ID: "elVoiceId",
     SUBTITLE_TTS: "subtitleTTS",
+    DUAL_SUBTITLES: "dualSubtitles",
     WORD_CLOUD_MODE: "wordCloudMode",
     SUBTITLE_POSITION: "subtitlePosition",
     SUBTITLE_BG_OPACITY: "subtitleBgOpacity",
@@ -138,6 +139,7 @@
     learningLang: "en",
     aiExplanationLanguage: "native",
     subtitleTTS: false,
+    dualSubtitles: true,
     wordCloudMode: true,
   });
 

@@ -82,6 +82,26 @@
   text-wrap: balance !important;
   hyphens: none !important;
 }
+#__qt_custom_subtitles_layer .__qt_custom-sub-line.__qt_custom-sub-translation-line {
+  position: absolute !important;
+  top: calc(100% + 4px) !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: max-content !important;
+  max-width: min(84vw, 850px) !important;
+  box-sizing: border-box !important;
+  margin: var(--lx-space-0) !important;
+  font-size: calc(var(--lectoro-sub-font-size, 26px) * 0.6) !important;
+  color: #d1d5db !important;
+  font-weight: var(--lx-weight-500) !important;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
+  text-wrap: balance !important;
+  pointer-events: auto !important;
+  user-select: text !important;
+  z-index: 1 !important;
+}
 #__qt_custom_subtitles_layer .__qt_custom-sub-translation {
   position: absolute !important;
   top: calc(100% + 6px) !important;

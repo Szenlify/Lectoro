@@ -47,6 +47,7 @@
     let subtitleTranslationLang = C.DEFAULT_READING_SETTINGS.targetLang;
     let activeLines = [];
     let activeText = "";
+    let activeTranslationText = "";
     let activeWordSpans = [];
     let trackedVideo = null;
     let activeAiVideo = null;
@@ -623,7 +624,7 @@
         return lines;
     }
 
-    function renderCustomSubtitles(lines = []) {
+    function renderCustomSubtitles(lines = [], options = {}) {
         const { layer, box } = ensureCustomSubtitlesLayer();
         const registry = getPlayerRegistry();
         const video = registry?.getVideo();
@@ -636,13 +637,23 @@
             lines = [];
         }
 
+        let translationText = "";
+        if (typeof options === "string") {
+            translationText = options;
+        } else if (options && typeof options === "object") {
+            translationText = options.translationText || options.translation || "";
+        }
+
         const rawCleanLines = (Array.isArray(lines) ? lines : [lines])
             .map((l) => (typeof l === "string" ? cleanCardText(l) : ""))
             .filter(Boolean);
 
-        if (rawCleanLines.length === 0) {
+        const cleanTrans = currentDualSubtitles && typeof translationText === "string" ? cleanCardText(translationText) : "";
+
+        if (rawCleanLines.length === 0 && !cleanTrans) {
             activeLines = [];
             activeText = "";
+            activeTranslationText = "";
             activeWordSpans = [];
             box.innerHTML = "";
             box.style.setProperty("opacity", "0", "important");
@@ -673,11 +684,13 @@
             );
         }
         const newText = displayLines.join(" ").replace(/\s+/g, " ").trim();
+        const translationChanged = cleanTrans !== activeTranslationText;
 
-        if (newText === activeText && activeLines.length > 0) {
+        if (newText === activeText && !translationChanged && activeLines.length > 0) {
+            const expectedChildCount = activeLines.length + (cleanTrans ? 1 : 0);
             if (displayLines.length === activeLines.length) {
                 // Layout and text are identical: avoid unnecessary DOM re-rendering / flicker
-                if (box.children.length === activeLines.length) {
+                if (box.children.length === expectedChildCount) {
                     syncCustomSubtitlePosition();
                     return;
                 }
@@ -688,7 +701,7 @@
                 // If a temporary partial DOM mutation arrives with fewer lines, preserve
                 // the richer multi-line layout already rendered for this exact text.
                 displayLines = activeLines;
-                if (box.children.length === activeLines.length) {
+                if (box.children.length === expectedChildCount) {
                     syncCustomSubtitlePosition();
                     return;
                 }
@@ -709,6 +722,7 @@
 
         activeLines = displayLines;
         activeText = newText;
+        activeTranslationText = cleanTrans;
         if (
             newText &&
             (!recentSubtitlesHistory.length ||
@@ -723,6 +737,7 @@
         activeWordSpans = [];
         box.innerHTML = "";
 
+        // 1. Original lines
         for (const lineText of displayLines) {
             const lineEl = document.createElement("div");
             lineEl.className = `${PREFIX}custom-sub-line`;
@@ -755,6 +770,16 @@
                 }
             }
             box.appendChild(lineEl);
+        }
+
+        // 2. Dual Subtitles: Translation line rendered under original text
+        if (cleanTrans && displayLines.length > 0) {
+            const transLineEl = document.createElement("div");
+            transLineEl.className = `${PREFIX}custom-sub-line ${PREFIX}custom-sub-translation-line`;
+            transLineEl.setAttribute("dir", "auto");
+            transLineEl.dataset.subType = "translation";
+            transLineEl.textContent = cleanTrans;
+            box.appendChild(transLineEl);
         }
 
         if (!aiTooltipActive && eTranslateActive && aiSubTranslationText) {
@@ -799,11 +824,14 @@
     // Subtitle visual preferences from storage (Single Source of Truth)
     const subPosKey = C.STORAGE_KEYS.SUBTITLE_POSITION;
     const subBgKey = C.STORAGE_KEYS.SUBTITLE_BG_OPACITY;
+    const dualSubsKey = C.STORAGE_KEYS.DUAL_SUBTITLES || "dualSubtitles";
+    let currentDualSubtitles = true;
 
     chrome.storage.local.get(
         {
             [subPosKey]: C.DEFAULT_SUBTITLE_SETTINGS.POSITION,
             [subBgKey]: C.DEFAULT_SUBTITLE_SETTINGS.BG_OPACITY,
+            [dualSubsKey]: C.DEFAULT_READING_SETTINGS?.dualSubtitles ?? true,
         },
         (data) => {
             if (data && typeof data[subPosKey] === "number") {
@@ -811,6 +839,9 @@
             }
             if (data && typeof data[subBgKey] === "number") {
                 currentSubBgOpacity = data[subBgKey];
+            }
+            if (data && typeof data[dualSubsKey] === "boolean") {
+                currentDualSubtitles = data[dualSubsKey];
             }
             if (customSubLayerEl) {
                 applySubtitleStyles(customSubLayerEl);
@@ -839,26 +870,46 @@
             }
             shouldSync = true;
         }
+        if (changes[dualSubsKey] && typeof changes[dualSubsKey].newValue === "boolean") {
+            currentDualSubtitles = changes[dualSubsKey].newValue;
+            if (!currentDualSubtitles && activeTranslationText) {
+                renderSubtitles(activeLines, { translationText: "" });
+            } else if (currentDualSubtitles && !activeTranslationText && activeLines.length > 0) {
+                let transText = "";
+                if (globalThis.LectoroYouTubeAdapter?.isPage?.()) {
+                    const video = getPlayerRegistry()?.getVideo();
+                    transText = globalThis.LectoroYouTubeAdapter.getCurrentTranslationText?.(video) || "";
+                }
+                renderSubtitles(activeLines, { translationText: transText });
+            }
+        }
         if (shouldSync) {
             syncCustomSubtitlePosition();
         }
     });
 
     // Connect to PlayerRegistry subtitle changes (Single Source of Truth)
-    getPlayerRegistry().onSubtitleChange((payload) => {
+    getPlayerRegistry()?.onSubtitleChange?.((payload) => {
+        let lines = [];
         if (Array.isArray(payload)) {
-            renderCustomSubtitles(LectoroBaseAdapter.extractCueLines(payload));
+            lines = LectoroBaseAdapter.extractCueLines(payload);
         } else if (payload && Array.isArray(payload.lines)) {
-            renderCustomSubtitles(payload.lines);
+            lines = payload.lines;
         } else if (payload && typeof payload.fullText === "string") {
-            const lines = payload.fullText
+            lines = payload.fullText
                 ? payload.fullText
                     .split(/\r?\n/)
                     .map((l) => l.trim())
                     .filter(Boolean)
                 : [];
-            renderCustomSubtitles(lines);
         }
+
+        let transText = currentDualSubtitles ? (payload?.translationText || "") : "";
+        if (!transText && currentDualSubtitles && globalThis.LectoroYouTubeAdapter?.isPage?.()) {
+            const video = payload?.video || getPlayerRegistry()?.getVideo();
+            transText = globalThis.LectoroYouTubeAdapter.getCurrentTranslationText?.(video) || "";
+        }
+        renderCustomSubtitles(lines, { translationText: transText });
     });
 
     // ── Word Tooltip (Hover & Click) ──────────────────────────────
@@ -3885,6 +3936,9 @@
         getCustomSubtitleElements: () => activeWordSpans,
         getActiveLines: () => activeLines,
         getActiveText: () => activeText,
+        getActiveTranslationText: () => activeTranslationText,
+        isDualSubtitlesEnabled: () => currentDualSubtitles,
+        setDualSubtitlesEnabled: (val) => { currentDualSubtitles = !!val; },
         getActiveSubtitleContext,
         closeSubTooltip,
         handleAIExplain,

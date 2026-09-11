@@ -60,6 +60,7 @@ whenPopupReady((data) => {
     }
     loadVoices(voice);
 
+    if (dualSubtitlesToggle) dualSubtitlesToggle.checked = data.dualSubtitles !== false;
     if (subtitleTTSToggle) subtitleTTSToggle.checked = !!data.subtitleTTS;
     if (wordCloudModeToggle) wordCloudModeToggle.checked = !!data.wordCloudMode;
     const aiExpLangEl = document.getElementById("aiExplanationLanguage");
@@ -87,8 +88,18 @@ if (aiExpLangSelect) {
 }
 
 // ── Subtitle reading modes ───────────────────────────────────────
+const dualSubtitlesToggle = document.getElementById("dualSubtitles");
 const subtitleTTSToggle = document.getElementById("subtitleTTS");
 const wordCloudModeToggle = document.getElementById("wordCloudMode");
+
+if (dualSubtitlesToggle) {
+    dualSubtitlesToggle.addEventListener("change", () => {
+        chrome.storage.local.set(
+            { dualSubtitles: dualSubtitlesToggle.checked },
+            flashSaved,
+        );
+    });
+}
 
 subtitleTTSToggle.addEventListener("change", () => {
     chrome.storage.local.set(
