@@ -55,50 +55,78 @@ Tradycyjne wtyczki do nauki języków popełniają trzy krytyczne błędy:
 
 ---
 
-## 2. MASTER-PROMPT DO IMPLEMENTACJI PODWÓJNYCH NAPISÓW
+## 2. MASTER-PROMPT DO IMPLEMENTACJI PODWÓJNYCH NAPISÓW (PRODUKCYJNY)
 
 Poniższy prompt możesz bezpośrednio przekazać dowolnemu zaawansowanemu agentowi programistycznemu lub wdrożyć we wtyczce:
 
 ```markdown
-Jesteś Principal Chrome Extension Architectem (Manifest V3, Web Media Specialist).
-Twoim zadaniem jest wdrożenie w rozszerzeniu Chrome "Lectoro" modułu natywnych podwójnych napisów (Dual Subtitles: Target Learning Language + Native Language) pobieranych bezpośrednio z platform YouTube i Netflix.
+Jesteś Principal Chrome Extension Architectem (Manifest V3, Web Media Specialist) oraz Lead UI/UX Product Designerem.
+Twoim zadaniem jest wdrożenie w rozszerzeniu Chrome "Lectoro" modułu natywnych podwójnych napisów (Dual Subtitles: Target Learning Language + Native Language) pobieranych bezpośrednio z platform YouTube i Netflix, z minimalistycznym, nowoczesnym UI/UX oraz architekturą redukującą koszty operacyjne do absolutnego minimum przy tysiącach aktywnych użytkowników dziennie.
 
-### WYMAGANIA FUNKCJONALNE:
-1. POBIERANIE NAPISÓW BEZPOŚREDNIO Z PLATFORMY (ZERO ZEWNĘTRZNYCH BAZ):
-   - YouTube:
-     * Wstrzyknij skrypt pomocniczy do MAIN world lub odpytaj obiekt `movie_player.getPlayerResponse().captions.playerCaptionsTracklistRenderer.captionTracks`.
-     * Pobierz równolegle dwie ścieżki:
-       1) Język docelowy (np. angielski - `vssId: ".en"` lub ASR `kind: "asr"` w formacie `fmt=json3` lub `fmt=srv3`).
-       2) Język ojczysty użytkownika (np. polski - jeśli istnieje gotowa ścieżka manualna `.pl` lub pobierz wersję tłumaczoną parametrem `&tlang=pl`).
-     * Nigdy nie parsuj napisów wyłącznie z DOM YouTube (który tnie wiersze); pobieraj pełny surowy timedtext bezpośrednio przez authenticated fetch z parametrami sesji.
-   - Netflix:
-     * Wstrzyknij most do MAIN world i przechwyć manifesty `timedtexttracks` z `window.netflix.appContext.state.playerApp.getAPI().videoPlayer` lub przez intercepcję `JSON.parse` / `fetch`.
-     * Zlokalizuj profile WebVTT / TTML (DFXP) dla:
-       1) Ścieżki oryginalnej / nauki (np. EN).
-       2) Ścieżki ojczystej (np. PL).
-     * Pobierz oba pliki XML/WebVTT, sparsuj znaczniki czasu do zunifikowanej struktury `Cue` ({ id, startTime, endTime, text, words[] }).
+### 1. POBIERANIE NAPISÓW BEZPOŚREDNIO Z PLATFORMY ($0 KOSZTÓW PASMA I BAZY):
+- YouTube:
+  * Wstrzyknij most do MAIN world lub odpytaj obiekt `movie_player.getPlayerResponse().captions.playerCaptionsTracklistRenderer.captionTracks`.
+  * Pobierz równolegle dwie ścieżki bezpośrednio z CDN YouTube do przeglądarki użytkownika:
+    1) Język docelowy (np. angielski - `vssId: ".en"` lub ASR `kind: "asr"` w formacie `fmt=json3` lub `fmt=srv3`).
+    2) Język ojczysty użytkownika (np. polski - jeśli istnieje gotowa ścieżka manualna `.pl` lub pobierz wersję tłumaczoną parametrem `&tlang=pl`).
+  * Nigdy nie parsuj napisów wyłącznie z DOM YouTube (który tnie wiersze); pobieraj pełny surowy timedtext bezpośrednio przez authenticated fetch z parametrami sesji.
+- Netflix:
+  * Wstrzyknij most do MAIN world i przechwyć manifesty `timedtexttracks` z `window.netflix.appContext.state.playerApp.getAPI().videoPlayer` lub przez intercepcję `JSON.parse` / `fetch`.
+  * Zlokalizuj profile WebVTT / TTML (DFXP) dla ścieżki nauki oraz ścieżki ojczystej.
+  * Pobierz oba pliki z CDN Netflixa, sparsuj znaczniki czasu do zunifikowanej struktury `Cue` ({ id, startTime, endTime, text, words[] }).
+* ZASADA KOSZTOWA: Cały transfer napisów odbywa się P2P (klient <-> YouTube/Netflix). Twój własny backend nie pośredniczy w transferze wideo ani napisów, co daje $0 kosztów serwerowych za streaming.
 
-2. SYNCHRONIZACJA I SILNIK SUB-FRAME:
-   - Zbuduj zunifikowany indeks czasowy dla obu języków z wyszukiwaniem binarnym `findActiveCue(video.currentTime)`.
-   - Uruchom pętlę odświeżania opartą o `requestAnimationFrame` zsynchronizowaną z `video.currentTime` (płynność 60 FPS, brak migotania).
-   - Ukryj domyślne napisy odtwarzacza (na YouTube klasa `.ytp-caption-window-container { display: none !important; }`, na Netflixie odpowiedni kontener napisów).
+### 2. MINIMALISTYCZNY DESIGN I NAJNOWSZE STANDARDY UI/UX (ZERO CLUTTER, MAX IMMERSION):
+- Filozofia "Invisible Interface":
+  * Żadnych zbędnych pasków bocznych, rozpraszających menu ani natłoku przycisków na ekranie wideo.
+  * Napisy i karty mają wyglądać tak, jakby były integralną, natywną częścią platformy YouTube i Netflix, a nie doczepioną nakładką.
+- Typografia i Czytelność:
+  * Użyj nowoczesnego stosu bezszeryfowego: `system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`.
+  * Doskonała czytelność w każdych warunkach: delikatny obrys tekstu `text-shadow: 0 2px 4px rgba(0,0,0,0.85), 0 0 2px rgba(0,0,0,0.9)` gwarantuje idealny kontrast zarówno na śnieżnobiałym, jak i czarnym tle sceny.
+- Dwuwarstwowy Układ Napisów:
+  * Linia Górna (Język Nauki): Większa czcionka, wysoki kontrast (#FFFFFF), każde słowo owinięte w `<span class="lectoro-word">` z mikro-efektem hover (delikatne podświetlenie tła z `border-radius: 4px`).
+  * Linia Dolna (Język Ojczysty): Mniejsza czcionka, subtelny odcień (#E2E8F0 lub #CBD5E1).
+- Smart-Blur (Tryb Aktywnej Nauki):
+  * Domyślnie dolna linijka może być delikatnie rozmyta (`filter: blur(5px); opacity: 0.65; transition: all 0.2s ease`).
+  * Odsłonięcie następuje natychmiast po najechaniu myszką na dolną linię LUB po przytrzymaniu klawisza `T`. Zmusza to mózg do samodzielnego rozumienia ze słuchu.
+- Popover API (`popover="hint"`) & Light Dismiss:
+  * Dymki słów i karty fraz wykorzystują natywny Popover API ze stanem Top Layer.
+  * Kliknięcie w dowolne inne miejsce na ekranie, wciśnięcie `Escape` lub `Spacji` natychmiast płynnie zamyka dymek i automatycznie wznawia wideo.
+- Płynne Mikro-Animacje (@starting-style):
+  * Czysty CSS bez ciężkich bibliotek JS: użyj `@starting-style` z przejściem `opacity: 0 -> 1` i `transform: translateY(6px) -> translateY(0)` (czas 150 ms, cubic-bezier(0.16, 1, 0.3, 1)).
 
-3. RENDEROWANIE PODWÓJNYCH NAPISÓW (DUAL SUBTITLE OVERLAY):
-   - Stwórz lekki, nowoczesny overlay wstrzykiwany nad wideo (wykorzystujący Shadow DOM dla 100% izolacji styli):
-     * Linia 1 (Górna - Język Nauki): Każde słowo musi być owinięte w interaktywny element `<span class="lectoro-word" data-word="...">`, reagujący na hover (Word-by-word tooltip) oraz kliknięcie.
-     * Linia 2 (Dolna - Język Ojczysty): Przetłumaczona linia pobrana z platformy. Wyświetlana czystą, czytelną czcionką z subtelnym obrysem (text-shadow) dla doskonałej czytelności na każdym tle wideo.
-     * Przełącznik widoczności (Hotkey `T` lub ikona oka): Możliwość ukrycia dolnej linii (rozmycie/blur lub całkowite ukrycie), aby uczeń mógł sprawdzać tłumaczenie tylko wtedy, gdy go potrzebuje!
+### 3. SILNIK REKONSTRUKCJI ZDAŃ ASR (YOUTUBE):
+- Naprawianie uciętych słów w napisach automatycznych:
+  * W formacie `json3` analizuj tablicę `events[].segs[]` oraz znaczniki `tOffsetMs`.
+  * Łącz ucięte mikrosegmenty w pełne zdania na podstawie analizy pauz akustycznych (milczenie w audio > 450 ms) oraz znaków interpunkcyjnych.
+- Podwójne Okno w Przód (Double Lookahead Buffer):
+  * Wyświetlaj bieżące zdanie (zsynchronizowane co do słowa) oraz zapowiedź kolejnego zdania wybiegającego w przód o 1.5–2.0 s z przezroczystością `opacity: 0.4`. Użytkownik widzi kontekst z wyprzedzeniem i nie doświadcza ucinania wyrazów w połowie myśli.
+- Word-Level Karaoke Highlighting:
+  * Całe zdanie jest stabilne na ekranie; tylko aktualnie wymawiane słowo otrzymuje klasę `.lectoro-word--active` (subtelne rozjaśnienie/glow). Zero drżenia i skakania tekstu.
 
-4. ROZWIĄZANIE PROBLEMU ASR (AUTO-GENERATED) NA YOUTUBE:
-   - Zaimplementuj Silnik Rekonstrukcji Zdań (Sentence Boundary Reconstruction):
-     * W formacie `json3` analizuj tablicę `events[].segs[]` oraz `tOffsetMs`.
-     * Łącz ucięte mikrosegmenty w pełne logiczne zdania na podstawie pauz w wypowiedzi (milczenie > 450 ms) lub znaków interpunkcyjnych.
-     * Zaimplementuj podwójne okno w przód (Double Lookahead): pokazuj bieżący segment oraz kolejny wybiegający o 1.5 sekundy w przód, eliminując efekt "urywania słów w połowie zdania".
+### 4. RADYKALNA MINIMALIZACJA KOSZTÓW PRZY TYSIĄCACH UŻYTKOWNIKÓW DZIENNIE ($0-CENT STACK):
+- Zasada 1: Word-by-Word = $0 Kosztu AI:
+  * Tłumaczenie pojedynczych słów po najechaniu kursorem (hover) pobierane jest wyłącznie z lokalnego słownika w pamięci wtyczki (IndexedDB / prekompilowany JSON) lub darmowych słowników offline. Żadne pojedyncze słowo NIE wysyła zapytania do Gemini!
+- Zasada 2: Globalny Edge Cache (Cloudflare R2 / KV):
+  * 85–90% dialogów i idiomów w filmach powtarza się w kółko między użytkownikami.
+  * Każda fraza jest hashowana: `sha256(normalizedPhrase + ":" + targetLang)`.
+  * Przed jakimkolwiek wywołaniem Gemini sprawdzany jest Cloudflare R2 / KV:
+    - Trafienie w Cache (Cache Hit): Odpowiedź w 15–20 ms, koszt Gemini = $0, zero obciążenia serwera, brak opłat za transfer wychodzący w Cloudflare R2!
+    - Brak w Cache (Cache Miss): Odpytanie Gemini następuje tylko 1 raz na świecie dla danej frazy, a wynik jest asynchronicznie zapisywany w R2 dla wszystkich kolejnych tysięcy użytkowników.
+- Zasada 3: Ekstremalnie Lekki Model i Prompt:
+  * Model: `gemini-2.5-flash-lite` (najszybszy i najtańszy).
+  * `temperature: 0.0` (maksymalny determinizm i prędkość).
+  * `maxOutputTokens: 90` (maksymalnie 2 zwięzłe punkty: znaczenie w kontekście + idiom, bez lania wody).
+- Zasada 4: Early Abort przy Strumieniowaniu:
+  * Gdy użytkownik rzuci okiem na pierwsze 3 słowa wyjaśnienia i wciśnie `Spację`, by wznowić film — natychmiast wywołaj `AbortController.abort()`. Zrywa to połączenie i natychmiast wstrzymuje dalszą generację tokenów przez model, ucinając koszty.
+- Zasada 5: Debounce i Ochrona przed Spamem:
+  * Klawisz `Enter` posiada debounce 1.5 sekundy na poziomie klienta, uniemożliwiając użytkownikom spamowanie żądaniami do API.
 
-5. BRAK REGRESJI I ZGODNOŚĆ Z CWS / MANIFEST V3:
-   - Zero `eval()`, zero wstrzykiwania kodu ze zdalnych serwerów.
-   - Pamiętaj, że Service Worker w MV3 jest ulotny — stan synchronizuj przez `chrome.storage.local`.
-   - Wszystkie listenery asynchroniczne `chrome.runtime.onMessage` muszą zwracać `true`.
+### 5. BRAK REGRESJI I ZGODNOŚĆ Z CWS / MANIFEST V3:
+- Zero `eval()`, zero `new Function()`, zero ładowania kodu z zewnętrznych serwerów CDN.
+- Uprawnienia w manifest.json ograniczone do absolutnego minimum (`storage`, `host_permissions` tylko dla YouTube, Netflix i API).
+- Service Worker w MV3 nie przechowuje stanu w RAM; stan zapisywany jest w `chrome.storage.local`.
+- Wszystkie listenery asynchroniczne `chrome.runtime.onMessage` zwracają `true`.
 ```
 
 ---
