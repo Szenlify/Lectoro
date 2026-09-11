@@ -1,0 +1,5 @@
+/* Shared behavior; appearance and state variants remain in view modules. */
+.lx-button {
+  cursor: pointer;
+  font-family: inherit;
+}

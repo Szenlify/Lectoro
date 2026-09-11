@@ -1,0 +1,17 @@
+{
+  "slider-row": "lx-row lx-gap-16",
+  "toggle-row": "lx-row lx-between",
+  "help-steps": "lx-stack lx-gap-12",
+  "help-step": "lx-row-start lx-gap-12",
+  "platform-logo": "lx-inline-center",
+  "library-platforms-bar": "lx-row lx-wrap lx-gap-7",
+  "review-question": "lx-text-center lx-w-full",
+  "quiz-btn-label": "quiz-btn-label lx-inline-row lx-gap-4",
+  "export-btn-label": "export-btn-label lx-inline-row lx-gap-4",
+  "export-btn": "export-btn lx-button",
+  "review-rate-btn": "review-rate-btn lx-button",
+  "review-flip-btn": "review-flip-btn lx-button",
+  "review-edit-save": "review-edit-save lx-button",
+  "review-edit-cancel": "review-edit-cancel lx-button",
+  "sync-btn": "sync-btn lx-button"
+}

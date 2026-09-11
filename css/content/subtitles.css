@@ -1,0 +1,234 @@
+/* Lectoro Universal Custom Subtitles (SSOT & Responsive) */
+#__qt_custom_subtitles_layer.__qt_custom-subtitles-layer {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 2147483645 !important;
+  pointer-events: none !important;
+  margin: var(--lx-space-0) !important;
+  padding: var(--lx-space-0) !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  align-items: flex-end !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+  transition: opacity 0.15s ease !important;
+  isolation: isolate !important;
+  contain: layout style !important;
+  color: var(--lx-color-ffffff) !important;
+  font-family: var(--lx-font-family-05) !important;
+  font-style: normal !important;
+  font-weight: var(--lx-weight-600) !important;
+  font-variant: normal !important;
+  text-transform: none !important;
+  text-rendering: geometricPrecision !important;
+  -webkit-font-smoothing: antialiased !important;
+}
+#__qt_custom_subtitles_layer .__qt_custom-subtitles-box {
+  position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  width: auto !important;
+  max-width: 84% !important;
+  min-width: 0 !important;
+  flex: 0 0 auto !important;
+  margin-bottom: var(--lectoro-sub-bottom, 68px) !important;
+  pointer-events: auto !important;
+  user-select: text !important;
+  color: inherit !important;
+  font: inherit !important;
+  line-height: inherit !important;
+  letter-spacing: inherit !important;
+  text-transform: none !important;
+  white-space: normal !important;
+  transition:
+    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0s ease !important;
+}
+#__qt_custom_subtitles_layer .__qt_custom-sub-line {
+  display: block !important;
+  width: auto !important;
+  max-width: 100% !important;
+  margin: var(--lx-space-3px) auto !important;
+  padding: var(--lectoro-sub-bg-padding, 0 4px) !important;
+  border-radius: var(--lx-radius-4px) !important;
+  background-color: var(
+    --lectoro-sub-bg-color,
+    var(--lx-color-transparent)
+  ) !important;
+  box-decoration-break: clone !important;
+  -webkit-box-decoration-break: clone !important;
+  color: var(--lx-color-ffffff) !important;
+  font-family: var(--lx-font-family-05) !important;
+  font-size: var(--lectoro-sub-font-size, 26px) !important;
+  font-style: normal !important;
+  font-weight: var(--lx-weight-600) !important;
+  font-variant: normal !important;
+  line-height: var(--lx-leading-1_38) !important;
+  letter-spacing: var(--lx-tracking-0_015em) !important;
+  word-spacing: normal !important;
+  text-align: center !important;
+  text-decoration: none !important;
+  text-transform: none !important;
+  unicode-bidi: plaintext !important;
+  text-shadow: var(--lx-text-shadow-02) !important;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
+  text-wrap: balance !important;
+  hyphens: none !important;
+}
+#__qt_custom_subtitles_layer .__qt_custom-sub-translation {
+  position: absolute !important;
+  top: calc(100% + 6px) !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: max-content;
+  max-width: min(84vw, 850px) !important;
+  box-sizing: border-box !important;
+  margin: var(--lx-space-0) auto !important;
+  padding: var(--lectoro-sub-bg-padding, 1px 6px) !important;
+  border-radius: var(--lx-radius-4px) !important;
+  background-color: var(
+    --lectoro-sub-bg-color,
+    var(--lx-color-transparent)
+  ) !important;
+  box-decoration-break: clone !important;
+  -webkit-box-decoration-break: clone !important;
+  color: var(--lx-color-dbdbdb) !important;
+  font-family: var(--lx-font-family-05) !important;
+  font-size: var(--lx-text-01) !important;
+  font-style: normal !important;
+  font-weight: var(--lx-weight-500) !important;
+  line-height: var(--lx-leading-1_35) !important;
+  letter-spacing: var(--lx-tracking-0_015em) !important;
+  text-align: center !important;
+  text-shadow: var(--lx-text-shadow-03) !important;
+  white-space: pre-line !important;
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
+  text-wrap: balance !important;
+  pointer-events: none !important;
+  user-select: text !important;
+  z-index: 10 !important;
+  animation: qtSubTranslationFadeIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+#__qt_custom_subtitles_layer .__qt_custom-sub-translation[data-sentence-state] {
+  width: max-content;
+  animation: none !important;
+  overflow: hidden !important;
+}
+#__qt_custom_subtitles_layer
+  .__qt_custom-sub-translation[data-sentence-state="loading"] {
+  width: 96px;
+  height: 12px;
+  margin-top: var(--lx-space-4px) !important;
+  border-radius: var(--lx-radius-6px) !important;
+}
+#__qt_custom_subtitles_layer
+  .__qt_custom-sub-translation[data-sentence-state]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    var(--lx-color-24) 20%,
+    var(--lx-color-163) 48%,
+    var(--lx-color-38) 78%
+  );
+  background-size: 240% 100%;
+  animation: __qt_sentence_shimmer 1.15s linear infinite;
+  transition: opacity 320ms ease;
+}
+#__qt_custom_subtitles_layer .__qt_sentence-copy {
+  display: block;
+  opacity: 0;
+  transform: translateY(4px);
+  filter: blur(3px);
+  transition:
+    opacity 360ms ease,
+    transform 360ms ease,
+    filter 360ms ease;
+}
+#__qt_custom_subtitles_layer [data-sentence-state="ready"]::after {
+  opacity: 0;
+  animation: none;
+}
+#__qt_custom_subtitles_layer [data-sentence-state="ready"] .__qt_sentence-copy {
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+}
+@keyframes __qt_sentence_shimmer {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -90% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #__qt_custom_subtitles_layer
+    .__qt_custom-sub-translation[data-sentence-state]::after {
+    animation: none;
+    transition: none;
+  }
+  #__qt_custom_subtitles_layer .__qt_sentence-copy {
+    transition: none;
+  }
+}
+@keyframes qtSubTranslationFadeIn {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+} /* Sentence translation supports replay on click. */
+body[data-lectoro-sub-translate-active="true"]
+  #__qt_custom_subtitles_layer
+  .__qt_custom-sub-translation {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+#__qt_custom_subtitles_layer .__qt_sub-word {
+  cursor: pointer !important;
+  display: inline !important;
+  pointer-events: auto !important;
+  border-radius: var(--lx-radius-4px) !important;
+  padding: var(--lx-space-0) !important;
+  margin: var(--lx-space-0) !important;
+  color: inherit !important;
+  font: inherit !important;
+  line-height: inherit !important;
+  letter-spacing: inherit !important;
+  word-spacing: inherit !important;
+  text-shadow: inherit !important;
+  text-decoration: inherit !important;
+  text-transform: none !important;
+  white-space: inherit !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  hyphens: none !important;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease,
+    transform 0.12s ease,
+    box-shadow 0.12s ease !important;
+}
+#__qt_custom_subtitles_layer .__qt_sub-word:hover,
+#__qt_custom_subtitles_layer .__qt_sub-word.__qt_word-hover {
+  background: var(--lx-color-217) !important;
+  color: var(--lx-color-ffffff) !important;
+  box-shadow: var(--lx-box-shadow-75) !important;
+  text-shadow: var(--lx-text-shadow-04) !important;
+}

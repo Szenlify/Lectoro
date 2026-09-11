@@ -1,11 +1,18 @@
 {
   "devDependencies": {
+    "playwright": "^1.63.0",
+    "postcss": "^8.5.28",
+    "postcss-value-parser": "^4.2.0",
     "prettier": "^3.9.6"
   },
   "scripts": {
     "test": "node --test tests/*.test.js functions/*.test.js scratch/test_enter_mode.js scratch/test_video_sub_toggle.js",
     "test:subtitles": "node scratch/test_subtitles.js",
     "check:syntax": "node scratch/check_syntax.js",
-    "audit": "node scratch/check_dead_css.js && node scratch/check_popup_css.js && node scratch/scan_all_unused.js"
+    "audit": "node scratch/check_dead_css.js && node scratch/check_popup_css.js && node scratch/scan_all_unused.js",
+    "build:css": "node scripts/build-css.js",
+    "check:css": "node scripts/build-css.js --check",
+    "pretest": "npm run check:css",
+    "test:css:browser": "node scripts/test-css-browser.js"
   }
 }

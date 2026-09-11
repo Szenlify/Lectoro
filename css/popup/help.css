@@ -1,0 +1,175 @@
+/* HELP / INSTRUCTIONS PANEL */
+.help-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lx-space-16px);
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--lx-space-4px) var(--lx-space-22px) var(--lx-space-22px);
+  scrollbar-width: thin;
+  scrollbar-color: var(--lx-color-19) var(--lx-color-transparent);
+}
+.help-panel::-webkit-scrollbar {
+  width: 3px;
+} /* Bare .glass-card only had rules under .settings before — the
+           help cards were rendering with NO background/border at all.
+           Give the help panel its own scoped copy of the same visual
+           treatment used everywhere else in the popup. */
+.help-panel .glass-card {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: var(--lx-space-16px) var(--lx-space-18px);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+  box-shadow: var(--lx-box-shadow-08);
+} /* Section header: icon badge + title */
+.help-section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--lx-space-9px);
+  margin-bottom: var(--lx-space-8px);
+}
+.help-icon-badge {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--lx-text-12_5px);
+  border-radius: var(--lx-radius-8px);
+}
+.badge-accent {
+  background: var(--accent-dim);
+}
+.badge-mint {
+  background: var(--mint-dim);
+}
+.badge-amber {
+  background: var(--amber-dim);
+}
+.help-section-title {
+  font-size: var(--lx-text-14px);
+  font-weight: var(--lx-weight-700);
+  color: var(--text-primary);
+  letter-spacing: var(--lx-tracking-neg-0_1px);
+}
+.help-card {
+  font-size: var(--lx-text-12_5px);
+  line-height: var(--lx-leading-1_55);
+  color: var(--text-secondary);
+}
+.help-card p {
+  margin: var(--lx-space-0) var(--lx-space-0) var(--lx-space-10px);
+}
+.help-card p:last-child {
+  margin-bottom: var(--lx-space-0);
+}
+.help-card a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: var(--lx-weight-600);
+}
+.help-card a:hover {
+  text-decoration: underline;
+}
+.help-lead {
+  margin-bottom: var(--lx-space-12px) !important;
+} /* Numbered quick-start steps */
+.step-num {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--lx-text-11px);
+  font-weight: var(--lx-weight-700);
+  color: var(--accent);
+  background: var(--accent-dim);
+  border: 1px solid var(--lx-color-29);
+  border-radius: var(--lx-radius-50pct);
+}
+.step-text {
+  padding-top: var(--lx-space-2px);
+  font-size: var(--lx-text-12_5px);
+  color: var(--text-secondary);
+}
+.step-text strong {
+  color: var(--text-primary);
+} /* Keyboard shortcut groups */
+.shortcut-group {
+  margin-top: var(--lx-space-14px);
+}
+.shortcut-group:first-of-type {
+  margin-top: var(--lx-space-0);
+}
+.shortcut-group-title {
+  font-size: var(--lx-text-10px);
+  font-weight: var(--lx-weight-700);
+  text-transform: uppercase;
+  letter-spacing: var(--lx-tracking-0_6px);
+  color: var(--text-muted);
+  margin-bottom: var(--lx-space-8px);
+}
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  gap: var(--lx-space-12px);
+  padding: var(--lx-space-6px) var(--lx-space-0);
+  border-bottom: 1px solid var(--glass-border);
+}
+.shortcut-row:last-child {
+  border-bottom: none;
+}
+.key-combo {
+  display: flex;
+  align-items: center;
+  gap: var(--lx-space-3px);
+  flex-shrink: 0;
+  width: 92px;
+}
+.key-or {
+  font-size: var(--lx-text-10px);
+  color: var(--text-muted);
+}
+.shortcut-desc {
+  font-size: var(--lx-text-12px);
+  color: var(--text-secondary);
+}
+.key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  padding: var(--lx-space-3px) var(--lx-space-7px);
+  font-size: var(--lx-text-11px);
+  font-weight: var(--lx-weight-700);
+  color: var(--text-primary);
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-border);
+  border-bottom: 2px solid var(--lx-color-89);
+  border-radius: var(--lx-radius-6px);
+  font-family: var(--lx-font-family-02);
+} /* Tip callout */
+.help-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--lx-space-10px);
+  margin-top: var(--lx-space-12px);
+  padding: var(--lx-space-11px) var(--lx-space-13px);
+  background: var(--mint-dim);
+  border: 1px solid var(--lx-color-90);
+  border-radius: var(--radius-md);
+  font-size: var(--lx-text-12px);
+  line-height: var(--lx-leading-1_5);
+  color: var(--text-secondary);
+}
+.help-tip strong {
+  color: var(--text-primary);
+}
+.help-tip-icon {
+  font-size: var(--lx-text-14px);
+  flex-shrink: 0;
+}

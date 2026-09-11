@@ -1,0 +1,93 @@
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--lx-space-12px);
+  padding: var(--lx-space-20px) var(--lx-space-22px) var(--lx-space-14px);
+  position: relative;
+  z-index: 1;
+}
+.header-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--lx-radius-12px);
+  background: var(--accent-dim);
+  border: 1px solid var(--lx-color-15);
+  flex-shrink: 0;
+  box-shadow: var(--lx-box-shadow-01);
+}
+.header-icon svg {
+  stroke: var(--accent);
+}
+.header h1 {
+  font-size: var(--lx-text-22px);
+  font-weight: var(--lx-weight-700);
+  color: var(--text-primary);
+  letter-spacing: var(--lx-tracking-neg-0_4px);
+} /* Tabs */
+.tabs {
+  display: flex;
+  gap: var(--lx-space-4px);
+  padding: var(--lx-space-0) var(--lx-space-14px) var(--lx-space-16px);
+  position: relative;
+  z-index: 1;
+}
+.tab {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--lx-space-4px);
+  padding: var(--lx-space-9px) var(--lx-space-2px) var(--lx-space-8px);
+  text-align: center;
+  color: var(--text-muted);
+  cursor: pointer;
+  border: 1px solid var(--lx-color-transparent);
+  border-radius: var(--radius-md);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--lx-color-transparent);
+  position: relative;
+}
+.tab-icon {
+  font-size: var(--lx-text-16px);
+  line-height: var(--lx-leading-1);
+}
+.tab-label {
+  font-size: var(--lx-text-8_5px);
+  font-weight: var(--lx-weight-700);
+  text-transform: uppercase;
+  letter-spacing: var(--lx-tracking-0_3px);
+  line-height: var(--lx-leading-1);
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tab:hover {
+  color: var(--text-secondary);
+  background: var(--glass);
+}
+.tab.active {
+  color: var(--text-primary);
+  background: var(--glass-strong);
+  border-color: var(--glass-border);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+  box-shadow: var(--lx-box-shadow-02);
+} /* Tab content */
+.tab-content {
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1;
+  position: relative;
+  z-index: 1;
+}
+.tab-content.active {
+  display: flex;
+}

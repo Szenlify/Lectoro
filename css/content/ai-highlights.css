@@ -1,0 +1,138 @@
+/* Video Subtitle Highlighting for AI Breakdown */ /* Unified phrase/word wrapper ensuring contiguous background across multi-word idioms */
+.__qt_word-cloud-phrase,
+.__qt_ai-sub-wrap {
+  display: inline !important;
+  box-decoration-break: clone !important;
+  -webkit-box-decoration-break: clone !important;
+  border-radius: var(--lx-radius-4px) !important;
+  padding: var(--lx-space-0) !important;
+  margin: var(--lx-space-0) !important;
+  line-height: inherit !important;
+  pointer-events: auto !important;
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+} /* Neutralize individual word borders/backgrounds inside the unified phrase wrapper */
+.__qt_word-cloud-phrase .__qt_sub-word,
+#__qt_custom_subtitles_layer .__qt_word-cloud-phrase .__qt_sub-word:hover,
+#__qt_custom_subtitles_layer
+  .__qt_word-cloud-phrase
+  .__qt_sub-word.__qt_word-hover,
+.__qt_ai-sub-wrap .__qt_sub-word,
+#__qt_custom_subtitles_layer .__qt_ai-sub-wrap .__qt_sub-word:hover,
+#__qt_custom_subtitles_layer .__qt_ai-sub-wrap .__qt_sub-word.__qt_word-hover,
+#__qt_custom_subtitles_layer .__qt_sub-word.__qt_ai-sub-queued:hover,
+#__qt_custom_subtitles_layer .__qt_sub-word.__qt_ai-sub-active:hover,
+#__qt_custom_subtitles_layer .__qt_sub-word.__qt_ai-sub-upcoming:hover {
+  background: var(--lx-color-transparent) !important;
+  box-shadow: none !important;
+  border-radius: var(--lx-radius-0) !important;
+  padding: var(--lx-space-0) !important;
+  margin: var(--lx-space-0) !important;
+  color: inherit !important;
+  text-shadow: inherit !important;
+  transition: color 0.25s ease !important;
+} /* Active term currently being explained (neon cyan & violet gradient) */
+.__qt_ai-sub-wrap.__qt_ai-sub-active,
+.__qt_ai-sub-active {
+  background: linear-gradient(
+    135deg,
+    var(--lx-color-240),
+    var(--lx-color-241)
+  ) !important;
+  color: var(--lx-color-ffffff) !important;
+  text-shadow: var(--lx-text-shadow-05) !important;
+  border-radius: var(--lx-radius-4px) !important;
+  box-shadow: var(--lx-box-shadow-84) !important;
+  padding: var(--lx-space-0) !important;
+  margin: var(--lx-space-0) !important;
+  cursor: pointer !important;
+  animation: __qt_sub_highlight_glow_in 0.42s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+} /* Queued terms: upcoming and previous idioms/words in the sentence (soft violet) */
+.__qt_ai-sub-wrap.__qt_ai-sub-upcoming,
+.__qt_ai-sub-wrap.__qt_ai-sub-queued,
+.__qt_ai-sub-upcoming,
+.__qt_ai-sub-queued {
+  background: var(--lx-color-226) !important;
+  color: var(--lx-color-f3e8ff) !important;
+  text-shadow: var(--lx-text-shadow-06) !important;
+  border-radius: var(--lx-radius-4px) !important;
+  box-shadow: var(--lx-box-shadow-85) !important;
+  padding: var(--lx-space-0) !important;
+  margin: var(--lx-space-0) !important;
+  cursor: pointer !important;
+  animation: __qt_sub_queued_fade_in 0.42s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+} /* Dopasowany hover dla podświetlonych terminów fioletowych (queued / upcoming) */
+.__qt_ai-sub-wrap:hover,
+.__qt_ai-sub-wrap.__qt_ai-sub-queued:hover,
+.__qt_ai-sub-wrap.__qt_ai-sub-upcoming:hover,
+.__qt_ai-sub-queued:hover,
+.__qt_ai-sub-upcoming:hover {
+  background: var(--lx-color-227) !important;
+  box-shadow: var(--lx-box-shadow-86) !important;
+  color: var(--lx-color-ffffff) !important;
+  text-shadow: var(--lx-text-shadow-07) !important;
+  cursor: pointer !important;
+  filter: brightness(1.15) !important;
+} /* Dopasowany hover dla podświetlonego aktywnego terminu (cyan gradient) */
+.__qt_ai-sub-wrap.__qt_ai-sub-active:hover,
+.__qt_ai-sub-active:hover {
+  background: linear-gradient(
+    135deg,
+    var(--lx-color-246),
+    var(--lx-color-247)
+  ) !important;
+  box-shadow: var(--lx-box-shadow-87) !important;
+  color: var(--lx-color-ffffff) !important;
+  text-shadow: var(--lx-text-shadow-08) !important;
+  cursor: pointer !important;
+  filter: brightness(1.15) !important;
+} /* Wyłączenie fałszywego niebieskiego hovera dla niepodświetlonych słów podczas aktywnego trybu Enter AI */
+body[data-lectoro-ai-active="true"]
+  #__qt_custom_subtitles_layer
+  .__qt_sub-word:not(.__qt_ai-sub-active):not(.__qt_ai-sub-queued):not(
+    .__qt_ai-sub-upcoming
+  ) {
+  cursor: default !important;
+}
+body[data-lectoro-ai-active="true"]
+  #__qt_custom_subtitles_layer
+  .__qt_sub-word:not(.__qt_ai-sub-active):not(.__qt_ai-sub-queued):not(
+    .__qt_ai-sub-upcoming
+  ):hover {
+  background: var(--lx-color-transparent) !important;
+  box-shadow: none !important;
+  color: inherit !important;
+  text-shadow: inherit !important;
+} /* Soft, non-aggressive entrance animation for active highlighted words */
+@keyframes __qt_sub_highlight_glow_in {
+  0% {
+    box-shadow: var(--lx-box-shadow-88);
+    opacity: 0.7;
+  }
+
+  50% {
+    box-shadow: var(--lx-box-shadow-89);
+    opacity: 1;
+  }
+
+  100% {
+    box-shadow: var(--lx-box-shadow-84);
+    opacity: 1;
+  }
+} /* Smooth fade-in animation for queued (upcoming/previous) words */
+@keyframes __qt_sub_queued_fade_in {
+  0% {
+    box-shadow: var(--lx-box-shadow-90);
+    opacity: 0.5;
+  }
+
+  50% {
+    box-shadow: var(--lx-box-shadow-91);
+  }
+
+  100% {
+    box-shadow: var(--lx-box-shadow-85);
+    opacity: 1;
+  }
+}

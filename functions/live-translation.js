@@ -265,7 +265,7 @@ function translationError(error) {
         cache: "Could not read the dictionary. Please try again.",
         storage: "Could not save the translation. Please try again.",
         generation: "Translation service could not generate a complete result. Please try again.",
-        verification: "Could not verify this dictionary entry. Check the word and selected languages.",
+        verification: "Word not recognized in this language. Please check your language settings.",
     };
     return { status: 503, code: `TRANSLATION_${(error.stage || "service").toUpperCase()}_FAILED`, error: messages[error.stage] || "Translation service is temporarily unavailable." };
 }

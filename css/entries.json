@@ -1,0 +1,37 @@
+{
+  "popup": [
+    "css/shared/variables.css",
+    "css/popup/theme.css",
+    "css/popup/utilities.css",
+    "css/popup/button.css",
+    "css/popup/base.css",
+    "css/popup/layout.css",
+    "css/popup/settings.css",
+    "css/popup/components.css",
+    "css/popup/words.css",
+    "css/popup/export.css",
+    "css/popup/review-voice.css",
+    "css/popup/help.css",
+    "css/popup/review.css",
+    "css/popup/sync.css",
+    "css/popup/subscriptions.css",
+    "css/popup/library.css"
+  ],
+  "content": [
+    "css/shared/variables.css",
+    "css/content/base.css",
+    "css/content/toolbar.css",
+    "css/content/highlights.css",
+    "css/content/tooltip.css",
+    "css/content/actions.css",
+    "css/content/native-subtitles.css",
+    "css/content/subtitles.css",
+    "css/content/notifications.css",
+    "css/content/translation.css",
+    "css/content/ai-explanation.css",
+    "css/content/player-overrides.css",
+    "css/content/word-cloud.css",
+    "css/content/ai-highlights.css",
+    "css/content/dictionary.css"
+  ]
+}

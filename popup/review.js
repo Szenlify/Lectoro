@@ -617,7 +617,7 @@ function reviewControlsHtml(sr, answerShown) {
         (reviewDirection === "normal" && !answerShown) ||
         (reviewDirection === "reverse" && answerShown);
     return `
-<button class="review-flip-btn" type="button">
+<button class="review-flip-btn lx-button" type="button">
     <span class="review-flip-keys">
         <kbd>↓</kbd>
         <kbd>S</kbd>
@@ -630,7 +630,7 @@ function reviewControlsHtml(sr, answerShown) {
         <div class="review-rating-label">Did you know the answer?</div>
 
         <div class="review-rating-buttons review-rating-buttons-2">
-            <button class="review-rate-btn rate-no" data-grade="1" type="button">
+            <button class="review-rate-btn rate-no lx-button" data-grade="1" type="button">
                 <span class="rate-key-pair">
                     <kbd>←</kbd>
                     <kbd>A</kbd>
@@ -642,7 +642,7 @@ function reviewControlsHtml(sr, answerShown) {
                 </span>
             </button>
 
-            <button class="review-rate-btn rate-yes" data-grade="2" type="button">
+            <button class="review-rate-btn rate-yes lx-button" data-grade="2" type="button">
                 <span class="rate-key-pair">
                     <kbd>→</kbd>
                     <kbd>D</kbd>
@@ -767,7 +767,7 @@ function renderQuestion(w) {
             : "";
     card.innerHTML = `
             <div class="review-flashcard">
-                <div class="review-question">
+                <div class="lx-text-center lx-w-full">
                     <div class="review-word-row">
                         <span class="review-word ${wordClass}">${escapeHtml(showWord)}</span>
                         <button class="review-speak-btn" data-text="${escapeAttr(
@@ -1134,7 +1134,7 @@ function renderAnswer(w) {
     // second "translation" block below it.
     card.innerHTML = `
         <div class="review-flashcard">
-            <div class="review-question">
+            <div class="lx-text-center lx-w-full">
                 <div class="review-word-row">
                     <span class="review-word ${aWordClass}">${escapeHtml(aWord)}</span>
                     <button class="review-speak-btn" data-text="${escapeAttr(
@@ -1211,8 +1211,8 @@ function showReviewEditForm(w, returnToAnswer = reviewAnswerShown) {
             <label>Context sentence (translation)</label>
             <input type="text" id="editSentenceTr" value="${escapeAttr(w.sentenceTranslated || "")}">
             <div class="review-edit-actions">
-                <button class="review-edit-cancel" id="editCancel">Cancel</button>
-                <button class="review-edit-save" id="editSave">💾 Save</button>
+                <button class="review-edit-cancel lx-button" id="editCancel">Cancel</button>
+                <button class="review-edit-save lx-button" id="editSave">💾 Save</button>
             </div>
         </div>`;
 

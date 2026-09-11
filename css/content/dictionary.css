@@ -1,0 +1,185 @@
+/* Concise dictionary details beneath the word translation. */
+#__qt_tooltip .__qt_dictionary-details {
+  margin-top: var(--lx-space-16px);
+  padding-top: var(--lx-space-14px);
+  border-top: 1px solid var(--lx-color-02);
+  font-size: var(--lx-text-13px);
+  line-height: var(--lx-leading-1_5);
+  overflow-wrap: anywhere;
+}
+#__qt_tooltip .__qt_dictionary-example {
+  padding: var(--lx-space-9px) var(--lx-space-0);
+  color: var(--lx-color-e4e7ef);
+}
+#__qt_tooltip .__qt_dictionary-example + .__qt_dictionary-example {
+  border-top: 1px solid var(--lx-color-81);
+}
+#__qt_tooltip .__qt_example-translation p {
+  flex: 1;
+  min-width: 0;
+  margin: var(--lx-space-0);
+  font: inherit;
+  color: inherit;
+}
+#__qt_tooltip .__qt_dictionary-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 24px;
+  align-items: flex-start;
+  gap: var(--lx-space-6px);
+  width: 100%;
+  box-sizing: border-box;
+}
+#__qt_tooltip .__qt_dictionary-line-text {
+  flex: 1;
+  min-width: 0;
+  padding-right: var(--lx-space-12px);
+}
+#__qt_tooltip .__qt_example-content {
+  flex: 1;
+  min-width: 0;
+}
+#__qt_tooltip .__qt_example-reveal summary {
+  position: relative;
+  padding-inline-start: var(--lx-space-18px);
+  cursor: pointer;
+  list-style: none;
+  border-radius: var(--lx-radius-3px);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+#__qt_tooltip .__qt_example-reveal {
+  box-sizing: border-box;
+}
+#__qt_tooltip .__qt_example-reveal summary::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 2px;
+  top: 0.45em;
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid var(--lx-color-aeb6c8);
+  border-bottom: 1.5px solid var(--lx-color-aeb6c8);
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+}
+#__qt_tooltip .__qt_example-reveal[open] summary::before {
+  transform: rotate(45deg);
+}
+#__qt_tooltip .__qt_example-reveal summary::-webkit-details-marker {
+  display: none;
+}
+#__qt_tooltip .__qt_example-reveal[open] > summary:hover {
+  color: var(--lx-color-fff);
+}
+#__qt_tooltip .__qt_example-reveal summary:focus-visible {
+  outline: 2px solid var(--lx-color-70baef);
+  outline-offset: 3px;
+}
+#__qt_tooltip .__qt_example-translation {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 24px;
+  gap: var(--lx-space-6px);
+  align-items: flex-start;
+  margin-inline-start: var(--lx-space-4px);
+  padding-inline-start: var(--lx-space-12px);
+  border-inline-start: 2px solid var(--lx-color-254);
+  margin-top: var(--lx-space-8px);
+  color: var(--lx-color-aeb6c8);
+}
+#__qt_tooltip .__qt_dictionary-example.__qt_dictionary-line,
+#__qt_tooltip .__qt_dictionary-example > .__qt_dictionary-line,
+#__qt_tooltip .__qt_dictionary-example > .__qt_example-translation {
+  grid-template-columns: minmax(0, 1fr) 24px 24px;
+}
+#__qt_tooltip .__qt_example-translation > .__qt_speak {
+  grid-column: -2;
+}
+#__qt_tooltip .__qt_dictionary-details .__qt_speak,
+#__qt_tooltip .__qt_dictionary-details .__qt_save-example {
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  padding: var(--lx-space-3px);
+  border-radius: var(--lx-radius-6px);
+}
+#__qt_tooltip .__qt_dictionary-details .__qt_speak svg,
+#__qt_tooltip .__qt_dictionary-details .__qt_save-example svg {
+  width: 16px;
+  height: 16px;
+}
+#__qt_tooltip .__qt_dictionary-definition-section {
+  margin-bottom: var(--lx-space-10px);
+  padding: var(--lx-space-10px) var(--lx-space-12px);
+  border-radius: var(--lx-radius-8px);
+  background: var(--lx-color-255);
+}
+#__qt_tooltip .__qt_dictionary-definition {
+  color: var(--lx-color-d4d9e5);
+  margin: var(--lx-space-0);
+  line-height: var(--lx-leading-1_65);
+}
+#__qt_tooltip .__qt_dictionary-caption {
+  display: block;
+  margin-bottom: var(--lx-space-6px);
+  font-size: var(--lx-text-9_5px);
+  font-weight: var(--lx-weight-600);
+  letter-spacing: var(--lx-tracking-0_09em);
+  text-transform: uppercase;
+  color: var(--lx-color-a8b0c2);
+}
+#__qt_tooltip .__qt_dictionary-synonyms {
+  color: var(--lx-color-c4b5e8);
+  margin: var(--lx-space-0) var(--lx-space-0) var(--lx-space-16px);
+  padding: var(--lx-space-10px) var(--lx-space-12px);
+  border-radius: var(--lx-radius-8px);
+  background: var(--lx-color-256);
+  line-height: var(--lx-leading-1_65);
+}
+#__qt_tooltip .__qt_dictionary-synonyms > .__qt_dictionary-caption {
+  padding-inline-start: var(--lx-space-8px);
+  border-inline-start: 2px solid var(--lx-color-a78bfa);
+  color: var(--lx-color-e4e7ef);
+  font-size: var(--lx-text-9_5px);
+  font-weight: var(--lx-weight-700);
+}
+#__qt_tooltip .__qt_dictionary-caption:has(+ .__qt_dictionary-definition) {
+  padding-inline-start: var(--lx-space-8px);
+  border-inline-start: 2px solid var(--lx-color-4ecdc4);
+  color: var(--lx-color-e4e7ef);
+  font-size: var(--lx-text-9_5px);
+  font-weight: var(--lx-weight-700);
+}
+#__qt_tooltip .__qt_save-example:focus-visible {
+  outline: 2px solid var(--lx-color-70baef);
+  outline-offset: 3px;
+}
+#__qt_tooltip .__qt_save-example:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+#__qt_tooltip .__qt_save-example.saved {
+  color: var(--lx-color-facc15);
+  border-color: var(--lx-color-transparent);
+  opacity: 1;
+}
+#__qt_tooltip .__qt_example-status {
+  flex: 1;
+  min-width: 0;
+  align-self: center;
+  margin-inline-end: auto;
+  text-align: start;
+  font-size: var(--lx-text-11px);
+  color: var(--lx-color-b7bdcd);
+}
+#__qt_tooltip .__qt_definition-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--lx-space-8px);
+}
+#__qt_tooltip .__qt_definition-row .__qt_dictionary-definition {
+  flex: 1;
+  min-width: 0;
+}
+#__qt_tooltip .__qt_example-status:empty {
+  display: none;
+}

@@ -1,0 +1,98 @@
+/**
+ * Prefix: __qt_ (matches JS constant PREFIX = "__qt_")
+ */ /* Icon Toolbar (translate + read buttons) */ /* Review-due toast notification */
+#__qt_icon {
+  position: absolute;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--lx-space-6px);
+  padding: var(--lx-space-6px);
+  border-radius: var(--lx-radius-14px);
+  background: var(--lx-color-0f0f23e0);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  box-shadow: var(--lx-box-shadow-66);
+  opacity: 0;
+  transform: scale(0.96);
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+  /* A faded-out toolbar must not leave an invisible click shield over the
+       page. Interaction is enabled only together with the visible class. */
+  pointer-events: none !important;
+  user-select: none;
+}
+#__qt_icon.visible {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto !important;
+}
+#__qt_review_toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  padding: var(--lx-space-12px) var(--lx-space-20px);
+  border-radius: var(--lx-radius-14px);
+  background: var(--lx-color-0f0f23d9);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  box-shadow: var(--lx-box-shadow-67);
+  border: 1px solid var(--lx-color-38);
+  color: var(--lx-color-09);
+  opacity: 0;
+  transform: scale(0.6);
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: auto;
+} /* Reset any host-page `button` styles (e.g. video.js `.video-js button`)
+   that could otherwise leak into our UI once it's reparented inside a
+   site's fullscreen container. ID-scoped selectors below always win. */
+#__qt_icon .__qt_tb-btn {
+  width: 30px;
+  height: 30px;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--lx-radius-10px);
+  color: var(--lx-color-fff);
+  cursor: pointer;
+  border: 1px solid var(--lx-color-38);
+  padding: var(--lx-space-0);
+  transition: all 0.2s ease;
+}
+#__qt_icon .__qt_tb-translate {
+  background: var(--lx-color-4a6cf78c);
+}
+#__qt_icon .__qt_tb-translate:hover {
+  background: var(--lx-color-4a6cf7d9);
+  transform: scale(1.08);
+  box-shadow: var(--lx-box-shadow-68);
+}
+#__qt_icon .__qt_tb-read {
+  background: var(--lx-color-4ecdc466);
+}
+#__qt_icon .__qt_tb-read:hover {
+  background: var(--lx-color-4ecdc4b3);
+  transform: scale(1.08);
+  box-shadow: var(--lx-box-shadow-69);
+}
+#__qt_icon .__qt_tb-read.reading {
+  background: var(--lx-color-191);
+  animation: __qt_pulse 1.5s ease-in-out infinite;
+}
+@keyframes __qt_pulse {
+  0%,
+  100% {
+    box-shadow: var(--lx-box-shadow-70);
+  }
+
+  50% {
+    box-shadow: var(--lx-box-shadow-71);
+  }
+}

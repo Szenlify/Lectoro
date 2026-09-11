@@ -1,0 +1,26 @@
+:root {
+  --bg-deep: var(--lx-color-041a24);
+  --bg-mid: var(--lx-color-10101f);
+  --glass: var(--lx-color-ffffff09);
+  --glass-border: var(--lx-color-ffffff0f);
+  --glass-hover: var(--lx-color-01);
+  --glass-strong: var(--lx-color-02);
+  --accent: var(--lx-color-818cf8);
+  --accent-dim: var(--lx-color-03);
+  --accent-mid: var(--lx-color-04);
+  --accent-glow: var(--lx-color-05);
+  --mint: var(--lx-color-6ee7b7);
+  --mint-dim: var(--lx-color-06);
+  --mint-mid: var(--lx-color-07);
+  --amber: var(--lx-color-fbbf24);
+  --amber-dim: var(--lx-color-08);
+  --text-primary: var(--lx-color-09);
+  --text-secondary: var(--lx-color-10);
+  --text-muted: var(--lx-color-11);
+  --text-ghost: var(--lx-color-12);
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --blur: 24px;
+}

@@ -1,0 +1,54 @@
+/* Toggle switch */
+.toggle-label {
+  font-size: var(--lx-text-13px);
+  color: var(--text-primary);
+  font-weight: var(--lx-weight-500);
+}
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 46px;
+  height: 26px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.toggle-slider {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--lx-radius-26px);
+  background: var(--lx-color-02);
+  border: 1px solid var(--lx-color-19);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.toggle-slider::before {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  left: 2px;
+  bottom: 2px;
+  border-radius: var(--lx-radius-50pct);
+  background: var(--lx-color-34);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--lx-box-shadow-11);
+}
+.toggle-switch input:checked + .toggle-slider {
+  background: var(--accent-mid);
+  border-color: var(--lx-color-31);
+}
+.toggle-switch input:checked + .toggle-slider::before {
+  transform: translateX(20px);
+  background: var(--accent);
+  box-shadow: var(--lx-box-shadow-12);
+}
+.toggle-desc {
+  font-size: var(--lx-text-11px);
+  color: var(--text-secondary);
+  margin-top: var(--lx-space-10px);
+  line-height: var(--lx-leading-1_6);
+}

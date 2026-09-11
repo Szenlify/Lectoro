@@ -1,0 +1,487 @@
+/* AI Explanation Queue & Multi-step Navigation */
+#__qt_sentence_translation .__qt_ai-queue-ribbon {
+  display: none !important;
+  align-items: center !important;
+  gap: var(--lx-space-6px) !important;
+  padding: var(--lx-space-2px) var(--lx-space-2px) !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scrollbar-width: none !important;
+  -webkit-overflow-scrolling: touch !important;
+  max-width: 100% !important;
+}
+#__qt_sentence_translation .__qt_ai-queue-ribbon::-webkit-scrollbar {
+  display: none !important;
+}
+#__qt_sentence_translation .__qt_ai-queue-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: var(--lx-space-4px) !important;
+  padding: var(--lx-space-2px) var(--lx-space-8px) !important;
+  border-radius: var(--lx-radius-10px) !important;
+  font-size: var(--lx-text-9px) !important;
+  font-weight: var(--lx-weight-600) !important;
+  line-height: var(--lx-leading-1_2) !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+  border: 1px solid var(--lx-color-38) !important;
+  background: var(--lx-color-17) !important;
+  color: var(--lx-color-10) !important;
+  user-select: none !important;
+}
+#__qt_sentence_translation .__qt_ai-queue-pill:hover {
+  color: var(--lx-color-ffffff) !important;
+  background: var(--lx-color-02) !important;
+  border-color: var(--lx-color-163) !important;
+} /* Nadchodzące idiomy/słówka w kolejce: lekki bg fioletowego */
+#__qt_sentence_translation .__qt_ai-queue-pill.__qt_ai-pill-upcoming {
+  background: var(--lx-color-224) !important;
+  border: 1px solid var(--lx-color-225) !important;
+  color: var(--lx-color-e9d5ff) !important;
+}
+#__qt_sentence_translation .__qt_ai-queue-pill.__qt_ai-pill-upcoming:hover {
+  background: var(--lx-color-226) !important;
+  border-color: var(--lx-color-c084fc) !important;
+  color: var(--lx-color-ffffff) !important;
+} /* Podświetlenie pigułki we wstążce dymka AI, gdy kursor najeżdża na odpowiadające słowo w napisach */
+#__qt_sentence_translation .__qt_ai-queue-pill.__qt_pill-highlight {
+  background: var(--lx-color-227) !important;
+  border-color: var(--lx-color-c084fc) !important;
+  color: var(--lx-color-ffffff) !important;
+  box-shadow: var(--lx-box-shadow-79) !important;
+  transform: translateY(-1px) scale(1.05) !important;
+} /* Aktywny krok */
+#__qt_sentence_translation .__qt_ai-queue-pill.active {
+  background: linear-gradient(
+    135deg,
+    var(--lx-color-229),
+    var(--lx-color-230)
+  ) !important;
+  border: 1px solid var(--lx-color-4ecdc4) !important;
+  color: var(--lx-color-ffffff) !important;
+  box-shadow: var(--lx-box-shadow-80) !important;
+}
+#__qt_sentence_translation .__qt_ai-queue-pill .__qt_pill-icon {
+  font-size: var(--lx-text-10px) !important;
+  line-height: var(--lx-leading-1) !important;
+} /* Szczegóły aktywnego idiomu / trudnego słowa */
+#__qt_sentence_translation .__qt_ai-term-card {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  text-align: center !important;
+  gap: var(--lx-space-10px) !important;
+  width: 100% !important;
+}
+#__qt_sentence_translation .__qt_ai-term-header {
+  display: inline-flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: var(--lx-space-2px) !important;
+  width: 100% !important;
+  text-align: center !important;
+}
+#__qt_sentence_translation .__qt_ai-term-title-wrap {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: var(--lx-space-8px) !important;
+  flex-wrap: wrap !important;
+  text-align: center !important;
+}
+#__qt_sentence_translation .__qt_ai-term {
+  font-size: var(--lectoro-ai-term-font-size, 15px) !important;
+  font-weight: var(--lx-weight-700) !important;
+  letter-spacing: var(--lx-tracking-neg-0_2px) !important;
+  color: var(--lx-color-00ffea) !important;
+  line-height: var(--lx-leading-1_35) !important;
+  text-align: center !important;
+}
+#__qt_sentence_translation .__qt_ai-badge {
+  font-size: var(--lectoro-ai-badge-font-size, 8px) !important;
+  font-weight: var(--lx-weight-700) !important;
+  text-transform: uppercase !important;
+  letter-spacing: var(--lx-tracking-0_9px) !important;
+  line-height: var(--lx-leading-1) !important;
+  padding: var(--lx-space-2px) var(--lx-space-7px) !important;
+  border-radius: var(--lx-radius-999px) !important;
+  background: var(--lx-color-224) !important;
+  border: 1px solid var(--lx-color-232) !important;
+  color: var(--lx-color-e9d5ff) !important;
+  margin-bottom: var(--lx-space-2px) !important;
+  display: inline-block !important;
+}
+#__qt_sentence_translation .__qt_ai-term-meaning {
+  font-size: var(--lectoro-ai-meaning-font-size, 16px) !important;
+  font-weight: var(--lx-weight-700) !important;
+  color: var(--lx-color-233) !important;
+  /* line-height: 1.45 !important; */
+  text-align: center !important;
+  width: 100% !important;
+  margin-top: var(--lx-space-2px) !important;
+  /* white-space: pre-line !important; */
+}
+#__qt_sentence_translation .__qt_ai-term-explanation {
+  font-size: var(--lectoro-ai-explanation-font-size, 12px) !important;
+  line-height: var(--lx-leading-1_55) !important;
+  color: var(--lx-color-234) !important;
+  background: var(--lx-color-28) !important;
+  border: 1px solid var(--lx-color-19) !important;
+  border-radius: var(--lx-radius-12px) !important;
+  padding: var(--lx-space-10px) var(--lx-space-14px) !important;
+  text-align: center !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  margin-top: var(--lx-space-4px) !important;
+} /* Dedykowana hierarchia wizualna dla tłumaczenia pełnego zdania */
+#__qt_sentence_translation .__qt_ai-term-card[data-type="sentence"] {
+  gap: var(--lx-space-0) !important;
+  justify-content: flex-start !important;
+  margin: var(--lx-space-0) !important;
+  padding: var(--lx-space-0) !important;
+}
+#__qt_sentence_translation .__qt_ai-sentence-wrap {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: var(--lx-space-8px) !important;
+  width: 100% !important;
+  margin: var(--lx-space-0) !important;
+  padding: var(--lx-space-0) !important;
+}
+#__qt_sentence_translation .__qt_ai-sentence-wrap .__qt_ai-term-meaning {
+  width: auto !important;
+  max-width: calc(100% - 36px) !important;
+  margin-top: var(--lx-space-0) !important;
+}
+#__qt_sentence_translation
+  .__qt_ai-term-card[data-type="sentence"]
+  .__qt_ai-term {
+  font-size: var(--lectoro-ai-sentence-term-font-size, 15px) !important;
+  font-weight: var(--lx-weight-600) !important;
+  color: var(--lx-color-00ffea) !important;
+  line-height: var(--lx-leading-1_45) !important;
+  text-align: center !important;
+}
+#__qt_sentence_translation
+  .__qt_ai-term-card[data-type="sentence"]
+  .__qt_ai-term-meaning {
+  font-size: var(--lectoro-ai-sentence-meaning-font-size, 16px) !important;
+  font-weight: var(--lx-weight-700) !important;
+  color: var(--lx-color-233) !important;
+  /* line-height: 1.45 !important; */
+  text-align: center !important;
+  /* white-space: pre-line !important; */
+  margin-top: var(--lx-space-0) !important;
+} /* Przyciski nawigacji krokowego przejścia */
+#__qt_sentence_translation .__qt_ai-nav-group {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: var(--lx-space-3px) !important;
+  margin-left: auto !important;
+}
+#__qt_sentence_translation .__qt_ai-nav-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: var(--lx-space-2px) !important;
+  padding: var(--lx-space-3px) var(--lx-space-6px) !important;
+  border-radius: var(--lx-radius-6px) !important;
+  font-size: var(--lectoro-ai-meta-font-size, 10px) !important;
+  font-weight: var(--lx-weight-600) !important;
+  border: 1px solid var(--lx-color-38) !important;
+  background: var(--lx-color-81) !important;
+  color: var(--lx-color-196) !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+#__qt_sentence_translation .__qt_ai-nav-btn:hover:not(:disabled) {
+  background: var(--lx-color-23) !important;
+  color: var(--lx-color-ffffff) !important;
+  border-color: var(--lx-color-163) !important;
+}
+#__qt_sentence_translation .__qt_ai-nav-btn:disabled {
+  opacity: 0.25 !important;
+  cursor: not-allowed !important;
+}
+#__qt_sentence_translation .__qt_ai-step-counter {
+  font-size: var(--lectoro-ai-meta-font-size, 10px) !important;
+  font-weight: var(--lx-weight-600) !important;
+  color: var(--lx-color-100) !important;
+  padding: var(--lx-space-0) var(--lx-space-4px) !important;
+  letter-spacing: var(--lx-tracking-0_5px) !important;
+}
+#__qt_sentence_translation[data-state="ai-loading"],
+#__qt_sentence_translation[data-state="loading"] {
+  width: max-content !important;
+  height: auto !important;
+  max-height: min(560px, calc(100vh - 48px)) !important;
+  bottom: auto !important;
+  right: auto !important;
+  min-width: 0 !important;
+  padding: var(--lx-space-10px) var(--lx-space-20px) !important;
+  border-radius: var(--lx-radius-16px) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  box-sizing: border-box !important;
+}
+.ai-loader-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: var(--lx-font-01);
+  letter-spacing: var(--lx-tracking-0_03em);
+  color: var(--lx-color-transparent);
+  background: linear-gradient(
+    90deg,
+    var(--lx-color-a855f7) 0%,
+    var(--lx-color-4ecdc4) 25%,
+    var(--lx-color-ffffff) 50%,
+    var(--lx-color-4ecdc4) 75%,
+    var(--lx-color-a855f7) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: var(--lx-color-transparent);
+  animation: __qt_ai_shimmer 1.8s linear infinite;
+}
+@keyframes __qt_ai_shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  100% {
+    background-position: 200% 50%;
+  }
+}
+#__qt_sentence_translation .__qt_header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  text-align: right !important;
+  padding: var(--lx-space-8px) var(--lx-space-16px) var(--lx-space-0) !important;
+  font-size: var(--lectoro-ai-meta-font-size, 10px) !important;
+  text-transform: uppercase !important;
+  letter-spacing: var(--lx-tracking-0_8px) !important;
+  font-weight: var(--lx-weight-600) !important;
+  color: var(--lx-color-34) !important;
+  border-bottom: none !important;
+  background: var(--lx-color-transparent) !important;
+  border-radius: var(--lx-radius-16px-16px-0-0) !important;
+}
+#__qt_sentence_translation .__qt_body {
+  padding: var(--lx-space-14px) var(--lx-space-22px) var(--lx-space-18px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: var(--lx-space-12px) !important;
+  text-align: center !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  max-height: min(400px, calc(100vh - 140px)) !important;
+  overflow-y: auto !important;
+}
+#__qt_sentence_translation .__qt_row {
+  display: flex !important;
+  font-size: var(--lectoro-translation-font-size, 18px) !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  gap: var(--lx-space-8px) !important;
+  margin: var(--lx-space-0) !important;
+  padding: var(--lx-space-0) !important;
+  width: 100% !important;
+}
+#__qt_sentence_translation .__qt_label {
+  flex-shrink: 0 !important;
+  font-size: var(--lectoro-ai-meta-font-size, 10px) !important;
+  font-weight: var(--lx-weight-700) !important;
+  text-transform: uppercase !important;
+  letter-spacing: var(--lx-tracking-0_4px) !important;
+  color: var(--lx-color-98) !important;
+  padding-top: var(--lx-space-3px) !important;
+  min-width: 30px !important;
+  border: none !important;
+  background: none !important;
+}
+#__qt_sentence_translation .__qt_text {
+  font-size: var(--lectoro-translation-font-size, 14px) !important;
+  line-height: var(--lx-leading-1_5) !important;
+  word-break: break-word !important;
+  flex: 1 !important;
+  color: var(--lx-color-09) !important;
+  text-align: center !important;
+}
+#__qt_sentence_translation .__qt_original {
+  color: var(--lx-color-00ffea) !important;
+  font-weight: var(--lx-weight-600) !important;
+  text-align: center !important;
+}
+#__qt_sentence_translation .__qt_translated {
+  color: var(--lx-color-196) !important;
+  font-weight: normal !important;
+  text-align: center !important;
+}
+#__qt_sentence_translation button {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+#__qt_sentence_translation .__qt_word-actions {
+  flex-shrink: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: var(--lx-space-6px) !important;
+}
+#__qt_sentence_translation .__qt_speak {
+  flex-shrink: 0 !important;
+  background: var(--lx-color-81) !important;
+  border: 1px solid var(--lx-color-02) !important;
+  color: var(--lx-color-100) !important;
+  cursor: pointer !important;
+  padding: var(--lx-space-4px) !important;
+  border-radius: var(--lx-radius-8px) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 26px !important;
+  height: 26px !important;
+  transition: all 0.2s ease !important;
+}
+#__qt_sentence_translation .__qt_speak:hover {
+  color: var(--lx-color-ffffff) !important;
+  background: var(--lx-color-38) !important;
+  border-color: var(--lx-color-88) !important;
+}
+#__qt_sentence_translation .__qt_speak.speaking {
+  color: var(--lx-color-4ecdc4) !important;
+  border-color: var(--lx-color-190) !important;
+  background: var(--lx-color-197) !important;
+}
+#__qt_sentence_translation .__qt_speak svg {
+  width: 14px;
+  height: 14px;
+}
+#__qt_sentence_translation .__qt_ai-result {
+  margin-top: var(--lx-space-8px) !important;
+  padding: var(--lx-space-10px) var(--lx-space-12px) !important;
+  border-radius: var(--lx-radius-12px) !important;
+  background: var(--lx-color-101) !important;
+  border: 1px solid var(--lx-color-102) !important;
+  font-size: var(--lectoro-ai-explanation-font-size, 13px) !important;
+  line-height: var(--lx-leading-1_5) !important;
+  color: var(--lx-color-103) !important;
+  box-shadow: none !important;
+  text-align: center !important;
+  max-height: 240px !important;
+  overflow-y: auto !important;
+}
+#__qt_sentence_translation .__qt_ai-label {
+  font-size: var(--lectoro-ai-meta-font-size, 11px) !important;
+  font-weight: var(--lx-weight-700) !important;
+  color: var(--lx-color-c084fc) !important;
+  margin-bottom: var(--lx-space-4px) !important;
+  display: block !important;
+  text-align: center !important;
+}
+#__qt_sentence_translation .__qt_ai-label::before {
+  display: none !important;
+}
+#__qt_sentence_translation .__qt_ai-text {
+  color: var(--lx-color-e5d8ff) !important;
+  font-size: var(--lectoro-ai-explanation-font-size, 13px) !important;
+  line-height: var(--lx-leading-1_5) !important;
+  text-align: center !important;
+}
+#__qt_sentence_translation .__qt_tts-original-quote,
+#__qt_tooltip .__qt_tts-original-quote,
+.__qt_tts-original-quote {
+  color: var(--lx-color-ffd000) !important;
+  font-weight: var(--lx-weight-500) !important;
+}
+#__qt_sentence_translation .__qt_save-footer {
+  display: flex !important;
+  gap: var(--lx-space-8px) !important;
+  padding: var(--lx-space-10px) var(--lx-space-16px) var(--lx-space-12px) !important;
+  border-top: 1px solid var(--lx-color-02) !important;
+  justify-content: flex-end !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+#__qt_sentence_translation .__qt_save-footer-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: var(--lx-space-5px) !important;
+  padding: var(--lx-space-5px) var(--lx-space-10px) !important;
+  border: 1px solid var(--lx-color-23) !important;
+  border-radius: var(--lx-radius-9px) !important;
+  background: var(--lx-color-19) !important;
+  color: var(--lx-color-99) !important;
+  font-size: var(--lx-text-11px) !important;
+  font-family: var(--lx-font-family-04) !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  white-space: nowrap !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  box-shadow: none !important;
+}
+#__qt_sentence_translation .__qt_save-footer-btn:hover {
+  background: var(--lx-color-23) !important;
+  color: var(--lx-color-fff) !important;
+  border-color: var(--lx-color-163) !important;
+  transform: translateY(-1px) !important;
+}
+#__qt_sentence_translation .__qt_save-footer-btn.saved {
+  color: var(--lx-color-4ecdc4) !important;
+  border-color: var(--lx-color-190) !important;
+  background: var(--lx-color-197) !important;
+  pointer-events: none !important;
+}
+#__qt_sentence_translation .__qt_save-footer-btn.loading {
+  cursor: wait !important;
+  pointer-events: none !important;
+  opacity: 0.95 !important;
+}
+#__qt_sentence_translation .__qt_save-footer-btn svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+#__qt_sentence_translation .__qt_save-ai-btn {
+  border-color: var(--lx-color-198) !important;
+  background: var(--lx-color-101) !important;
+  color: var(--lx-color-199) !important;
+}
+#__qt_sentence_translation .__qt_save-ai-btn:hover {
+  background: var(--lx-color-224) !important;
+  border-color: var(--lx-color-201) !important;
+  color: var(--lx-color-fff) !important;
+}
+.__qt_save-footer-btn .__qt_key-hint,
+.__qt_save-footer-btn kbd {
+  margin-left: var(--lx-space-3px) !important;
+  padding: var(--lx-space-1px) var(--lx-space-4px) !important;
+  font-size: var(--lx-text-9px) !important;
+  line-height: var(--lx-leading-1) !important;
+  font-weight: var(--lx-weight-600) !important;
+  border: 1px solid var(--lx-color-163) !important;
+  border-radius: var(--lx-radius-4px) !important;
+  background: var(--lx-color-02) !important;
+  color: var(--lx-color-235) !important;
+  font-family: inherit !important;
+}
+#__qt_sentence_translation .__qt_error {
+  color: var(--lx-color-fda4af);
+  font-size: var(--lx-text-13px);
+  font-weight: var(--lx-weight-500);
+}

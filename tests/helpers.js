@@ -55,6 +55,19 @@ function deferred() {
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 function cssRule(file, selector) {
     const source = read(file).replace(/\/\*[\s\S]*?\*\//g, "");
+    const tokens = {};
+    require("postcss").parse(source).walkDecls((decl) => {
+        if (decl.prop.startsWith("--lx-")) tokens[decl.prop] = decl.value;
+    });
+    const resolve = (value, seen = new Set()) => value.replace(
+        /var\((--lx-[\w-]+)\)/g,
+        (_, name) => {
+            if (!(name in tokens) || seen.has(name)) {
+                throw new Error(`Invalid CSS token: ${name}`);
+            }
+            return resolve(tokens[name], new Set([...seen, name]));
+        },
+    );
     const normalize = (value) => value.replace(/\s+/g, " ").trim();
     const declarations = {};
     for (const match of source.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
@@ -68,7 +81,7 @@ function cssRule(file, selector) {
             const colon = part.indexOf(":");
             if (colon >= 0)
                 declarations[part.slice(0, colon).trim()] = normalize(
-                    part.slice(colon + 1),
+                    resolve(part.slice(colon + 1)),
                 );
         }
     }

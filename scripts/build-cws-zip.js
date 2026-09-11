@@ -16,6 +16,9 @@ const DIST_DIR = path.join(ROOT_DIR, "dist");
 const STAGING_DIR = path.join(DIST_DIR, "staging");
 const MANIFEST_PATH = path.join(ROOT_DIR, "manifest.json");
 
+// Rebuild local CSS bundles before collecting the distribution files.
+require("./build-css").build();
+
 if (!fs.existsSync(MANIFEST_PATH)) {
     console.error("❌ Error: Missing manifest.json in project root.");
     process.exit(1);

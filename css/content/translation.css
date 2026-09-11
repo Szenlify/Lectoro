@@ -1,0 +1,181 @@
+/* Subtitle In-place Translation (E key) & AI Explanation (Enter key) */
+#__qt_sentence_translation {
+  --lectoro-ai-term-font-size: 15px;
+  --lectoro-ai-meaning-font-size: 15px;
+  --lectoro-ai-explanation-font-size: 12px;
+  --lectoro-ai-badge-font-size: 8px;
+  --lectoro-ai-meta-font-size: 9.5px;
+  --lectoro-ai-sentence-term-font-size: 14px;
+  --lectoro-ai-sentence-meaning-font-size: 15px;
+}
+#__qt_sentence_translation.__qt_sub-overlay {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  max-width: min(520px, calc(100vw - 24px)) !important;
+  max-height: min(560px, calc(100vh - 48px)) !important;
+  bottom: auto !important;
+  right: auto !important;
+  padding: var(--lx-space-0) !important;
+  border: 1px solid var(--lx-color-02) !important;
+  border-radius: var(--lx-radius-16px) !important;
+  background: var(--lx-color-0f0f23bf) !important;
+  box-shadow: var(--lx-box-shadow-33) !important;
+  backdrop-filter: blur(20px) saturate(1.4) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(1.4) !important;
+  color: var(--lx-color-ffffff) !important;
+  font: var(--lx-font-02) !important;
+  pointer-events: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  box-sizing: border-box !important;
+  isolation: isolate !important;
+  transform-origin: 50% 100% !important;
+  animation: __qt_translation_bubble_in 0.2s cubic-bezier(0.34, 1.3, 0.64, 1)
+    both !important;
+  transition:
+    left 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
+    top 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+#__qt_sentence_translation[data-state="measuring"] {
+  width: max-content !important;
+  height: auto !important;
+  max-height: min(560px, calc(100vh - 48px)) !important;
+  bottom: auto !important;
+  right: auto !important;
+  visibility: hidden !important;
+  animation: none !important;
+}
+#__qt_sentence_translation[data-state="expanding"] {
+  min-width: 0 !important;
+  max-height: min(560px, calc(100vh - 48px)) !important;
+  bottom: auto !important;
+  right: auto !important;
+  border-radius: var(--lx-radius-16px) !important;
+  animation: none !important;
+  transition:
+    width 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
+    height 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-radius 0.16s ease-out !important;
+}
+#__qt_sentence_translation[data-state="ready"] {
+  animation: none !important;
+  height: auto !important;
+  max-height: min(560px, calc(100vh - 48px)) !important;
+  bottom: auto !important;
+  right: auto !important;
+}
+#__qt_sentence_translation .__qt_translation-copy {
+  display: flex !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  color: inherit !important;
+  font: inherit !important;
+  opacity: 1;
+}
+#__qt_sentence_translation[data-state="expanding"] .__qt_translation-copy {
+  opacity: 0 !important;
+  transition: none !important;
+}
+#__qt_sentence_translation[data-state="ready"].__qt_translation-reveal
+  .__qt_translation-copy {
+  animation: __qt_translation_copy_reveal 0.13s ease-out both !important;
+}
+@keyframes __qt_translation_bubble_in {
+  from {
+    opacity: 0;
+    transform: translateY(7px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes __qt_translation_copy_reveal {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #__qt_sentence_translation.__qt_sub-overlay,
+  #__qt_sentence_translation .__qt_translation-copy {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+@property --qt-ai-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes __qt_ai_border_sweep {
+  0% {
+    --qt-ai-angle: 0deg;
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  90% {
+    opacity: 1;
+  }
+
+  100% {
+    --qt-ai-angle: 360deg;
+    opacity: 0;
+  }
+}
+#__qt_sentence_translation.__qt_ai-explain-overlay {
+  pointer-events: auto !important;
+  cursor: default !important;
+  user-select: text !important;
+  height: auto !important;
+  max-height: min(560px, calc(100vh - 48px)) !important;
+  bottom: auto !important;
+  right: auto !important;
+  position: fixed !important;
+}
+#__qt_sentence_translation.__qt_ai-explain-overlay::before {
+  content: "";
+  position: absolute;
+  inset: -1.5px;
+  border-radius: var(--lx-radius-17px);
+  padding: var(--lx-space-1_5px);
+  background: conic-gradient(
+    from var(--qt-ai-angle, 0deg),
+    var(--lx-color-transparent) 0%,
+    var(--lx-color-transparent) 25%,
+    var(--lx-color-a855f7) 45%,
+    var(--lx-color-4ecdc4) 65%,
+    var(--lx-color-ffffff) 80%,
+    var(--lx-color-a855f7) 92%,
+    var(--lx-color-transparent) 100%
+  );
+  -webkit-mask:
+    linear-gradient(var(--lx-color-fff) 0 0) content-box,
+    linear-gradient(var(--lx-color-fff) 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 2;
+}
+#__qt_sentence_translation.__qt_ai-explain-overlay[data-state="ready"].__qt_translation-reveal::before {
+  animation: __qt_ai_border_sweep 2.2s cubic-bezier(0.35, 1, 0.5, 0.9) 1
+    forwards;
+}

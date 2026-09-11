@@ -60,6 +60,18 @@ popup/export.js:1059 (anonymous function)
                 </div>
 
 
+
+
+usun calkowicie style.css oraz popup.css i wszystkie css nawet quiz.css maja byc uzywane tylko z folderu css oraz uprość variables.css i classy zeby bylo najnajmiej podobnych klass i variables np:
+  --lx-radius-50pct: 50%;
+  --lx-radius-99px: 99px;
+  --lx-radius-999px: 999px;
+  --lx-radius-9999px: 9999px;
+  oraz kolory:
+    --lx-color-215: rgba(0, 0, 0, 0.9);
+  --lx-color-216: rgba(0, 0, 0, 0.95)
+  fonty itp...
+
 17. opis wszystkich kosztów i zweryfikowanie marży projektu:
 cloudflare, kazde uzycie firebase firebase, 	
 createStripePortalSession, 	
