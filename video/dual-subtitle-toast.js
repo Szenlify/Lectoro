@@ -56,7 +56,7 @@
             const bar = element.querySelector(".__qt_dual-toast-progress");
             const retryButton = element.querySelector(".__qt_dual-toast-retry");
             retryButton.disabled = typeof retry !== "function";
-            const lifetime = Number.isFinite(duration) && duration > 0 ? duration : 5000;
+            const lifetime = Number.isFinite(duration) && duration > 0 ? duration : 8000;
             const state = { element, remaining: lifetime, lastTime: null, frame: null, cleanup: () => {} };
             current = state;
             const paused = new Set();

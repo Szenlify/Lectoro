@@ -8,7 +8,7 @@ function node() {
     const children = new Map();
     const classes = new Set();
     return {
-        style: {}, parentElement: null, isConnected: true, disabled: false,
+        style: { setProperty(k, v) { this[k] = v; }, removeProperty(k) { delete this[k]; } }, parentElement: null, isConnected: true, disabled: false,
         classList: { add: value => classes.add(value), remove: value => classes.delete(value) },
         setAttribute() {},
         addEventListener(name, callback) {
@@ -19,13 +19,14 @@ function node() {
             listeners.set(name, (listeners.get(name) || []).filter(fn => fn !== callback));
         },
         dispatch(name, extra = {}) {
-            for (const callback of listeners.get(name) || []) callback({ stopPropagation() {}, ...extra });
+            for (const callback of listeners.get(name) || []) callback({ stopPropagation() {}, preventDefault() {}, ...extra });
         },
         querySelector(selector) {
             if (!children.has(selector)) children.set(selector, node());
             return children.get(selector);
         },
         appendChild(child) { child.parentElement = this; child.isConnected = true; },
+        insertBefore(child, before) { child.parentElement = this; child.isConnected = true; },
         contains(child) { return child === this || [...children.values()].includes(child); },
         remove() { this.isConnected = false; this.parentElement = null; },
     };
@@ -128,6 +129,8 @@ test("renderer takes Slave exclusively from current cue and clears it on repeate
     assert.equal(box.children.length, 2);
     assert.equal(box.children[0].textContent, "Hello world");
     assert.equal(box.children[1].textContent, "Witaj świecie");
+    assert.equal(box.children[0].className, "__qt_sub-line");
+    assert.equal(box.children[1].className, "__qt_sub-secondary");
     const oldMasterElement = box.children[0];
     render(["Hello world"], { cue: { startTime: 3, endTime: 4, translation: "" }, secondaryText: "STALE" });
     assert.equal(box.children[1].textContent, "");
@@ -135,3 +138,82 @@ test("renderer takes Slave exclusively from current cue and clears it on repeate
     render([]);
     assert.equal(box.children.length, 0);
 });
+
+test("vertical drag handle moves subtitles on Y axis only and saves position", () => {
+    let stored = {};
+    const box = node();
+    box.children = [];
+    box.style.marginBottom = "68px";
+    const layer = node();
+
+    const listeners = new Map();
+    const windowMock = {
+        innerHeight: 1000,
+        addEventListener(name, fn) {
+            if (!listeners.has(name)) listeners.set(name, []);
+            listeners.get(name).push(fn);
+        },
+        removeEventListener(name, fn) {
+            listeners.set(name, (listeners.get(name) || []).filter(cb => cb !== fn));
+        },
+        dispatch(name, event) {
+            for (const fn of listeners.get(name) || []) fn(event);
+        },
+    };
+
+    const context = vm.createContext({
+        C: {
+            UI_CLASSES: {
+                SUB_HANDLE: "__qt_subtitles-drag-handle",
+                SUB_DRAGGING: "__qt_is-dragging",
+            },
+            STORAGE_KEYS: { SUBTITLE_POSITION: "subtitlePosition" },
+        },
+        SUB_WORD_CLASS: "word",
+        subDragHandleEl: null,
+        subDragBadgeEl: null,
+        isSubDragging: false,
+        currentSubPosition: 14,
+        currentSubBottomPx: 68,
+        customSubLayerEl: layer,
+        window: windowMock,
+        getPlayerRegistry: () => ({ getVideo: () => ({ getBoundingClientRect: () => ({ height: 1000 }) }) }),
+        findPlayerContainer: () => ({ getBoundingClientRect: () => ({ height: 1000 }) }),
+        document: {
+            createElement: (tag) => {
+                const el = node();
+                el.tagName = tag;
+                return el;
+            }
+        },
+        chrome: {
+            storage: {
+                local: {
+                    set(obj) { Object.assign(stored, obj); }
+                }
+            }
+        },
+    });
+
+    loadFunction(context, "video/subtitle-overlay.js", "setupVerticalDrag");
+    loadFunction(context, "video/subtitle-overlay.js", "ensureDragHandle");
+
+    context.ensureDragHandle(box);
+    assert.ok(context.subDragHandleEl);
+    assert.equal(context.subDragHandleEl.className, "__qt_subtitles-drag-handle");
+
+    // Simulate drag start on handle (pointerdown at clientY = 800)
+    context.subDragHandleEl.dispatch("pointerdown", { button: 0, clientY: 800, pointerId: 1, target: context.subDragHandleEl });
+    assert.equal(context.isSubDragging, true);
+
+    // Simulate dragging upwards by 100px (clientY goes from 800 down to 700)
+    windowMock.dispatch("pointermove", { clientY: 700, preventDefault() {}, stopPropagation() {} });
+    assert.equal(context.currentSubPosition, 17);
+    assert.equal(box.style.marginBottom, "168px");
+
+    // Simulate drag end (pointerup)
+    windowMock.dispatch("pointerup", { clientY: 700, preventDefault() {}, stopPropagation() {} });
+    assert.equal(context.isSubDragging, false);
+    assert.equal(stored.subtitlePosition, 17);
+});
+

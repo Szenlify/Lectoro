@@ -42,11 +42,6 @@ whenPopupReady((data) => {
         ? LectoroConstants.DEFAULT_SUBTITLE_SETTINGS?.BG_OPACITY ?? 0
         : 0;
 
-    const subPos = data.subtitlePosition !== undefined ? data.subtitlePosition : defaultSubPos;
-    if (subPositionRange) {
-        subPositionRange.value = subPos;
-        if (subPositionValue) subPositionValue.textContent = `${subPos}%`;
-    }
 
     const subBg = data.subtitleBgOpacity !== undefined ? data.subtitleBgOpacity : defaultSubBg;
     if (subBgRange) {
@@ -152,14 +147,10 @@ function bindPercentageSlider(rangeEl, valueEl, storageKey, fallback = 0) {
     });
 }
 
-const subPosStorageKey = typeof LectoroConstants !== "undefined" && LectoroConstants.STORAGE_KEYS?.SUBTITLE_POSITION
-    ? LectoroConstants.STORAGE_KEYS.SUBTITLE_POSITION
-    : "subtitlePosition";
 const subBgStorageKey = typeof LectoroConstants !== "undefined" && LectoroConstants.STORAGE_KEYS?.SUBTITLE_BG_OPACITY
     ? LectoroConstants.STORAGE_KEYS.SUBTITLE_BG_OPACITY
     : "subtitleBgOpacity";
 
-bindPercentageSlider(subPositionRange, subPositionValue, subPosStorageKey, 14);
 bindPercentageSlider(subBgRange, subBgValue, subBgStorageKey, 0);
 
 // ── Subscription & AI Usage ──────────────────────────────────────
@@ -696,11 +687,6 @@ document.addEventListener("visibilitychange", () => {
 
 chrome.storage.onChanged.addListener((changes, area) => {
     if (area === "local") {
-        if (changes[subPosStorageKey] && subPositionRange && document.activeElement !== subPositionRange) {
-            const val = changes[subPosStorageKey].newValue ?? 14;
-            subPositionRange.value = val;
-            if (subPositionValue) subPositionValue.textContent = `${val}%`;
-        }
         if (changes[subBgStorageKey] && subBgRange && document.activeElement !== subBgRange) {
             const val = changes[subBgStorageKey].newValue ?? 0;
             subBgRange.value = val;

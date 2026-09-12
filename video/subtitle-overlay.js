@@ -39,6 +39,9 @@
     // ── Universal Custom Subtitle Renderer State ─────────────────
     let customSubLayerEl = null;
     let customSubBoxEl = null;
+    let subDragHandleEl = null;
+    let subDragBadgeEl = null;
+    let isSubDragging = false;
     let currentSubPosition = C.DEFAULT_SUBTITLE_SETTINGS.POSITION;
     let currentSubBgOpacity = C.DEFAULT_SUBTITLE_SETTINGS.BG_OPACITY;
     let currentSubBottomPx = 0;
@@ -247,6 +250,167 @@
         }
     }
 
+    function setupVerticalDrag(handle, box) {
+        if (!handle || !box || handle.__dragInitialized) return;
+        handle.__dragInitialized = true;
+
+        let dragStartY = 0;
+        let dragStartBottomPx = 0;
+        let dragActive = false;
+        let activePointerId = null;
+
+        function startDrag(e) {
+            if (e.button !== 0) return;
+            if (e.target.closest?.(`.${SUB_WORD_CLASS}`) || e.target.closest?.("button")) {
+                return;
+            }
+            e.preventDefault();
+            e.stopPropagation();
+
+            dragStartY = e.clientY;
+            dragStartBottomPx = currentSubBottomPx;
+            dragActive = true;
+            isSubDragging = true;
+            activePointerId = e.pointerId;
+
+            try {
+                handle.setPointerCapture(e.pointerId);
+            } catch (_) {}
+
+            box.classList.add(C.UI_CLASSES.SUB_DRAGGING);
+            if (customSubLayerEl) {
+                customSubLayerEl.classList.add("__qt_layer-dragging");
+            }
+            if (subDragBadgeEl) {
+                subDragBadgeEl.textContent = `${Math.round(currentSubPosition || 14)}%`;
+            }
+
+            window.addEventListener("pointermove", onPointerMove, { passive: false, capture: true });
+            window.addEventListener("pointerup", onPointerUp, { capture: true });
+            window.addEventListener("pointercancel", onPointerUp, { capture: true });
+        }
+
+        function onPointerMove(e) {
+            if (!dragActive) return;
+            e.preventDefault();
+            e.stopPropagation();
+
+            const registry = getPlayerRegistry();
+            const video = registry?.getVideo();
+            const playerEl = findPlayerContainer(video);
+            const container = playerEl || video?.parentElement;
+            const containerRect = container?.getBoundingClientRect() || video?.getBoundingClientRect();
+            const containerHeight = containerRect?.height || window.innerHeight;
+
+            const deltaY = dragStartY - e.clientY;
+            let newBottomPx = dragStartBottomPx + deltaY;
+
+            const boxHeight = box.offsetHeight || 60;
+            const maxBottomPx = Math.max(0, containerHeight - boxHeight - 14);
+            newBottomPx = Math.max(0, Math.min(maxBottomPx, newBottomPx));
+
+            const newPosPercent = Math.max(
+                0,
+                Math.min(95, Math.round((newBottomPx / containerHeight) * 100)),
+            );
+
+            currentSubBottomPx = newBottomPx;
+            currentSubPosition = newPosPercent;
+
+            if (customSubLayerEl) {
+                customSubLayerEl.style.setProperty(
+                    "--lectoro-sub-bottom",
+                    `${newBottomPx}px`,
+                );
+            }
+            box.style.marginBottom = `${newBottomPx}px`;
+
+            if (subDragBadgeEl) {
+                subDragBadgeEl.textContent = `${newPosPercent}%`;
+            }
+        }
+
+        function onPointerUp(e) {
+            if (!dragActive) return;
+            dragActive = false;
+            isSubDragging = false;
+
+            window.removeEventListener("pointermove", onPointerMove, { capture: true });
+            window.removeEventListener("pointerup", onPointerUp, { capture: true });
+            window.removeEventListener("pointercancel", onPointerUp, { capture: true });
+
+            if (activePointerId !== null) {
+                try {
+                    handle.releasePointerCapture(activePointerId);
+                } catch (_) {}
+                activePointerId = null;
+            }
+
+            box.classList.remove(C.UI_CLASSES.SUB_DRAGGING);
+            if (customSubLayerEl) {
+                customSubLayerEl.classList.remove("__qt_layer-dragging");
+            }
+
+            const subPosKey = C.STORAGE_KEYS?.SUBTITLE_POSITION || "subtitlePosition";
+            chrome.storage.local.set({ [subPosKey]: currentSubPosition });
+        }
+
+        handle.addEventListener("pointerdown", startDrag);
+
+        let boxDown = null;
+        box.addEventListener("pointerdown", (e) => {
+            if (e.button !== 0) return;
+            if (e.target.closest?.(`.${SUB_WORD_CLASS}`) || e.target.closest?.("button")) {
+                return;
+            }
+            if (e.target === handle || handle.contains(e.target)) {
+                return;
+            }
+            boxDown = { x: e.clientX, y: e.clientY };
+        });
+
+        box.addEventListener("pointermove", (e) => {
+            if (!boxDown || dragActive) return;
+            const dy = Math.abs(e.clientY - boxDown.y);
+            const dx = Math.abs(e.clientX - boxDown.x);
+            if (dy > 4 && dy > dx) {
+                startDrag(e);
+                boxDown = null;
+            }
+        });
+
+        const cancelBoxDown = () => { boxDown = null; };
+        box.addEventListener("pointerup", cancelBoxDown);
+        box.addEventListener("pointercancel", cancelBoxDown);
+    }
+
+    function ensureDragHandle(box) {
+        if (!box) return;
+        if (!subDragHandleEl || !subDragHandleEl.isConnected) {
+            subDragHandleEl = document.createElement("div");
+            subDragHandleEl.className = C.UI_CLASSES.SUB_HANDLE;
+            subDragHandleEl.title = "Drag to reposition subtitles vertically";
+            subDragHandleEl.setAttribute("aria-label", "Drag to reposition subtitles vertically");
+
+            const bar = document.createElement("span");
+            bar.className = "__qt_subtitles-drag-bar";
+            subDragHandleEl.appendChild(bar);
+
+            subDragBadgeEl = document.createElement("span");
+            subDragBadgeEl.className = "__qt_subtitles-drag-badge";
+            subDragBadgeEl.textContent = `${Math.round(currentSubPosition || 14)}%`;
+
+            setupVerticalDrag(subDragHandleEl, box);
+        }
+
+        if (subDragHandleEl.parentElement !== box) {
+            box.insertBefore(subDragHandleEl, box.firstChild);
+        }
+        if (subDragBadgeEl && subDragBadgeEl.parentElement !== box) {
+            box.appendChild(subDragBadgeEl);
+        }
+    }
+
     function ensureCustomSubtitlesLayer() {
         const video = getPlayerRegistry()?.getVideo();
         const playerEl = findPlayerContainer(video);
@@ -257,6 +421,7 @@
 
         if (customSubLayerEl && customSubLayerEl.isConnected) {
             customSubLayerEl.id = C.UI_IDS.CUSTOM_SUBTITLES_LAYER;
+            customSubLayerEl.classList.add(C.UI_CLASSES.SUBTITLES_LAYER);
             customSubLayerEl.classList.add(C.UI_CLASSES.CUSTOM_SUBTITLES_LAYER);
             customSubLayerEl.setAttribute("data-platform", platform);
             applySubtitleStyles(customSubLayerEl);
@@ -268,6 +433,7 @@
                     "important",
                 );
             }
+            customSubBoxEl.classList.add(C.UI_CLASSES.SUBTITLES_BOX);
             customSubBoxEl.classList.add(C.UI_CLASSES.CUSTOM_SUBTITLES_BOX);
             customSubBoxEl.setAttribute("data-platform", platform);
             if (customSubBoxEl.parentElement !== customSubLayerEl) {
@@ -282,17 +448,18 @@
             if (customSubLayerEl) {
                 customSubLayerEl.style.removeProperty("display");
             }
+            ensureDragHandle(customSubBoxEl);
             return { layer: customSubLayerEl, box: customSubBoxEl };
         }
 
         customSubLayerEl = document.createElement("div");
         customSubLayerEl.id = C.UI_IDS.CUSTOM_SUBTITLES_LAYER;
-        customSubLayerEl.className = C.UI_CLASSES.CUSTOM_SUBTITLES_LAYER;
+        customSubLayerEl.className = `${C.UI_CLASSES.SUBTITLES_LAYER} ${C.UI_CLASSES.CUSTOM_SUBTITLES_LAYER}`;
         customSubLayerEl.setAttribute("data-platform", platform);
         applySubtitleStyles(customSubLayerEl);
 
         customSubBoxEl = document.createElement("div");
-        customSubBoxEl.className = C.UI_CLASSES.CUSTOM_SUBTITLES_BOX;
+        customSubBoxEl.className = `${C.UI_CLASSES.SUBTITLES_BOX} ${C.UI_CLASSES.CUSTOM_SUBTITLES_BOX}`;
         customSubBoxEl.setAttribute("data-platform", platform);
         customSubBoxEl.style.setProperty("opacity", "0", "important");
         customSubBoxEl.style.setProperty("pointer-events", "none", "important");
@@ -303,6 +470,7 @@
 
         customSubLayerEl.appendChild(customSubBoxEl);
         parent.appendChild(customSubLayerEl);
+        ensureDragHandle(customSubBoxEl);
 
         return { layer: customSubLayerEl, box: customSubBoxEl };
     }
@@ -311,6 +479,7 @@
         if (layoutRafId !== null) return;
         layoutRafId = requestAnimationFrame(() => {
             layoutRafId = null;
+            if (isSubDragging) return;
             const { layer, box } = ensureCustomSubtitlesLayer();
             const registry = getPlayerRegistry();
             const video = registry?.getVideo();
@@ -405,7 +574,7 @@
             );
 
             applySubtitleStyles(layer);
-            fitDualSubtitleRows(box);
+            ensureDragHandle(box);
 
             // Bottom offset inside video player
             const isNetflix = isNetflixPage();
@@ -685,6 +854,7 @@
         }
 
         const doubleActive = isDoubleSubtitlesActive();
+        box.classList.toggle(`${PREFIX}subtitles-dual`, doubleActive);
         box.classList.toggle(`${PREFIX}dual-subtitles`, doubleActive);
         let displayLines = rawCleanLines;
 
@@ -716,7 +886,9 @@
             ? rawSecondary.replace(/\s+/g, " ").trim() : "";
 
         if (newText === activeText && activeLines.length > 0 && activeUnifiedCue === cue) {
-            const existingSecEl = box.querySelector(`.${PREFIX}custom-sub-secondary`);
+            const existingSecEl =
+                box.querySelector(`.${PREFIX}sub-secondary`) ||
+                box.querySelector(`.${PREFIX}custom-sub-secondary`);
             const existingSecText = existingSecEl?.textContent || "";
             if (displayLines.length === activeLines.length && existingSecText === secondaryText && !!existingSecEl === doubleActive) {
                 syncCustomSubtitlePosition();
@@ -752,7 +924,7 @@
 
         for (const lineText of displayLines) {
             const lineEl = document.createElement("div");
-            lineEl.className = `${PREFIX}custom-sub-line`;
+            lineEl.className = `${PREFIX}sub-line`;
             lineEl.setAttribute("dir", "auto");
 
             for (const token of (globalThis.DictionaryTokenizer?.tokenize || SharedPhraseDetector.tokenizeSubtitleLine)(
@@ -786,7 +958,7 @@
 
         if (doubleActive) {
             const secEl = document.createElement("div");
-            secEl.className = `${PREFIX}custom-sub-secondary`;
+            secEl.className = `${PREFIX}sub-secondary`;
             secEl.setAttribute("dir", "auto");
             secEl.textContent = secondaryText;
             secEl.setAttribute("aria-hidden", secondaryText ? "false" : "true");
@@ -3185,7 +3357,7 @@
     function getSubtitleSourceFontSize(layout) {
         const subtitleReference =
             activeWordSpans.find((span) => span.isConnected) ||
-            customSubBoxEl?.querySelector(`.${PREFIX}custom-sub-line`) ||
+            customSubBoxEl?.querySelector(`.${PREFIX}sub-line, .${PREFIX}custom-sub-line`) ||
             customSubBoxEl ||
             getPlayerRegistry()?.getSubtitleElements?.()?.[0];
         const liveFontSize = subtitleReference

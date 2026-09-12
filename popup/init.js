@@ -137,8 +137,6 @@ const rateRange = document.getElementById("rateRange");
 const rateValue = document.getElementById("rateValue");
 const volumeRange = document.getElementById("volumeRange");
 const volumeValue = document.getElementById("volumeValue");
-const subPositionRange = document.getElementById("subPositionRange");
-const subPositionValue = document.getElementById("subPositionValue");
 const subBgRange = document.getElementById("subBgRange");
 const subBgValue = document.getElementById("subBgValue");
 

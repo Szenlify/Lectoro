@@ -204,6 +204,6 @@ test("alignSlaveTrackToMaster flattens both languages and clears stale translati
 test("DEFAULT_READING_SETTINGS contains doubleSubtitles default to true", () => {
     assert.equal(C.DEFAULT_READING_SETTINGS.doubleSubtitles, true);
     assert.equal(C.STORAGE_KEYS.DOUBLE_SUBTITLES, "doubleSubtitles");
-    assert.equal(C.UI_CLASSES.CUSTOM_SUB_SECONDARY, "__qt_custom-sub-secondary");
+    assert.equal(C.UI_CLASSES.CUSTOM_SUB_SECONDARY, "__qt_sub-secondary");
 });
 
