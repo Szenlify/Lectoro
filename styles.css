@@ -653,7 +653,7 @@ video::cue {
 
   /* Global Subtitle Theme Variables */
   --lectoro-sub-font-size: 26px;
-  --lectoro-sub-secondary-size: calc(var(--lectoro-sub-font-size, 26px) * 0.76);
+  --lectoro-sub-secondary-size: calc(var(--lectoro-sub-font-size, 26px) * 0.7);
   --lectoro-sub-bottom: 68px;
   --lectoro-sub-bg-color: transparent;
   --lectoro-sub-bg-padding: 0 4px;
