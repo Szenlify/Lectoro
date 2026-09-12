@@ -72,45 +72,21 @@
                 await root.SharedTranslatorService.getReadingSettings();
             if (!isCurrent()) return;
             ui.resetSubtitleModeStarting();
-            if (
-                !snapshot.text ||
-                (!settings.wordCloudMode && !settings.subtitleTTS)
-            ) {
+            if (!snapshot.text || !settings.wordCloudMode) {
                 ui.restoreOriginal();
                 if (wasPlaying) ui.resumeVideoAfterSubtitleClose(video);
                 return;
             }
-            const translationTask = settings.subtitleTTS ? translate(
-                snapshot.text,
-                revision,
-                snapshot.layout,
-            ) : null;
-            const tasks = [];
-            if (settings.wordCloudMode) {
-                tasks.push(
-                    ui.showWordClouds(video, {
-                        skipSpeech: settings.subtitleTTS,
-                        revision,
-                        sourceText: snapshot.text,
-                        sourceElements: snapshot.elements,
-                        translationTask,
-                    }),
-                );
-            }
-            if (settings.subtitleTTS) {
-                tasks.push(
-                    ui.doSentenceTranslation(video, snapshot.text, {
-                        speakTranslated: true,
-                        revision,
-                        layout: snapshot.layout,
-                        translationTask,
-                    }),
-                );
-            }
-            const results = await Promise.allSettled([
-                translationTask,
-                ...tasks,
-            ]);
+            const tasks = [
+                ui.showWordClouds(video, {
+                    skipSpeech: true,
+                    revision,
+                    sourceText: snapshot.text,
+                    sourceElements: snapshot.elements,
+                    translationTask: null,
+                }),
+            ];
+            const results = await Promise.allSettled(tasks);
             if (!isCurrent()) return;
             const failed = results.find(
                 (result) => result.status === "rejected",

@@ -11,7 +11,9 @@ const entry = { languageValidation: 1, t: "mały dom", d: { s: "A small home.", 
 function environment({ records = new Map(), serve = () => new Response(null, { status: 404 }), failSave = false } = {}) {
     const calls = [];
     const context = vm.createContext({ LectoroConstants: C, SharedUtils: U, crypto: webcrypto,
-        TextDecoder, TextEncoder, AbortController, setTimeout, clearTimeout, console: { warn() {} }, module: { exports: {} } });
+        TextDecoder, TextEncoder, AbortController, setTimeout, clearTimeout, console: { warn() {} },
+        require, process, __dirname: require("node:path").join(__dirname, "../shared"),
+        module: { exports: {} } });
     load(context, "shared/dictionary-store.js");
     const store = context.module.exports.createStore({ persistence: {
         get: async key => structuredClone(records.get(key)),
@@ -77,37 +79,26 @@ test("word clouds first render local entries and then read only missing live fil
     assert.equal((await env.lookup(["unknown"], "pl", "en", { generateMissing: false }))[0], null);
     assert.equal(env.calls.length, 1);
 });
-test("contextual lookup preserves get up as one unit before skipping simple words and caches it offline", async () => {
+test("contextual lookup preserves get up as one unit before skipping simple words", async () => {
     const env = environment();
-    let calls = 0;
+    env.store.setPhraseDictionary("en", "pl", { "get up": "wstań" });
     const words = ["Get", "up", "now"];
     const options = { wordByWord: true, contextual: true, context: "Get up now" };
-    env.context.GeminiProxy = { liveTranslation: async (kind, context, source, target, tokens) => {
-        calls++;
-        assert.equal(kind, "segments");
-        assert.equal(context, options.context);
-        assert.deepEqual(Array.from(tokens), words);
-        return { phraseAnalysis: 2, t: "Wstan teraz", phrases: [{ start: 0, length: 2, t: "wstań" }] };
-    } };
     const result = await env.lookup(words, "pl", "en", options);
     assert.equal(result[0].length, 2);
     assert.equal(result[0].translated, "wstań");
     assert.equal(result[1], null);
-    assert.equal(calls, 1);
     assert.equal(env.calls.length, 0, "do not fetch individual words");
     const offline = environment({ records: env.records });
+    offline.store.setPhraseDictionary("en", "pl", { "get up": "wstań" });
     assert.equal((await offline.lookup(words, "pl", "en", options))[0].length, 2);
     assert.equal(offline.calls.length, 0);
 });
-test("phrase analysis does not replace individual-word translations from the dictionary", async () => {
+test("phrase dictionary does not replace individual-word translations from the dictionary", async () => {
     const env = environment();
+    env.store.setPhraseDictionary("en", "pl", { "get up": "wstań" });
+    await env.store.putLive("en", "pl", "near", { ...entry, t: "blisko" });
     await env.store.putLive("en", "pl", "window", { ...entry, t: "okno" });
-    let calls = 0;
-    env.context.GeminiProxy = { liveTranslation: async kind => {
-        calls++;
-        assert.equal(kind, "segments");
-        return { phraseAnalysis: 2, t: "Wstań przy oknie.", phrases: [{ start: 0, length: 2, t: "wstań" }] };
-    } };
     const words = ["Get", "up", "near", "the", "window"];
     const options = { wordByWord: true, contextual: true, context: words.join(" ") };
     const result = await env.lookup(words, "pl", "en", options);
@@ -115,8 +106,8 @@ test("phrase analysis does not replace individual-word translations from the dic
     assert.equal(result[1], null);
     assert.equal(result[4].translated, "okno");
     assert.equal(result[4].length, 1);
-    assert.equal(calls, 1);
     const offline = environment({ records: env.records });
+    offline.store.setPhraseDictionary("en", "pl", { "get up": "wstań" });
     assert.equal((await offline.lookup(words, "pl", "en", options))[4].translated, "okno");
     assert.equal(offline.calls.length, 0);
 });

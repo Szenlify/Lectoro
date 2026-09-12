@@ -56,7 +56,6 @@ whenPopupReady((data) => {
     if (doubleSubtitlesToggle) {
         doubleSubtitlesToggle.checked = data.doubleSubtitles !== undefined ? !!data.doubleSubtitles : true;
     }
-    if (subtitleTTSToggle) subtitleTTSToggle.checked = !!data.subtitleTTS;
     if (wordCloudModeToggle) wordCloudModeToggle.checked = !!data.wordCloudMode;
 });
 
@@ -70,7 +69,6 @@ learningLangSelect.addEventListener("change", () => {
 
 // ── Subtitle reading modes ───────────────────────────────────────
 const doubleSubtitlesToggle = document.getElementById("doubleSubtitles");
-const subtitleTTSToggle = document.getElementById("subtitleTTS");
 const wordCloudModeToggle = document.getElementById("wordCloudMode");
 
 if (doubleSubtitlesToggle) {
@@ -82,14 +80,6 @@ if (doubleSubtitlesToggle) {
     });
 }
 
-if (subtitleTTSToggle) {
-    subtitleTTSToggle.addEventListener("change", () => {
-        chrome.storage.local.set(
-            { subtitleTTS: subtitleTTSToggle.checked },
-            flashSaved,
-        );
-    });
-}
 
 wordCloudModeToggle.addEventListener("change", () => {
     chrome.storage.local.set(

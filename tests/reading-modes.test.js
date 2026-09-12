@@ -216,50 +216,43 @@ function app(settings = {}) {
 }
 
 for (const language of ["pl", "de"]) {
-    for (const [sentence, words] of [
-        [true, false],
-        [false, true],
-        [true, true],
-    ]) {
-        test(`S uses native ${language}: sentence=${sentence}, words=${words}, even with simple AI language`, async () => {
-            const state = app({
-                targetLang: language,
-                subtitleTTS: sentence,
-                wordCloudMode: words,
-                aiExplanationLanguage: "simple_target",
-            });
-            await state.start();
-            assert.deepEqual(
-                state.drawn,
-                sentence ? [`${language}:important example`] : [],
-            );
-            assert.deepEqual(
-                Array.from(
-                    state.context.wordCloudEls,
-                    ({ cloud }) => cloud.textContent,
-                ),
-                words ? [`${language}:important`, `${language}:example`] : [],
-            );
-            assert.equal(state.speech.length, sentence ? 1 : 0);
-            if (sentence) assert.equal(state.speech[0].lang, language);
-            assert.equal(state.loading.length, sentence ? 1 : 0);
-            assert.equal(state.charged(), sentence ? "important example".length : 0);
-            assert.equal(state.urls.length, sentence ? 1 : 0);
-            assert.equal(state.video.paused, true);
-            assert.equal(state.errors.length, 0);
+    test(`S uses native ${language}: words=true, even with simple AI language`, async () => {
+        const state = app({
+            targetLang: language,
+            wordCloudMode: true,
+            aiExplanationLanguage: "simple_target",
         });
-    }
+        await state.start();
+        assert.deepEqual(state.drawn, []);
+        assert.deepEqual(
+            Array.from(
+                state.context.wordCloudEls,
+                ({ cloud }) => cloud.textContent,
+            ),
+            [`${language}:important`, `${language}:example`],
+        );
+        assert.equal(state.speech.length, 0);
+        assert.equal(state.loading.length, 0);
+        assert.equal(state.charged(), 0);
+        assert.equal(state.urls.length, 0);
+        assert.equal(state.video.paused, true);
+        assert.equal(state.errors.length, 0);
+    });
 }
 
 test("HTTP 429 produces one visible error, no original-as-translation and no quota charge", async () => {
-    const state = app({ subtitleTTS: true, wordCloudMode: true });
-    state.context.fetch = async () => ({ ok: false, status: 429 });
+    const state = app({ wordCloudMode: true });
+    state.context.SharedTranslatorService.lookupWords = async () => {
+        const err = new Error("Rate limited");
+        err.code = "RATE_LIMITED";
+        throw err;
+    };
     await state.start();
     assert.equal(state.errors.length, 1);
     assert.equal(state.errors[0].code, "RATE_LIMITED");
     assert.equal(state.drawn.length, 0);
     assert.equal(state.speech.length, 0);
-    assert.equal(state.context.wordCloudEls.length, 2);
+    assert.equal(state.context.wordCloudEls.length, 0);
     assert.equal(state.charged(), 0);
 });
 
@@ -284,31 +277,35 @@ test("missing dictionary words are generated after known words are rendered", as
 });
 
 test("quota denial displays the limit and never fetches or speaks", async () => {
-    const state = app({ subtitleTTS: true });
+    const state = app();
     state.context.SubscriptionService.getSubtitleQuotaStatus = async () => ({
         allowed: false,
         resetInMs: 1000,
     });
-    await state.start();
+    const result = await state.context.LectoroReadingModes.translate("important example", state.ui.subtitleModeRevision);
     assert.equal(state.limits.length, 1);
     assert.equal(state.urls.length, 0);
     assert.equal(state.speech.length, 0);
     assert.equal(state.errors.length, 0);
+    assert.equal(result.limitReached, true);
 });
 
 for (const setting of ["targetLang", "learningLang"]) {
 test(`changing ${setting} while a translation is in flight discards its result`, async () => {
-    const state = app({ subtitleTTS: true, wordCloudMode: false });
+    const state = app();
+    state.context.wordCloudActive = true;
+    const revision = state.ui.subtitleModeRevision;
     const pending = deferred();
     state.context.fetch = () => pending.promise;
-    const action = state.start();
+    const action = state.context.LectoroReadingModes.translate("important example", revision);
     await tick();
     await state.store.local.set({ [setting]: "de" });
     pending.resolve({
         ok: true,
         json: async () => [[["stare tłumaczenie"]], null, "en"],
     });
-    await action;
+    const result = await action;
+    assert.equal(result, null);
     assert.equal(state.drawn.length, 0);
     assert.equal(state.speech.length, 0);
     assert.equal(state.errors.length, 0);
@@ -319,7 +316,7 @@ test(`changing ${setting} while a translation is in flight discards its result`,
 test("disabled modes or a missing cue restore playback without requests", async () => {
     for (const empty of [false, true]) {
         const state = app(
-            empty ? {} : { subtitleTTS: false, wordCloudMode: false },
+            empty ? {} : { wordCloudMode: false },
         );
         if (empty) state.context.activeText = "";
         await state.start();
@@ -330,11 +327,19 @@ test("disabled modes or a missing cue restore playback without requests", async 
 });
 
 test("speech failure does not replace a valid sentence translation with an error", async () => {
-    const state = app({ subtitleTTS: true, wordCloudMode: false });
+    const state = app();
     state.context.QT.speak = async () => {
         throw new Error("Voice unavailable");
     };
-    await state.start();
+    await state.ui.doSentenceTranslation(state.video, "important example", {
+        speakTranslated: true,
+        translationTask: Promise.resolve({
+            status: "success",
+            translated: "pl:important example",
+            translatedText: "pl:important example",
+            targetLang: "pl",
+        }),
+    });
     assert.deepEqual(state.drawn, ["pl:important example"]);
     assert.equal(state.errors.length, 0);
 });
@@ -510,7 +515,7 @@ test("blessing in disguise has a continuous background, centered cloud and rever
 });
 
 test("holding S keeps the session open; a second press closes it and resumes playback", async () => {
-    const state = app({ subtitleTTS: true });
+    const state = app({ wordCloudMode: true });
     let keydown;
     state.context.document.addEventListener = (type, handler) => {
         if (type === "keydown") keydown = handler;

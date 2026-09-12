@@ -132,8 +132,16 @@
     ],
     "web_accessible_resources": [
         {
-            "resources": ["icons/icon48.png"],
-            "matches": ["https://*.youtube.com/*", "https://youtube.com/*", "https://www.netflix.com/*", "https://netflix.com/*"]
+            "resources": [
+                "icons/icon48.png",
+                "dictionaries/phrase/*.json"
+            ],
+            "matches": [
+                "https://*.youtube.com/*",
+                "https://youtube.com/*",
+                "https://www.netflix.com/*",
+                "https://netflix.com/*"
+            ]
         }
     ]
 }

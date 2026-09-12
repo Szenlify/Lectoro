@@ -51,7 +51,7 @@
 | `video-frame-bootstrap.js` | Uruchamianie obsługi w ramkach wideo. |
 | `shared/subtitle-service.js` → adaptery / nakładka | Dane napisów, kontekst sąsiednich kwestii, łączenie klocków w pełne zdania (`reconstructFullSentenceCues`) i algorytm dopasowania ścieżki podrzędnej do nadrzędnej z synchronizacją do przodu (`alignSlaveTrackToMaster`) łączący klocki w jedną linię. |
 | `video/subtitle-overlay.js` → `QT`, translator, subtitle service | Wyświetlanie napisów pojedynczych i dwujęzycznych (`doubleSubtitles`) bez użycia AI/Google Translate, wyjaśnienia Enter, kolejka odczytu i zapis fiszek. Znaczenia, etykiety i wyjaśnienia używają Native language. |
-| `video/reading-modes.js` → translator, nakładka | Tryby czytania i tłumaczenia pod S; reaguje na zmianę języków i ustawień (`doubleSubtitles`, `wordCloudMode`, `subtitleTTS`). |
+| `video/reading-modes.js` → translator, nakładka | Tryb czytania (chmurki słów) pod S; reaguje na zmianę języków i ustawień (`doubleSubtitles`, `wordCloudMode`). |
 | `video/video-hotkeys.js` → nakładka / odtwarzacz | Skróty klawiaturowe wideo. |
 | `shared/subtitle-translation-service.js` → worker | Wspólny przepływ tłumaczenia napisów. |
 
@@ -64,8 +64,8 @@ Przepływ Enter: `video/subtitle-overlay.js` → `core.js` (`QT.geminiExplainSen
 | `shared/utils.js` | Wspólne narzędzia: tekst, głosy, obrazy i klucze audio. |
 | `shared/word-repository.js` → storage | Wspólny dostęp do zapisanych słów. |
 | `shared/srs.js` → popup / worker | Reguły powtórek. |
-| `shared/dictionary-store.js` → worker | Magazyn danych słownika. |
-| `shared/local-dictionary.js` → dictionary store, tokenizer, utils | Dopasowanie haseł i znaczeń. |
+| `shared/dictionary-store.js` → worker | Magazyn danych słownika (R2 `dictionaries/live/` dla słówek oraz statyczne pakiety fraz `dictionaries/phrase/*.json`). |
+| `shared/local-dictionary.js` → dictionary store, tokenizer, utils | Dopasowanie haseł i znaczeń; wyszukiwanie wielowyrazowych fraz w trybie word-by-word. |
 | `shared/dictionary-tokenizer.js` | Tokenizacja dla słownika. |
 | `shared/phrase-detector.js` | Rozpoznawanie wyrażeń w tekście. |
 | `shared/audio-cache.js` → TTS | Pamięć podręczna nagrań. |

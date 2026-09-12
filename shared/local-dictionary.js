@@ -283,7 +283,7 @@
                 .replace(/\s+/g, " ")
                 .trim();
 
-            // R2 phrase lookup is read-only and never invokes AI. Check 4/3/2-word
+            // Static phrase dictionary lookup is read-only and never invokes AI. Check 4/3/2-word
             // windows, then keep the longest non-overlapping matches.
             const candidates = [];
             for (let start = 0; start < tokens.length - 1; start++) {

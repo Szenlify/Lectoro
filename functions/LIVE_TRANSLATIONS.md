@@ -1,84 +1,32 @@
 # Tłumaczenia generowane podczas oglądania
 
-## Aktualny przepływ: lekki cache + frazy współdzielone
+## Aktualny przepływ: R2 tylko dla `dictionaries/live/` + statyczne frazy JSON
 
-**AI Translate full sentence (`kind: sentence`)** jest jedynym automatycznym trybem,
-który generuje nowe wpisy `dictionaries/phrase`. Przy braku cache wykonuje jedno
-wywołanie AI, które zwraca pełne tłumaczenie `t` oraz maksymalnie 8 rzeczywistych
-fraz wielowyrazowych. Nie ma osobnego drugiego AI-review dla fraz.
+W Cloudflare R2 przechowywane są wyłącznie zweryfikowane pojedyncze słowa w ścieżce:
+`dictionaries/live/<source>-<target>/<sha256(word)>.json`.
 
-Zapis pełnego zdania jest zawsze lekki:
+Foldery `dictionaries/translations` oraz `dictionaries/phrase` w R2 zostały całkowicie usunięte.
+Tłumaczenia zdań są wykonywane przez AI w locie bez zapisywania w R2, a powszechne frazy wielowyrazowe dla trybu Word-by-word znajdują się w statycznych plikach JSON w rozszerzeniu:
+`dictionaries/phrase/<source>-<target>.json` (np. `dictionaries/phrase/en-pl.json`).
 
-```json
-{
-  "t": "JAK WRESZCIE ZACZYNAJĄ GOIĆ SIĘ RANY"
-}
-```
-
-Ścieżka:
-`dictionaries/translations/<source>-<target>/<sha256(sentence)>.json`.
-Nowy kod nie zapisuje tam `phrases`, `tokens` ani `phraseAnalysis`. Stare cięższe
-obiekty pozostają zgodne w odczycie: jeśli mają poprawne `t`, wynik jest używany
-bez ponownego AI. Nie wykonujemy masowej migracji R2.
-
-Wykryte przez AI frazy są zapisywane osobno jako współdzielony cache:
-`dictionaries/phrase/<source>-<target>/<sha256(normalized-phrase)>.json`, np.
-`{ "get up": { "t": "wstać" } }`. Klucz frazy jest normalizowany NFKC,
-małymi literami i ze zredukowanymi spacjami. Frazy są dodatkiem do wyniku:
-błąd zapisu frazy nie może unieważnić poprawnego tłumaczenia całego zdania.
-
-**Word-by-word (`kind: segments`) nie generuje AI.** Ten request jest read-only:
-sprawdza istniejące `dictionaries/phrase` dla ograniczonej liczby kandydatów
-(max 24 odczyty fraz na napis, maksymalnie 8 równolegle), wybiera najdłuższe
-niezachodzące dopasowania i zwraca je do UI. Błędy pojedynczych odczytów fraz są
-ignorowane, więc użytkownik nadal dostaje wszystkie dostępne słowa/frazy.
-Automatyczny Word-by-word korzysta tylko z istniejących cache; brakujące słowo
-nie uruchamia AI. Generowanie brakującego wpisu `dictionaries/live` pozostaje
-możliwe przy świadomej akcji użytkownika, np. hover/wybór słowa.
+**Word-by-word (`kind: segments` / lokalne dopasowywanie fraz) nie generuje AI.** Ten proces jest read-only:
+sprawdza lokalny słownik fraz `dictionaries/phrase/<source>-<target>.json` dla okien 4/3/2 słów w pamięci podręcznej O(1), wybiera najdłuższe niezachodzące dopasowania i zwraca je do UI. Pozostałe pojedyncze słowa pochodzą z lokalnego cache lub `dictionaries/live/` w R2.
 
 ### Odporność na błędy
 
-1. R2 jest sprawdzane przed rezerwacją AI. Trafienie istniejącego `t` kończy
-   request bez AI i bez zużycia kolejnego limitu.
-2. Jeśli AI zwróci poprawne `t`, ale frazy są niepoprawne, frazy są odrzucane,
-   a `t` nadal jest zwracane i może być zapisane.
-3. Jeśli zapis `dictionaries/phrase` albo zapis cache zdania zawiedzie po
-   otrzymaniu poprawnego `t`, użytkownik nadal dostaje tłumaczenie zamiast
-   `Translation unavailable`.
-4. Jeśli generowanie/validation zawiedzie, backend wykonuje ostatni odczyt
-   `dictionaries/translations` i zwraca zapisane `t`, jeżeli pojawiło się w bazie.
-5. Po stronie rozszerzenia błąd contextual Word-by-word degraduje się do zwykłych
-   wpisów cache. Błąd backendowego tłumaczenia zdania ma końcowy fallback do
-   istniejącego tłumacza `QT.translate`, zamiast od razu pokazywać pusty ekran.
+1. R2 jest sprawdzane przed rezerwacją AI dla pojedynczych słów. Trafienie istniejącego wpisu kończy request bez AI i bez zużycia kolejnego limitu.
+2. Statyczne frazy wielowyrazowe są ładowane do pamięci $O(1)$ bez zapytań sieciowych i bez ryzyka rate-limitów.
+3. Błąd backendowego tłumaczenia zdania ma końcowy fallback do istniejącego tłumacza `QT.translate`, zamiast od razu pokazywać pusty ekran.
 
-Dzięki temu koszt przy tysiącach użytkowników przesuwa się z „AI na każdy napis /
-każde brakujące słowo” na współdzielone cache: nowe pełne zdanie to maksymalnie
-jedno AI, cache-hit to zero AI, Word-by-word to zero AI.
+## Zapis i struktura
 
-The following single-word dictionary flow applies to hover and word selection:
-
-Nowe wpisy zawierają `t`, `d`, `s`, `e`, w tym definicję i trzy przykłady wraz
-z tłumaczeniami. Dopuszczamy tłumaczenie kilkoma słowami. Słownik wybiera jedno
-powszechne znaczenie; tłumaczenie całego zdania uwzględnia kontekst tego zdania.
-Proste angielskie słowa nadal są pomijane zgodnie z dotychczasową logiką.
-
-**AI Translate full sentence** używa akcji backendu `sentence`. Trafienie R2 jest
-zwracane przed rezerwacją AI. Nowa generacja tworzy `t` i może przy okazji zasilić
-`dictionaries/phrase`; do `dictionaries/translations` trafia wyłącznie `{ "t": "..." }`.
-Po poprawnym wygenerowaniu `t` awaria zapisu cache/fraz nie zamienia wyniku na błąd UI.
-
-## Zapis
-
-- Słowa: `dictionaries/live/<source>-<target>/<sha256-słowa>.json`, np.
-  `dictionaries/live/en-pl/<hash>.json`, bez poziomu `v1`.
-  Zawartość: `{ "słowo": { "t": "...", "d": {"s":"...","t":"..."}, "s": [], "e": [...] } }`.
+- Słowa w R2: `dictionaries/live/<source>-<target>/<sha256-słowa>.json`, np.
+  `dictionaries/live/en-pl/<hash>.json`.
+  Zawartość: `{ "słowo": { "languageValidation": 1, "t": "...", "d": {"s":"...","t":"..."}, "s": [], "e": [...] } }`.
   Wpisy są współdzielone między użytkownikami.
-- Zdania i teksty z więcej niż jednym słowem:
-  `dictionaries/translations/<source>-<target>/<sha256-tekstu>.json`.
-  Zawartość: `{ "t": "tłumaczenie" }`. Cache jest współdzielony między kontami.
-  Oba foldery używają pary języków bezpośrednio po nazwie folderu, bez `v1` i UID.
-- Hasła są również zapisywane w IndexedDB. Zdania korzystają z istniejącego
-  lokalnego cache tłumaczeń.
+- Frazy w rozszerzeniu: `dictionaries/phrase/<source>-<target>.json`.
+  Zawartość: `{ "play with fire": "igrać z ogniem", "on thin ice": "na cienkim lodzie", "take off": "startować", ... }`.
+- W R2 pozostaje wyłącznie folder `dictionaries/live/`. Folder `dictionaries/translations/` i `dictionaries/phrase/` zostały usunięte.
 
 Teksty źródłowe do **200 znaków włącznie** mogą być zapisywane w R2. Teksty
 **powyżej 200 znaków** są tłumaczone przez AI bez odczytu ani zapisu R2 i bez
