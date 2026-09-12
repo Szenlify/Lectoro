@@ -340,16 +340,18 @@
          */
         const SIMPLE_WORDS = Object.freeze(
             new Set([
-                "i", "am", "him", "hers",
+                "i", "am", "him", "her", "he", "she", "it", "we", "us", "you", "your", "yours",
+                "our", "ours", "they", "them", "their", "theirs", "hers", "his", "me", "my",
                 "yes", "no", "ok", "okay", "hello", "hi", "bye", "please",
                 "thanks", "now",
-                "an", "oh", "um", "uh", "ah", "a", "and", "are", "as", "at", "be",
-                "he", "her",
-                "his", "if", "in", "is", "me", "my",
-                "not", "of", "on", "or", "our", "she", "so",
-                "that", "the",
-                "us", "was", "we", "what",
-                "you", "your", "yours",
+                "be", "been", "being", "is", "isn't", "are", "aren't", "was", "wasn't", "were", "weren't",
+                "do", "don't", "does", "doesn't", "did", "didn't",
+                "have", "has", "had", "haven't", "hasn't", "hadn't",
+                "can", "can't", "could", "couldn't", "will", "won't", "would", "wouldn't",
+                "shall", "should", "shouldn't", "may", "might", "must",
+                "an", "oh", "um", "uh", "ah", "a", "and", "as", "at",
+                "for", "from", "if", "in", "not", "of", "on", "or", "so",
+                "some", "that", "the", "to", "too", "what",
             ]),
         );
 

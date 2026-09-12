@@ -90,31 +90,36 @@ Przepływ Enter: `video/subtitle-overlay.js` → `core.js` (`QT.geminiExplainSen
 | `functions/set-user-plan.js`, `remove-user-plan.js` | Narzędzia administracyjne planów użytkownika. |
 | `functions/firebase.json`, `functions/functions.yaml`, `functions/package.json` | Wdrożenie i zależności backendu. |
 | `functions/SUBSCRIPTIONS.md`, `functions/LIVE_TRANSLATIONS.md` | Szczegółowa dokumentacja backendu. |
-| `tests/*.test.js`, `tests/helpers.js`, `tests/fixtures/*` | Testy rozszerzenia, atrapy środowiska i dane testowe. |
+| `CHROMEWEBSTORE.md` | SSOT publikacji w Chrome Web Store: specyfikacja uprawnień, uzasadnienia i deklaracje prywatności. |
+| `tests/*.test.js`, `tests/helpers.js`, `tests/fixtures/*` | Testy rozszerzenia, atrapy środowiska, algorytmy SRS i parsery. |
 | `functions/*.test.js` | Testy backendu i kontraktów współdzielonych. |
-| `scratch/*` | Skrypty pomocnicze, audyty i starsze testy; część uruchamia `npm test`. |
-| `package.json` | Polecenia `npm test`, `npm run check:syntax`, audyty. |
-| `scripts/build-cws-zip.js` → pliki rozszerzenia | Przygotowanie paczki Chrome Web Store. |
+| `scripts/check-syntax.js` | Weryfikacja składniowa wszystkich plików JS (`node --check`). |
+| `scripts/build-cws-zip.js` → pliki rozszerzenia | Przygotowanie paczki Chrome Web Store z uwzględnieniem `dictionaries/`. |
+| `package.json` | Polecenia `npm test`, `npm run check:syntax`, `npm run build`, `npm run audit`. |
 | `icons/*` | Ikony wskazane w manifest. |
 | `todo.md`, `p.md` | Notatki robocze; reguły architektury utrzymuj tutaj. |
 
-## Weryfikacja ostatniej zmiany
-
-- **Ochrona przed ścianą tekstu (teksty piosenek / ASR bez kropek):**
-  - W `shared/subtitle-service.js` w `reconstructFullSentenceCues` wdrożono twarde ograniczenia jedno-wierszowe: maks. 11 słów / 65 znaków w klastrze, podział na interpunkcji zdań podrzędnych (`,`, `;`, `:`, `-`, `—`) gdy liczba słów wynosi >= 5, oraz podział przy pauzach > 0.65s (lub > 0.15s przy >= 7 słowach).
-  - W `alignSlaveTrackToMaster` zredukowano limit łączenia klocków do maks. 12 słów / 70 znaków.
-  - Eliminuje to 30–40 słowne zbitki w piosenkach (np. tekst Martin Garrix "Rewind, repeat it...") i długich wypowiedziach ASR bez interpunkcji, dzieląc je na naturalne, jedno-wierszowe klocki.
-- **Naprawa braku podwójnych napisów i błędu HTTP 429 na YouTube:**
-  - Przyczyna 429: YouTube podpisuje strumienie ASR parametrami `sparams`. Wymuszanie `&fmt=json3` / `&fmt=vtt` na podpisanym adresie unieważnia sygnaturę Google i wywołuje 429 (Too Many Requests / Unusual Traffic). Ponadto `window.fetch` jest bardziej podatny na blokady WAF niż odtwarzaczowe XHR.
-  - W `adapters/youtube-adapter.js`: w `slaveCandidateUrls` jako pierwszy podawany jest natywny format bez parametrów formatu (`fmt: ""`), zachowujący poprawny podpis URL.
-  - W `youtube-player-bridge.js`: `FETCH_REQUEST_EVENT` korzysta w pierwszej kolejności z `XMLHttpRequest` z `withCredentials = true` (identyczny transport jak odtwarzacz YouTube).
-  - Przechwytywanie ścieżki slave: `youtube-player-bridge.js` przechwytuje odpowiedzi XHR/fetch zawierające `tlang=` i emituje zdarzenie `__lectoro_youtube_slave_timed_text` (`SLAVE_TIMED_TEXT_EVENT`), które `youtube-adapter.js` natychmiast przypisuje i wyrównuje do `cueIndex`.
-  - Fallback odtwarzacza YouTube: jeśli bezpośrednie pobranie zwróci pusty wynik lub 429, wysyłane jest zdarzenie `REQUEST_TRANSLATION_EVENT`, w wyniku którego mostek wywołuje `player.setOption("captions", "translationLanguage", { languageCode: targetLang })`. Odtwarzacz sam pobiera oficjalną ścieżkę XHR (200 OK), która jest przechwytywana i podpinana jako napisy podrzędne.
-- **Netflix:**
-  - Zgodnie z wytycznymi kod Netflixa (`adapters/netflix-adapter.js`) nie był modyfikowany.
-- **Testy jednostkowe:**
-  - `node --test tests/dual-subtitles.test.js`: 10/10 testów zaliczonych (w tym test unpunctuated lyrics / single line bounds).
-  - Składnia JS zweryfikowana (`node --check`).
-
 ## Zmiany i propozycje SSOT
 
+- [x] **Naprawa reguł `SIMPLE_WORDS` w `shared/constants.js`:**
+  - Przywrócono angielskie czasowniki posiłkowe (`do`, `does`, `did`, `have`, `has`, `had`, `can`, `will` itd.) oraz zaimki do `SIMPLE_WORDS`.
+  - Naprawiono rozpoznawanie skrótów (`don't`, `doesn't`, `didn't`), dzięki czemu `tests/local-dictionary.test.js` przechodzi w 100% (6/6 PASS).
+- [x] **Eliminacja martwego kodu i przestarzałych trybów:**
+  - Wycofano nasłuchiwanie `changes.subtitleTTS` w `video/reading-modes.js`.
+  - Usunięto martwą opcję `scope === "all"` w `shared/quiz-export.js`, zabezpieczając dozwolony zakres generowania quizu.
+- [x] **Formalizacja testów i oczyszczenie `scratch/`:**
+  - Utworzono `tests/srs-algorithm.test.js` (formalny test algorytmu powtórek SRS w `node:test`).
+  - Utworzono `tests/youtube-captions-parse.test.js` (test parsera JSON3, rekonstrukcji ASR i czyszczenia znaczników).
+  - Utworzono `tests/subscription-parity.test.js` (automatyczna weryfikacja 100% zgodności planów i limitów między `shared/` a `functions/`).
+  - Usunięto przestarzałe skrypty ze `scratch/`.
+- [x] **Uporządkowanie `package.json` i skryptów utrzymania:**
+  - Skrypt `npm test` uruchamia wyłącznie aktywne testy (`node --test tests/*.test.js functions/*.test.js`).
+  - Zaimplementowano `scripts/check-syntax.js` sprawdzający składnię każdego pliku `.js` w repozytorium (`npm run check:syntax`).
+  - Dodano skrypt `npm run build` do generowania paczki dystrybucyjnej.
+- [x] **Zgodność z Chrome Web Store (CWS MV3):**
+  - Dołączono katalog `dictionaries/` do `INCLUDED_ENTRIES` w `scripts/build-cws-zip.js`, gwarantując obecność pakietów fraz w dystrybucji.
+  - Utworzono plik `CHROMEWEBSTORE.md` z pełnym zestawem metadanych, tabelą uzasadnień uprawnień (`storage`, `alarms`, `identity`, `scripting`, `activeTab`, host permissions) oraz deklaracjami prywatności.
+- [x] **Weryfikacja:**
+  - `npm test`: 223/223 testów PASS.
+  - `npm run check:syntax`: 87/87 plików JS bez błędów składniowych.
+  - `npm run build`: paczka `dist/lectoro-cws-v1.0.0.zip` (339.2 KB) zweryfikowana pomyślnie.

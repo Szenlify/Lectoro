@@ -59,6 +59,7 @@ const INCLUDED_ENTRIES = [
     "shared",
     "adapters",
     "video",
+    "dictionaries",
     "firebase/firebase-config.js",
     "firebase/firebase-sync.js",
 ];
