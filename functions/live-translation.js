@@ -179,7 +179,7 @@ function translationError(error) {
         cache: "Could not read the dictionary. Please try again.",
         storage: "Could not save the translation. Please try again.",
         generation: "Translation service could not generate a complete result. Please try again.",
-        verification: "Could not verify this dictionary entry. Check the word and selected languages.",
+        verification: "Could not verify this dictionary entry",
     };
     return { status: 503, code: `TRANSLATION_${(error.stage || "service").toUpperCase()}_FAILED`, error: messages[error.stage] || "Translation service is temporarily unavailable." };
 }
@@ -246,7 +246,7 @@ async function handleLiveTranslation(body, deps) {
             if (review.valid !== true || !review.entry) {
                 console.warn("[liveTranslation] LLM rejected word:", JSON.stringify(job.input), "sourceLang:", job.sourceLang, "targetLang:", job.targetLang, "review:", JSON.stringify(review));
                 throw Object.assign(
-                    new Error("Could not verify this dictionary entry. Check the word and selected languages."),
+                    new Error("Could not verify this dictionary entry"),
                     { status: 422, code: "DICTIONARY_VALIDATION_FAILED" },
                 );
             }
