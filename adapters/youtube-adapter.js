@@ -205,6 +205,19 @@
             return;
         }
 
+        // Subtitles must only display once the video has loaded frame/media data
+        if (typeof video.readyState === "number" && video.readyState < 2) {
+            if (currentDisplayedText !== "" || (globalThis.LectoroSubtitleOverlay?.getActiveLines?.()?.length > 0)) {
+                currentDisplayedText = "";
+                currentDisplayedTranslation = "";
+                currentDisplayedCue = null;
+                if (globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
+                    globalThis.LectoroSubtitleOverlay.renderCustomSubtitles([]);
+                }
+            }
+            return;
+        }
+
         const time = video.currentTime;
         let targetText = "";
         let targetTranslation = "";
@@ -266,6 +279,24 @@
     function bindVideoEvents(video) {
         if (!video || boundVideo === video || isPreviewVideo(video)) return;
         boundVideo = video;
+
+        const clearSubtitlesOnLoad = () => {
+            currentDisplayedText = "";
+            currentDisplayedTranslation = "";
+            currentDisplayedCue = null;
+            if (globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
+                globalThis.LectoroSubtitleOverlay.renderCustomSubtitles([]);
+            }
+        };
+
+        video.addEventListener("loadstart", clearSubtitlesOnLoad);
+        video.addEventListener("emptied", clearSubtitlesOnLoad);
+        video.addEventListener("loadeddata", () => {
+            syncActiveCue(video);
+        });
+        video.addEventListener("canplay", () => {
+            syncActiveCue(video);
+        });
 
         video.addEventListener("play", () => {
             if (cueIndex.length === 0 && checkIsCcActive(video)) {
@@ -703,6 +734,23 @@
             setTimeout(observeContentCcButton, 300);
         }
     });
+
+    window.addEventListener("yt-navigate-start", () => {
+        invalidateCaptionRequest();
+        reportDualStatus("idle");
+        lastMasterTrack = null;
+        currentDisplayedTranslation = "";
+        currentDisplayedCue = null;
+        currentDisplayedText = "";
+        cueIndex = [];
+        activeTrack = null;
+        availableTracks = [];
+        boundVideo = null;
+        stopPlaybackLoop();
+        if (globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
+            globalThis.LectoroSubtitleOverlay.renderCustomSubtitles([]);
+        }
+    }, { passive: true });
 
     // Initial check on load
     setTimeout(() => {

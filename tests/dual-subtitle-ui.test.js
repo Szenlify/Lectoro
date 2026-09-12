@@ -56,7 +56,7 @@ function toastHarness() {
 
 test("toast pauses hover countdown, resumes remaining time and cleans up after exit", () => {
     const h = toastHarness();
-    h.toast.show({ retry() {} }); h.advance(0);
+    h.toast.show({ retry() {}, duration: 5000 }); h.advance(0);
     const el = h.created[0];
     assert.equal(el.style.top, "120px");
     assert.equal(el.style.right, "220px");
@@ -97,7 +97,7 @@ test("dismissed or replaced toast cannot invoke a stale Retry callback", () => {
 
 test("notification stays paused while document is hidden", () => {
     const h = toastHarness();
-    h.toast.show({ retry() {} }); h.advance(0); h.advance(1000);
+    h.toast.show({ retry() {}, duration: 5000 }); h.advance(0); h.advance(1000);
     h.document.hidden = true; h.document.dispatch("visibilitychange"); h.advance(60000);
     assert.equal(h.created[0].isConnected, true);
     h.document.hidden = false; h.document.dispatch("visibilitychange"); h.advance(4000); h.advance(300);

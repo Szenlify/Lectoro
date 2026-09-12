@@ -452,6 +452,9 @@
     setTimeout(observeCcButton, 400);
   }
 
+  window.addEventListener("yt-navigate-start", onYouTubeNavigation, {
+    passive: true,
+  });
   window.addEventListener("yt-navigate-finish", onYouTubeNavigation, {
     passive: true,
   });

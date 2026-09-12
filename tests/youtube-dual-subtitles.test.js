@@ -301,3 +301,18 @@ test("YouTube retains Master loading when double subtitles are disabled before M
     assert.equal(h.adapter.getAllCues()[0].text, "Same words");
     assert.equal(h.statuses.at(-1).status, "idle");
 });
+
+test("YouTube suppresses subtitles while video is still loading (readyState < 2) and displays them once loaded", async () => {
+    const h = setup();
+    h.video.readyState = 0;
+    const { result } = await h.begin();
+    h.reply(h.requests[1], { text: SLAVE });
+    await result;
+    assert.equal(h.renders.length, 0);
+
+    h.video.readyState = 2;
+    h.video.dispatchEvent({ type: "loadeddata" });
+    assert.equal(h.renders.length, 1);
+    assert.deepEqual(h.renders.at(-1).lines, ["Same words"]);
+});
+

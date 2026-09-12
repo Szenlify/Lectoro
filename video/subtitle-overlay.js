@@ -657,7 +657,8 @@
             video &&
             (registry?.isPreviewOrThumbnailVideo?.(video) ||
                 (typeof registry?.isCcActive === "function" &&
-                    !registry.isCcActive(video)))
+                    !registry.isCcActive(video)) ||
+                (typeof video.readyState === "number" && video.readyState < 2))
         ) {
             lines = [];
         }

@@ -34,13 +34,21 @@
             if (nativePopover) element.setAttribute("popover", "manual");
             element.setAttribute("aria-label", "Lectoro AI notification");
             element.innerHTML = `
-                <span class="__qt_dual-toast-logo"><img alt="" width="32" height="32"></span>
+                <span class="__qt_dual-toast-logo">
+                    <img alt="" width="32" height="32">
+                    <span class="__qt_dual-toast-badge" aria-hidden="true">!</span>
+                </span>
                 <div class="__qt_dual-toast-body">
                     <div role="status" aria-live="polite" aria-atomic="true">
-                        <strong>Lectoro AI</strong>
-                        <p>Failed to load dual subtitles. Please try again.</p>
+                        <div class="__qt_dual-toast-header">
+                            <strong class="__qt_dual-toast-title">Lectoro AI</strong>
+                        </div>
+                        <p class="__qt_dual-toast-desc">Failed to load dual subtitles. Please try again.</p>
                     </div>
-                    <button type="button" class="__qt_dual-toast-retry">↻ Retry</button>
+                    <button type="button" class="__qt_dual-toast-retry">
+                        <span class="__qt_dual-toast-retry-icon" aria-hidden="true">↻</span>
+                        <span>Retry</span>
+                    </button>
                 </div>
                 <button type="button" class="__qt_dual-toast-close" aria-label="Close notification">✕</button>
                 <span class="__qt_dual-toast-progress" aria-hidden="true"></span>`;
@@ -64,6 +72,8 @@
                 const rect = (getPlayerContainer(video) || video).getBoundingClientRect();
                 element.style.top = `${Math.max(20, rect.top + 20)}px`;
                 element.style.right = `${Math.max(20, window.innerWidth - rect.right + 20)}px`;
+                element.style.bottom = "auto";
+                element.style.left = "auto";
                 element.style.maxWidth = `${Math.max(0, Math.min(rect.width, window.innerWidth) - 40)}px`;
                 if (nativePopover && !element.matches(":popover-open")) {
                     try { element.showPopover(); } catch (_) { }
