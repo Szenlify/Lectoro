@@ -118,10 +118,3 @@ Przepływ Enter: `video/subtitle-overlay.js` → `core.js` (`QT.geminiExplainSen
 
 ## Zmiany i propozycje SSOT
 
-- [x] Zaimplementować dwujęzyczne napisy Master-Slave (Language Reactor) dla YouTube i Netflix z przełącznikiem doubleSubtitles, synchronizacją do przodu i bez AI/Google Translate.
-- [x] Zabezpieczyć napisy YouTube przed ścianą tekstu (twardy limit wiersza i podział piosenek/ASR) oraz błędem HTTP 429 (unformatted URL + XHR transport + player API translation fallback).
-<!-- - [ ] Wydzielić obsługę subskrypcji z `popup/settings.js`, aby awaria ustawienia nie zatrzymywała widoku planów.
-- [ ] Ustalić jedno źródło konfiguracji planów i generować kopię wdrożeniową; dodać kontrolę zgodności obu plików.
-- [ ] Przenieść czytnik zaznaczenia z własnej obsługi syntezy w `content.js` na wspólny TTS, zachowując podświetlanie i anulowanie.
-- [ ] Wydzielić przepływ wyjaśnień i zapisu fiszek z dużego `video/subtitle-overlay.js` do modułu korzystającego z usług wspólnych.
-- [ ] Wyjaśnić dwa istniejące błędy testów fraz słownika, porównując kontrakt `segments` z obsługą cache offline. -->
