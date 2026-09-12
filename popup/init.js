@@ -133,7 +133,6 @@ document.querySelectorAll(".tab").forEach((tab) => {
 });
 
 // ── Voice, rate & subtitle elements ──────────────────────────────
-const voiceSelect = document.getElementById("voiceSelect");
 const rateRange = document.getElementById("rateRange");
 const rateValue = document.getElementById("rateValue");
 const volumeRange = document.getElementById("volumeRange");

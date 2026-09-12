@@ -53,12 +53,10 @@ whenPopupReady((data) => {
         subBgRange.value = subBg;
         if (subBgValue) subBgValue.textContent = `${subBg}%`;
     }
-    let voice = data.speechVoice || "";
+    const voice = data.speechVoice || "";
     if (voice === "random") {
-        voice = "";
         chrome.storage.local.set({ speechVoice: "" });
     }
-    loadVoices(voice);
 
     if (subtitleTTSToggle) subtitleTTSToggle.checked = !!data.subtitleTTS;
     if (wordCloudModeToggle) wordCloudModeToggle.checked = !!data.wordCloudMode;
@@ -102,40 +100,6 @@ wordCloudModeToggle.addEventListener("change", () => {
         { wordCloudMode: wordCloudModeToggle.checked },
         flashSaved,
     );
-});
-
-// ── Populate voices ───────────────────────────────────────────────
-function loadVoices(selectedVoice) {
-    const voices = window.speechSynthesis.getVoices();
-    voiceSelect.innerHTML = `
-        <option value="">🔊 Default</option>`;
-    voices
-        .filter((v) => /google/i.test(v.name))
-        .forEach((v) => {
-            const opt = document.createElement("option");
-            opt.value = v.name;
-            opt.textContent = `${v.name} (${v.lang})`;
-            if (v.name === selectedVoice) opt.selected = true;
-            voiceSelect.appendChild(opt);
-        });
-    if (
-        [...voiceSelect.options].some(
-            (option) => option.value === selectedVoice,
-        )
-    ) {
-        voiceSelect.value = selectedVoice;
-    }
-}
-
-// Voices may load async
-window.speechSynthesis.onvoiceschanged = () => {
-    chrome.storage.local.get({ speechVoice: "" }, (data) => {
-        loadVoices(data.speechVoice === "random" ? "" : data.speechVoice);
-    });
-};
-
-voiceSelect.addEventListener("change", () => {
-    chrome.storage.local.set({ speechVoice: voiceSelect.value }, flashSaved);
 });
 
 // ── Rate slider ───────────────────────────────────────────────────

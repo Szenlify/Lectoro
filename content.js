@@ -484,7 +484,7 @@
             utter.volume = Number.isFinite(volume)
                 ? Math.max(0, Math.min(1, volume))
                 : DEFAULT_TTS.ttsVolume;
-            const voice = pickBestVoice(settings.speechVoice || "", lang);
+            const voice = pickBestVoice("", lang);
             if (voice) utter.voice = voice;
         } catch (error) {
             console.warn("[Lectoro] Could not prepare speech:", error);
@@ -588,7 +588,7 @@
         }
     }
 
-    async function startSelectedTextReading(fragments, lang, session) {
+    async function startSelectedTextReading(fragments, session) {
         if (!isReading || session !== readingSession) return;
 
         try {
@@ -599,6 +599,10 @@
 
         const start = (settings) => {
             if (!isReading || session !== readingSession) return;
+            const lang = LectoroConstants.normalizeSupportedLanguage(
+                settings.learningLang,
+                LectoroConstants.DEFAULT_READING_SETTINGS.learningLang,
+            );
             let index = 0;
 
             const readNext = () => {
@@ -641,7 +645,7 @@
         };
 
         const ttsDefaults = {
-            speechVoice: DEFAULT_TTS.speechVoice,
+            learningLang: LectoroConstants.DEFAULT_READING_SETTINGS.learningLang,
             speechRate: DEFAULT_TTS.speechRate,
             ttsVolume: DEFAULT_TTS.ttsVolume,
         };
@@ -674,8 +678,6 @@
             return;
         }
 
-        const pageLang =
-            document.documentElement.lang || navigator.language || "en";
         const fragments = currentRange
             ? buildReadingFragments(currentRange, utterText)
             : [{ text: utterText, range: null }];
@@ -686,7 +688,7 @@
 
         hideIcon();
         window.getSelection()?.removeAllRanges();
-        startSelectedTextReading(fragments, pageLang, session);
+        startSelectedTextReading(fragments, session);
     }
 
     // ═══════════════════════════════════════════════════════════════

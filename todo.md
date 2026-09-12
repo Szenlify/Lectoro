@@ -61,6 +61,7 @@ popup/export.js:1059 (anonymous function)
 
 
 17. opis wszystkich kosztów i zweryfikowanie marży projektu:
+
 cloudflare, kazde uzycie firebase firebase, 	
 createStripePortalSession, 	
 stripeWebhook, 	
