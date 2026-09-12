@@ -2250,7 +2250,7 @@
         const sorted = [...words].sort(
             (a, b) => (b.timestamp || 0) - (a.timestamp || 0),
         );
-        const count = scope === "all" ? 25 : Math.min(parseInt(scope, 10) || 5, 25);
+        const count = Math.min(Math.max(1, parseInt(scope, 10) || 5), 25);
         const quizWords = pickQuizWords(sorted, count, source);
 
         const quiz = await generateQuizWithGemini(quizWords, { tgtLang: targetLang });
