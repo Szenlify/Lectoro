@@ -34,6 +34,7 @@
             CUSTOM_SUBTITLES_LAYER: `${PREFIX}custom-subtitles-layer`,
             CUSTOM_SUBTITLES_BOX: `${PREFIX}custom-subtitles-box`,
             CUSTOM_SUB_TRANSLATION: `${PREFIX}custom-sub-translation`,
+            CUSTOM_SUB_SECONDARY: `${PREFIX}custom-sub-secondary`,
             HIDE_CONTROLS: `${PREFIX}hide-controls`,
             NETFLIX_HIDE_CONTROLS: `${PREFIX}netflix-hide-controls`,
             NETFLIX_HIDDEN: `${PREFIX}netflix-subtitles-hidden`,
@@ -61,6 +62,8 @@
             NETFLIX_PLAYER_STATE_RESET: "__lectoro_netflix_player_state_reset",
 
             YOUTUBE_TIMED_TEXT: "__lectoro_youtube_timed_text",
+            YOUTUBE_SLAVE_TIMED_TEXT: "__lectoro_youtube_slave_timed_text",
+            YOUTUBE_REQUEST_TRANSLATION: "__lectoro_youtube_request_translation",
             YOUTUBE_TRACKS_AVAILABLE: "__lectoro_youtube_tracks_available",
             YOUTUBE_TRACK_REQUEST: "__lectoro_youtube_track_request",
             YOUTUBE_TRACK_RESPONSE: "__lectoro_youtube_track_response",
@@ -110,6 +113,7 @@
             TTS_VOLUME: "ttsVolume",
             TTS_MODE: "ttsMode",
             EL_VOICE_ID: "elVoiceId",
+            DOUBLE_SUBTITLES: "doubleSubtitles",
             SUBTITLE_TTS: "subtitleTTS",
             WORD_CLOUD_MODE: "wordCloudMode",
             SUBTITLE_POSITION: "subtitlePosition",
@@ -139,6 +143,7 @@
         const DEFAULT_READING_SETTINGS = Object.freeze({
             targetLang: "pl",
             learningLang: "en",
+            doubleSubtitles: true,
             subtitleTTS: false,
             wordCloudMode: true,
         });

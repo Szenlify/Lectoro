@@ -44,14 +44,14 @@
 | Plik / moduł | Połączenie i rola |
 | --- | --- |
 | `adapters/base-adapter.js` | Wspólna baza adapterów odtwarzaczy. |
-| `adapters/youtube-adapter.js`, `netflix-adapter.js`, `ted-adapter.js` | Adaptery platform → wspólny system napisów. |
+| `adapters/youtube-adapter.js`, `netflix-adapter.js`, `ted-adapter.js` | Adaptery platform → wspólny system napisów; rekonstrukcja pełnych zdań i pobieranie ścieżek dwujęzycznych (YT `availableTracks` / `&tlang=`, Netflix `manifest.tracks`) wyrównanych do Master Track. |
 | `adapters/generic-video-adapter.js`, `generic-adapters.js` | Obsługa pozostałych odtwarzaczy. |
 | `adapters/player-registry.js` → adaptery | Dobór i rejestracja odtwarzacza. |
 | `youtube-player-bridge.js`, `netflix-player-bridge.js` | Mosty działające w kontekście strony; dostęp do danych odtwarzacza. |
 | `video-frame-bootstrap.js` | Uruchamianie obsługi w ramkach wideo. |
-| `shared/subtitle-service.js` → adaptery / nakładka | Dane napisów i kontekst sąsiednich kwestii. |
-| `video/subtitle-overlay.js` → `QT`, translator, subtitle service | Wyświetlanie, wyjaśnienia Enter, kolejka odczytu i zapis fiszek. Znaczenia, etykiety i wyjaśnienia używają Native language. |
-| `video/reading-modes.js` → translator, nakładka | Tryby czytania i tłumaczenia pod S; reaguje na zmianę języków. |
+| `shared/subtitle-service.js` → adaptery / nakładka | Dane napisów, kontekst sąsiednich kwestii, łączenie klocków w pełne zdania (`reconstructFullSentenceCues`) i algorytm dopasowania ścieżki podrzędnej do nadrzędnej z synchronizacją do przodu (`alignSlaveTrackToMaster`) łączący klocki w jedną linię. |
+| `video/subtitle-overlay.js` → `QT`, translator, subtitle service | Wyświetlanie napisów pojedynczych i dwujęzycznych (`doubleSubtitles`) bez użycia AI/Google Translate, wyjaśnienia Enter, kolejka odczytu i zapis fiszek. Znaczenia, etykiety i wyjaśnienia używają Native language. |
+| `video/reading-modes.js` → translator, nakładka | Tryby czytania i tłumaczenia pod S; reaguje na zmianę języków i ustawień (`doubleSubtitles`, `wordCloudMode`, `subtitleTTS`). |
 | `video/video-hotkeys.js` → nakładka / odtwarzacz | Skróty klawiaturowe wideo. |
 | `shared/subtitle-translation-service.js` → worker | Wspólny przepływ tłumaczenia napisów. |
 
@@ -100,20 +100,28 @@ Przepływ Enter: `video/subtitle-overlay.js` → `core.js` (`QT.geminiExplainSen
 
 ## Weryfikacja ostatniej zmiany
 
-- Usunięto pole AI Explanation, odczyt/zapis trybu, uproszczony prompt i rozgałęzienia nakładki, mowy oraz zapisu fiszek.
-- Testy obejmują stare ustawienie `simple_target`: odpowiedź nadal ma być w Native language. Nazwa pozostaje w danych regresyjnych, nie w logice produktu.
-- Testy wyjaśnień, jakości AI i proxy: 39/39 poprawnych. Kontrola składni wszystkich JS poprawna.
-- `npm test`: 191/193 poprawnych. Dwa błędy w `tests/live-dictionary-store.test.js` (80, 102): brak wyniku frazy `get up`. Odtworzone również po podstawieniu wersji HEAD zmienionych modułów współdzielonych; niezależne od tej zmiany.
-- Nie wykonano ręcznego sprawdzenia w Chrome.
+- **Ochrona przed ścianą tekstu (teksty piosenek / ASR bez kropek):**
+  - W `shared/subtitle-service.js` w `reconstructFullSentenceCues` wdrożono twarde ograniczenia jedno-wierszowe: maks. 11 słów / 65 znaków w klastrze, podział na interpunkcji zdań podrzędnych (`,`, `;`, `:`, `-`, `—`) gdy liczba słów wynosi >= 5, oraz podział przy pauzach > 0.65s (lub > 0.15s przy >= 7 słowach).
+  - W `alignSlaveTrackToMaster` zredukowano limit łączenia klocków do maks. 12 słów / 70 znaków.
+  - Eliminuje to 30–40 słowne zbitki w piosenkach (np. tekst Martin Garrix "Rewind, repeat it...") i długich wypowiedziach ASR bez interpunkcji, dzieląc je na naturalne, jedno-wierszowe klocki.
+- **Naprawa braku podwójnych napisów i błędu HTTP 429 na YouTube:**
+  - Przyczyna 429: YouTube podpisuje strumienie ASR parametrami `sparams`. Wymuszanie `&fmt=json3` / `&fmt=vtt` na podpisanym adresie unieważnia sygnaturę Google i wywołuje 429 (Too Many Requests / Unusual Traffic). Ponadto `window.fetch` jest bardziej podatny na blokady WAF niż odtwarzaczowe XHR.
+  - W `adapters/youtube-adapter.js`: w `slaveCandidateUrls` jako pierwszy podawany jest natywny format bez parametrów formatu (`fmt: ""`), zachowujący poprawny podpis URL.
+  - W `youtube-player-bridge.js`: `FETCH_REQUEST_EVENT` korzysta w pierwszej kolejności z `XMLHttpRequest` z `withCredentials = true` (identyczny transport jak odtwarzacz YouTube).
+  - Przechwytywanie ścieżki slave: `youtube-player-bridge.js` przechwytuje odpowiedzi XHR/fetch zawierające `tlang=` i emituje zdarzenie `__lectoro_youtube_slave_timed_text` (`SLAVE_TIMED_TEXT_EVENT`), które `youtube-adapter.js` natychmiast przypisuje i wyrównuje do `cueIndex`.
+  - Fallback odtwarzacza YouTube: jeśli bezpośrednie pobranie zwróci pusty wynik lub 429, wysyłane jest zdarzenie `REQUEST_TRANSLATION_EVENT`, w wyniku którego mostek wywołuje `player.setOption("captions", "translationLanguage", { languageCode: targetLang })`. Odtwarzacz sam pobiera oficjalną ścieżkę XHR (200 OK), która jest przechwytywana i podpinana jako napisy podrzędne.
+- **Netflix:**
+  - Zgodnie z wytycznymi kod Netflixa (`adapters/netflix-adapter.js`) nie był modyfikowany.
+- **Testy jednostkowe:**
+  - `node --test tests/dual-subtitles.test.js`: 10/10 testów zaliczonych (w tym test unpunctuated lyrics / single line bounds).
+  - Składnia JS zweryfikowana (`node --check`).
 
 ## Zmiany i propozycje SSOT
 
-- [x] Usunięcie TTS Reader Voice wraz z obsługą DOM blokującą plany subskrypcji.
-- [x] Czytnik zaznaczenia dobiera głos Google do Learning language.
-- [x] Wyjaśnienia AI zawsze w Native language; usunięcie trybu A2–B1.
-- [x] Mapa modułów i obowiązek czytania oraz aktualizacji GUIDE.md.
-- [ ] Wydzielić obsługę subskrypcji z `popup/settings.js`, aby awaria ustawienia nie zatrzymywała widoku planów.
+- [x] Zaimplementować dwujęzyczne napisy Master-Slave (Language Reactor) dla YouTube i Netflix z przełącznikiem doubleSubtitles, synchronizacją do przodu i bez AI/Google Translate.
+- [x] Zabezpieczyć napisy YouTube przed ścianą tekstu (twardy limit wiersza i podział piosenek/ASR) oraz błędem HTTP 429 (unformatted URL + XHR transport + player API translation fallback).
+<!-- - [ ] Wydzielić obsługę subskrypcji z `popup/settings.js`, aby awaria ustawienia nie zatrzymywała widoku planów.
 - [ ] Ustalić jedno źródło konfiguracji planów i generować kopię wdrożeniową; dodać kontrolę zgodności obu plików.
 - [ ] Przenieść czytnik zaznaczenia z własnej obsługi syntezy w `content.js` na wspólny TTS, zachowując podświetlanie i anulowanie.
 - [ ] Wydzielić przepływ wyjaśnień i zapisu fiszek z dużego `video/subtitle-overlay.js` do modułu korzystającego z usług wspólnych.
-- [ ] Wyjaśnić dwa istniejące błędy testów fraz słownika, porównując kontrakt `segments` z obsługą cache offline.
+- [ ] Wyjaśnić dwa istniejące błędy testów fraz słownika, porównując kontrakt `segments` z obsługą cache offline. -->

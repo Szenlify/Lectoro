@@ -844,11 +844,259 @@
             };
         }
 
+        /**
+         * Reconstructs fragmented subtitle cues into complete, natural sentences in a single row.
+         * Merges consecutive segments until terminal punctuation ([.!?。！？]),
+         * a significant pause (> 1.4s gap), or a speaker change marker (>>, -, —).
+         */
+        function reconstructFullSentenceCues(cues) {
+            if (!Array.isArray(cues) || cues.length === 0) return [];
+
+            const validCues = cues.filter(
+                (c) =>
+                    c &&
+                    Number.isFinite(c.startTime) &&
+                    typeof c.text === "string" &&
+                    c.text.trim().length > 0,
+            );
+            if (validCues.length === 0) return [];
+
+            const TERMINAL_PUNCT_RE = /[.!?。！？]["'»”’)\]]?\s*$/;
+            const CLAUSE_PUNCT_RE = /[,;:\-—–]["'»”’)\]]?\s*$/;
+            const SPEAKER_CHANGE_RE = /^(?:>>+|<<+|»+|«+|››+|[-—–]\s+[A-ZÀ-ÿ]|\b[A-Z0-9_]{2,}:)/;
+
+            const sentences = [];
+            let currentCluster = [];
+
+            function flushCluster() {
+                if (currentCluster.length === 0) return;
+                const firstCue = currentCluster[0];
+                const lastCue = currentCluster[currentCluster.length - 1];
+
+                const fullRawText = currentCluster
+                    .map((c) => (c.text || "").trim())
+                    .filter(Boolean)
+                    .join(" ");
+
+                const cleanedText = cleanCueText(fullRawText, { preserveNewlines: false })
+                    .replace(/\s+/g, " ")
+                    .trim();
+
+                if (cleanedText) {
+                    const startTime = Math.round(firstCue.startTime * 1000) / 1000;
+                    const rawEnd = Number.isFinite(lastCue.endTime)
+                        ? lastCue.endTime
+                        : lastCue.startTime + 2.5;
+                    const endTime = Math.round(Math.max(startTime + 0.8, rawEnd) * 1000) / 1000;
+
+                    const existingTranslation = currentCluster
+                        .map((c) => (c.translation || "").trim())
+                        .filter(Boolean)
+                        .join(" ");
+
+                    sentences.push({
+                        startTime,
+                        endTime,
+                        text: cleanedText,
+                        lines: [cleanedText],
+                        translation: existingTranslation,
+                    });
+                }
+                currentCluster = [];
+            }
+
+            for (let i = 0; i < validCues.length; i++) {
+                const cue = validCues[i];
+                const nextCue = validCues[i + 1];
+
+                currentCluster.push(cue);
+
+                const trimmedText = (cue.text || "").trim();
+                const endsWithPunct = TERMINAL_PUNCT_RE.test(trimmedText);
+                const endsWithClausePunct = CLAUSE_PUNCT_RE.test(trimmedText);
+
+                const timeGap = nextCue ? nextCue.startTime - (cue.endTime || cue.startTime) : 0;
+                const isLongPause = timeGap > 0.65;
+                const nextStartsSpeakerChange = nextCue ? SPEAKER_CHANGE_RE.test((nextCue.text || "").trim()) : false;
+
+                const totalWordsInCluster = currentCluster
+                    .reduce((acc, c) => acc + (c.text || "").split(/\s+/).length, 0);
+                const totalCharsInCluster = currentCluster
+                    .reduce((acc, c) => acc + (c.text || "").length, 0) + currentCluster.length - 1;
+
+                const isSafetyBreak =
+                    totalWordsInCluster >= 11 ||
+                    totalCharsInCluster >= 65 ||
+                    (totalWordsInCluster >= 7 && timeGap > 0.15) ||
+                    (endsWithClausePunct && totalWordsInCluster >= 5);
+
+                if (
+                    endsWithPunct ||
+                    isLongPause ||
+                    nextStartsSpeakerChange ||
+                    isSafetyBreak ||
+                    !nextCue
+                ) {
+                    flushCluster();
+                }
+            }
+
+            return finalizeCues(sentences);
+        }
+
+        /**
+         * Language Reactor Master-Slave Track Alignment & Forward Synchronization:
+         * Maps an independent secondary (slave) subtitle track onto the primary (master) track.
+         * 1. Forward synchronization & fusion:
+         *    Scans cues forward. If a secondary (slave) segment spans across consecutive master cues,
+         *    or if adjacent master cues without punctuation share a single translation sentence,
+         *    merges master cues forward into one line so both top and bottom tracks stay in perfect sync.
+         * 2. Interval Overlap mapping:
+         *    For each master cue [t1, t2], finds all overlapping slave segments: max(t1, s1) < min(t2, s2).
+         * 3. Text gluing & deduplication:
+         *    Glues overlapping slave text segments chronologically into one line.
+         * 4. Strict time alignment:
+         *    Slave text display time is clamped to the master sentence's [t1, t2].
+         * Result: Both languages appear, change and disappear simultaneously.
+         */
+        function alignSlaveTrackToMaster(masterCues, slaveCues) {
+            if (!Array.isArray(masterCues) || masterCues.length === 0) return [];
+            if (!Array.isArray(slaveCues) || slaveCues.length === 0) {
+                return masterCues.map((m) => ({
+                    ...m,
+                    lines: Array.isArray(m.lines) && m.lines.length > 0 ? m.lines : [m.text],
+                    translation: m.translation || "",
+                }));
+            }
+
+            const cleanSlaveCues = slaveCues
+                .filter((s) => s && Number.isFinite(s.startTime) && s.text)
+                .map((s) => ({
+                    startTime: s.startTime,
+                    endTime: Number.isFinite(s.endTime) ? s.endTime : s.startTime + 2.5,
+                    text: cleanCueText(s.text, { preserveNewlines: false }).trim(),
+                }))
+                .filter((s) => s.text.length > 0)
+                .sort((a, b) => a.startTime - b.startTime);
+
+            if (cleanSlaveCues.length === 0) {
+                return masterCues.map((m) => ({
+                    ...m,
+                    lines: Array.isArray(m.lines) && m.lines.length > 0 ? m.lines : [m.text],
+                    translation: m.translation || "",
+                }));
+            }
+
+            // Step 1: Forward synchronization & fusion of consecutive master cues
+            // Merges master cues forward into a single line when spanned by the same slave translation sentence
+            const fusedMasterCues = [];
+            let i = 0;
+            while (i < masterCues.length) {
+                let current = {
+                    ...masterCues[i],
+                    lines: Array.isArray(masterCues[i].lines) && masterCues[i].lines.length > 0
+                        ? [...masterCues[i].lines]
+                        : [masterCues[i].text],
+                };
+
+                while (i + 1 < masterCues.length) {
+                    const next = masterCues[i + 1];
+                    const t1 = current.startTime;
+                    const t2 = Number.isFinite(current.endTime) ? current.endTime : current.startTime + 2.5;
+                    const nextT1 = next.startTime;
+                    const nextT2 = Number.isFinite(next.endTime) ? next.endTime : next.startTime + 2.5;
+
+                    const gap = nextT1 - t2;
+                    if (gap > 0.8) break; // long silence / scene break
+
+                    const curText = (current.text || "").trim();
+                    const nextText = (next.text || "").trim();
+
+                    // Do not merge across speaker change markers
+                    if (/^(?:>>+|<<+|»+|«+|››+|[-–—]\s*\S)/.test(nextText)) break;
+
+                    const totalWords = (curText + " " + nextText).split(/\s+/).length;
+                    const totalChars = curText.length + 1 + nextText.length;
+                    if (totalWords > 12 || totalChars > 70) break;
+
+                    // Check if any slave cue spans across current and next
+                    const spanningSlave = cleanSlaveCues.find((s) => {
+                        return s.startTime < t2 - 0.05 && s.endTime > nextT1 + 0.15;
+                    });
+
+                    const curEndsPunct = /[.?!,…:;][)\]"']?$/.test(curText);
+                    const shouldMerge = spanningSlave || (!curEndsPunct && gap < 0.35 && totalWords <= 8);
+
+                    if (shouldMerge) {
+                        const mergedText = `${curText} ${nextText}`.replace(/\s+/g, " ").trim();
+                        current.text = mergedText;
+                        current.lines = [mergedText];
+                        current.endTime = Math.max(t2, nextT2);
+                        i++;
+                    } else {
+                        break;
+                    }
+                }
+
+                fusedMasterCues.push(current);
+                i++;
+            }
+
+            // Step 2: Language Reactor Interval Overlap alignment on fused master cues
+            return fusedMasterCues.map((master) => {
+                const t1 = master.startTime;
+                const t2 = Number.isFinite(master.endTime) ? master.endTime : master.startTime + 3;
+
+                // Interval overlap: max(t1, s1) < min(t2, s2)
+                let overlappingSlaves = cleanSlaveCues.filter((slave) => {
+                    const s1 = slave.startTime;
+                    const s2 = slave.endTime;
+                    const overlap = Math.min(t2, s2) - Math.max(t1, s1);
+                    return overlap > 0.04;
+                });
+
+                // Forward tolerance lookahead: if slight timestamp drift (<= 0.35s)
+                if (overlappingSlaves.length === 0) {
+                    const nearbySlave = cleanSlaveCues.find((slave) => {
+                        const s1 = slave.startTime;
+                        const s2 = slave.endTime;
+                        return (s1 >= t1 - 0.25 && s1 <= t2 + 0.35) || (s2 >= t1 - 0.25 && s2 <= t2 + 0.35);
+                    });
+                    if (nearbySlave) {
+                        overlappingSlaves = [nearbySlave];
+                    }
+                }
+
+                let alignedTranslation = "";
+                if (overlappingSlaves.length > 0) {
+                    const seen = new Set();
+                    const gluedParts = [];
+                    for (const s of overlappingSlaves) {
+                        if (!seen.has(s.text)) {
+                            seen.add(s.text);
+                            gluedParts.push(s.text);
+                        }
+                    }
+                    alignedTranslation = gluedParts.join(" ").replace(/\s+/g, " ").trim();
+                } else if (master.translation) {
+                    alignedTranslation = master.translation;
+                }
+
+                return {
+                    ...master,
+                    lines: Array.isArray(master.lines) && master.lines.length > 0 ? master.lines : [master.text],
+                    translation: alignedTranslation,
+                };
+            });
+        }
+
         return Object.freeze({
             cleanCueText,
             parseWebVttTimestamp,
             parseTtmlTime,
             finalizeCues,
+            reconstructFullSentenceCues,
+            alignSlaveTrackToMaster,
             parseYouTubeJson3,
             parseWebVtt,
             parseTtml,

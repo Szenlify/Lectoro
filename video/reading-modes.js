@@ -107,7 +107,6 @@
                     }),
                 );
             }
-            // Observe the shared task even when a renderer exits before awaiting it.
             const results = await Promise.allSettled([
                 translationTask,
                 ...tasks,
@@ -130,7 +129,7 @@
     root.chrome?.storage?.onChanged?.addListener((changes, area) => {
         if (
             area === "local" &&
-            (changes.targetLang || changes.learningLang || changes.wordCloudMode || changes.subtitleTTS)
+            (changes.targetLang || changes.learningLang || changes.wordCloudMode || changes.doubleSubtitles || changes.subtitleTTS)
         ) {
             const ui = overlay();
             if (ui?.isSubtitleUiOpen()) ui.restoreOriginal();

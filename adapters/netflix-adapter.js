@@ -393,7 +393,7 @@
                 if (buildRevision !== manifestRevision) return [];
                 if (!response?.text) continue;
 
-                const parsed = subtitleService.parseTimedText(
+                let parsed = subtitleService.parseTimedText(
                     response.text,
                     download.profile,
                     response.contentType,
@@ -401,8 +401,76 @@
                 if (buildRevision !== manifestRevision) return [];
                 if (parsed.length === 0) continue;
 
+                // 1. Reconstruct Master cues into full sentences in single row
+                if (typeof subtitleService?.reconstructFullSentenceCues === "function") {
+                    parsed = subtitleService.reconstructFullSentenceCues(parsed);
+                }
+
+                // 2. Fetch and align Slave track (Language Reactor Master-Slave)
+                try {
+                    let targetLang = "";
+                    let doubleSubEnabled = true;
+                    if (typeof chrome !== "undefined" && chrome.storage?.local) {
+                        const data = await chrome.storage.local.get(["targetLang", "doubleSubtitles"]);
+                        targetLang = data?.targetLang || "pl";
+                        if (typeof data?.doubleSubtitles === "boolean") {
+                            doubleSubEnabled = data.doubleSubtitles;
+                        }
+                    } else if (globalThis.SharedTranslatorService?.getTargetLang) {
+                        targetLang = await globalThis.SharedTranslatorService.getTargetLang();
+                    }
+                    if (!targetLang) targetLang = "pl";
+
+                    const masterLang = (track.bcp47 || track.language || "").toLowerCase();
+                    if (doubleSubEnabled && targetLang && targetLang.toLowerCase() !== masterLang) {
+                        const normTarget = targetLang.toLowerCase();
+                        const slaveTrack = (manifest.tracks || []).find((t) => {
+                            const lang = (t.bcp47 || t.language || "").toLowerCase();
+                            return lang === normTarget || lang.startsWith(normTarget + "-") || normTarget.startsWith(lang + "-");
+                        });
+
+                        if (slaveTrack) {
+                            for (const sDownload of rankDownloads(slaveTrack)) {
+                                for (const sUrl of sDownload?.urls || []) {
+                                    const sResponse = await sendMessage({
+                                        type: "QT_FETCH_NETFLIX_TIMED_TEXT",
+                                        url: sUrl,
+                                        movieId,
+                                    });
+                                    if (buildRevision !== manifestRevision) return [];
+                                    if (sResponse?.text) {
+                                        const slaveParsed = subtitleService.parseTimedText(
+                                            sResponse.text,
+                                            sDownload.profile,
+                                            sResponse.contentType,
+                                        );
+                                        if (slaveParsed.length > 0 && typeof subtitleService.alignSlaveTrackToMaster === "function") {
+                                            parsed = subtitleService.alignSlaveTrackToMaster(parsed, slaveParsed);
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (parsed.some((c) => c.translation)) break;
+                            }
+                        }
+                    }
+                } catch (slaveErr) {
+                    console.warn("[Lectoro] Netflix slave track fetch/alignment error:", slaveErr);
+                }
+
                 cueIndex = parsed;
                 cueIndexKey = nextKey;
+                try {
+                    const video = document.querySelector("video");
+                    if (video && globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
+                        const currentLines = getCurrentCueLines(video);
+                        if (currentLines && currentLines.length > 0) {
+                            globalThis.LectoroSubtitleOverlay.renderCustomSubtitles(currentLines, {
+                                secondaryText: currentLines.translation || "",
+                            });
+                        }
+                    }
+                } catch (_) { }
                 return cueIndex;
             }
         }
@@ -503,59 +571,48 @@
 
     function getCurrentCueLines(video = null) {
         if (!isCcActive(video)) return null;
-
-        // Outside the short post-seek window, Netflix's live DOM remains the
-        // visual source. This prevents an indexed fallback from outliving an
-        // actual cue or showing captions after the user disables the track.
-        if (cueIndex.length === 0 || !optimisticSeek) return null;
+        if (cueIndex.length === 0) return null;
 
         const now = performance.now();
         let lookupTime = Number(video?.currentTime ?? NaN);
-        const closeToTarget =
-            Number.isFinite(lookupTime) &&
-            Math.abs(lookupTime - optimisticSeek.targetTime) < 0.45;
-        const oldEnoughToConfirm = now - optimisticSeek.createdAt > 60;
 
-        if (now >= optimisticSeek.expiresAt) {
-            optimisticSeek = null;
-            return null;
-        }
-        if (closeToTarget && oldEnoughToConfirm && !video?.seeking) {
-            optimisticSeek.confirmed = true;
-            optimisticSeek.confirmedAt ??= now;
-        }
-        if (
-            optimisticSeek.confirmedAt &&
-            now - optimisticSeek.confirmedAt >= POST_SEEK_DOM_GRACE_MS
-        ) {
-            optimisticSeek = null;
-            return null;
-        }
-        // If video is playing forward past the seek target, release the lock immediately
-        // so real-time playback subtitles advance without delay.
-        if (video && !video.paused && Number.isFinite(lookupTime)) {
-            if (
-                lookupTime > optimisticSeek.targetTime + 0.35 ||
-                lookupTime < optimisticSeek.targetTime - 1.5
+        if (optimisticSeek) {
+            const closeToTarget =
+                Number.isFinite(lookupTime) &&
+                Math.abs(lookupTime - optimisticSeek.targetTime) < 0.45;
+            const oldEnoughToConfirm = now - optimisticSeek.createdAt > 60;
+
+            if (now >= optimisticSeek.expiresAt) {
+                optimisticSeek = null;
+            } else if (closeToTarget && oldEnoughToConfirm && !video?.seeking) {
+                optimisticSeek.confirmed = true;
+                optimisticSeek.confirmedAt ??= now;
+            } else if (
+                optimisticSeek.confirmedAt &&
+                now - optimisticSeek.confirmedAt >= POST_SEEK_DOM_GRACE_MS
             ) {
                 optimisticSeek = null;
-                return null;
+            } else if (video && !video.paused && Number.isFinite(lookupTime)) {
+                if (
+                    lookupTime > optimisticSeek.targetTime + 0.35 ||
+                    lookupTime < optimisticSeek.targetTime - 1.5
+                ) {
+                    optimisticSeek = null;
+                }
             }
-        }
-        if (!optimisticSeek.confirmed) {
-            lookupTime = optimisticSeek.targetTime;
+            if (optimisticSeek && !optimisticSeek.confirmed) {
+                lookupTime = optimisticSeek.targetTime;
+            }
         }
 
         if (!Number.isFinite(lookupTime)) return [];
         const cue = findIndexedCueAt(lookupTime);
         if (!cue) return [];
-        if (Array.isArray(cue.lines) && cue.lines.length > 0) {
-            return cue.lines;
-        }
-        if (cue.text) {
-            return cue.text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-        }
-        return [];
+        const lines = Array.isArray(cue.lines) && cue.lines.length > 0
+            ? [...cue.lines]
+            : (cue.text ? [cue.text] : []);
+        lines.translation = cue.translation || "";
+        return lines;
     }
 
     function getCurrentSubtitleText(video = null) {

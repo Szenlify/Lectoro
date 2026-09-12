@@ -10,6 +10,8 @@
     const HOST_RE = /(^|\.)youtube\.com$/i;
     const EVT = LectoroConstants.EVENT_NAMES;
     const TIMED_TEXT_EVENT = EVT.YOUTUBE_TIMED_TEXT;
+    const SLAVE_TIMED_TEXT_EVENT = EVT.YOUTUBE_SLAVE_TIMED_TEXT;
+    const REQUEST_TRANSLATION_EVENT = EVT.YOUTUBE_REQUEST_TRANSLATION;
     const TRACKS_EVENT = EVT.YOUTUBE_TRACKS_AVAILABLE;
     const TRACK_REQUEST_EVENT = EVT.YOUTUBE_TRACK_REQUEST;
     const TRACK_RESPONSE_EVENT = EVT.YOUTUBE_TRACK_RESPONSE;
@@ -23,6 +25,7 @@
     let cueIndex = [];
     let currentVideoId = "";
     let currentDisplayedText = "";
+    let currentDisplayedTranslation = "";
     let availableTracks = [];
     let activeTrack = null;
     let isFetchingTrack = false;
@@ -113,6 +116,7 @@
         cueIndex = cues;
         if (videoId) currentVideoId = videoId;
         currentDisplayedText = "";
+        currentDisplayedTranslation = "";
 
         const video = boundVideo || document.querySelector("video");
         if (video) syncActiveCue(video);
@@ -199,11 +203,13 @@
 
         const time = video.currentTime;
         let targetText = "";
+        let targetTranslation = "";
 
         if (cueIndex.length > 0) {
             const activeCue = findActiveCue(time);
             if (activeCue && activeCue.text) {
                 targetText = activeCue.text;
+                targetTranslation = activeCue.translation || "";
             }
         } else {
             // Fallback to DOM player text ONLY if timedtext has not loaded
@@ -212,11 +218,17 @@
         }
 
         const overlayText = globalThis.LectoroSubtitleOverlay?.getActiveText?.() ?? "";
-        if (targetText !== currentDisplayedText || (targetText && overlayText !== targetText)) {
+        if (
+            targetText !== currentDisplayedText ||
+            targetTranslation !== currentDisplayedTranslation ||
+            (targetText && overlayText !== targetText)
+        ) {
             currentDisplayedText = targetText;
+            currentDisplayedTranslation = targetTranslation;
             if (globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
                 globalThis.LectoroSubtitleOverlay.renderCustomSubtitles(
                     targetText ? [targetText] : [],
+                    { secondaryText: targetTranslation },
                 );
             }
         }
@@ -346,6 +358,134 @@
         });
     }
 
+    function buildTimedTextUrl(rawBaseUrl, { lang = "", tlang = "", fmt = "json3" } = {}) {
+        if (!rawBaseUrl) return "";
+        let url = String(rawBaseUrl);
+        url = url.replace(/([?&])fmt=[^&]*/g, "").replace(/([?&])tlang=[^&]*/g, "");
+        url = url.replace(/[?&]&+/g, "&").replace(/[?&]$/, "");
+
+        const sep = url.includes("?") ? "&" : "?";
+        const parts = [];
+        if (lang && !url.includes("lang=")) {
+            parts.push(`lang=${encodeURIComponent(lang)}`);
+        }
+        if (tlang) {
+            parts.push(`tlang=${encodeURIComponent(tlang)}`);
+        }
+        if (fmt) {
+            parts.push(`fmt=${encodeURIComponent(fmt)}`);
+        }
+        return parts.length > 0 ? `${url}${sep}${parts.join("&")}` : url;
+    }
+
+    let isProcessingDualSync = false;
+
+    async function processCaptionTrackWithDualSync(rawCues, baseUrl = "", videoId = "") {
+        if (!Array.isArray(rawCues) || rawCues.length === 0) return;
+        if (isProcessingDualSync) return;
+        isProcessingDualSync = true;
+
+        try {
+            const service = getSubtitleService();
+            let loadedCues = rawCues;
+
+            // 1. Reconstruct Master cues into full sentences in single row
+            if (typeof service?.reconstructFullSentenceCues === "function") {
+                loadedCues = service.reconstructFullSentenceCues(loadedCues);
+            }
+
+            // If baseUrl is already a translated track, simply index master cues and finish
+            if (baseUrl && baseUrl.includes("tlang=")) {
+                setCueIndex(loadedCues, videoId || currentVideoId);
+                return;
+            }
+
+            // 2. Fetch and align Slave track (Language Reactor Master-Slave)
+            try {
+                let targetLang = "";
+                let doubleSubEnabled = true;
+                if (typeof chrome !== "undefined" && chrome.storage?.local) {
+                    try {
+                        const data = await chrome.storage.local.get(["targetLang", "doubleSubtitles"]);
+                        targetLang = data?.targetLang || "pl";
+                        if (typeof data?.doubleSubtitles === "boolean") {
+                            doubleSubEnabled = data.doubleSubtitles;
+                        }
+                    } catch (_) {}
+                }
+                if (!targetLang && globalThis.SharedTranslatorService?.getTargetLang) {
+                    targetLang = await globalThis.SharedTranslatorService.getTargetLang();
+                }
+                if (!targetLang) targetLang = "pl";
+
+                if (doubleSubEnabled && targetLang && baseUrl) {
+                    const normTarget = targetLang.toLowerCase();
+                    const slaveTrack = (availableTracks || []).find(
+                        (t) =>
+                            t &&
+                            (t.languageCode?.toLowerCase() === normTarget ||
+                             t.vssId?.toLowerCase()?.includes(`.${normTarget}`)),
+                    );
+
+                    const slaveCandidateUrls = [];
+                    if (slaveTrack?.baseUrl) {
+                        slaveCandidateUrls.push(
+                            buildTimedTextUrl(slaveTrack.baseUrl, { fmt: "" }),
+                            buildTimedTextUrl(slaveTrack.baseUrl, { fmt: "json3" }),
+                            buildTimedTextUrl(slaveTrack.baseUrl, { fmt: "vtt" }),
+                        );
+                    }
+
+                    // Official YouTube automatic translation parameter: &tlang=
+                    // IMPORTANT: Put unformatted fmt: "" first to preserve YouTube signed URL sparams and prevent HTTP 429
+                    const sourceLang = activeTrack?.languageCode || "";
+                    slaveCandidateUrls.push(
+                        buildTimedTextUrl(baseUrl, { lang: sourceLang, tlang: targetLang, fmt: "" }),
+                        buildTimedTextUrl(baseUrl, { lang: sourceLang, tlang: targetLang, fmt: "json3" }),
+                        buildTimedTextUrl(baseUrl, { lang: sourceLang, tlang: targetLang, fmt: "vtt" }),
+                        buildTimedTextUrl(baseUrl, { lang: sourceLang, tlang: targetLang, fmt: "srv3" }),
+                    );
+
+                    let slaveCues = [];
+                    for (const sUrl of slaveCandidateUrls) {
+                        let sText = await fetchTimedTextViaBridge(sUrl);
+                        if (!sText) {
+                            try {
+                                const res = await fetch(sUrl, { credentials: "include" });
+                                if (res.ok) sText = await res.text();
+                            } catch (_) {}
+                        }
+                        if (sText && service) {
+                            const parsed = service.parseTimedText(sText);
+                            if (parsed.length > 0) {
+                                slaveCues = parsed;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (slaveCues.length > 0 && typeof service?.alignSlaveTrackToMaster === "function") {
+                        loadedCues = service.alignSlaveTrackToMaster(loadedCues, slaveCues);
+                    } else if (slaveCues.length === 0 && targetLang) {
+                        // If direct candidate URLs were blocked/rate-limited (HTTP 429) or empty,
+                        // ask YouTube player bridge to trigger native player translation
+                        window.dispatchEvent(
+                            new CustomEvent(REQUEST_TRANSLATION_EVENT, {
+                                detail: { lang: targetLang },
+                            }),
+                        );
+                    }
+                }
+            } catch (slaveErr) {
+                console.warn("[Lectoro] YouTube slave track fetch/alignment error:", slaveErr);
+            }
+
+            setCueIndex(loadedCues, videoId || currentVideoId);
+        } finally {
+            isProcessingDualSync = false;
+        }
+    }
+
     async function loadCaptionTrack(track, videoId = "") {
         if (!track || !track.baseUrl || isFetchingTrack) return;
         isFetchingTrack = true;
@@ -353,13 +493,12 @@
         try {
             const service = getSubtitleService();
             const baseUrl = track.baseUrl;
-            const sep = baseUrl.includes("?") ? "&" : "?";
 
             // Candidate URLs in priority order
             const candidateUrls = [
-                baseUrl.includes("fmt=") ? baseUrl : `${baseUrl}${sep}fmt=json3`,
-                baseUrl.includes("fmt=") ? baseUrl.replace(/fmt=[^&]+/, "fmt=vtt") : `${baseUrl}${sep}fmt=vtt`,
-                baseUrl.includes("fmt=") ? baseUrl.replace(/fmt=[^&]+/, "fmt=srv3") : `${baseUrl}${sep}fmt=srv3`,
+                buildTimedTextUrl(baseUrl, { fmt: "json3" }),
+                buildTimedTextUrl(baseUrl, { fmt: "vtt" }),
+                buildTimedTextUrl(baseUrl, { fmt: "srv3" }),
                 baseUrl.replace(/[?&]fmt=[^&]+/, ""),
             ];
 
@@ -390,7 +529,7 @@
 
             if (loadedCues.length > 0) {
                 activeTrack = track;
-                setCueIndex(loadedCues, videoId || currentVideoId);
+                await processCaptionTrackWithDualSync(loadedCues, baseUrl, videoId || currentVideoId);
             }
         } catch (error) {
             console.warn("[Lectoro] Failed to load YouTube caption track:", error);
@@ -515,13 +654,45 @@
     window.addEventListener(TIMED_TEXT_EVENT, (event) => {
         const detail = event?.detail;
         if (!detail || !detail.text) return;
+        if (detail.url && detail.url.includes("tlang=")) return;
+
+        if (availableTracks.length === 0) {
+            requestTracklistFromBridge();
+        }
 
         const service = getSubtitleService();
         const cues = service ? service.parseTimedText(detail.text) : [];
         if (cues.length > 0) {
-            setCueIndex(cues, detail.videoId || currentVideoId);
+            void processCaptionTrackWithDualSync(cues, detail.url || "", detail.videoId || currentVideoId);
         }
     });
+
+    window.addEventListener(SLAVE_TIMED_TEXT_EVENT, (event) => {
+        const detail = event?.detail;
+        if (!detail || !detail.text) return;
+        const service = getSubtitleService();
+        if (!service) return;
+
+        const slaveCues = service.parseTimedText(detail.text);
+        if (!slaveCues || slaveCues.length === 0) return;
+
+        if (cueIndex.length > 0 && typeof service.alignSlaveTrackToMaster === "function") {
+            const aligned = service.alignSlaveTrackToMaster(cueIndex, slaveCues);
+            setCueIndex(aligned, detail.videoId || currentVideoId);
+            const video = document.querySelector("video");
+            if (video) syncActiveCue(video);
+        }
+    });
+
+    if (typeof chrome !== "undefined" && chrome.storage?.onChanged) {
+        chrome.storage.onChanged.addListener((changes, area) => {
+            if (area === "local" && (changes.doubleSubtitles || changes.targetLang)) {
+                if (activeTrack && activeTrack.baseUrl) {
+                    loadCaptionTrack(activeTrack, currentVideoId);
+                }
+            }
+        });
+    }
 
     window.addEventListener(TRACKS_EVENT, (event) => {
         handleTracksAvailable(event?.detail);

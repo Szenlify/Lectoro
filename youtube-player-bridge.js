@@ -7,6 +7,8 @@
   "use strict";
 
   const TIMED_TEXT_EVENT = "__lectoro_youtube_timed_text";
+  const SLAVE_TIMED_TEXT_EVENT = "__lectoro_youtube_slave_timed_text";
+  const REQUEST_TRANSLATION_EVENT = "__lectoro_youtube_request_translation";
   const TRACKS_EVENT = "__lectoro_youtube_tracks_available";
   const TRACK_REQUEST_EVENT = "__lectoro_youtube_track_request";
   const TRACK_RESPONSE_EVENT = "__lectoro_youtube_track_response";
@@ -293,8 +295,11 @@
             .text()
             .then((text) => {
               if (text) {
+                const eventName = requestUrl.includes("tlang=")
+                  ? SLAVE_TIMED_TEXT_EVENT
+                  : TIMED_TEXT_EVENT;
                 window.dispatchEvent(
-                  new CustomEvent(TIMED_TEXT_EVENT, {
+                  new CustomEvent(eventName, {
                     detail: {
                       url: requestUrl,
                       text,
@@ -324,8 +329,11 @@
         try {
           const text = this.responseText;
           if (text) {
+            const eventName = this.__lectoro_url.includes("tlang=")
+              ? SLAVE_TIMED_TEXT_EVENT
+              : TIMED_TEXT_EVENT;
             window.dispatchEvent(
-              new CustomEvent(TIMED_TEXT_EVENT, {
+              new CustomEvent(eventName, {
                 detail: {
                   url: this.__lectoro_url,
                   text,
@@ -341,6 +349,29 @@
   };
 
   // ── Event Handlers from Content Script ────────────────────────
+
+  function fetchViaXhr(url) {
+    return new Promise((resolve) => {
+      try {
+        const xhr = new XMLHttpRequest();
+        xhr.open("GET", url, true);
+        xhr.withCredentials = true;
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve({ ok: true, text: xhr.responseText });
+          } else {
+            resolve({ ok: false, text: xhr.responseText || "", status: xhr.status });
+          }
+        };
+        xhr.onerror = () => resolve({ ok: false, text: "", error: "network_error" });
+        xhr.ontimeout = () => resolve({ ok: false, text: "", error: "timeout" });
+        xhr.timeout = 7000;
+        xhr.send();
+      } catch (e) {
+        resolve({ ok: false, text: "", error: String(e) });
+      }
+    });
+  }
 
   window.addEventListener(TRACK_REQUEST_EVENT, (event) => {
     const requestId = event?.detail?.requestId;
@@ -362,11 +393,23 @@
     if (!requestId || !url) return;
 
     try {
-      const res = await fetch(url, {credentials: "include"});
-      const text = await res.text();
+      // 1. Try XMLHttpRequest with credentials (exact same transport used by YouTube player)
+      let result = await fetchViaXhr(url);
+      if (!result.ok && result.status !== 404) {
+        // 2. Fallback to fetch if XHR did not succeed
+        try {
+          const fetchFn = typeof originalFetch === "function" ? originalFetch : window.fetch;
+          const res = await fetchFn(url, {credentials: "include"});
+          if (res.ok) {
+            const text = await res.text();
+            result = { ok: true, text };
+          }
+        } catch (_) {}
+      }
+
       window.dispatchEvent(
         new CustomEvent(FETCH_RESPONSE_EVENT, {
-          detail: {requestId, text, ok: res.ok},
+          detail: {requestId, text: result.text || "", ok: !!result.ok},
         })
       );
     } catch (error) {
@@ -376,6 +419,18 @@
         })
       );
     }
+  });
+
+  window.addEventListener(REQUEST_TRANSLATION_EVENT, (event) => {
+    const lang = event?.detail?.lang;
+    if (!lang) return;
+    try {
+      const player = getYouTubePlayer();
+      if (typeof player?.setOption === "function") {
+        player.setOption("captions", "translationLanguage", { languageCode: lang });
+        player.loadModule?.("captions");
+      }
+    } catch (_) {}
   });
 
   window.addEventListener(SEEK_EVENT, (event) => {

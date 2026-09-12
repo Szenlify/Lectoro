@@ -716,6 +716,49 @@ video::cue {
   hyphens: none !important;
 }
 
+#__qt_custom_subtitles_layer .__qt_custom-sub-secondary,
+.__qt_custom-sub-secondary {
+  display: block !important;
+  width: auto !important;
+  max-width: 100% !important;
+  margin: 4px auto 0 !important;
+  padding: var(--lectoro-sub-bg-padding, 0 4px) !important;
+  border-radius: 4px !important;
+  background-color: var(--lectoro-sub-bg-color, transparent) !important;
+  box-decoration-break: clone !important;
+  -webkit-box-decoration-break: clone !important;
+  color: #cbd5e1 !important;
+  font-family:
+    "Netflix Sans Variable", "Netflix Sans", "Helvetica Neue", "Segoe UI",
+    Roboto, Arial, sans-serif !important;
+  font-size: calc(var(--lectoro-sub-font-size, 26px) * 0.72) !important;
+  font-style: normal !important;
+  font-weight: 600 !important;
+  font-variant: normal !important;
+  line-height: 1.35 !important;
+  letter-spacing: 0.015em !important;
+  word-spacing: normal !important;
+  text-align: center !important;
+  text-decoration: none !important;
+  text-transform: none !important;
+  unicode-bidi: plaintext !important;
+  text-shadow:
+    -0.07em -0.07em 0 #000,
+    0.07em -0.07em 0 #000,
+    -0.07em 0.07em 0 #000,
+    0.07em 0.07em 0 #000,
+    -0.07em 0px 0 #000,
+    0.07em 0px 0 #000,
+    0px -0.07em 0 #000,
+    0px 0.07em 0 #000,
+    0px 0.15em 0.35em rgba(0, 0, 0, 0.9) !important;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
+  text-wrap: balance !important;
+  hyphens: none !important;
+}
+
 #__qt_custom_subtitles_layer .__qt_custom-sub-translation {
   position: absolute !important;
   top: calc(100% + 6px) !important;

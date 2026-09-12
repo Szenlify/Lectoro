@@ -1,3 +1,5 @@
+npx modern-web-guidance@latest install --choose
+
 1. Jesli mam konto płatne (nie free) zawsze przy czytaniu textu najpierw niech sprawdzi cashe pozniej zapytanie link do R2 jesli 404 bład to wtedy system voice niezaleznie w jakies funkcji czy to powtorki czy to text na internecie wszedzie gdzie uzywa sie TTS. w powtorkach tylko tam moze byc generowany glos elevenlabs i wysylaby do R2 claudflare bazy, jesli glos w bazie danych nie naliczaj znakow
 
 2. Jak sa właczone dwa tryby tryb translate full sentence oraz translate word by word wtedy na netflixie style zaczynaja znikać tych trybów zaraz po wyświetleniu

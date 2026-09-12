@@ -576,6 +576,15 @@
             }
         }
         const fullText = lines.join(" ").trim();
+        let secondaryText = lines.translation || "";
+        if (!secondaryText && captionAdapter?.getCurrentCueLines) {
+            try {
+                const cur = captionAdapter.getCurrentCueLines(session.video);
+                if (cur?.translation) {
+                    secondaryText = cur.translation;
+                }
+            } catch (_) {}
+        }
         if (typeof subtitleChangeCallback === "function") {
             subtitleChangeCallback({
                 lines,
@@ -583,6 +592,7 @@
                 elements: adapterElements,
                 session,
                 video: session.video,
+                secondaryText,
             });
         }
     }
