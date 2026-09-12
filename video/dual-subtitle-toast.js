@@ -24,7 +24,7 @@
             else setTimeout(remove, 300);
         }
 
-        function show({ retry, duration = 5000 } = {}) {
+        function show({ retry, duration = 8000 } = {}) {
             dismiss({ immediate: true });
             const video = getVideo();
             if (!video) return;
