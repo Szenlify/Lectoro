@@ -211,33 +211,42 @@
                 });
             }
 
-            // Ensure comfortable durations without artificially stretching subtitles across pauses or dialogue turns
+            // Bridge subtitle durations so words stay on screen comfortably without gaps or early cutoffs
             for (let index = 0; index < merged.length; index += 1) {
                 const current = merged[index];
                 const next = merged[index + 1];
                 const wordCount = current.text.split(/\s+/).length;
                 const minReadableDuration = Math.max(
-                    1.4,
-                    Math.min(5.0, wordCount * 0.35),
+                    1.8,
+                    Math.min(6.0, wordCount * 0.38),
                 );
 
                 if (next && Number.isFinite(next.startTime)) {
-                    if (Number.isFinite(current.endTime) && current.endTime > current.startTime) {
-                        // Genuine author-defined end time exists: preserve it.
-                        // Only bridge tiny micro-gaps (<= 150ms) between consecutive cues to avoid 1-frame visual flicker.
-                        const microGap = next.startTime - current.endTime;
-                        if (microGap > 0 && microGap <= 0.15) {
-                            current.endTime =
-                                Math.round((next.startTime - 0.04) * 1000) / 1000;
-                        }
-                    } else {
-                        // End time was absent: set fallback duration capped before next cue
-                        const candidateEnd = Math.min(
-                            next.startTime - 0.04,
-                            current.startTime + minReadableDuration,
-                        );
+                    const gapToNext = next.startTime - current.startTime;
+                    if (gapToNext <= 4.5 && gapToNext > 0) {
                         current.endTime =
-                            Math.round(candidateEnd * 1000) / 1000;
+                            Math.round(
+                                Math.max(
+                                    Number.isFinite(current.endTime)
+                                        ? current.endTime
+                                        : 0,
+                                    next.startTime - 0.04,
+                                ) * 1000,
+                            ) / 1000;
+                    } else {
+                        const candidateEnd =
+                            Number.isFinite(current.endTime) &&
+                            current.endTime > current.startTime
+                                ? Math.max(
+                                      current.endTime,
+                                      current.startTime + minReadableDuration,
+                                  )
+                                : current.startTime + minReadableDuration;
+                        current.endTime =
+                            Math.round(
+                                Math.min(next.startTime - 0.04, candidateEnd) *
+                                    1000,
+                            ) / 1000;
                     }
                 } else {
                     if (

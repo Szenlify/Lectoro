@@ -1,3 +1,5 @@
+// background.js - offline-first reviews, batched Firebase sync and reminders (MV3 service worker)
+
 importScripts(
   "shared/constants.js",
   "shared/subscription-config.js",
@@ -11,6 +13,7 @@ importScripts(
   "firebase/firebase-config.js",
   "firebase/firebase-sync.js",
   "shared/subscription-service.js",
+  "shared/subtitle-translation-service.js",
   "shared/gemini-proxy.js"
 );
 
@@ -915,7 +918,7 @@ const MESSAGE_HANDLERS = Object.freeze({
     deletedCount: await GeminiProxy.deleteAllUserImages(),
   }),
 
-  [MSG.TRANSLATE_TEXT]: async (message) => ({
+  [MSG.GOOGLE_TRANSLATE]: async (message) => ({
     ok: true,
     result: await SharedTranslatorService.translate(
       message.text,
@@ -931,7 +934,7 @@ const MESSAGE_HANDLERS = Object.freeze({
 
   [MSG.TRANSLATE_SUBTITLE]: async (message) => ({
     ok: true,
-    result: await SharedTranslatorService.translate(message.text, message.targetLang, message.sourceLang),
+    result: await SharedSubtitleTranslationService.translate(message.text, message.targetLang, message.sourceLang),
   }),
 
   [MSG.SUBSCRIPTION_REFRESH_PROFILE]: async (message) => ({

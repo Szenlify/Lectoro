@@ -39,6 +39,7 @@ let statsEl = document.getElementById("stats");
 // ── Lazy tab mounting + centralized switching ───────────────────
 const TAB_SCRIPTS = Object.freeze({
     words: ["popup/words.js", "popup/export.js"],
+    library: ["popup/library.js"],
     review: ["popup/review.js"],
     help: [],
 });
@@ -98,6 +99,8 @@ function activateMountedTab(tabName) {
         loadWords();
     } else if (tabName === "review" && typeof loadReviewQueue === "function") {
         loadReviewQueue();
+    } else if (tabName === "library" && typeof renderLibraryGrid === "function") {
+        renderLibraryGrid();
     }
 }
 
@@ -130,6 +133,7 @@ document.querySelectorAll(".tab").forEach((tab) => {
 });
 
 // ── Voice, rate & subtitle elements ──────────────────────────────
+const voiceSelect = document.getElementById("voiceSelect");
 const rateRange = document.getElementById("rateRange");
 const rateValue = document.getElementById("rateValue");
 const volumeRange = document.getElementById("volumeRange");

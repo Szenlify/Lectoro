@@ -355,10 +355,6 @@
     };
 
     // ── 2. Intercept window.fetch (clone response only when untracked) ────
-    function isMediaChunkUrl(url) {
-        return /(\d+-\d+|\.(mp4|m4s|m4v|webm|aac|dash))/i.test(url);
-    }
-
     if (typeof window.fetch === "function") {
         const nativeFetch = window.fetch;
         window.fetch = async function lectoraNetflixFetch(...args) {
@@ -366,10 +362,10 @@
             try {
                 const url = typeof args[0] === "string" ? args[0] : args[0]?.url || "";
                 if (
-                    !isMediaChunkUrl(url) &&
-                    (url.includes("manifest") ||
-                        url.includes("timedtext") ||
-                        url.includes("metadata"))
+                    url.includes("manifest") ||
+                    url.includes("timedtext") ||
+                    url.includes("cadmium") ||
+                    url.includes("metadata")
                 ) {
                     response
                         .clone()
@@ -389,16 +385,16 @@
         XMLHttpRequest.prototype.open = function (method, url, ...args) {
             const requestUrl = String(url || "").toLowerCase();
             this.__lectoroTimedTextCandidate =
-                !isMediaChunkUrl(requestUrl) &&
-                (requestUrl.includes("manifest") ||
-                    requestUrl.includes("timedtext") ||
-                    requestUrl.includes("metadata"));
+                requestUrl.includes("manifest") ||
+                requestUrl.includes("timedtext") ||
+                requestUrl.includes("cadmium") ||
+                requestUrl.includes("metadata");
             return originalOpen.call(this, method, url, ...args);
         };
         XMLHttpRequest.prototype.send = function (...args) {
             if (
                 this.__lectoroTimedTextCandidate ||
-                (isWatchPage() && !hasManifestForCurrentMovie && !this.__lectoroSkipInspection)
+                (isWatchPage() && !hasManifestForCurrentMovie)
             ) {
                 this.addEventListener("load", () => {
                     try {

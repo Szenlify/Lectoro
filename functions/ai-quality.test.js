@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const vm = require("node:vm");
 const Prompts = require("../shared/ai-prompts");
 const Constants = require("../shared/constants");
+const Quiz = require("../shared/quiz-export");
 const { generationConfig, readJsonResponse } = require("./ai-response");
 
 test("language codes normalize regions and reject unknown output languages", () => {
@@ -16,6 +17,40 @@ test("language codes normalize regions and reject unknown output languages", () 
     for (const code of Object.keys(Constants.SUPPORTED_LANGUAGES)) {
         assert.ok(Prompts.standardTranslate("Hello", "", "en", code).includes(`"output_language":"${Prompts.languageCode(code)}"`));
     }
+});
+
+test("quiz prompts include only requested contracts and do not force invented alternatives", () => {
+    const prompt = Prompts.quiz({ srcLang: "en", tgtLang: "de", chosenTypes: ["true_false"], wordList: [] });
+    assert.ok(!prompt.includes("multiple_choice:"));
+    assert.ok(prompt.includes("0-3 genuinely equivalent full answers"));
+    assert.ok(prompt.includes("German (de)"));
+    assert.equal(Prompts.DEFAULT_QUIZ_TYPES[3], "true_false");
+    assert.ok(!Prompts.QUIZ_TYPES.includes("translation"));
+    assert.throws(() => Prompts.quiz({ chosenTypes: ["translation"] }));
+    assert.throws(() => Prompts.quiz({ chosenTypes: ["essay"] }));
+});
+
+test("both quiz formats render true/false and omit retired translation sections and their points", () => {
+    const quiz = { title: "Test", sections: [
+        { type: "translation", instructions: "RETIRED_TRANSLATION", questions: [{ prompt: "RETIRED_PROMPT", answer: "RETIRED_ANSWER" }] },
+        { type: "true_false", instructions: "Oceń prawdziwość zdań.", questions: [
+            { statement: "Cat means kot.", answer: true },
+            { statement: "Dog means kot.", answer: false },
+        ] },
+    ] };
+    const normalized = Quiz.normalizeQuizData(quiz, null, "pl");
+    assert.deepEqual(normalized.sections.map((sec) => sec.type), ["true_false"]);
+    for (const render of [Quiz.buildQuizHtml, Quiz.buildInteractiveQuizHtml]) {
+        const html = render(quiz, [{ original: "cat", srcLang: "en" }], { tgtLang: "pl" });
+        assert.ok(html.includes("1. Prawda czy fałsz"));
+        assert.ok(html.includes("Prawda") && html.includes("Fałsz"));
+        assert.ok(!html.includes("RETIRED_"));
+        assert.ok(!html.includes("Przetłumacz"));
+    }
+    const html = Quiz.buildInteractiveQuizHtml(quiz, [{ original: "cat", srcLang: "en" }], { tgtLang: "pl" });
+    assert.equal((html.match(/data-points="1"/g) || []).length, 2);
+    assert.ok(html.includes('data-answer="Prawda"'));
+    assert.ok(html.includes('data-answer="Fałsz"'));
 });
 
 test("backend rejects truncation, safety blocks, arrays and malformed JSON", () => {
@@ -51,7 +86,60 @@ test("Enter preserves localized badges, filters invented items and enforces lang
     await assert.rejects(Translator.explainSentence("Viel Erfolg!", "pl", null, { aiExplanationLanguage: "native" }));
 });
 
+test("quiz retains answer variants and rejects invalid keys, booleans and ambiguous pairs", () => {
+    const valid = { type: "fill_blank", questions: [{ sentence: "She said: ___", hint: "ready now", answer: "I am ready", acceptable_answers: ["I'm ready"] }] };
+    const invalid = [
+        { type: "multiple_choice", questions: [{ question: "Choose", options: ["a", "b", "c", "d"], answer: "missing" }] },
+        { type: "true_false", questions: [{ statement: "Claim", answer: "maybe" }] },
+        { type: "matching", pairs: [{ a: "a", b: "same" }, { a: "b", b: "same" }] },
+        { type: "fill_blank", questions: [{ sentence: "___ and ___", hint: "hint", answer: "a" }] },
+        { type: "correct_form", questions: [{ sentence: "He ___", options: ["run", "Run", "runs"], answer: "runs" }] },
+        { type: "unknown", questions: [] }, null,
+    ];
+    const normalized = Quiz.normalizeQuizData({ sections: [valid, ...invalid] }, null, "en");
+    assert.equal(normalized.sections.length, 1);
+    assert.deepEqual(normalized.sections[0].questions[0].acceptable_answers, ["I am ready", "I'm ready"]);
+    assert.throws(() => Quiz.normalizeQuizData({ sections: invalid }, null, "en"));
+    assert.throws(() => Quiz.normalizeQuizData(null, null, "en"));
+});
 
+test("quiz generation rejects mixed languages before charging and validates returned sections", async (t) => {
+    const saved = global.GeminiProxy;
+    t.after(() => { global.GeminiProxy = saved; });
+    let calls = 0;
+    global.GeminiProxy = { requestJSON: async () => {
+        calls++;
+        return { source_language: "en", instruction_language: "pl", sections: [
+            { type: "true_false", questions: [{ statement: "Cat means kot.", answer: true }, { statement: "Dog means kot.", answer: false }] },
+        ] };
+    } };
+    await assert.rejects(Quiz.generateQuizWithGemini([{ original: "cat", srcLang: "en" }, { original: "Katze", srcLang: "de" }], { tgtLang: "pl" }));
+    assert.equal(calls, 0);
+    const words = [{ original: "cat", srcLang: "en" }, { original: "dog", srcLang: "en" }];
+    assert.equal((await Quiz.generateQuizWithGemini(words, { tgtLang: "pl", chosenTypes: ["true_false"] })).sections.length, 1);
+    await assert.rejects(Quiz.generateQuizWithGemini(words, { tgtLang: "pl" }), /incomplete/);
+});
+
+test("generated quiz grades full answers and explicit variants, not similar or negated sentences", () => {
+    const quiz = { title: "Test", sections: [{ type: "fill_blank", instructions: "Fill the blank", questions: [{ sentence: "She said: ___", hint: "ready now", answer: "I am ready" }] }] };
+    const html = Quiz.buildInteractiveQuizHtml(quiz, [{ original: "ready", srcLang: "en" }], { tgtLang: "en" });
+    const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+    const context = vm.createContext({ document: { querySelectorAll: () => [], getElementById: () => null }, window: {}, setTimeout: () => 0 });
+    vm.runInContext(script, context);
+    const grade = (value, answer = "I am ready", alts = ["I'm ready"]) => {
+        const q = { dataset: { qtype: "text", answer, alternatives: JSON.stringify(alts), qid: "1" },
+            classList: { remove() {}, add() {} }, querySelector: (selector) => selector === ".q-input" ? { value } : null };
+        return context.gradeQuestion(q, true);
+    };
+    assert.equal(grade(" I  am ready! "), true);
+    assert.equal(grade("I’m ready"), true);
+    assert.equal(grade("I am not ready"), false);
+    assert.equal(grade("ready"), false);
+    assert.equal(grade("I was ready"), false);
+    assert.equal(grade("I like it", "I don't like it", []), false);
+    assert.equal(grade("si", "sí", []), false);
+    assert.equal(grade("a", "a/b", []), false);
+});
 
 test("Enter ignores the previous request after closing and reopening the panel", async () => {
     const source = fs.readFileSync(require.resolve("../video/subtitle-overlay.js"), "utf8");

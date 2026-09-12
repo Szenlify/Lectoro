@@ -21,6 +21,8 @@
                 class="tab-label">Settings</span></button>
         <button class="tab" data-tab="help"><span class="tab-icon">🚨</span><span
                 class="tab-label">Guide</span></button>
+        <button class="tab" data-tab="library"><span class="tab-icon">🗂️</span><span
+                class="tab-label">Library</span></button>
         <button class="tab" data-tab="words"><span class="tab-icon">📚</span><span
                 class="tab-label">Words</span></button>
         <button class="tab" data-tab="review" id="tabReview"><span class="tab-icon">🧠</span><span
@@ -42,42 +44,51 @@
             <div class="settings-dual-row language-direction-row">
                 <div class="setting-group">
                     <label for="learningLang">
+                        <span class="label-icon">📚</span>
                         <span>Learning language</span>
                     </label>
                     <div class="select-wrap">
                         <select id="learningLang" title="Choose the language you are learning"></select>
                     </div>
                 </div>
-                <button type="button" id="swapLanguages" class="swap-languages" title="Swap translation languages"
-                    aria-label="Swap learning and native languages">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M4 8h16m-4-4 4 4-4 4M20 16H4m4-4-4 4 4 4" />
-                    </svg>
+                <button type="button" id="swapLanguages" class="swap-languages" title="Swap translation languages" aria-label="Swap learning and native languages">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h16m-4-4 4 4-4 4M20 16H4m4-4-4 4 4 4"/></svg>
                 </button>
                 <div class="setting-group">
                     <label for="targetLang">
+                        <span class="label-icon">🌐</span>
                         <span>Native language</span>
                     </label>
                     <div class="select-wrap">
                         <select id="targetLang" title="Select your native language">
-                            <option value="en">🇬🇧 English</option>
-                            <option value="ja">🇯🇵 Japanese</option>
-                            <option value="de">🇩🇪 German</option>
-                            <option value="ko">🇰🇷 Korean</option>
-                            <option value="fr">🇫🇷 French</option>
-                            <option value="nl">🇳🇱 Dutch</option>
-                            <option value="pl">🇵🇱 Polish</option>
-                            <option value="es">🇪🇸 Spanish</option>
-                            <option value="it">🇮🇹 Italian</option>
-                            <option value="cs">🇨🇿 Czech</option>
-                            <option value="pt">🇵🇹 Portuguese</option>
+                            <option value="en">English</option>
+                            <option value="ja">Japanese</option>
+                            <option value="de">German</option>
+                            <option value="ko">Korean</option>
+                            <option value="fr">French</option>
+                            <option value="nl">Dutch</option>
+                            <option value="pl">Polish</option>
+                            <option value="es">Spanish</option>
+                            <option value="it">Italian</option>
+                            <option value="cs">Czech</option>
+                            <option value="pt">Portuguese</option>
                         </select>
                     </div>
                 </div>
 
             </div>
-    
+            <div class="setting-group">
+                <label for="aiExplanationLanguage">
+                    <span class="label-icon">✨</span>
+                    <span>AI Explanation</span>
+                </label>
+                <div class="select-wrap">
+                    <select id="aiExplanationLanguage" title="Choose explanation language style">
+                        <option value="native">Native language</option>
+                        <option value="simple_target">Simple studied language (A2-B1)</option>
+                    </select>
+                </div>
+            </div>
 
 
 
@@ -148,10 +159,7 @@
                 <div class="subscription-carousel" id="subscriptionCarousel">
                     <div class="subscription-plans-grid" id="subscriptionPlansGrid"></div>
                     <button type="button" class="carousel-arrow-next" id="carouselNext" aria-label="Scroll plans">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="9 6 15 12 9 18" />
-                        </svg>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
                     </button>
                 </div>
                 <div class="stripe-billing-status" id="stripeBillingStatus" aria-live="polite"></div>
@@ -175,22 +183,33 @@
                 </div>
 
                 <div class="setting-group">
+                    <label>Reading Modes</label>
                     <div class="glass-card">
-                        <div class="lx-row lx-between">
-                            <span class="toggle-label">Dual subtitles (Bilingual)</span>
+                        <div class="toggle-row">
+                            <span class="toggle-label">AI Translate full sentence</span>
                             <label class="toggle-switch">
-                                <input type="checkbox" id="dualSubtitles" checked>
+                                <input type="checkbox" id="subtitleTTS">
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
-                        <div class="toggle-desc">Display original subtitles with live translation underneath.</div>
+                        <div class="toggle-desc">Pressing S / E / Enter displays the full translated sentence and reads
+                            it aloud.</div>
+                        <div class="toggle-row"
+                            style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.08);">
+                            <span class="toggle-label">Word-by-word translation</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="wordCloudMode" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="toggle-desc">S / ↓ displays word-by-word translation clouds above subtitles</div>
                     </div>
                 </div>
 
                 <div class="setting-group">
                     <label for="subPositionRange">Subtitle vertical position</label>
                     <div class="glass-card">
-                        <div class="lx-row lx-gap-16">
+                        <div class="slider-row">
                             <input type="range" id="subPositionRange" min="0" max="100" step="1" value="14">
                             <span class="slider-value" id="subPositionValue">14%</span>
                         </div>
@@ -200,7 +219,7 @@
                 <div class="setting-group">
                     <label for="subBgRange">Subtitle background opacity</label>
                     <div class="glass-card">
-                        <div class="lx-row lx-gap-16">
+                        <div class="slider-row">
                             <input type="range" id="subBgRange" min="0" max="100" step="5" value="0">
                             <span class="slider-value" id="subBgValue">0%</span>
                         </div>
@@ -219,14 +238,21 @@
                             <span class="section-title-icon">🔊</span>
                             <span>Speech & Voice</span>
                         </div>
-                        <p class="section-subtitle-desc">Speech speed and playback volume.</p>
+                        <p class="section-subtitle-desc">TTS reader voice, speech speed, and playback volume.</p>
                     </div>
+                </div>
+
+                <div class="setting-group">
+                    <label for="voiceSelect">TTS Reader Voice</label>
+                    <select id="voiceSelect">
+                        <option value="">🔊 Default</option>
+                    </select>
                 </div>
 
                 <div class="setting-group">
                     <label for="rateRange">Speech rate</label>
                     <div class="glass-card">
-                        <div class="lx-row lx-gap-16">
+                        <div class="slider-row">
                             <input type="range" id="rateRange" min="0.3" max="2" step="0.1" value="0.95">
                             <span class="slider-value" id="rateValue">0.95</span>
                         </div>
@@ -236,7 +262,7 @@
                 <div class="setting-group">
                     <label for="volumeRange">TTS Reader volume</label>
                     <div class="glass-card">
-                        <div class="lx-row lx-gap-16">
+                        <div class="slider-row">
                             <input type="range" id="volumeRange" min="0" max="1" step="0.05" value="1">
                             <span class="slider-value" id="volumeValue">100%</span>
                         </div>
@@ -275,22 +301,41 @@
                 <div class="words-export-footer">
                     <div class="export-compact-row">
                         <!-- Left: Quiz AI group -->
+                        <div class="quiz-compact-group">
+
+                            <select class="quiz-select-compact" id="quizScope" title="Number of words in quiz">
+                                <option value="5" selected>5 words</option>
+                                <option value="10">10 words</option>
+                                <option value="15">15 words</option>
+                                <option value="20">20 words</option>
+                            </select>
+                            <select class="quiz-select-compact" id="quizSource" title="Quiz word source">
+                                <option value="recent" selected>Recent</option>
+                                <option value="random">Random</option>
+                            </select>
+                            <button type="button" class="export-btn export-quiz" id="exportQuiz"
+                                title="Generate interactive AI quiz">
+                                <span class="quiz-btn-label">✨ AI Quiz</span>
+                                <span class="quiz-free-badge" id="quizFreeBadge" style="display:none;"
+                                    title="Free quizzes">0/3</span>
+                            </button>
+                        </div>
 
                         <!-- Right: Anki, Excel, Delete -->
                         <div class="export-compact-actions">
-                            <button type="button" class="export-btn export-anki lx-button" id="exportAnki"
+                            <button type="button" class="export-btn export-anki" id="exportAnki"
                                 title="Export to Anki deck (.zip)">
-                                <span class="export-btn-label lx-inline-row lx-gap-4">📋 Anki</span>
+                                <span class="export-btn-label">📋 Anki</span>
                                 <span class="quiz-free-badge export-free-badge" id="ankiFreeBadge" style="display:none;"
                                     title="Free Anki exports">0/3</span>
                             </button>
-                            <button type="button" class="export-btn export-csv lx-button" id="exportCsv"
+                            <button type="button" class="export-btn export-csv" id="exportCsv"
                                 title="Export to Excel (.csv)">
-                                <span class="export-btn-label lx-inline-row lx-gap-4">📊 Excel</span>
+                                <span class="export-btn-label">📊 Excel</span>
                                 <span class="quiz-free-badge export-free-badge" id="excelFreeBadge"
                                     style="display:none;" title="Free Excel exports">0/3</span>
                             </button>
-                            <button type="button" class="export-btn export-clear lx-button" id="clearAll"
+                            <button type="button" class="export-btn export-clear" id="clearAll"
                                 title="Delete visible words">
                                 🗑
                             </button>
@@ -301,6 +346,73 @@
         </div>
     </template>
 
+    <!-- Library Tab (curated titles for English learners) -->
+    <template id="tab-library-template">
+        <div class="tab-content" id="tab-library">
+            <div class="library-panel">
+
+                <div class="library-scroll">
+                    <div class="library-intro-box">
+                        <div class="library-intro-title">
+                            <span style="color: rgb(128, 223, 191);">Recommended videos and content for language
+                                learning</span> <br /> (and CC subtitle platforms).
+                        </div>
+                        <div class="library-platforms-bar">
+                            <a href="https://www.youtube.com" target="_blank" rel="noopener noreferrer"
+                                class="platform-badge platform-youtube" title="Open YouTube">
+                                <span class="platform-logo youtube-logo">
+                                    <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
+                                        <path
+                                            d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                                    </svg>
+                                </span>
+                                <span class="platform-name">YouTube</span>
+                            </a>
+                            <a href="https://www.netflix.com" target="_blank" rel="noopener noreferrer"
+                                class="platform-badge platform-netflix" title="Open Netflix">
+                                <span class="platform-logo netflix-logo">
+                                    <svg viewBox="0 0 24 24" width="13" height="15" fill="currentColor">
+                                        <path d="M4 0h4.5l7 14V0H20v24h-4.5L8.5 10v14H4V0z" />
+                                    </svg>
+                                </span>
+                                <span class="platform-name">Netflix</span>
+                            </a>
+                            <a href="https://www.plex.tv" target="_blank" rel="noopener noreferrer"
+                                class="platform-badge platform-plex" title="Open Plex">
+                                <span class="platform-logo plex-logo">
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                                        <path d="M11.643 0H4.68l6.812 12-6.812 12h6.963L18.455 12 11.643 0z" />
+                                    </svg>
+                                </span>
+                                <span class="platform-name">Plex</span>
+                            </a>
+                            <a href="https://x.com" target="_blank" rel="noopener noreferrer"
+                                class="platform-badge platform-x" title="Open X">
+                                <span class="platform-logo x-logo">
+                                    <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
+                                        <path
+                                            d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                                    </svg>
+                                </span>
+                                <span class="platform-name">X</span>
+                            </a>
+                            <a href="https://www.ted.com/talks" target="_blank" rel="noopener noreferrer"
+                                class="platform-badge platform-ted" title="Open TED Talks">
+                                <span class="platform-logo ted-logo">
+                                    <svg viewBox="0 0 24 24" width="16" height="14" fill="currentColor">
+                                        <path
+                                            d="M0 7.5h6.667v2.222H4.444v6.667H2.222V9.722H0V7.5zm7.778 0h6.666v2.222H10v1.111h3.333v2.223H10v1.11H14.444v2.223H7.778V7.5zm7.778 0h4.444c1.84 0 3.334 1.494 3.334 3.333v2.223c0 1.839-1.494 3.333-3.334 3.333h-4.444V7.5zm2.222 2.222v4.445h2.222c.613 0 1.112-.498 1.112-1.111v-2.223c0-.613-.499-1.111-1.112-1.111h-2.222z" />
+                                    </svg>
+                                </span>
+                                <span class="platform-name">TED</span>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="library-grid" id="libraryGrid"></div>
+                </div>
+            </div>
+        </div>
+    </template>
 
     <!-- Review Tab (Spaced Repetition) -->
     <template id="tab-review-template">
@@ -433,17 +545,17 @@
                         <span class="help-section-title">Text Translation</span>
                     </div>
                     <div class="glass-card help-card">
-                        <div class="lx-stack lx-gap-12">
-                            <div class="lx-row-start lx-gap-12">
+                        <div class="help-steps">
+                            <div class="help-step">
                                 <span class="step-num">1</span>
                                 <span class="step-text">Select any word or drag across a sentence on any webpage.</span>
                             </div>
-                            <div class="lx-row-start lx-gap-12">
+                            <div class="help-step">
                                 <span class="step-num">2</span>
                                 <span class="step-text">Click the translation icon that appears next to your
                                     selection.</span>
                             </div>
-                            <div class="lx-row-start lx-gap-12">
+                            <div class="help-step">
                                 <span class="step-num">3</span>
                                 <span class="step-text">Done! View translation, listen via TTS, and practice in
                                     <strong>📚 Words</strong>.</span>

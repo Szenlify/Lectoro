@@ -265,7 +265,7 @@ function translationError(error) {
         cache: "Could not read the dictionary. Please try again.",
         storage: "Could not save the translation. Please try again.",
         generation: "Translation service could not generate a complete result. Please try again.",
-        verification: "Word not recognized in this language. Please check your language settings.",
+        verification: "Could not verify this dictionary entry. Check the word and selected languages.",
     };
     return { status: 503, code: `TRANSLATION_${(error.stage || "service").toUpperCase()}_FAILED`, error: messages[error.stage] || "Translation service is temporarily unavailable." };
 }
@@ -392,10 +392,7 @@ async function handleLiveTranslation(body, deps) {
         const existing = cacheable ? await readCached() : null;
         if (usableCache(existing)) return { result: validateResult(job, existing), cached: true, usage };
 
-        // Word dictionary hover translations are 100% free for everyone (no AI credits deducted)
-        if (job.kind !== "word") {
-            reservation = await reserve();
-        }
+        reservation = await reserve();
         stage = "generation";
         const requestJson = async (prompt, schema, maxOutputTokens = 1600) => {
             const response = await generate({ contents: [{ parts: [{ text: prompt }] }], generationConfig: {
@@ -433,7 +430,7 @@ async function handleLiveTranslation(body, deps) {
             const result = { [job.input]: { ...validatedEntry, languageValidation: 1 } };
             stage = "storage";
             if (cacheable) await write(job.key, result);
-            return { result, cached: false, usage };
+            return { result, cached: false, usage: reservation };
         }
 
         // Full-sentence AI does one compact generation call. It also seeds reusable phrase files.

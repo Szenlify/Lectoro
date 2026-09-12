@@ -53,10 +53,18 @@ whenPopupReady((data) => {
         subBgRange.value = subBg;
         if (subBgValue) subBgValue.textContent = `${subBg}%`;
     }
-    if (dualSubtitlesToggle) dualSubtitlesToggle.checked = data.dualSubtitles !== false;
+    let voice = data.speechVoice || "";
+    if (voice === "random") {
+        voice = "";
+        chrome.storage.local.set({ speechVoice: "" });
+    }
+    loadVoices(voice);
+
+    if (subtitleTTSToggle) subtitleTTSToggle.checked = !!data.subtitleTTS;
+    if (wordCloudModeToggle) wordCloudModeToggle.checked = !!data.wordCloudMode;
     const aiExpLangEl = document.getElementById("aiExplanationLanguage");
     if (aiExpLangEl) {
-        aiExpLangEl.value = "native";
+        aiExpLangEl.value = data.aiExplanationLanguage || "native";
     }
 });
 
@@ -79,16 +87,56 @@ if (aiExpLangSelect) {
 }
 
 // ── Subtitle reading modes ───────────────────────────────────────
-const dualSubtitlesToggle = document.getElementById("dualSubtitles");
+const subtitleTTSToggle = document.getElementById("subtitleTTS");
+const wordCloudModeToggle = document.getElementById("wordCloudMode");
 
-if (dualSubtitlesToggle) {
-    dualSubtitlesToggle.addEventListener("change", () => {
-        chrome.storage.local.set(
-            { dualSubtitles: dualSubtitlesToggle.checked },
-            flashSaved,
-        );
-    });
+subtitleTTSToggle.addEventListener("change", () => {
+    chrome.storage.local.set(
+        { subtitleTTS: subtitleTTSToggle.checked },
+        flashSaved,
+    );
+});
+
+wordCloudModeToggle.addEventListener("change", () => {
+    chrome.storage.local.set(
+        { wordCloudMode: wordCloudModeToggle.checked },
+        flashSaved,
+    );
+});
+
+// ── Populate voices ───────────────────────────────────────────────
+function loadVoices(selectedVoice) {
+    const voices = window.speechSynthesis.getVoices();
+    voiceSelect.innerHTML = `
+        <option value="">🔊 Default</option>`;
+    voices
+        .filter((v) => /google/i.test(v.name))
+        .forEach((v) => {
+            const opt = document.createElement("option");
+            opt.value = v.name;
+            opt.textContent = `${v.name} (${v.lang})`;
+            if (v.name === selectedVoice) opt.selected = true;
+            voiceSelect.appendChild(opt);
+        });
+    if (
+        [...voiceSelect.options].some(
+            (option) => option.value === selectedVoice,
+        )
+    ) {
+        voiceSelect.value = selectedVoice;
+    }
 }
+
+// Voices may load async
+window.speechSynthesis.onvoiceschanged = () => {
+    chrome.storage.local.get({ speechVoice: "" }, (data) => {
+        loadVoices(data.speechVoice === "random" ? "" : data.speechVoice);
+    });
+};
+
+voiceSelect.addEventListener("change", () => {
+    chrome.storage.local.set({ speechVoice: voiceSelect.value }, flashSaved);
+});
 
 // ── Rate slider ───────────────────────────────────────────────────
 rateRange.addEventListener("input", () => {
@@ -481,6 +529,22 @@ async function refreshAiUsageUI() {
         );
     }
 
+    const quizButton = document.getElementById("exportQuiz");
+    if (quizButton) {
+        quizButton.classList.toggle("credits-empty", limitReached);
+        quizButton.setAttribute("aria-disabled", String(limitReached));
+        const labelEl = quizButton.querySelector(".quiz-btn-label");
+        if (labelEl) {
+            labelEl.textContent = limitReached ? "✦ Out of AI" : "✨ AI Quiz";
+        } else {
+            quizButton.textContent = limitReached
+                ? "✦ Out of AI"
+                : "✨ AI Quiz";
+        }
+        quizButton.title = limitReached
+            ? "Monthly AI limit reached — view available plans"
+            : "Generate interactive quiz using AI";
+    }
 
     await GeminiProxy.applyLocalLimitToUI();
 }

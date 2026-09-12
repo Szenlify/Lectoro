@@ -47,7 +47,6 @@
     let subtitleTranslationLang = C.DEFAULT_READING_SETTINGS.targetLang;
     let activeLines = [];
     let activeText = "";
-    let activeTranslationText = "";
     let activeWordSpans = [];
     let trackedVideo = null;
     let activeAiVideo = null;
@@ -624,7 +623,7 @@
         return lines;
     }
 
-    function renderCustomSubtitles(lines = [], options = {}) {
+    function renderCustomSubtitles(lines = []) {
         const { layer, box } = ensureCustomSubtitlesLayer();
         const registry = getPlayerRegistry();
         const video = registry?.getVideo();
@@ -637,25 +636,13 @@
             lines = [];
         }
 
-        let translationText = "";
-        if (typeof options === "string") {
-            translationText = options;
-        } else if (options && typeof options === "object") {
-            translationText = options.translationText || options.translation || "";
-        }
-
         const rawCleanLines = (Array.isArray(lines) ? lines : [lines])
             .map((l) => (typeof l === "string" ? cleanCardText(l) : ""))
             .filter(Boolean);
 
-        const cleanTrans = (currentDualSubtitles && rawCleanLines.length > 0 && typeof translationText === "string")
-            ? cleanCardText(translationText)
-            : "";
-
         if (rawCleanLines.length === 0) {
             activeLines = [];
             activeText = "";
-            activeTranslationText = "";
             activeWordSpans = [];
             box.innerHTML = "";
             box.style.setProperty("opacity", "0", "important");
@@ -686,13 +673,11 @@
             );
         }
         const newText = displayLines.join(" ").replace(/\s+/g, " ").trim();
-        const translationChanged = cleanTrans !== activeTranslationText;
 
-        if (newText === activeText && !translationChanged && activeLines.length > 0) {
-            const expectedChildCount = activeLines.length + (cleanTrans ? 1 : 0);
+        if (newText === activeText && activeLines.length > 0) {
             if (displayLines.length === activeLines.length) {
                 // Layout and text are identical: avoid unnecessary DOM re-rendering / flicker
-                if (box.children.length === expectedChildCount) {
+                if (box.children.length === activeLines.length) {
                     syncCustomSubtitlePosition();
                     return;
                 }
@@ -703,7 +688,7 @@
                 // If a temporary partial DOM mutation arrives with fewer lines, preserve
                 // the richer multi-line layout already rendered for this exact text.
                 displayLines = activeLines;
-                if (box.children.length === expectedChildCount) {
+                if (box.children.length === activeLines.length) {
                     syncCustomSubtitlePosition();
                     return;
                 }
@@ -724,7 +709,6 @@
 
         activeLines = displayLines;
         activeText = newText;
-        activeTranslationText = cleanTrans;
         if (
             newText &&
             (!recentSubtitlesHistory.length ||
@@ -739,7 +723,6 @@
         activeWordSpans = [];
         box.innerHTML = "";
 
-        // 1. Original lines
         for (const lineText of displayLines) {
             const lineEl = document.createElement("div");
             lineEl.className = `${PREFIX}custom-sub-line`;
@@ -772,16 +755,6 @@
                 }
             }
             box.appendChild(lineEl);
-        }
-
-        // 2. Dual Subtitles: Translation line rendered under original text
-        if (cleanTrans && displayLines.length > 0) {
-            const transLineEl = document.createElement("div");
-            transLineEl.className = `${PREFIX}custom-sub-line ${PREFIX}custom-sub-translation-line`;
-            transLineEl.setAttribute("dir", "auto");
-            transLineEl.dataset.subType = "translation";
-            transLineEl.textContent = cleanTrans;
-            box.appendChild(transLineEl);
         }
 
         if (!aiTooltipActive && eTranslateActive && aiSubTranslationText) {
@@ -826,14 +799,11 @@
     // Subtitle visual preferences from storage (Single Source of Truth)
     const subPosKey = C.STORAGE_KEYS.SUBTITLE_POSITION;
     const subBgKey = C.STORAGE_KEYS.SUBTITLE_BG_OPACITY;
-    const dualSubsKey = C.STORAGE_KEYS.DUAL_SUBTITLES || "dualSubtitles";
-    let currentDualSubtitles = true;
 
     chrome.storage.local.get(
         {
             [subPosKey]: C.DEFAULT_SUBTITLE_SETTINGS.POSITION,
             [subBgKey]: C.DEFAULT_SUBTITLE_SETTINGS.BG_OPACITY,
-            [dualSubsKey]: C.DEFAULT_READING_SETTINGS?.dualSubtitles ?? true,
         },
         (data) => {
             if (data && typeof data[subPosKey] === "number") {
@@ -841,9 +811,6 @@
             }
             if (data && typeof data[subBgKey] === "number") {
                 currentSubBgOpacity = data[subBgKey];
-            }
-            if (data && typeof data[dualSubsKey] === "boolean") {
-                currentDualSubtitles = data[dualSubsKey];
             }
             if (customSubLayerEl) {
                 applySubtitleStyles(customSubLayerEl);
@@ -872,52 +839,26 @@
             }
             shouldSync = true;
         }
-        if (changes[dualSubsKey] && typeof changes[dualSubsKey].newValue === "boolean") {
-            currentDualSubtitles = changes[dualSubsKey].newValue;
-            if (!currentDualSubtitles && activeTranslationText) {
-                renderCustomSubtitles(activeLines, { translationText: "" });
-            } else if (currentDualSubtitles && !activeTranslationText && activeLines.length > 0) {
-                let transText = "";
-                const video = getPlayerRegistry()?.getVideo();
-                if (globalThis.LectoroYouTubeAdapter?.isPage?.()) {
-                    transText = globalThis.LectoroYouTubeAdapter.getCurrentTranslationText?.(video) || "";
-                } else if (isNetflixPage() || globalThis.LectoroNetflixAdapter?.isPage?.()) {
-                    transText = globalThis.LectoroNetflixAdapter?.getCurrentTranslationText?.(video) || "";
-                }
-                renderCustomSubtitles(activeLines, { translationText: transText });
-            }
-        }
         if (shouldSync) {
             syncCustomSubtitlePosition();
         }
     });
 
     // Connect to PlayerRegistry subtitle changes (Single Source of Truth)
-    getPlayerRegistry()?.onSubtitleChange?.((payload) => {
-        let lines = [];
+    getPlayerRegistry().onSubtitleChange((payload) => {
         if (Array.isArray(payload)) {
-            lines = LectoroBaseAdapter.extractCueLines(payload);
+            renderCustomSubtitles(LectoroBaseAdapter.extractCueLines(payload));
         } else if (payload && Array.isArray(payload.lines)) {
-            lines = payload.lines;
+            renderCustomSubtitles(payload.lines);
         } else if (payload && typeof payload.fullText === "string") {
-            lines = payload.fullText
+            const lines = payload.fullText
                 ? payload.fullText
                     .split(/\r?\n/)
                     .map((l) => l.trim())
                     .filter(Boolean)
                 : [];
+            renderCustomSubtitles(lines);
         }
-
-        let transText = (currentDualSubtitles && lines.length > 0) ? (payload?.translationText || "") : "";
-        if (!transText && currentDualSubtitles && lines.length > 0) {
-            const video = payload?.video || getPlayerRegistry()?.getVideo();
-            if (globalThis.LectoroYouTubeAdapter?.isPage?.()) {
-                transText = globalThis.LectoroYouTubeAdapter.getCurrentTranslationText?.(video) || "";
-            } else if (isNetflixPage() || globalThis.LectoroNetflixAdapter?.isPage?.()) {
-                transText = globalThis.LectoroNetflixAdapter?.getCurrentTranslationText?.(video, lines) || "";
-            }
-        }
-        renderCustomSubtitles(lines, { translationText: transText });
     });
 
     // ── Word Tooltip (Hover & Click) ──────────────────────────────
@@ -1039,7 +980,6 @@
 
     async function triggerWordHover(wordSpan) {
         if (!wordSpan || !wordSpan.isConnected) return;
-        if (wordSpan.closest?.(`.${PREFIX}custom-sub-translation-line, .${PREFIX}custom-sub-translation, [data-sub-type='translation']`)) return;
         if (subClickLocked) return;
 
         setHoveredWord(wordSpan);
@@ -1060,18 +1000,15 @@
     }
 
     document.addEventListener("focusin", (event) => {
-        if (event.target.closest?.(`.${PREFIX}custom-sub-translation-line, .${PREFIX}custom-sub-translation, [data-sub-type='translation']`)) return;
         if (event.target.classList?.contains(SUB_WORD_CLASS)) {
             if (subCloseTimer !== null) { clearTimeout(subCloseTimer); subCloseTimer = null; }
             if (lastHoveredSubWord !== event.target || !isSubHovering) void triggerWordHover(event.target);
         }
     });
     document.addEventListener("focusout", (event) => {
-        if (event.target.closest?.(`.${PREFIX}custom-sub-translation-line, .${PREFIX}custom-sub-translation, [data-sub-type='translation']`)) return;
         if (event.target.classList?.contains(SUB_WORD_CLASS) || QT.getTooltipEl()?.contains(event.target)) scheduleCloseSubTooltip();
     });
     document.addEventListener("keydown", async (event) => {
-        if (event.target.closest?.(`.${PREFIX}custom-sub-translation-line, .${PREFIX}custom-sub-translation, [data-sub-type='translation']`)) return;
         if (!event.target.classList?.contains(SUB_WORD_CLASS) || !["Enter", " "].includes(event.key)) return;
         event.preventDefault();
         event.stopPropagation();
@@ -1082,9 +1019,6 @@
     document.addEventListener(
         "mousemove",
         (e) => {
-            if (e.target?.closest?.(`.${PREFIX}custom-sub-translation-line, .${PREFIX}custom-sub-translation, [data-sub-type='translation']`)) {
-                return;
-            }
             const registry = getPlayerRegistry();
             const activeVideo = registry?.getVideo();
             if (!activeVideo?.isConnected) {
@@ -1216,8 +1150,6 @@
     });
 
     async function handleSubWordClick(wordSpan) {
-        if (!wordSpan || !wordSpan.isConnected) return;
-        if (wordSpan.closest?.(`.${PREFIX}custom-sub-translation-line, .${PREFIX}custom-sub-translation, [data-sub-type='translation']`)) return;
         cleanupReading();
         clearTimeout(subHoverTimer);
         clearTimeout(subCloseTimer);
@@ -1250,7 +1182,6 @@
     document.addEventListener(
         "pointerdown",
         (e) => {
-            if (e.target?.closest?.(`.${PREFIX}custom-sub-translation-line, .${PREFIX}custom-sub-translation, [data-sub-type='translation']`)) return;
             if (!aiTooltipActive) return;
             const targetWrap =
                 e.target?.closest?.(
@@ -1273,7 +1204,6 @@
     document.addEventListener(
         "click",
         (e) => {
-            if (e.target?.closest?.(`.${PREFIX}custom-sub-translation-line, .${PREFIX}custom-sub-translation, [data-sub-type='translation']`)) return;
             const registry = getPlayerRegistry();
             const video = registry?.getVideo();
             if (!video?.isConnected) return;
@@ -2824,7 +2754,6 @@
         if (!speedOverlayEl) {
             speedOverlayEl = document.createElement("div");
             speedOverlayEl.id = C.UI_IDS.SPEED_OVERLAY;
-            speedOverlayEl.className = C.UI_IDS.SPEED_OVERLAY;
             parent.appendChild(speedOverlayEl);
         } else if (speedOverlayEl.parentElement !== parent) {
             parent.appendChild(speedOverlayEl);
@@ -3182,7 +3111,7 @@
     }
 
     function createSubtitleTranslationTask(text, modeRevision, layout = null) {
-        return Promise.resolve(null);
+        return globalThis.LectoroReadingModes.translate(text, modeRevision, layout);
     }
 
     function getSubtitleRect(elements = null) {
@@ -3353,7 +3282,7 @@
         translationAnchorLayout = layout;
         translationOverlay = document.createElement("div");
         translationOverlay.id = C.UI_IDS.SENTENCE_TRANSLATION;
-        translationOverlay.className = `${PREFIX}sentence_translation ${PREFIX}sub-overlay`;
+        translationOverlay.className = `${PREFIX}sub-overlay`;
         translationOverlay.setAttribute("role", "status");
         translationOverlay.setAttribute("aria-live", "polite");
         translationOverlay.setAttribute("aria-atomic", "true");
@@ -3572,7 +3501,9 @@
         `, layout, "Translation unavailable");
         eTranslateActive = true;
         copy.querySelector(`.${PREFIX}save-word-btn`)?.addEventListener("click", () => {
+            const video = getPlayerRegistry()?.getVideo();
             restoreOriginal();
+            void globalThis.LectoroReadingModes.start(video);
         });
     }
 
@@ -3790,7 +3721,6 @@
         if (!saveToastEl) {
             saveToastEl = document.createElement("div");
             saveToastEl.id = SAVE_TOAST_ID;
-            saveToastEl.className = SAVE_TOAST_ID;
             saveToastEl.title = "Click to close and resume playback";
             saveToastEl.addEventListener("click", dismissSaveToastNow);
             parent.appendChild(saveToastEl);
@@ -3955,9 +3885,6 @@
         getCustomSubtitleElements: () => activeWordSpans,
         getActiveLines: () => activeLines,
         getActiveText: () => activeText,
-        getActiveTranslationText: () => activeTranslationText,
-        isDualSubtitlesEnabled: () => currentDualSubtitles,
-        setDualSubtitlesEnabled: (val) => { currentDualSubtitles = !!val; },
         getActiveSubtitleContext,
         closeSubTooltip,
         handleAIExplain,

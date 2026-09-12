@@ -16,9 +16,6 @@ const DIST_DIR = path.join(ROOT_DIR, "dist");
 const STAGING_DIR = path.join(DIST_DIR, "staging");
 const MANIFEST_PATH = path.join(ROOT_DIR, "manifest.json");
 
-// Rebuild local CSS bundles before collecting the distribution files.
-require("./build-css").build();
-
 if (!fs.existsSync(MANIFEST_PATH)) {
     console.error("❌ Error: Missing manifest.json in project root.");
     process.exit(1);
@@ -48,8 +45,14 @@ const INCLUDED_ENTRIES = [
     "core.js",
     "netflix-player-bridge.js",
     "youtube-player-bridge.js",
+    "video-frame-bootstrap.js",
     "popup.html",
     "popup.css",
+    "quiz.html",
+    "quiz.css",
+    "quiz.js",
+    "quiz-runner.html",
+    "quiz-runner.js",
     "styles.css",
     "icons",
     "popup",

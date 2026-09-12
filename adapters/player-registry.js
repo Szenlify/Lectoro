@@ -15,7 +15,12 @@
     function getRegisteredAdapters() {
         const adapters = [];
         if (globalThis.LectoroYouTubeAdapter) adapters.push(globalThis.LectoroYouTubeAdapter);
+        if (globalThis.LectoroGenericVideoAdapter) adapters.push(globalThis.LectoroGenericVideoAdapter);
         if (globalThis.LectoroNetflixAdapter) adapters.push(globalThis.LectoroNetflixAdapter);
+        if (globalThis.LectoroTedAdapter) adapters.push(globalThis.LectoroTedAdapter);
+        if (Array.isArray(globalThis.LectoroGenericAdapters)) {
+            adapters.push(...globalThis.LectoroGenericAdapters);
+        }
         return adapters;
     }
 
@@ -251,6 +256,12 @@
             }
         }
 
+        // 4. TED Talks adapter check
+        if (globalThis.LectoroTedAdapter?.isPage?.()) {
+            if (typeof globalThis.LectoroTedAdapter?.isCcActive === "function") {
+                return globalThis.LectoroTedAdapter.isCcActive(video);
+            }
+        }
 
         // 5. Native text tracks check
         if (hasEnabledNativeCaptionTrack(video)) {
@@ -512,7 +523,6 @@
                     elements: [],
                     session,
                     video: session.video,
-                    translationText: "",
                 });
             }
             return;
@@ -533,11 +543,19 @@
             ? indexedLines
             : globalThis.LectoroBaseAdapter?.extractCueLines?.(adapterElements) || [];
 
+        // Direct container text fallback for #subtitles-container on TED
+        if (!hasIndexedLines && lines.length === 0 && globalThis.LectoroTedAdapter?.isPage?.()) {
+            const tedContainer = document.getElementById("subtitles-container");
+            if (tedContainer && !tedContainer.classList.contains("opacity-0")) {
+                const tedText = (tedContainer.textContent || "").replace(/\s+/g, " ").trim();
+                if (tedText) lines = [tedText];
+            }
+        }
         if (!hasIndexedLines && lines.length === 0 && session.video?.textTracks) {
             lines = getNativeCueLines(session.video);
         }
         if (!hasIndexedLines && lines.length === 0) {
-            const getAllCuesFn = captionAdapter?.getAllCues;
+            const getAllCuesFn = captionAdapter?.getAllCues || (globalThis.LectoroTedAdapter?.isPage?.() ? globalThis.LectoroTedAdapter.getAllCues : null);
             if (typeof getAllCuesFn === "function") {
                 const all = getAllCuesFn(session.video);
                 if (Array.isArray(all) && all.length > 0) {
@@ -558,9 +576,6 @@
             }
         }
         const fullText = lines.join(" ").trim();
-        const translationText = (lines.length > 0 && typeof captionAdapter?.getCurrentTranslationText === "function")
-            ? (captionAdapter.getCurrentTranslationText(session.video, lines) || "")
-            : "";
         if (typeof subtitleChangeCallback === "function") {
             subtitleChangeCallback({
                 lines,
@@ -568,7 +583,6 @@
                 elements: adapterElements,
                 session,
                 video: session.video,
-                translationText,
             });
         }
     }

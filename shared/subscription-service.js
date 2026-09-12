@@ -468,7 +468,6 @@
             document.getElementById(AI_LIMIT_TOAST_ID)?.remove();
             const toast = document.createElement("div");
             toast.id = AI_LIMIT_TOAST_ID;
-            toast.className = AI_LIMIT_TOAST_ID;
             toast.innerHTML = `
             <div class="${P}ai_limit_orb">✦</div>
             <div class="${P}ai_limit_copy">

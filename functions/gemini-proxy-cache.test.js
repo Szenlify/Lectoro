@@ -681,7 +681,7 @@ test("SharedTranslatorService delegates googleTranslate to chrome.runtime.sendMe
         runtime: {
             sendMessage: (msg, callback) => {
                 sentMessages.push(msg);
-                if (msg.type === "QT_TRANSLATE_TEXT") {
+                if (msg.type === "QT_GOOGLE_TRANSLATE") {
                     callback({ ok: true, result: { translated: "Witaj świecie", detectedLang: "en" } });
                 }
             },
@@ -706,7 +706,7 @@ test("SharedTranslatorService delegates googleTranslate to chrome.runtime.sendMe
     const res = await TranslatorService.translate("Hello world", "pl");
     assert.equal(res.translated, "Witaj świecie");
     assert.equal(sentMessages.length, 1);
-    assert.equal(sentMessages[0].type, "QT_TRANSLATE_TEXT");
+    assert.equal(sentMessages[0].type, "QT_GOOGLE_TRANSLATE");
     assert.equal(sentMessages[0].text, "Hello world");
 });
 

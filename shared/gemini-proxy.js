@@ -666,7 +666,7 @@
                         throw error;
                     } finally { clearTimeout(timer); }
                     if (response.ok) {
-                        if (data.usage && kind !== "word") await setCachedUsage(data.usage);
+                        if (data.usage) await setCachedUsage(data.usage);
                         return data.result;
                     }
                     if (response.status !== 409 || data.code !== "TRANSLATION_PENDING") {

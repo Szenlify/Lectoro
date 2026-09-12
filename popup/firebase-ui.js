@@ -82,7 +82,7 @@ async function renderSyncUI() {
             <div class="sync-status sync-status-error">
                 Failed to read sync state: ${escapeSyncHtml(error.message)}
             </div>
-            <button id="firebaseSyncRetry" class="sync-btn sync-primary lx-button" style="width:100%;">
+            <button id="firebaseSyncRetry" class="sync-btn sync-primary" style="width:100%;">
                 Retry
             </button>`;
         document
@@ -103,7 +103,7 @@ async function renderSyncUI() {
             <div style="font-size:12px; color:var(--text-muted); margin-bottom:12px; line-height:1.5;">
                 Data and settings remain local until you sign in with Firebase.
             </div>
-            <button id="firebaseSignIn" class="sync-btn sync-primary lx-button" style="width:100%;" ${signingIn ? "disabled" : ""}>
+            <button id="firebaseSignIn" class="sync-btn sync-primary" style="width:100%;" ${signingIn ? "disabled" : ""}>
                 ${signingIn ? "⏳ Signing in..." : "🔑 Sign in with Google"}
             </button>
             ${signedOutStatusHtml}`;
@@ -166,8 +166,8 @@ async function renderSyncUI() {
                 <div class="sync-last-updated">Last synced: ${lastSyncText}</div>
             </div>
             <div class="sync-actions">
-                <button id="firebaseSyncNow" class="sync-btn sync-primary lx-button" ${syncing || signingOut || deletingAccount ? "disabled" : ""}>${syncButtonText}</button>
-                <button id="firebaseSignOut" class="sync-btn lx-button" ${firebaseUiAction ? "disabled" : ""}>
+                <button id="firebaseSyncNow" class="sync-btn sync-primary" ${syncing || signingOut || deletingAccount ? "disabled" : ""}>${syncButtonText}</button>
+                <button id="firebaseSignOut" class="sync-btn" ${firebaseUiAction ? "disabled" : ""}>
                     ${signingOut ? "Signing out..." : "Sign out"}
                 </button>
             </div>

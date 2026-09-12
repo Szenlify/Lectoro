@@ -12,14 +12,14 @@
         "Enter", "NumpadEnter",
         "q", "Q",
         "Escape",
-        "z", "Z", "v",
+        "z", "Z","v",
         "[", "{", "]", "}",
         "Home", "PageUp",
     ]);
 
     const FALLBACK_SKIP_SECONDS = 3;
-    const GLOBAL_ACTION_DELAY_MS = 120;
-    let lastNavActionTime = 0;
+    let lastNetflixNavRepeatTime = 0;
+    const NETFLIX_KEY_REPEAT_THROTTLE_MS = 120;
 
     function getRegistry() {
         return globalThis.LectoroPlayerRegistry;
@@ -67,16 +67,20 @@
                 "d", "D", "ArrowRight",
             ].includes(key);
 
-            // Throttle 120ms na przewijanie / nawigację napisami dla WSZYSTKICH odtwarzaczy
             if (isHorizontalSubtitleNavigation) {
-                const now = Date.now();
-                if (now - lastNavActionTime < GLOBAL_ACTION_DELAY_MS) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    e.stopImmediatePropagation();
-                    return;
+                const isNetflix =
+                    (typeof registry?.isNetflixPage === "function" && registry.isNetflixPage()) ||
+                    /(^|\.)netflix\.com$/i.test(window.location.hostname);
+                if (isNetflix && e.repeat) {
+                    const now = Date.now();
+                    if (now - lastNetflixNavRepeatTime < NETFLIX_KEY_REPEAT_THROTTLE_MS) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                        return;
+                    }
+                    lastNetflixNavRepeatTime = now;
                 }
-                lastNavActionTime = now;
             }
 
             const subtitleUiOpen = overlay?.isSubtitleUiOpen?.() || false;
@@ -119,7 +123,7 @@
                 return;
             }
 
-            // AI Explanation Queue Navigation & Controls
+            // AI Explanation Queue Navigation & Controls: W (replay TTS) / ArrowRight / ArrowLeft / A / D / Z (save active card) / Escape
             if (aiTooltipOpen) {
                 if (key === "w" || key === "W") {
                     if (overlay?.replayCurrentAiExplainTts?.()) {
@@ -169,7 +173,7 @@
                 globalThis.LectoroGenericVideoAdapter.clearControlBarTimer();
             }
 
-            // Hide Netflix controls & badges
+            // Hide Netflix controls & badges when navigating via keyboard hotkeys
             if (globalThis.LectoroNetflixAdapter?.ensureControlsHidden) {
                 globalThis.LectoroNetflixAdapter.ensureControlsHidden();
             }
@@ -184,19 +188,13 @@
                 if (!isHorizontalSubtitleNavigation) return;
             }
 
-            // Pause Video: S / ArrowDown
+            // Subtitle Word Cloud / Sentence Translation: S / E / ArrowDown
             if (
                 key === "s" ||
                 key === "S" ||
                 key === "ArrowDown"
             ) {
-                if (!e.repeat) {
-                    if (typeof registry?.pauseVideo === "function") {
-                        registry.pauseVideo(video);
-                    } else {
-                        video.pause();
-                    }
-                }
+                if (!e.repeat) void globalThis.LectoroReadingModes.start(video);
                 return;
             }
 

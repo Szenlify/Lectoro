@@ -26,13 +26,6 @@
     let cueIndex = [];
     let cueIndexKey = "";
     let cueIndexPromise = null;
-    let translationCueIndex = [];
-    let translationCueIndexKey = "";
-    let translationCueIndexPromise = null;
-    let dualSubtitlesEnabled = true;
-    let currentTargetLang = "pl";
-    let currentLearningLang = "en";
-    const pairedTranslationMap = new Map();
     let trackRequestSequence = 0;
     let manifestRevision = 0;
     let optimisticSeek = null;
@@ -46,67 +39,6 @@
     const manifestWaiters = new Set();
     const OPTIMISTIC_SEEK_MAX_MS = 3000;
     const POST_SEEK_DOM_GRACE_MS = 450;
-
-    async function initSettings() {
-        if (typeof chrome !== "undefined" && chrome?.storage?.local) {
-            try {
-                const data = await chrome.storage.local.get({
-                    [LectoroConstants.STORAGE_KEYS.DUAL_SUBTITLES]: LectoroConstants.DEFAULT_READING_SETTINGS.dualSubtitles,
-                    [LectoroConstants.STORAGE_KEYS.TARGET_LANG]: LectoroConstants.DEFAULT_READING_SETTINGS.targetLang,
-                    [LectoroConstants.STORAGE_KEYS.LEARNING_LANG]: LectoroConstants.DEFAULT_READING_SETTINGS.learningLang,
-                });
-                if (typeof data[LectoroConstants.STORAGE_KEYS.DUAL_SUBTITLES] === "boolean") {
-                    dualSubtitlesEnabled = data[LectoroConstants.STORAGE_KEYS.DUAL_SUBTITLES];
-                }
-                if (data[LectoroConstants.STORAGE_KEYS.TARGET_LANG]) {
-                    currentTargetLang = data[LectoroConstants.STORAGE_KEYS.TARGET_LANG];
-                }
-                if (data[LectoroConstants.STORAGE_KEYS.LEARNING_LANG]) {
-                    currentLearningLang = data[LectoroConstants.STORAGE_KEYS.LEARNING_LANG];
-                }
-            } catch (_) {}
-        }
-    }
-    initSettings().catch(() => {});
-
-    if (typeof chrome !== "undefined" && chrome?.storage?.onChanged) {
-        chrome.storage.onChanged.addListener((changes, areaName) => {
-            if (areaName !== "local") return;
-            let settingsChanged = false;
-            if (changes[LectoroConstants.STORAGE_KEYS.DUAL_SUBTITLES]) {
-                dualSubtitlesEnabled = !!changes[LectoroConstants.STORAGE_KEYS.DUAL_SUBTITLES].newValue;
-                settingsChanged = true;
-                if (!dualSubtitlesEnabled && globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
-                    const activeLines = globalThis.LectoroSubtitleOverlay.getActiveLines?.() || [];
-                    if (activeLines.length > 0) {
-                        globalThis.LectoroSubtitleOverlay.renderCustomSubtitles(activeLines, { translationText: "" });
-                    }
-                }
-            }
-            if (changes[LectoroConstants.STORAGE_KEYS.TARGET_LANG]) {
-                const newTarget = changes[LectoroConstants.STORAGE_KEYS.TARGET_LANG].newValue;
-                if (newTarget && newTarget !== currentTargetLang) {
-                    currentTargetLang = newTarget;
-                    translationCueIndex = [];
-                    translationCueIndexKey = "";
-                    translationCueIndexPromise = null;
-                    pairedTranslationMap.clear();
-                    settingsChanged = true;
-                }
-            }
-            if (changes[LectoroConstants.STORAGE_KEYS.LEARNING_LANG]) {
-                const newLearning = changes[LectoroConstants.STORAGE_KEYS.LEARNING_LANG].newValue;
-                if (newLearning && newLearning !== currentLearningLang) {
-                    currentLearningLang = newLearning;
-                    pairedTranslationMap.clear();
-                    settingsChanged = true;
-                }
-            }
-            if (settingsChanged && dualSubtitlesEnabled && isWatchPage()) {
-                ensureTranslationSubtitleIndex().catch(() => {});
-            }
-        });
-    }
 
     function getWatchMovieId() {
         return window.location.pathname.match(/^\/watch\/(\d+)/)?.[1] || "";
@@ -127,7 +59,6 @@
     function requestSeek(targetSeconds, videoFallback = null) {
         if (!Number.isFinite(targetSeconds)) return;
         const targetMs = Math.round(Math.max(0, targetSeconds) * 1000);
-        pairedTranslationMap.clear();
 
         // Netflix rebuilds .player-timedtext after a seek. Keep the indexed cue
         // available while that DOM is temporarily empty so Lectoro can render it
@@ -196,10 +127,6 @@
         cueIndex = [];
         cueIndexKey = "";
         cueIndexPromise = null;
-        translationCueIndex = [];
-        translationCueIndexKey = "";
-        translationCueIndexPromise = null;
-        pairedTranslationMap.clear();
         manifestRevision += 1;
         optimisticSeek = null;
         activeTextTrackState = {
@@ -225,19 +152,12 @@
         }
         if (timedTextManifest && manifestKey(timedTextManifest) === manifestKey(manifest)) {
             ensureSubtitleIndex().catch(() => { });
-            if (dualSubtitlesEnabled) {
-                ensureTranslationSubtitleIndex().catch(() => { });
-            }
             return;
         }
         timedTextManifest = manifest;
         cueIndex = [];
         cueIndexKey = "";
         cueIndexPromise = null;
-        translationCueIndex = [];
-        translationCueIndexKey = "";
-        translationCueIndexPromise = null;
-        pairedTranslationMap.clear();
         manifestRevision += 1;
         optimisticSeek = null;
         for (const resolve of manifestWaiters) resolve(manifest);
@@ -246,9 +166,6 @@
         // Start downloading immediately. Waiting for an idle period caused the
         // first A/D navigation to stall for up to 1.5 seconds.
         ensureSubtitleIndex().catch(() => { });
-        if (dualSubtitlesEnabled) {
-            ensureTranslationSubtitleIndex().catch(() => { });
-        }
     }
 
     function waitForTimedTextManifest(timeoutMs = 2500) {
@@ -511,189 +428,6 @@
         return cueIndexPromise;
     }
 
-    function selectTranslationTrackFromManifest(manifest, targetLang, activeTrack = null) {
-        if (!manifest?.tracks || manifest.tracks.length === 0 || !targetLang) return null;
-
-        const normTarget = normalizedValue(targetLang);
-        const active = activeTrack || {};
-        const activeId = normalizedValue(
-            active.new_track_id ??
-            active.trackId ??
-            active.track_id ??
-            active.id,
-        );
-
-        const candidates = manifest.tracks.filter((track) => {
-            if (track.isNoneTrack) return false;
-            const trackId = normalizedValue(track.id);
-            if (activeId && trackId === activeId) return false;
-            return true;
-        });
-
-        if (candidates.length === 0) return null;
-
-        return candidates
-            .map((track, order) => {
-                let score = 0;
-                const trackLang = normalizedValue(track.bcp47 || track.language);
-                const trackName = normalizedValue(track.displayName);
-
-                if (trackLang === normTarget) {
-                    score += 1000;
-                } else if (
-                    trackLang.startsWith(normTarget + "-") ||
-                    normTarget.startsWith(trackLang + "-")
-                ) {
-                    score += 800;
-                } else if (trackName.includes(normTarget)) {
-                    score += 500;
-                }
-
-                if (normTarget === "pl" && (trackName.includes("polish") || trackName.includes("polski"))) {
-                    score += 900;
-                } else if (normTarget === "en" && (trackName.includes("english") || trackName.includes("angielski"))) {
-                    score += 900;
-                } else if (normTarget === "es" && (trackName.includes("spanish") || trackName.includes("hiszpański") || trackName.includes("espanol"))) {
-                    score += 900;
-                } else if (normTarget === "de" && (trackName.includes("german") || trackName.includes("deutsch") || trackName.includes("niemiecki"))) {
-                    score += 900;
-                } else if (normTarget === "fr" && (trackName.includes("french") || trackName.includes("francais") || trackName.includes("francuski"))) {
-                    score += 900;
-                } else if (normTarget === "it" && (trackName.includes("italian") || trackName.includes("włoski") || trackName.includes("italiano"))) {
-                    score += 900;
-                } else if (normTarget === "uk" && (trackName.includes("ukrainian") || trackName.includes("ukraiński"))) {
-                    score += 900;
-                }
-
-                if (score > 0) {
-                    if (!track.isForcedNarrative) score += 20;
-                    score -= order;
-                }
-
-                return { track, score };
-            })
-            .filter((item) => item.score > 0)
-            .sort((a, b) => b.score - a.score)[0]?.track || null;
-    }
-
-    async function buildTranslationSubtitleIndex() {
-        if (!dualSubtitlesEnabled) return [];
-        const buildRevision = manifestRevision;
-        const movieId = getWatchMovieId();
-        if (!movieId) return [];
-
-        const [manifest, trackState] = await Promise.all([
-            waitForTimedTextManifest(),
-            waitForActiveTextTrack(),
-        ]);
-        if (
-            !manifest ||
-            String(manifest.movieId) !== getWatchMovieId() ||
-            buildRevision !== manifestRevision
-        ) return [];
-
-        if (trackState.playerReady && !trackState.isCcActive) return [];
-        if (!trackState.isCcActive) return [];
-
-        const targetLang = currentTargetLang || "pl";
-        const transTrack = selectTranslationTrackFromManifest(manifest, targetLang, trackState?.track);
-        if (!transTrack) return [];
-
-        const subtitleService = getSubtitleService();
-        if (!subtitleService?.parseTimedText) return [];
-
-        for (const download of rankDownloads(transTrack)) {
-            for (const url of download?.urls || []) {
-                const nextKey = [
-                    manifest.movieId,
-                    transTrack.id,
-                    download.profile,
-                    url,
-                ].join("|");
-                if (translationCueIndexKey === nextKey && translationCueIndex.length > 0) {
-                    return translationCueIndex;
-                }
-
-                const response = await sendMessage({
-                    type: "QT_FETCH_NETFLIX_TIMED_TEXT",
-                    url,
-                    movieId,
-                });
-                if (buildRevision !== manifestRevision) return [];
-                if (!response?.text) continue;
-
-                const parsed = subtitleService.parseTimedText(
-                    response.text,
-                    download.profile,
-                    response.contentType,
-                );
-                if (buildRevision !== manifestRevision) return [];
-                if (parsed.length === 0) continue;
-
-                translationCueIndex = parsed;
-                translationCueIndexKey = nextKey;
-
-                if (globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
-                    const video = document.querySelector("video");
-                    const transText = getCurrentTranslationText(video);
-                    const activeLines = globalThis.LectoroSubtitleOverlay.getActiveLines?.() || [];
-                    if (activeLines.length > 0 && transText) {
-                        globalThis.LectoroSubtitleOverlay.renderCustomSubtitles(
-                            activeLines,
-                            { translationText: transText },
-                        );
-                    }
-                }
-
-                return translationCueIndex;
-            }
-        }
-
-        return [];
-    }
-
-    function ensureTranslationSubtitleIndex() {
-        const movieId = getWatchMovieId();
-        if (!movieId || !dualSubtitlesEnabled) return Promise.resolve([]);
-        if (
-            translationCueIndex.length > 0 &&
-            translationCueIndexKey.startsWith(`${movieId}|`)
-        ) {
-            return Promise.resolve(translationCueIndex);
-        }
-        if (!translationCueIndexPromise) {
-            const pending = Promise.resolve().then(buildTranslationSubtitleIndex).finally(() => {
-                if (translationCueIndexPromise === pending) translationCueIndexPromise = null;
-            });
-            translationCueIndexPromise = pending;
-        }
-        return translationCueIndexPromise;
-    }
-
-    function findIndexedTranslationCueAt(time) {
-        if (!translationCueIndex || translationCueIndex.length === 0 || !Number.isFinite(time)) {
-            return null;
-        }
-        let low = 0;
-        let high = translationCueIndex.length - 1;
-        let best = -1;
-        while (low <= high) {
-            const mid = (low + high) >> 1;
-            if (translationCueIndex[mid].startTime <= time + 0.05) {
-                best = mid;
-                low = mid + 1;
-            } else {
-                high = mid - 1;
-            }
-        }
-        if (best < 0) return null;
-        const cue = translationCueIndex[best];
-        const endTime = Number.isFinite(cue.endTime)
-            ? cue.endTime
-            : cue.startTime + 3;
-        return time <= endTime + 0.05 ? cue : null;
-    }
-
     function trackStateKey(state) {
         if (!state?.playerReady) return "loading";
         if (!state.isCcActive || !state.track) return "off";
@@ -728,17 +462,10 @@
             cueIndex = [];
             cueIndexKey = "";
             cueIndexPromise = null;
-            translationCueIndex = [];
-            translationCueIndexKey = "";
-            translationCueIndexPromise = null;
-            pairedTranslationMap.clear();
             manifestRevision += 1;
             optimisticSeek = null;
             if (nextState.playerReady && nextState.isCcActive) {
                 ensureSubtitleIndex().catch(() => { });
-                if (dualSubtitlesEnabled) {
-                    ensureTranslationSubtitleIndex().catch(() => { });
-                }
             } else {
                 if (globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
                     globalThis.LectoroSubtitleOverlay.renderCustomSubtitles([]);
@@ -831,245 +558,12 @@
         return [];
     }
 
-    function getDomSubtitleText(video = null) {
-        try {
-            const player =
-                video?.closest?.(".watch-video, [data-uia='video-canvas'], .nf-player-container") ||
-                document;
-            const container = player.querySelector(".player-timedtext");
-            if (!container) return "";
-            const cues = container.querySelectorAll(".player-timedtext-text-container");
-            if (!cues || cues.length === 0) return "";
-            const texts = [];
-            for (const cue of cues) {
-                const text = (cue.textContent || "").replace(/\s+/g, " ").trim();
-                if (text) texts.push(text);
-            }
-            return texts.join(" ").trim();
-        } catch (_) {
-            return "";
-        }
-    }
-
     function getCurrentSubtitleText(video = null) {
-        const ccActive = (typeof this?.isCcActive === "function" && this !== globalThis) ? this.isCcActive(video) : isCcActive(video);
-        if (!ccActive) return "";
-        const getLinesFn = (typeof this?.getCurrentCueLines === "function" && this !== globalThis) ? this.getCurrentCueLines : getCurrentCueLines;
-        const lines = getLinesFn(video);
-        if (Array.isArray(lines) && lines.length > 0) {
-            return lines.join(" ");
-        }
-        return getDomSubtitleText(video);
-    }
-
-    function findBestTranslationCueForOrigCue(origCue) {
-        if (!origCue || translationCueIndex.length === 0) return null;
-        const oStart = Number.isFinite(origCue.startTime) ? origCue.startTime : 0;
-        const oEnd = Number.isFinite(origCue.endTime) ? origCue.endTime : oStart + 3;
-        const mid = (oStart + oEnd) / 2;
-
-        // 1. Prioritize cue in translationCueIndex with maximum temporal overlap
-        let bestCue = null;
-        let maxOverlap = 0;
-        for (const tCue of translationCueIndex) {
-            if (tCue.endTime < oStart - 0.5) continue;
-            if (tCue.startTime > oEnd + 0.5) break;
-            const tEnd = Number.isFinite(tCue.endTime) ? tCue.endTime : tCue.startTime + 3;
-            const overlap = Math.min(oEnd, tEnd) - Math.max(oStart, tCue.startTime);
-            if (overlap > maxOverlap) {
-                maxOverlap = overlap;
-                bestCue = tCue;
-            }
-        }
-        if (bestCue && maxOverlap > 0.1) return bestCue;
-
-        // 2. Fallback: check cue directly covering midpoint
-        return findIndexedTranslationCueAt(mid);
-    }
-
-    function getCurrentTranslationText(video = null, currentLines = null) {
-        const ccActive = (typeof this?.isCcActive === "function" && this !== globalThis) ? this.isCcActive(video) : isCcActive(video);
-        if (!ccActive) return "";
-        if (!dualSubtitlesEnabled) return "";
-
-        const vid = (typeof HTMLElement !== "undefined" && video instanceof HTMLElement)
-            ? video
-            : (video && typeof video.currentTime === "number" ? video : (document.querySelector("video") || null));
-        let time = Number(vid?.currentTime ?? (typeof video === "number" ? video : NaN));
-        if (optimisticSeek && !optimisticSeek.confirmed) {
-            time = optimisticSeek.targetTime;
-        }
-
-        // 1. Determine active original subtitle text directly from caller or fallback
-        let origText = "";
-        if (Array.isArray(currentLines) && currentLines.length > 0) {
-            origText = currentLines.join(" ");
-        } else if (typeof currentLines === "string" && currentLines.trim()) {
-            origText = currentLines.trim();
-        }
-
-        if (!origText && optimisticSeek) {
-            const cue = findIndexedCueAt(optimisticSeek.targetTime);
-            if (cue?.text) origText = cue.text;
-        }
-        if (!origText) {
-            const activeLines = globalThis.LectoroSubtitleOverlay?.getActiveLines?.();
-            if (Array.isArray(activeLines) && activeLines.length > 0) {
-                origText = activeLines.join(" ");
-            }
-        }
-        if (!origText && typeof this?.getCurrentSubtitleText === "function" && this !== globalThis) {
-            origText = this.getCurrentSubtitleText(vid);
-        }
-        if (!origText && typeof this?.getCurrentCueLines === "function" && this !== globalThis) {
-            const l = this.getCurrentCueLines(vid);
-            if (Array.isArray(l) && l.length > 0) origText = l.join(" ");
-        }
-        if (!origText) {
-            origText = getCurrentSubtitleText(vid);
-        }
-        if (!origText && Number.isFinite(time) && cueIndex.length > 0) {
-            const cue = findIndexedCueAt(time);
-            if (cue?.text) origText = cue.text;
-        }
-
-        origText = (origText || "").trim();
-        // If no original subtitle is currently visible/active, translation line must never show alone
-        if (!origText) {
-            return "";
-        }
-
-        const cleanFn = SharedUtils?.cleanCardText || ((s) => s);
-        const normOrig = cleanFn(origText).toLowerCase().replace(/\s+/g, " ").trim();
-
-        // 2. Check if we already have a locked paired translation for this active original cue
-        if (normOrig && pairedTranslationMap.has(normOrig)) {
-            return pairedTranslationMap.get(normOrig) || "";
-        }
-
-        const targetLang = currentTargetLang || "pl";
-        const activeLang = activeTextTrackState?.track?.bcp47 || activeTextTrackState?.track?.language || "";
-        if (activeLang && normalizedValue(activeLang) === normalizedValue(targetLang)) {
-            return "";
-        }
-
-        // 3. Official indexed translation track: match against original cue timeline
-        if (translationCueIndex.length > 0) {
-            let matchedTransCue = null;
-            let matchedOrigCue = null;
-
-            // Step 3a: If original cues are indexed, find the corresponding origCue and its best overlapping translation cue
-            if (cueIndex.length > 0 && Number.isFinite(time)) {
-                let origCue = null;
-                const searchStart = Math.max(0, time - 4);
-                const searchEnd = time + 4;
-                for (const c of cueIndex) {
-                    if (c.endTime < searchStart) continue;
-                    if (c.startTime > searchEnd) break;
-                    const cNorm = cleanFn(c.text).toLowerCase().replace(/\s+/g, " ").trim();
-                    if (cNorm === normOrig || cNorm.includes(normOrig) || normOrig.includes(cNorm)) {
-                        origCue = c;
-                        break;
-                    }
-                }
-                if (!origCue) {
-                    origCue = findIndexedCueAt(time);
-                }
-                if (origCue) {
-                    matchedOrigCue = origCue;
-                    matchedTransCue = findBestTranslationCueForOrigCue(origCue);
-                }
-            }
-
-            // Step 3b: If no origCue found in index, find translation cue directly at time
-            if (!matchedTransCue && Number.isFinite(time)) {
-                matchedTransCue = findIndexedTranslationCueAt(time);
-            }
-
-            if (matchedTransCue) {
-                let transText = "";
-                const rawLines = Array.isArray(matchedTransCue.lines) && matchedTransCue.lines.length > 0
-                    ? matchedTransCue.lines
-                    : (matchedTransCue.text ? matchedTransCue.text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean) : []);
-
-                let origLines = [];
-                if (Array.isArray(currentLines) && currentLines.length > 0) {
-                    origLines = currentLines.flatMap((l) => String(l || "").split(/\r?\n/));
-                } else if (matchedOrigCue && Array.isArray(matchedOrigCue.lines) && matchedOrigCue.lines.length > 0) {
-                    origLines = matchedOrigCue.lines;
-                } else if (typeof origText === "string" && origText.includes("\n")) {
-                    origLines = origText.split(/\r?\n/);
-                } else if (origText) {
-                    origLines = [origText];
-                }
-                origLines = origLines.map((l) => cleanFn(l || "").trim()).filter(Boolean);
-
-                if (rawLines.length > 1 && origLines.length < rawLines.length) {
-                    // Multi-line translation cue spanning multiple dialogue cues (e.g. 2 sentences grouped into 1 cue by Netflix translator).
-                    // Align and select only the line corresponding to the active original dialogue to avoid previous text lingering!
-                    const tStart = Number.isFinite(matchedTransCue.startTime) ? matchedTransCue.startTime : 0;
-                    const tEnd = Number.isFinite(matchedTransCue.endTime) ? matchedTransCue.endTime : tStart + 3;
-
-                    let targetLineIdx = -1;
-                    if (cueIndex.length > 0) {
-                        const overlappingOrig = cueIndex.filter((c) => {
-                            const cs = Number.isFinite(c.startTime) ? c.startTime : 0;
-                            const ce = Number.isFinite(c.endTime) ? c.endTime : cs + 3;
-                            return Math.min(tEnd, ce) - Math.max(tStart, cs) > 0.15;
-                        });
-
-                        if (overlappingOrig.length > 1) {
-                            const activeOrigIdx = overlappingOrig.findIndex((c) => {
-                                if (matchedOrigCue && c === matchedOrigCue) return true;
-                                const cNorm = cleanFn(c.text).toLowerCase().replace(/\s+/g, " ").trim();
-                                return cNorm === normOrig || cNorm.includes(normOrig) || normOrig.includes(cNorm);
-                            });
-
-                            if (activeOrigIdx >= 0) {
-                                targetLineIdx = Math.min(
-                                    rawLines.length - 1,
-                                    Math.floor((activeOrigIdx / overlappingOrig.length) * rawLines.length),
-                                );
-                            }
-                        }
-                    }
-
-                    // Fallback: If no overlapping cueIndex available, align by playback timestamp
-                    if (targetLineIdx < 0 && Number.isFinite(time) && tEnd > tStart) {
-                        const progress = Math.max(0, Math.min(0.999, (time - tStart) / (tEnd - tStart)));
-                        targetLineIdx = Math.min(
-                            rawLines.length - 1,
-                            Math.floor(progress * rawLines.length),
-                        );
-                    }
-
-                    if (targetLineIdx >= 0 && targetLineIdx < rawLines.length) {
-                        transText = rawLines[targetLineIdx];
-                        // Strip orphan speaker dash if a single dialogue line is isolated and original didn't start with dash
-                        if (
-                            (transText.startsWith("- ") || transText.startsWith("– ") || transText.startsWith("— ")) &&
-                            !origText.startsWith("-") &&
-                            !origText.startsWith("–")
-                        ) {
-                            transText = transText.slice(2).trim();
-                        }
-                    } else {
-                        transText = rawLines.join("\n");
-                    }
-                } else if (rawLines.length > 0) {
-                    transText = rawLines.join("\n");
-                } else {
-                    transText = matchedTransCue.text || "";
-                }
-
-                if (transText) {
-                    if (normOrig) pairedTranslationMap.set(normOrig, transText);
-                    return transText;
-                }
-            }
-        }
-
-        return "";
+        if (!isCcActive(video)) return "";
+        const lines = getCurrentCueLines(video);
+        return Array.isArray(lines) && lines.length > 0
+            ? lines.join(" ")
+            : "";
     }
 
     function getAllCues() {
@@ -1501,10 +995,6 @@
                     cueIndex = [];
                     cueIndexKey = "";
                     cueIndexPromise = null;
-                    translationCueIndex = [];
-                    translationCueIndexKey = "";
-                    translationCueIndexPromise = null;
-                    pairedTranslationMap.clear();
                     manifestRevision += 1;
                     optimisticSeek = null;
                     if (globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
@@ -1512,9 +1002,6 @@
                     }
                 } else if (!prevActive) {
                     ensureSubtitleIndex().catch(() => { });
-                    if (dualSubtitlesEnabled) {
-                        ensureTranslationSubtitleIndex().catch(() => { });
-                    }
                 }
             }
         }
@@ -1522,9 +1009,6 @@
     if (isPage()) setInterval(pollActiveTextTrack, 1000);
     if (isWatchPage()) {
         ensureSubtitleIndex().catch(() => { });
-        if (dualSubtitlesEnabled) {
-            ensureTranslationSubtitleIndex().catch(() => { });
-        }
     }
 
     const NetflixAdapter = {
@@ -1574,25 +1058,11 @@
         setOriginalSubtitlesHidden,
         captureReviewImage,
         ensureSubtitleIndex,
-        ensureTranslationSubtitleIndex,
         getAllCues,
         getCurrentCueLines,
         getCurrentSubtitleText,
-        getCurrentTranslationText,
         findIndexedCueAt,
-        findIndexedTranslationCueAt,
         getAdjacentSubtitleTime,
-        getCueIndex: () => cueIndex,
-        setCueIndex: (cues) => { cueIndex = Array.isArray(cues) ? cues : []; },
-        getTranslationCueIndex: () => translationCueIndex,
-        setTranslationCueIndex: (cues) => { translationCueIndex = Array.isArray(cues) ? cues : []; },
-        selectTranslationTrackFromManifest,
-        isDualSubtitlesEnabled: () => dualSubtitlesEnabled,
-        setDualSubtitlesEnabled: (val) => { dualSubtitlesEnabled = !!val; },
-        getPairedTranslationMap: () => pairedTranslationMap,
-        clearPairedTranslations: () => pairedTranslationMap.clear(),
-        setActiveTextTrackState: (s) => { activeTextTrackState = Object.assign(activeTextTrackState, s); },
-        getActiveTextTrackState: () => activeTextTrackState,
     };
 
     globalThis.LectoroNetflixAdapter = NetflixAdapter;
