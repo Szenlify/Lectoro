@@ -137,51 +137,68 @@ test("alignSlaveTrackToMaster ignores non-overlapping slave cues and deduplicate
     assert.equal(aligned[0].translation, "Witaj świecie");
 });
 
-test("alignSlaveTrackToMaster synchronizes forward and fuses master cues spanned by a single slave cue into one line", () => {
-    // Two master fragments: "He walked into" and "the room quietly."
-    const masterCues = [
-        { startTime: 1.0, endTime: 2.8, text: "He walked into" },
+test("alignSlaveTrackToMaster never fuses or retimes master cues when a slave spans them", () => {
+    const master = [
+        { startTime: 1, endTime: 2.8, text: "He walked into" },
         { startTime: 2.9, endTime: 4.8, text: "the room quietly." },
-        { startTime: 6.0, endTime: 8.0, text: "Nobody noticed him." },
+        { startTime: 6, endTime: 8, text: "Nobody noticed him." },
     ];
-
-    // One slave sentence spanning across both master fragments: [1.1, 4.6]
-    const slaveCues = [
-        { startTime: 1.1, endTime: 4.6, text: "Wszedł cicho do pokoju." },
+    const slave = [
+        { startTime: 1.1, endTime: 4.7, text: "Wszedł cicho do pokoju." },
         { startTime: 6.1, endTime: 7.9, text: "Nikt go nie zauważył." },
     ];
+    const before = JSON.stringify({ master, slave });
+    const aligned = SubtitleService.alignSlaveTrackToMaster(master, slave);
 
-    const aligned = SubtitleService.alignSlaveTrackToMaster(masterCues, slaveCues);
-
-    // Master cues 0 and 1 are fused forward into a single unified line!
-    assert.equal(aligned.length, 2);
-
-    assert.equal(aligned[0].text, "He walked into the room quietly.");
-    assert.deepEqual(aligned[0].lines, ["He walked into the room quietly."]);
-    assert.equal(aligned[0].startTime, 1.0);
-    assert.equal(aligned[0].endTime, 4.8);
-    assert.equal(aligned[0].translation, "Wszedł cicho do pokoju.");
-
-    assert.equal(aligned[1].text, "Nobody noticed him.");
-    assert.equal(aligned[1].startTime, 6.0);
-    assert.equal(aligned[1].endTime, 8.0);
-    assert.equal(aligned[1].translation, "Nikt go nie zauważył.");
+    assert.deepEqual(aligned.map(({ startTime, endTime, text }) => ({ startTime, endTime, text })), master);
+    assert.deepEqual(aligned.map((cue) => cue.translation), ["", "Wszedł cicho do pokoju.", "Nikt go nie zauważył."]);
+    assert.equal(JSON.stringify({ master, slave }), before, "alignment must not mutate either track");
 });
 
-test("alignSlaveTrackToMaster handles slight timestamp drift forward gracefully", () => {
-    // Master cue with slight timing drift compared to platform translation (e.g. 0.2s drift)
-    const masterCues = [
-        { startTime: 2.0, endTime: 4.0, text: "Look at the sky." },
+test("alignSlaveTrackToMaster leaves gaps and touching boundaries empty instead of guessing drift", () => {
+    const master = [{ startTime: 2, endTime: 4, text: "Look at the sky." }];
+    const slave = [
+        { startTime: 0, endTime: 2, text: "Before." },
+        { startTime: 4, endTime: 4.1, text: "Boundary." },
+        { startTime: 4.1, endTime: 5.5, text: "Next scene." },
     ];
-    // Slave starts 0.1s after master ends due to drift
-    const slaveCues = [
-        { startTime: 4.1, endTime: 5.5, text: "Spójrz na niebo." },
+    assert.equal(SubtitleService.alignSlaveTrackToMaster(master, slave)[0].translation, "");
+});
+
+test("alignSlaveTrackToMaster breaks equal overlap ties chronologically and accepts short real overlap", () => {
+    const master = [
+        { startTime: 3, endTime: 5, text: "Later." },
+        { startTime: 1, endTime: 3, text: "Earlier." },
+        { startTime: 10, endTime: 11, text: "Short." },
     ];
+    const slave = [
+        { startTime: 2, endTime: 4, text: "Tie." },
+        { startTime: 10.999, endTime: 12, text: "Short overlap." },
+    ];
+    const aligned = SubtitleService.alignSlaveTrackToMaster(master, slave);
+    assert.deepEqual(aligned.map((cue) => cue.translation), ["", "Tie.", "Short overlap."]);
+    assert.deepEqual(aligned.map((cue) => cue.startTime), [3, 1, 10], "input master order is retained");
+});
 
-    const aligned = SubtitleService.alignSlaveTrackToMaster(masterCues, slaveCues);
-
-    assert.equal(aligned.length, 1);
-    assert.equal(aligned[0].translation, "Spójrz na niebo.");
+test("alignSlaveTrackToMaster flattens both languages and clears stale translations", () => {
+    const master = [
+        { startTime: 1, endTime: 2, text: "Hello\n  world", lines: ["Hello", "world"], translation: "Stale" },
+        { startTime: 3, endTime: 4, text: "- Good-bye", translation: "Stale" },
+    ];
+    const aligned = SubtitleService.alignSlaveTrackToMaster(master, [
+        { startTime: 1, endTime: 2, text: "Witaj\r\n świecie" },
+    ]);
+    assert.equal(aligned[0].text, "Hello world");
+    assert.deepEqual(aligned[0].lines, ["Hello world"]);
+    assert.equal(aligned[0].translation, "Witaj świecie");
+    assert.equal(aligned[1].text, "- Good-bye", "Master punctuation is retained");
+    assert.equal(aligned[1].translation, "");
+    for (const missing of [[], null, [{ startTime: 1, endTime: NaN, text: "Invalid" }]]) {
+        const result = SubtitleService.alignSlaveTrackToMaster(master, missing);
+        assert.deepEqual(result.map((cue) => cue.translation), ["", ""]);
+        assert.deepEqual(result[0].lines, ["Hello world"]);
+    }
+    assert.deepEqual(SubtitleService.alignSlaveTrackToMaster(null, []), []);
 });
 
 test("DEFAULT_READING_SETTINGS contains doubleSubtitles default to true", () => {

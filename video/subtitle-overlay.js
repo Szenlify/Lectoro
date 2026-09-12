@@ -142,15 +142,30 @@
     }
 
     let currentDoubleSubtitles = true;
+    let activeUnifiedCue = null;
+    let dualSubtitleToast = null;
+
+    function setDualSubtitleStatus({ platform, status, retry } = {}) {
+        if (platform !== getPlatformName()) return;
+        if (!dualSubtitleToast && globalThis.LectoroDualSubtitleToast) {
+            dualSubtitleToast = globalThis.LectoroDualSubtitleToast.create({
+                getVideo: () => getPlayerRegistry()?.getVideo(),
+                getPlayerContainer: findPlayerContainer,
+                onRetryError: (_error, retryAction) => setDualSubtitleStatus({ platform, status: "error", retry: retryAction }),
+            });
+        }
+        if (status === "error" && isDoubleSubtitlesActive()) {
+            dualSubtitleToast?.show({ retry });
+        } else {
+            dualSubtitleToast?.dismiss({ immediate: status === "idle" });
+        }
+    }
 
     function isDoubleSubtitlesActive() {
         if (!currentDoubleSubtitles) return false;
         const platform = getPlatformName();
         return platform === "netflix" || platform === "youtube";
     }
-
-    // In-memory cache for aligned platform dual subtitles
-    const dualSubCache = new Map();
 
     function findPlayerContainer(video) {
         if (!video) return null;
@@ -390,6 +405,7 @@
             );
 
             applySubtitleStyles(layer);
+            fitDualSubtitleRows(box);
 
             // Bottom offset inside video player
             const isNetflix = isNetflixPage();
@@ -651,6 +667,7 @@
             .filter(Boolean);
 
         if (rawCleanLines.length === 0) {
+            activeUnifiedCue = null;
             activeLines = [];
             activeText = "";
             activeWordSpans = [];
@@ -667,6 +684,7 @@
         }
 
         const doubleActive = isDoubleSubtitlesActive();
+        box.classList.toggle(`${PREFIX}dual-subtitles`, doubleActive);
         let displayLines = rawCleanLines;
 
         if (doubleActive) {
@@ -690,24 +708,16 @@
         }
         const newText = displayLines.join(" ").replace(/\s+/g, " ").trim();
 
-        let secondaryText = (typeof options?.secondaryText === "string" ? options.secondaryText : "").trim();
-        if (doubleActive) {
-            if (secondaryText) {
-                dualSubCache.set(newText, secondaryText);
-            } else if (dualSubCache.has(newText)) {
-                secondaryText = dualSubCache.get(newText);
-            }
-        }
+        // Slave text belongs to this exact Master cue, never to a text-only cache.
+        const cue = options.cue || lines.cue || null;
+        const rawSecondary = cue ? cue.translation : options.secondaryText;
+        const secondaryText = doubleActive && typeof rawSecondary === "string"
+            ? rawSecondary.replace(/\s+/g, " ").trim() : "";
 
-        if (newText === activeText && activeLines.length > 0) {
+        if (newText === activeText && activeLines.length > 0 && activeUnifiedCue === cue) {
             const existingSecEl = box.querySelector(`.${PREFIX}custom-sub-secondary`);
             const existingSecText = existingSecEl?.textContent || "";
-            if (displayLines.length === activeLines.length && existingSecText === secondaryText) {
-                syncCustomSubtitlePosition();
-                return;
-            }
-            if (existingSecEl && secondaryText && existingSecText !== secondaryText) {
-                existingSecEl.textContent = secondaryText;
+            if (displayLines.length === activeLines.length && existingSecText === secondaryText && !!existingSecEl === doubleActive) {
                 syncCustomSubtitlePosition();
                 return;
             }
@@ -724,6 +734,7 @@
 
         activeLines = displayLines;
         activeText = newText;
+        activeUnifiedCue = cue;
         if (
             newText &&
             (!recentSubtitlesHistory.length ||
@@ -772,11 +783,12 @@
             box.appendChild(lineEl);
         }
 
-        if (doubleActive && secondaryText) {
+        if (doubleActive) {
             const secEl = document.createElement("div");
             secEl.className = `${PREFIX}custom-sub-secondary`;
             secEl.setAttribute("dir", "auto");
             secEl.textContent = secondaryText;
+            secEl.setAttribute("aria-hidden", secondaryText ? "false" : "true");
             box.appendChild(secEl);
         }
 
@@ -866,7 +878,13 @@
             typeof changes[doubleSubKey].newValue === "boolean"
         ) {
             currentDoubleSubtitles = changes[doubleSubKey].newValue;
+            dualSubtitleToast?.dismiss({ immediate: true });
+            if (activeLines.length) renderCustomSubtitles(activeLines);
             shouldSync = true;
+        }
+        if (changes.targetLang) {
+            dualSubtitleToast?.dismiss({ immediate: true });
+            if (activeLines.length) renderCustomSubtitles(activeLines);
         }
         if (shouldSync) {
             syncCustomSubtitlePosition();
@@ -876,10 +894,11 @@
     // Connect to PlayerRegistry subtitle changes (Single Source of Truth)
     getPlayerRegistry().onSubtitleChange((payload) => {
         const secondary = payload?.secondaryText || payload?.lines?.translation || "";
+        const cue = payload?.cue || payload?.lines?.cue || null;
         if (Array.isArray(payload)) {
-            renderCustomSubtitles(LectoroBaseAdapter.extractCueLines(payload), { secondaryText: secondary });
+            renderCustomSubtitles(LectoroBaseAdapter.extractCueLines(payload), { secondaryText: secondary, cue });
         } else if (payload && Array.isArray(payload.lines)) {
-            renderCustomSubtitles(payload.lines, { secondaryText: secondary });
+            renderCustomSubtitles(payload.lines, { secondaryText: secondary, cue });
         } else if (payload && typeof payload.fullText === "string") {
             const lines = payload.fullText
                 ? payload.fullText
@@ -887,7 +906,7 @@
                     .map((l) => l.trim())
                     .filter(Boolean)
                 : [];
-            renderCustomSubtitles(lines, { secondaryText: secondary });
+            renderCustomSubtitles(lines, { secondaryText: secondary, cue });
         }
     });
 
@@ -3856,6 +3875,7 @@
 
     const SubtitleOverlay = {
         renderCustomSubtitles,
+        setDualSubtitleStatus,
         getCustomSubtitleElements: () => activeWordSpans,
         getActiveLines: () => activeLines,
         getActiveText: () => activeText,

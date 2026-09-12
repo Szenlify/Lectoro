@@ -1,0 +1,61 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Platform subtitle XML parser regressions</title>
+<pre id="result">Running</pre>
+<script src="../shared/utils.js"></script>
+<script src="../shared/subtitle-service.js"></script>
+<script>
+    // Open in Chromium, or load with Playwright and assert window.subtitleXmlResult.passed.
+    const exact = { preserveTiming: true };
+    const results = [];
+    function check(name, input, profile, expected) {
+        const actual = SharedSubtitleService.parseTimedText(input, profile, "", exact)
+            .map(({ startTime, endTime, text }) => ({ startTime, endTime, text }));
+        if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+            throw new Error(`${name}: ${JSON.stringify(actual)} != ${JSON.stringify(expected)}`);
+        }
+        results.push(name);
+    }
+    try {
+        check("Netflix TTML ticks, namespaces, multiline text and silence", `
+            <tt:tt xmlns:tt="http://www.w3.org/ns/ttml" xmlns:ttp="http://www.w3.org/ns/ttml#parameter" ttp:tickRate="10000000">
+              <tt:body><tt:div>
+                <tt:p begin="10000000t" end="12000000t">Hello<tt:br/>world.</tt:p>
+                <tt:p begin="30000000t" end="31000000t"><tt:span>After</tt:span> silence.</tt:p>
+              </tt:div></tt:body>
+            </tt:tt>`, "ttml", [
+            { startTime: 1, endTime: 1.2, text: "Hello world." },
+            { startTime: 3, endTime: 3.1, text: "After silence." },
+        ]);
+        check("DFXP durations, parent offsets and minimum of end/dur", `
+            <tt xmlns="http://www.w3.org/2006/10/ttaf1"><body begin="1s"><div begin="2s">
+              <p begin="500ms" dur="250ms">A <span>short</span> cue.</p>
+              <p begin="2s" end="4s" dur="500ms">Clipped.</p>
+            </div></body></tt>`, "dfxp", [
+            { startTime: 3.5, endTime: 3.75, text: "A short cue." },
+            { startTime: 5, endTime: 5.5, text: "Clipped." },
+        ]);
+        check("TTML frame-rate multiplier", `
+            <tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttp="http://www.w3.org/ns/ttml#parameter" ttp:frameRate="30" ttp:frameRateMultiplier="1 2">
+              <body><div><p begin="15f" end="30f">Frames.</p></div></body>
+            </tt>`, "ttml", [{ startTime: 1, endTime: 2, text: "Frames." }]);
+        check("YouTube srv3 paragraphs and adjacent segments", `
+            <timedtext format="3"><body>
+              <p t="1250" d="250"><s>Hello</s><s>, </s><s t="50">world!</s><br/>Again.</p>
+              <p t="2000" d="100">Next.</p><p t="3000">Missing duration.</p>
+            </body></timedtext>`, "srv3", [
+            { startTime: 1.25, endTime: 1.5, text: "Hello, world! Again." },
+            { startTime: 2, endTime: 2.1, text: "Next." },
+        ]);
+        check("YouTube legacy XML and missing duration", `
+            <transcript><text start="1.5" dur="0.2">Tom &amp; Jerry</text>
+              <text start="2">Missing duration.</text></transcript>`, "xml", [
+            { startTime: 1.5, endTime: 1.7, text: "Tom & Jerry" },
+        ]);
+        check("Malformed XML is rejected", "<tt><body></tt>", "ttml", []);
+        window.subtitleXmlResult = { passed: true, tests: results };
+    } catch (error) {
+        window.subtitleXmlResult = { passed: false, tests: results, error: error.message };
+    }
+    document.querySelector("#result").textContent = JSON.stringify(window.subtitleXmlResult, null, 2);
+</script>

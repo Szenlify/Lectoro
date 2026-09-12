@@ -57,7 +57,8 @@
     "content_scripts": [
         {
             "matches": [
-                "https://www.netflix.com/*"
+                "https://www.netflix.com/*",
+                "https://netflix.com/*"
             ],
             "js": [
                 "netflix-player-bridge.js"
@@ -108,6 +109,7 @@
                 "adapters/generic-adapters.js",
                 "adapters/ted-adapter.js",
                 "adapters/player-registry.js",
+                "video/dual-subtitle-toast.js",
                 "video/subtitle-overlay.js",
                 "video/reading-modes.js",
                 "video/video-hotkeys.js",
@@ -127,6 +129,12 @@
             "match_about_blank": true,
             "match_origin_as_fallback": true
         }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": ["icons/icon48.png"],
+            "matches": ["https://*.youtube.com/*", "https://youtube.com/*", "https://www.netflix.com/*", "https://netflix.com/*"]
+        }
     ]
-}       
+}
     

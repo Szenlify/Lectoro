@@ -67,9 +67,25 @@
             const videoPlayer =
                 window.netflix?.appContext?.state?.playerApp?.getAPI?.()
                     ?.videoPlayer;
-            const sessionIds = videoPlayer?.getAllPlayerSessionIds?.() || [];
+            if (!videoPlayer) return null;
+            const sessionIds = videoPlayer.getAllPlayerSessionIds?.() || [];
+            if (!sessionIds.length) return null;
+
+            const movieId = getWatchMovieId();
+            if (movieId) {
+                const match = sessionIds.find((id) => String(id).includes(movieId));
+                if (match) {
+                    const p = videoPlayer.getVideoPlayerBySessionId(match);
+                    if (p) return p;
+                }
+            }
+
             const sessionId =
                 sessionIds.find((id) => String(id).includes("watch")) ||
+                sessionIds.find((id) => {
+                    const p = videoPlayer.getVideoPlayerBySessionId(id);
+                    return p && typeof p.seek === "function";
+                }) ||
                 sessionIds[0];
             return sessionId
                 ? videoPlayer.getVideoPlayerBySessionId(sessionId)
@@ -160,7 +176,7 @@
         if (!Array.isArray(payload?.tracks)) return null;
         const timedTextTracks = payload.tracks.filter((track) => {
             if (track?.ttDownloadables) return true;
-            const downloads = track?.downloadables || track?.downloadUrls;
+            const downloads = track?.downloadables || track?.downloadUrls || track?.downloads;
             const profiles = Array.isArray(downloads)
                 ? downloads.map(
                     (item) => item?.contentProfile || item?.profile || item?.type || "",
@@ -180,6 +196,7 @@
             track.ttDownloadables ||
             track.downloadables ||
             track.downloadUrls ||
+            track.downloads ||
             {};
 
         const entries = Array.isArray(rawDownloads)
@@ -257,14 +274,14 @@
 
         // Quick check: if object is primitive container or empty, bypass search
         const keys = Object.keys(data);
-        if (keys.length === 0 || keys.length > 80) return null;
+        if (keys.length === 0 || keys.length > 150) return null;
 
-        // Bounded shallow search (max depth 2, max 30 nodes)
+        // Bounded search (max depth 4, max 60 nodes)
         const queue = [{ value: data, depth: 0 }];
         const visited = new WeakSet();
         let inspected = 0;
 
-        while (queue.length > 0 && inspected < 30) {
+        while (queue.length > 0 && inspected < 60) {
             const { value, depth } = queue.shift();
             if (!value || typeof value !== "object" || visited.has(value))
                 continue;
@@ -272,7 +289,7 @@
             inspected += 1;
 
             if (getTimedTextTracks(value)) return value;
-            if (depth >= 2) continue;
+            if (depth >= 4) continue;
 
             for (const child of Object.values(value)) {
                 if (child && typeof child === "object" && !visited.has(child)) {
@@ -438,6 +455,19 @@
         } catch (err) {
             console.warn("[Lectoro Bridge] Netflix seek execution failed:", err);
         }
+
+        // Native UI fallback: if player.seek isn't accessible, try Netflix's rewind button
+        try {
+            const back10Btn = document.querySelector(
+                "[data-uia='control-back10'], button.button-nfplayerBackTen, button[aria-label*='back 10'], button[aria-label*='Back 10'], button[aria-label*='Cofnij']",
+            );
+            if (back10Btn) {
+                back10Btn.click();
+                lastBridgeSeekDispatchedTime = Date.now();
+                return true;
+            }
+        } catch (_) { }
+
         return false;
     }
 

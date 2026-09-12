@@ -759,6 +759,79 @@ video::cue {
   hyphens: none !important;
 }
 
+/* Dual subtitles (bilingual): Master full sentence on top, aligned translation below */
+#__qt_custom_subtitles_layer .__qt_custom-subtitles-box.__qt_dual-subtitles {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  width: auto !important;
+  max-width: 92% !important;
+  margin: 0 auto !important;
+  gap: 6px !important;
+  --lectoro-master-size: clamp(16px, 2.3vw, 26px);
+  --lectoro-slave-size: clamp(13px, 1.85vw, 20px);
+}
+
+#__qt_custom_subtitles_layer .__qt_dual-subtitles > .__qt_custom-sub-line,
+#__qt_custom_subtitles_layer .__qt_dual-subtitles > .__qt_custom-sub-secondary {
+  box-sizing: border-box !important;
+  width: auto !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 auto !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  overflow-wrap: break-word !important;
+  word-break: normal !important;
+  text-wrap: balance !important;
+  text-align: center !important;
+  height: auto !important;
+  flex: 0 1 auto !important;
+}
+
+#__qt_custom_subtitles_layer .__qt_dual-subtitles > .__qt_custom-sub-line {
+  color: #ffffff !important;
+  font-size: var(--lectoro-master-size) !important;
+  line-height: 1.36 !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.012em !important;
+  text-shadow:
+    -0.07em -0.07em 0 #000,
+    0.07em -0.07em 0 #000,
+    -0.07em 0.07em 0 #000,
+    0.07em 0.07em 0 #000,
+    -0.07em 0px 0 #000,
+    0.07em 0px 0 #000,
+    0px -0.07em 0 #000,
+    0px 0.07em 0 #000,
+    0px 0.15em 0.35em rgba(0, 0, 0, 0.95) !important;
+}
+
+#__qt_custom_subtitles_layer .__qt_dual-subtitles > .__qt_custom-sub-secondary {
+  color: #e2e8f0 !important;
+  font-size: var(--lectoro-slave-size) !important;
+  line-height: 1.32 !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.012em !important;
+  text-shadow:
+    -0.06em -0.06em 0 #000,
+    0.06em -0.06em 0 #000,
+    -0.06em 0.06em 0 #000,
+    0.06em 0.06em 0 #000,
+    -0.06em 0px 0 #000,
+    0.06em 0px 0 #000,
+    0px -0.06em 0 #000,
+    0px 0.06em 0 #000,
+    0px 0.12em 0.3em rgba(0, 0, 0, 0.9) !important;
+}
+
+#__qt_custom_subtitles_layer .__qt_dual-subtitles > .__qt_custom-sub-secondary:empty {
+  display: none !important;
+}
+
 #__qt_custom_subtitles_layer .__qt_custom-sub-translation {
   position: absolute !important;
   top: calc(100% + 6px) !important;

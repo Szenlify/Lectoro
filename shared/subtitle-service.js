@@ -156,7 +156,7 @@
          * Sorts, merges overlapping cues with identical start times,
          * and guarantees monotonically increasing, complete cue objects with comfortable reading durations.
          */
-        function finalizeCues(rawCues) {
+        function finalizeCues(rawCues, { preserveTiming = false } = {}) {
             if (!Array.isArray(rawCues)) return [];
 
             const sorted = rawCues
@@ -169,6 +169,20 @@
                         cue.text.trim().length > 0,
                 )
                 .sort((a, b) => a.startTime - b.startTime);
+
+            // Platform tracks already define their display intervals. Dual subtitles
+            // must retain these boundaries, including gaps and overlapping cues.
+            if (preserveTiming) {
+                return sorted
+                    .filter((cue) =>
+                        Number.isFinite(cue.endTime) &&
+                        cue.endTime > cue.startTime,
+                    )
+                    .map((cue) => {
+                        const text = cue.text.replace(/\s+/g, " ").trim();
+                        return { ...cue, text, lines: [text] };
+                    });
+            }
 
             const merged = [];
             for (const cue of sorted) {
@@ -268,7 +282,7 @@
         /**
          * Parses standard WebVTT formatted text.
          */
-        function parseWebVtt(text) {
+        function parseWebVtt(text, options = {}) {
             const cues = [];
             const cleanText = String(text || "").replace(/^\uFEFF/, "");
             const blocks = cleanText.split(/\r?\n\s*\r?\n/);
@@ -308,13 +322,13 @@
                 });
             }
 
-            return finalizeCues(cues);
+            return finalizeCues(cues, options);
         }
 
         /**
          * Parses TTML / DFXP / XML subtitles (used extensively by Netflix, YouTube & broadcast).
          */
-        function parseTtml(text) {
+        function parseTtml(text, options = {}) {
             if (!text || typeof DOMParser === "undefined") return [];
 
             try {
@@ -325,7 +339,15 @@
                 if (xml.querySelector("parsererror")) return [];
 
                 const root = xml.documentElement;
-                const frameRate = numericXmlAttribute(root, "frameRate", 30);
+                let frameRate = numericXmlAttribute(root, "frameRate", 30);
+                if (options.preserveTiming) {
+                    const multiplier = Array.from(root.attributes || [])
+                        .find((attribute) => attribute.localName === "frameRateMultiplier")
+                        ?.value.trim().split(/\s+/).map(Number);
+                    if (multiplier?.length === 2 && multiplier.every((n) => Number.isFinite(n) && n > 0)) {
+                        frameRate *= multiplier[0] / multiplier[1];
+                    }
+                }
                 const tickRate = numericXmlAttribute(
                     root,
                     "tickRate",
@@ -335,19 +357,19 @@
 
                 const paragraphs = Array.from(
                     xml.getElementsByTagNameNS("*", "p"),
-                ).filter((paragraph) => paragraph.hasAttribute("begin"));
+                ).filter((paragraph) =>
+                    paragraph.hasAttribute("begin") || paragraph.hasAttribute("t"),
+                );
 
                 for (const paragraph of paragraphs) {
-                    const startTime = parseTtmlTime(
-                        paragraph.getAttribute("begin"),
-                        frameRate,
-                        tickRate,
-                    );
-                    let endTime = parseTtmlTime(
-                        paragraph.getAttribute("end"),
-                        frameRate,
-                        tickRate,
-                    );
+                    // YouTube srv3 uses millisecond t/d attributes on paragraphs.
+                    const isSrv3 = paragraph.hasAttribute("t");
+                    let startTime = isSrv3
+                        ? Number(paragraph.getAttribute("t")) / 1000
+                        : parseTtmlTime(paragraph.getAttribute("begin"), frameRate, tickRate);
+                    let endTime = isSrv3 && paragraph.hasAttribute("d")
+                        ? startTime + Number(paragraph.getAttribute("d")) / 1000
+                        : parseTtmlTime(paragraph.getAttribute("end"), frameRate, tickRate);
 
                     if (!Number.isFinite(endTime)) {
                         const duration = parseTtmlTime(
@@ -361,6 +383,29 @@
                         ) {
                             endTime = startTime + duration;
                         }
+                    }
+
+                    if (options.preserveTiming && !isSrv3 && Number.isFinite(startTime)) {
+                        const duration = parseTtmlTime(paragraph.getAttribute("dur"), frameRate, tickRate);
+                        if (Number.isFinite(duration)) {
+                            endTime = Number.isFinite(endTime)
+                                ? Math.min(endTime, startTime + duration)
+                                : startTime + duration;
+                        }
+                    }
+
+                    if (options.preserveTiming && !isSrv3 && Number.isFinite(startTime)) {
+                        // TTML begin/end offsets are relative to the containing
+                        // element. Netflix usually uses a zero-offset body/div.
+                        let ancestor = paragraph.parentElement;
+                        let offset = 0;
+                        while (ancestor && ancestor !== root) {
+                            const begin = parseTtmlTime(ancestor.getAttribute("begin"), frameRate, tickRate);
+                            if (Number.isFinite(begin)) offset += begin;
+                            ancestor = ancestor.parentElement;
+                        }
+                        startTime += offset;
+                        if (Number.isFinite(endTime)) endTime += offset;
                     }
 
                     const textClone = paragraph.cloneNode(true);
@@ -396,10 +441,12 @@
                 for (const node of textNodes) {
                     const startAttr = node.getAttribute("start");
                     const startTime = Number(startAttr);
-                    const duration = Number(node.getAttribute("dur") || 3);
+                    const duration = node.hasAttribute("dur")
+                        ? Number(node.getAttribute("dur"))
+                        : options.preserveTiming ? NaN : 3;
                     const endTime = Number.isFinite(duration)
                         ? startTime + duration
-                        : startTime + 3;
+                        : options.preserveTiming ? null : startTime + 3;
                     const cueText = cleanCueText(node.textContent || "", {
                         preserveNewlines: true,
                     });
@@ -417,7 +464,7 @@
                     }
                 }
 
-                return finalizeCues(cues);
+                return finalizeCues(cues, options);
             } catch (error) {
                 console.warn("[Lectoro] TTML subtitle parsing failed:", error);
                 return [];
@@ -428,7 +475,7 @@
          * Parses YouTube JSON3 timed text format (used by YouTube API for manual and ASR captions).
          * Extracts every single word token with precise timestamps and stitches dynamic streams into complete, natural sentences.
          */
-        function parseYouTubeJson3(jsonOrText) {
+        function parseYouTubeJson3(jsonOrText, options = {}) {
             if (!jsonOrText) return [];
             let data;
             try {
@@ -440,6 +487,20 @@
                 return [];
             }
             if (!data || !Array.isArray(data.events)) return [];
+
+            if (options.preserveTiming) {
+                const cues = [];
+                for (const event of data.events) {
+                    if (!event || !Array.isArray(event.segs)) continue;
+                    const startTime = Number(event.tStartMs) / 1000;
+                    const duration = Number(event.dDurationMs) / 1000;
+                    const text = cleanCueText(event.segs
+                        .map((segment) => typeof segment?.utf8 === "string" ? segment.utf8 : "")
+                        .join(""));
+                    cues.push({ startTime, endTime: startTime + duration, text });
+                }
+                return finalizeCues(cues, options);
+            }
 
             // 1. Collect all word tokens with exact timestamps
             const tokens = [];
@@ -547,7 +608,7 @@
         /**
          * Parses SubRip (.srt) subtitles.
          */
-        function parseSrt(text) {
+        function parseSrt(text, options = {}) {
             const cues = [];
             const cleanText = String(text || "").replace(/^\uFEFF/, "");
             const blocks = cleanText.split(/\r?\n\s*\r?\n/);
@@ -587,49 +648,50 @@
                 });
             }
 
-            return finalizeCues(cues);
+            return finalizeCues(cues, options);
         }
 
         /**
          * Universal entry point: autodetects subtitle format and returns normalized cues array.
          */
-        function parseTimedText(text, profile = "", contentType = "") {
+        function parseTimedText(text, profile = "", contentType = "", options = {}) {
             if (!text) return [];
             const raw = String(text).trim();
             const meta = `${profile || ""} ${contentType || ""}`.toLowerCase();
 
             // YouTube JSON3 format
             if (raw.startsWith("{") || meta.includes("json")) {
-                const jsonCues = parseYouTubeJson3(raw);
+                const jsonCues = parseYouTubeJson3(raw, options);
                 if (jsonCues.length > 0) return jsonCues;
             }
 
             if (meta.includes("webvtt") || /^\s*WEBVTT/i.test(raw)) {
-                return parseWebVtt(raw);
+                return parseWebVtt(raw, options);
             }
             if (
                 meta.includes("ttml") ||
                 meta.includes("dfxp") ||
+                meta.includes("srv3") ||
                 meta.includes("xml") ||
-                /^\s*<\?xml|<tt\b|<transcript\b/i.test(raw)
+                /^\s*<\?xml|<tt\b|<transcript\b|<timedtext\b/i.test(raw)
             ) {
-                return parseTtml(raw);
+                return parseTtml(raw, options);
             }
             if (/^\d+\r?\n\d{1,2}:\d{2}:\d{2}/.test(raw)) {
-                return parseSrt(raw);
+                return parseSrt(raw, options);
             }
 
             // Fallback attempts
-            const tryJson = parseYouTubeJson3(raw);
+            const tryJson = parseYouTubeJson3(raw, options);
             if (tryJson.length > 0) return tryJson;
 
-            const tryTtml = parseTtml(raw);
+            const tryTtml = parseTtml(raw, options);
             if (tryTtml.length > 0) return tryTtml;
 
-            const tryVtt = parseWebVtt(raw);
+            const tryVtt = parseWebVtt(raw, options);
             if (tryVtt.length > 0) return tryVtt;
 
-            return parseSrt(raw);
+            return parseSrt(raw, options);
         }
 
         /**
@@ -849,7 +911,7 @@
          * Merges consecutive segments until terminal punctuation ([.!?。！？]),
          * a significant pause (> 1.4s gap), or a speaker change marker (>>, -, —).
          */
-        function reconstructFullSentenceCues(cues) {
+        function reconstructFullSentenceCues(cues, options = {}) {
             if (!Array.isArray(cues) || cues.length === 0) return [];
 
             const validCues = cues.filter(
@@ -941,153 +1003,69 @@
                 }
             }
 
-            return finalizeCues(sentences);
+            return finalizeCues(sentences, options);
         }
 
         /**
-         * Language Reactor Master-Slave Track Alignment & Forward Synchronization:
-         * Maps an independent secondary (slave) subtitle track onto the primary (master) track.
-         * 1. Forward synchronization & fusion:
-         *    Scans cues forward. If a secondary (slave) segment spans across consecutive master cues,
-         *    or if adjacent master cues without punctuation share a single translation sentence,
-         *    merges master cues forward into one line so both top and bottom tracks stay in perfect sync.
-         * 2. Interval Overlap mapping:
-         *    For each master cue [t1, t2], finds all overlapping slave segments: max(t1, s1) < min(t2, s2).
-         * 3. Text gluing & deduplication:
-         *    Glues overlapping slave text segments chronologically into one line.
-         * 4. Strict time alignment:
-         *    Slave text display time is clamped to the master sentence's [t1, t2].
-         * Result: Both languages appear, change and disappear simultaneously.
+         * Attach a slave track to immutable master intervals. A slave cue belongs
+         * to the master with the greatest positive overlap (ties prefer the earlier
+         * master). It is never replayed across successive master fragments. Missing
+         * overlaps stay empty; no guessed drift, cue fusion, or duration stretching.
+         * The renderer therefore needs only the active master cue's lifecycle.
+         *
+         * @returns {Array<{startTime: number, endTime: number, text: string, translation: string}>}
          */
         function alignSlaveTrackToMaster(masterCues, slaveCues) {
             if (!Array.isArray(masterCues) || masterCues.length === 0) return [];
-            if (!Array.isArray(slaveCues) || slaveCues.length === 0) {
-                return masterCues.map((m) => ({
-                    ...m,
-                    lines: Array.isArray(m.lines) && m.lines.length > 0 ? m.lines : [m.text],
-                    translation: m.translation || "",
-                }));
-            }
 
-            const cleanSlaveCues = slaveCues
-                .filter((s) => s && Number.isFinite(s.startTime) && s.text)
-                .map((s) => ({
-                    startTime: s.startTime,
-                    endTime: Number.isFinite(s.endTime) ? s.endTime : s.startTime + 2.5,
-                    text: cleanCueText(s.text, { preserveNewlines: false }).trim(),
-                }))
-                .filter((s) => s.text.length > 0)
-                .sort((a, b) => a.startTime - b.startTime);
-
-            if (cleanSlaveCues.length === 0) {
-                return masterCues.map((m) => ({
-                    ...m,
-                    lines: Array.isArray(m.lines) && m.lines.length > 0 ? m.lines : [m.text],
-                    translation: m.translation || "",
-                }));
-            }
-
-            // Step 1: Forward synchronization & fusion of consecutive master cues
-            // Merges master cues forward into a single line when spanned by the same slave translation sentence
-            const fusedMasterCues = [];
-            let i = 0;
-            while (i < masterCues.length) {
-                let current = {
-                    ...masterCues[i],
-                    lines: Array.isArray(masterCues[i].lines) && masterCues[i].lines.length > 0
-                        ? [...masterCues[i].lines]
-                        : [masterCues[i].text],
-                };
-
-                while (i + 1 < masterCues.length) {
-                    const next = masterCues[i + 1];
-                    const t1 = current.startTime;
-                    const t2 = Number.isFinite(current.endTime) ? current.endTime : current.startTime + 2.5;
-                    const nextT1 = next.startTime;
-                    const nextT2 = Number.isFinite(next.endTime) ? next.endTime : next.startTime + 2.5;
-
-                    const gap = nextT1 - t2;
-                    if (gap > 0.8) break; // long silence / scene break
-
-                    const curText = (current.text || "").trim();
-                    const nextText = (next.text || "").trim();
-
-                    // Do not merge across speaker change markers
-                    if (/^(?:>>+|<<+|»+|«+|››+|[-–—]\s*\S)/.test(nextText)) break;
-
-                    const totalWords = (curText + " " + nextText).split(/\s+/).length;
-                    const totalChars = curText.length + 1 + nextText.length;
-                    if (totalWords > 12 || totalChars > 70) break;
-
-                    // Check if any slave cue spans across current and next
-                    const spanningSlave = cleanSlaveCues.find((s) => {
-                        return s.startTime < t2 - 0.05 && s.endTime > nextT1 + 0.15;
-                    });
-
-                    const curEndsPunct = /[.?!,…:;][)\]"']?$/.test(curText);
-                    const shouldMerge = spanningSlave || (!curEndsPunct && gap < 0.35 && totalWords <= 8);
-
-                    if (shouldMerge) {
-                        const mergedText = `${curText} ${nextText}`.replace(/\s+/g, " ").trim();
-                        current.text = mergedText;
-                        current.lines = [mergedText];
-                        current.endTime = Math.max(t2, nextT2);
-                        i++;
-                    } else {
-                        break;
-                    }
-                }
-
-                fusedMasterCues.push(current);
-                i++;
-            }
-
-            // Step 2: Language Reactor Interval Overlap alignment on fused master cues
-            return fusedMasterCues.map((master) => {
-                const t1 = master.startTime;
-                const t2 = Number.isFinite(master.endTime) ? master.endTime : master.startTime + 3;
-
-                // Interval overlap: max(t1, s1) < min(t2, s2)
-                let overlappingSlaves = cleanSlaveCues.filter((slave) => {
-                    const s1 = slave.startTime;
-                    const s2 = slave.endTime;
-                    const overlap = Math.min(t2, s2) - Math.max(t1, s1);
-                    return overlap > 0.04;
-                });
-
-                // Forward tolerance lookahead: if slight timestamp drift (<= 0.35s)
-                if (overlappingSlaves.length === 0) {
-                    const nearbySlave = cleanSlaveCues.find((slave) => {
-                        const s1 = slave.startTime;
-                        const s2 = slave.endTime;
-                        return (s1 >= t1 - 0.25 && s1 <= t2 + 0.35) || (s2 >= t1 - 0.25 && s2 <= t2 + 0.35);
-                    });
-                    if (nearbySlave) {
-                        overlappingSlaves = [nearbySlave];
-                    }
-                }
-
-                let alignedTranslation = "";
-                if (overlappingSlaves.length > 0) {
-                    const seen = new Set();
-                    const gluedParts = [];
-                    for (const s of overlappingSlaves) {
-                        if (!seen.has(s.text)) {
-                            seen.add(s.text);
-                            gluedParts.push(s.text);
-                        }
-                    }
-                    alignedTranslation = gluedParts.join(" ").replace(/\s+/g, " ").trim();
-                } else if (master.translation) {
-                    alignedTranslation = master.translation;
-                }
-
-                return {
-                    ...master,
-                    lines: Array.isArray(master.lines) && master.lines.length > 0 ? master.lines : [master.text],
-                    translation: alignedTranslation,
-                };
+            const unified = masterCues.map((master) => {
+                const text = String(master?.text || "").replace(/\s+/g, " ").trim();
+                return { ...master, text, lines: [text], translation: "" };
             });
+            if (!Array.isArray(slaveCues) || slaveCues.length === 0) return unified;
+
+            const masters = unified
+                .map((cue, index) => ({ cue, index }))
+                .filter(({ cue }) => Number.isFinite(cue.startTime) &&
+                    Number.isFinite(cue.endTime) && cue.endTime > cue.startTime)
+                .sort((a, b) => a.cue.startTime - b.cue.startTime || a.index - b.index);
+            const slaves = slaveCues
+                .filter((cue) => cue && Number.isFinite(cue.startTime) &&
+                    Number.isFinite(cue.endTime) && cue.endTime > cue.startTime)
+                .map((cue) => ({ ...cue, text: cleanCueText(cue.text) }))
+                .filter((cue) => cue.text)
+                .sort((a, b) => a.startTime - b.startTime);
+            const translations = unified.map(() => new Set());
+            let firstMaster = 0;
+
+            for (const slave of slaves) {
+                // Tracks normally contain thousands of short, sequential cues.
+                // Advance past expired intervals instead of rescanning the track.
+                while (firstMaster < masters.length &&
+                    masters[firstMaster].cue.endTime <= slave.startTime) {
+                    firstMaster++;
+                }
+                let owner = -1;
+                let greatestOverlap = 0;
+                for (let i = firstMaster; i < masters.length; i++) {
+                    const { cue, index } = masters[i];
+                    if (cue.startTime >= slave.endTime) break;
+                    const overlap = Math.min(cue.endTime, slave.endTime) -
+                        Math.max(cue.startTime, slave.startTime);
+                    // The epsilon only resolves floating-point ties; touching
+                    // boundaries and positive gaps never count as an overlap.
+                    if (overlap > 0 && (owner < 0 || overlap > greatestOverlap + 1e-9)) {
+                        greatestOverlap = overlap;
+                        owner = index;
+                    }
+                }
+                if (owner >= 0) translations[owner].add(slave.text);
+            }
+
+            for (let i = 0; i < unified.length; i++) {
+                unified[i].translation = [...translations[i]].join(" ");
+            }
+            return unified;
         }
 
         return Object.freeze({

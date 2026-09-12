@@ -8,7 +8,6 @@
 
   const TIMED_TEXT_EVENT = "__lectoro_youtube_timed_text";
   const SLAVE_TIMED_TEXT_EVENT = "__lectoro_youtube_slave_timed_text";
-  const REQUEST_TRANSLATION_EVENT = "__lectoro_youtube_request_translation";
   const TRACKS_EVENT = "__lectoro_youtube_tracks_available";
   const TRACK_REQUEST_EVENT = "__lectoro_youtube_track_request";
   const TRACK_RESPONSE_EVENT = "__lectoro_youtube_track_response";
@@ -285,11 +284,11 @@
   const originalFetch = window.fetch;
   if (typeof originalFetch === "function") {
     window.fetch = async function (...args) {
+      const requestUrl = typeof args[0] === "string" ? args[0] : args[0]?.url || "";
+      const requestVideoId = getCurrentVideoId();
       const response = await originalFetch.apply(this, args);
       try {
-        const requestUrl =
-          typeof args[0] === "string" ? args[0] : args[0]?.url || "";
-        if (requestUrl.includes("/api/timedtext")) {
+        if (response.ok && requestUrl.includes("/api/timedtext")) {
           const clone = response.clone();
           clone
             .text()
@@ -303,7 +302,7 @@
                     detail: {
                       url: requestUrl,
                       text,
-                      videoId: getCurrentVideoId(),
+                      videoId: requestVideoId,
                     },
                   })
                 );
@@ -321,6 +320,7 @@
   const originalXhrSend = XMLHttpRequest.prototype.send;
   XMLHttpRequest.prototype.open = function (method, url, ...rest) {
     this.__lectoro_url = typeof url === "string" ? url : "";
+    this.__lectoro_video_id = getCurrentVideoId();
     return originalXhrOpen.call(this, method, url, ...rest);
   };
   XMLHttpRequest.prototype.send = function (...args) {
@@ -328,7 +328,7 @@
       this.addEventListener("load", () => {
         try {
           const text = this.responseText;
-          if (text) {
+          if (text && this.status >= 200 && this.status < 300) {
             const eventName = this.__lectoro_url.includes("tlang=")
               ? SLAVE_TIMED_TEXT_EVENT
               : TIMED_TEXT_EVENT;
@@ -337,7 +337,7 @@
                 detail: {
                   url: this.__lectoro_url,
                   text,
-                  videoId: getCurrentVideoId(),
+                  videoId: this.__lectoro_video_id,
                 },
               })
             );
@@ -354,21 +354,20 @@
     return new Promise((resolve) => {
       try {
         const xhr = new XMLHttpRequest();
-        xhr.open("GET", url, true);
+        // Bypass our native-caption interceptor for extension-owned requests.
+        originalXhrOpen.call(xhr, "GET", url, true);
         xhr.withCredentials = true;
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            resolve({ ok: true, text: xhr.responseText });
-          } else {
-            resolve({ ok: false, text: xhr.responseText || "", status: xhr.status });
-          }
-        };
+        xhr.onload = () => resolve({
+          ok: xhr.status >= 200 && xhr.status < 300,
+          text: xhr.status >= 200 && xhr.status < 300 ? xhr.responseText : "",
+          status: xhr.status,
+        });
         xhr.onerror = () => resolve({ ok: false, text: "", error: "network_error" });
         xhr.ontimeout = () => resolve({ ok: false, text: "", error: "timeout" });
-        xhr.timeout = 7000;
-        xhr.send();
-      } catch (e) {
-        resolve({ ok: false, text: "", error: String(e) });
+        xhr.timeout = 5000;
+        originalXhrSend.call(xhr);
+      } catch (_) {
+        resolve({ ok: false, text: "", error: "network_error" });
       }
     });
   }
@@ -389,48 +388,38 @@
   });
 
   window.addEventListener(FETCH_REQUEST_EVENT, async (event) => {
-    const {requestId, url} = event?.detail || {};
+    const { requestId, url } = event?.detail || {};
     if (!requestId || !url) return;
-
+    let result;
     try {
-      // 1. Try XMLHttpRequest with credentials (exact same transport used by YouTube player)
-      let result = await fetchViaXhr(url);
-      if (!result.ok && result.status !== 404) {
-        // 2. Fallback to fetch if XHR did not succeed
+      const target = new URL(url, window.location.href);
+      if (target.protocol !== "https:" || !/(^|\.)youtube\.com$/i.test(target.hostname) || target.pathname !== "/api/timedtext") {
+        throw new Error("invalid_timedtext_url");
+      }
+      if (typeof originalFetch === "function") {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
         try {
-          const fetchFn = typeof originalFetch === "function" ? originalFetch : window.fetch;
-          const res = await fetchFn(url, {credentials: "include"});
-          if (res.ok) {
-            const text = await res.text();
-            result = { ok: true, text };
-          }
-        } catch (_) {}
+          // Use the native transport directly; never emit a second, unowned Master/Slave event.
+          const response = await originalFetch.call(window, target.href, {
+            credentials: "include",
+            signal: controller.signal,
+          });
+          result = { ok: response.ok, status: response.status, text: response.ok ? await response.text() : "" };
+        } catch (error) {
+          result = { ok: false, text: "", error: controller.signal.aborted ? "timeout" : "network_error" };
+        } finally {
+          clearTimeout(timeout);
+        }
+      } else {
+        result = await fetchViaXhr(target.href);
       }
-
-      window.dispatchEvent(
-        new CustomEvent(FETCH_RESPONSE_EVENT, {
-          detail: {requestId, text: result.text || "", ok: !!result.ok},
-        })
-      );
-    } catch (error) {
-      window.dispatchEvent(
-        new CustomEvent(FETCH_RESPONSE_EVENT, {
-          detail: {requestId, text: "", ok: false, error: String(error)},
-        })
-      );
+    } catch (_) {
+      result = { ok: false, text: "", error: "invalid_timedtext_url" };
     }
-  });
-
-  window.addEventListener(REQUEST_TRANSLATION_EVENT, (event) => {
-    const lang = event?.detail?.lang;
-    if (!lang) return;
-    try {
-      const player = getYouTubePlayer();
-      if (typeof player?.setOption === "function") {
-        player.setOption("captions", "translationLanguage", { languageCode: lang });
-        player.loadModule?.("captions");
-      }
-    } catch (_) {}
+    window.dispatchEvent(new CustomEvent(FETCH_RESPONSE_EVENT, {
+      detail: { requestId, ...result },
+    }));
   });
 
   window.addEventListener(SEEK_EVENT, (event) => {

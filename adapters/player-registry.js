@@ -576,15 +576,8 @@
             }
         }
         const fullText = lines.join(" ").trim();
-        let secondaryText = lines.translation || "";
-        if (!secondaryText && captionAdapter?.getCurrentCueLines) {
-            try {
-                const cur = captionAdapter.getCurrentCueLines(session.video);
-                if (cur?.translation) {
-                    secondaryText = cur.translation;
-                }
-            } catch (_) {}
-        }
+        // Both rows must come from the same timeline read, including empty gaps.
+        const secondaryText = lines.cue?.translation || lines.translation || "";
         if (typeof subtitleChangeCallback === "function") {
             subtitleChangeCallback({
                 lines,
@@ -593,6 +586,7 @@
                 session,
                 video: session.video,
                 secondaryText,
+                cue: lines.cue || null,
             });
         }
     }
@@ -1008,16 +1002,11 @@
                 }
             }
             if (!Number.isFinite(targetTime)) {
-                if (typeof QT !== "undefined" && QT.createHint) {
-                    QT.createHint(LectoroConstants.UI_CLASSES.SUB_HINT).show(
-                        direction < 0
-                            ? "No previous subtitle in timeline"
-                            : "No next subtitle in timeline",
-                        1800,
-                    );
-                }
-                if (wasPlaying && video.paused) video.play().catch(() => {});
-                return;
+                // Reliable fallback: if timeline index is not available or at bounds,
+                // jump backward or forward by 5 seconds so seeking never fails
+                const fallbackDelta = direction < 0 ? -5 : 5;
+                const candidateTime = (Number.isFinite(baseTime) ? baseTime : video.currentTime) + fallbackDelta;
+                targetTime = Math.max(0, Math.min(Number.isFinite(video.duration) ? video.duration : Infinity, candidateTime));
             }
 
             // Immediately register virtual target so consecutive rapid keypresses calculate subsequent cues
@@ -1040,12 +1029,11 @@
             }
         } catch (error) {
             console.warn("[Lectoro] Netflix subtitle navigation failed:", error);
-            if (typeof QT !== "undefined" && QT.createHint) {
-                QT.createHint(LectoroConstants.UI_CLASSES.SUB_HINT).show(
-                    "Could not load Netflix subtitle timeline",
-                    2200,
-                );
-            }
+            try {
+                const fallbackDelta = direction < 0 ? -5 : 5;
+                const fallbackTime = Math.max(0, (video.currentTime || 0) + fallbackDelta);
+                globalThis.LectoroNetflixAdapter?.requestSeek?.(fallbackTime, video);
+            } catch (_) { }
             if (wasPlaying && video.paused) video.play().catch(() => {});
         }
     }

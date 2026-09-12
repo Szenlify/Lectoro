@@ -619,6 +619,7 @@ const netflixTimedTextRequests = new Map();
 const netflixTimedTextFailures = new Map();
 const MAX_NETFLIX_FAILURE_ENTRIES = 100;
 const NETFLIX_TIMED_TEXT_FAILURE_TTL_MS = 30_000;
+const NETFLIX_TIMED_TEXT_TIMEOUT_MS = 10_000;
 
 function evictOldest(map, maxEntries) {
   if (map.size >= maxEntries) {
@@ -641,6 +642,7 @@ async function downloadNetflixTimedText(rawUrl) {
     credentials: "omit",
     redirect: "follow",
     referrerPolicy: "no-referrer",
+    signal: AbortSignal.timeout(NETFLIX_TIMED_TEXT_TIMEOUT_MS),
   });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const finalUrl = new URL(response.url);
@@ -670,7 +672,8 @@ async function downloadNetflixTimedText(rawUrl) {
   return result;
 }
 
-function fetchNetflixTimedText(rawUrl) {
+function fetchNetflixTimedText(rawUrl, { forceRetry = false } = {}) {
+  if (forceRetry) netflixTimedTextFailures.delete(rawUrl);
   if (netflixTimedTextCache.has(rawUrl)) {
     return Promise.resolve(netflixTimedTextCache.get(rawUrl));
   }
@@ -806,12 +809,12 @@ const MESSAGE_HANDLERS = Object.freeze({
   [MSG.FETCH_NETFLIX_TIMED_TEXT]: async (message, sender) => {
     if (
       !sender.tab?.url ||
-      !/^https:\/\/www\.netflix\.com\//i.test(sender.tab.url) ||
+      !/^https:\/\/(?:www\.)?netflix\.com\//i.test(sender.tab.url) ||
       !/^\d+$/.test(String(message.movieId || ""))
     ) {
       throw new Error("Request is not from a Netflix tab.");
     }
-    return fetchNetflixTimedText(message.url);
+    return fetchNetflixTimedText(message.url, { forceRetry: message.forceRetry === true });
   },
 
   [MSG.FETCH_CONTEXT_IMAGE]: async (message) => ({
