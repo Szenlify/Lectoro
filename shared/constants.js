@@ -340,16 +340,15 @@
          */
         const SIMPLE_WORDS = Object.freeze(
             new Set([
-                "i", "am", "him", "hers", "ours", "theirs", "been", "being",
+                "i", "am", "him", "hers",
                 "yes", "no", "ok", "okay", "hello", "hi", "bye", "please",
                 "thanks", "now",
-                "don't", "doesn't", "didn't", "isn't", "aren't",
                 "an", "oh", "um", "uh", "ah", "a", "and", "are", "as", "at", "be",
-                "for", "from", "have", "he", "her",
+                "he", "her",
                 "his", "if", "in", "is", "me", "my",
                 "not", "of", "on", "or", "our", "she", "so",
-                "some", "that", "the",
-                "to", "too", "us", "was", "we", "what",
+                "that", "the",
+                "us", "was", "we", "what",
                 "you", "your", "yours",
             ]),
         );
