@@ -26,14 +26,13 @@
 | --- | --- |
 | `manifest.json` | Uruchamia `background.js`, wskazuje `popup.html`, kolejność modułów content scripts i `styles.css`. |
 | `popup.html` → `popup.css` | Układ ustawień, subskrypcji i szablony zakładek. Ładuje moduły `shared`, Firebase, `popup/firebase-ui.js`, `init.js`, `tts.js`, `settings.js`. |
-| `popup/init.js` | Stan i inicjalizacja popupu; ładuje na żądanie `words.js` + `export.js`, `library.js`, `review.js`. |
+| `popup/init.js` | Stan i inicjalizacja popupu; ładuje na żądanie `words.js` + `export.js`, `review.js`. |
 | `popup/settings.js` → `SubscriptionService`, `SubscriptionConfig` | Języki, suwaki, tryby czytania, widok planów i obsługa rozliczeń. Błąd inicjalizacji ustawień może zatrzymać plany. |
 | `popup/firebase-ui.js` → `firebase/firebase-sync.js` | Interfejs konta i logowania. |
 | `popup/words.js` → repozytorium słów | Lista, filtrowanie i operacje na zapisanych słowach. |
 | `popup/review.js` → SRS, translator, TTS | Powtórki fiszek, oceny, tłumaczenie AI; zapisana para języków fiszki ma znaczenie. |
 | `popup/tts.js` → `shared/tts-service.js` | Przyciski odczytu i anulowanie mowy w popupie. |
 | `popup/export.js` → `shared/quiz-export.js`, subskrypcje | Eksport i generowanie quizu, limity operacji. |
-| `popup/library.js` → `shared/library-items.json` | Katalog polecanych materiałów. |
 | `core.js` → moduły `shared` | Udostępnia globalny interfejs `QT`: tooltipy i połączenia z usługami. |
 | `content.js` → `QT` | Zaznaczanie tekstu, pasek tłumaczenia, czytnik i podświetlanie fragmentów. |
 | `styles.css` | Style interfejsu wstrzykiwanego w strony, w tym nakładek wideo. |
@@ -98,28 +97,11 @@ Przepływ Enter: `video/subtitle-overlay.js` → `core.js` (`QT.geminiExplainSen
 | `package.json` | Polecenia `npm test`, `npm run check:syntax`, `npm run build`, `npm run audit`. |
 | `icons/*` | Ikony wskazane w manifest. |
 | `todo.md`, `p.md` | Notatki robocze; reguły architektury utrzymuj tutaj. |
-
 ## Zmiany i propozycje SSOT
 
-- [x] **Naprawa reguł `SIMPLE_WORDS` w `shared/constants.js`:**
-  - Przywrócono angielskie czasowniki posiłkowe (`do`, `does`, `did`, `have`, `has`, `had`, `can`, `will` itd.) oraz zaimki do `SIMPLE_WORDS`.
-  - Naprawiono rozpoznawanie skrótów (`don't`, `doesn't`, `didn't`), dzięki czemu `tests/local-dictionary.test.js` przechodzi w 100% (6/6 PASS).
-- [x] **Eliminacja martwego kodu i przestarzałych trybów:**
-  - Wycofano nasłuchiwanie `changes.subtitleTTS` w `video/reading-modes.js`.
-  - Usunięto martwą opcję `scope === "all"` w `shared/quiz-export.js`, zabezpieczając dozwolony zakres generowania quizu.
-- [x] **Formalizacja testów i oczyszczenie `scratch/`:**
-  - Utworzono `tests/srs-algorithm.test.js` (formalny test algorytmu powtórek SRS w `node:test`).
-  - Utworzono `tests/youtube-captions-parse.test.js` (test parsera JSON3, rekonstrukcji ASR i czyszczenia znaczników).
-  - Utworzono `tests/subscription-parity.test.js` (automatyczna weryfikacja 100% zgodności planów i limitów między `shared/` a `functions/`).
-  - Usunięto przestarzałe skrypty ze `scratch/`.
-- [x] **Uporządkowanie `package.json` i skryptów utrzymania:**
-  - Skrypt `npm test` uruchamia wyłącznie aktywne testy (`node --test tests/*.test.js functions/*.test.js`).
-  - Zaimplementowano `scripts/check-syntax.js` sprawdzający składnię każdego pliku `.js` w repozytorium (`npm run check:syntax`).
-  - Dodano skrypt `npm run build` do generowania paczki dystrybucyjnej.
-- [x] **Zgodność z Chrome Web Store (CWS MV3):**
-  - Dołączono katalog `dictionaries/` do `INCLUDED_ENTRIES` w `scripts/build-cws-zip.js`, gwarantując obecność pakietów fraz w dystrybucji.
-  - Utworzono plik `CHROMEWEBSTORE.md` z pełnym zestawem metadanych, tabelą uzasadnień uprawnień (`storage`, `alarms`, `identity`, `scripting`, `activeTab`, host permissions) oraz deklaracjami prywatności.
-- [x] **Weryfikacja:**
-  - `npm test`: 223/223 testów PASS.
-  - `npm run check:syntax`: 87/87 plików JS bez błędów składniowych.
-  - `npm run build`: paczka `dist/lectoro-cws-v1.0.0.zip` (339.2 KB) zweryfikowana pomyślnie.
+- [x] **Całkowite usunięcie zakładki Library z popupu i jej CSS:**
+  - Usunięto przycisk zakładki `data-tab="library"` oraz szablon `<template id="tab-library-template">` z `popup.html`.
+  - Usunięto wszystkie dedykowane style `.library-*` oraz `.platform-*` z `popup.css`.
+  - Zaktualizowano `popup/init.js` (usunięto `library` z `TAB_SCRIPTS` oraz procedury aktywacji zakładek).
+  - Usunięto plik `popup/library.js` oraz powiązany `shared/library-items.json`.
+  - Zaktualizowano architekturę i mapę powiązań w `GUIDE.md`.

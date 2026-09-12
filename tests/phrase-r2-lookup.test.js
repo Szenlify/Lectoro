@@ -57,7 +57,7 @@ test('common phrases from dictionaries/phrase/en-pl.json match in word-by-word m
     { words: ['on', 'thin', 'ice'], expected: 'na cienkim lodzie', length: 3 },
     { words: ['take', 'off'], expected: 'startować', length: 2 },
     { words: ['take', 'out'], expected: 'wyjmować', length: 2 },
-    { words: ['take', 'over'], expected: 'przejmować', length: 2 },
+    { words: ['take', 'over'], expected: 'przejmować kontrolę', length: 2 },
   ];
 
   for (const { words, expected, length } of testCases) {
