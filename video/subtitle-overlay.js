@@ -566,7 +566,7 @@
             // Proportional uniform font sizing across all video platforms
             const fontSizePx = Math.max(
                 20,
-                Math.min(57, Math.round(actualWidth * 0.018/*  */ + 4)),
+                Math.min(57, Math.round(actualWidth * 0.026/*  */ + 4)),
             );
             layer.style.setProperty(
                 "--lectoro-sub-font-size",
