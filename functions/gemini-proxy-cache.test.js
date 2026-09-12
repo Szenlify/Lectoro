@@ -443,15 +443,16 @@ test("GeminiProxy reuses cached response for identical prompts without network f
     assert.equal(second.text, first.text);
 });
 
-test("AI prompts keep native and simple-language contracts separate and compact", () => {
+test("AI prompts always use native language and stay compact", () => {
     const prompts = require("../shared/ai-prompts");
     const native = prompts.explainSentence("Break a leg!", "pl");
     assert.ok(native.includes("Polish (pl)"));
     assert.ok(native.length < 1700);
-    const simple = prompts.explainSentence("Viel Erfolg!", "pl", null, { aiExplanationLanguage: "simple_target", sourceLang: "de-DE" });
-    assert.ok(simple.includes("German (de), in simple A2-B1 words"));
-    assert.ok(simple.includes('"learning_language":"de"'));
-    assert.ok(!simple.includes("Polish"));
+    const germanSource = prompts.explainSentence("Viel Erfolg!", "pl", null, { aiExplanationLanguage: "simple_target", sourceLang: "de-DE" });
+    assert.ok(germanSource.includes("German (de)"));
+    assert.ok(germanSource.includes('"output_language":"pl"'));
+    assert.ok(germanSource.includes('"learning_language":"de"'));
+    assert.ok(germanSource.includes("Polish"));
     for (const prompt of [prompts.sentenceExample("apple", "fruit", "en", "es"), prompts.standardTranslate("run", "She runs fast", "en", "de")]) {
         assert.ok(prompt.includes("JSON"));
         assert.ok(prompt.length < 1000);

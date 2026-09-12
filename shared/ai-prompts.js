@@ -78,19 +78,13 @@ JSON: {"sentence":"...","translation":"...","output_language":"${languageCode(tg
             context = null,
             options = {},
         ) {
-            const simple = options.aiExplanationLanguage === "simple_target";
             const sourceLang = languageCode(options.sourceLang || "en");
-            const outputLang = simple ? sourceLang : languageCode(targetLang);
-            const output = simple
-                ? `${getLangName(sourceLang)}, in simple A2-B1 words`
-                : getLangName(targetLang);
-            const task = simple
-                ? "Paraphrase only the sentence in that same language"
-                : "Translate only the sentence";
+            const outputLang = languageCode(targetLang);
+            const output = getLangName(targetLang);
             return (
                 `${RULES}
 Study this subtitle in ${getLangName(options.sourceLang || "en")}; never switch source language. All prose, meanings and badges: ${output}; source terms/expansions may be quoted. Terms: verbatim source text. Badges: short category labels.
-${task} in one natural line, preserving all clauses. Context resolves sense only. Do not guess missing facts. Sentence explanation: "".
+Translate only the sentence in one natural line, preserving all clauses. Context resolves sense only. Do not guess missing facts. Sentence explanation: "".
 items: 0-4 worth learning, not a quota; [] is valid. Default to single words. Merge only genuine idioms or phrasal verbs whose contextual sense is lost word by word (take off, get up); never literal groups (red car, very good), transparent compounds or grammar alone. Prioritize these expressions, then slang and useful vocabulary; skip names and obvious words. Keep sentence order, no duplicates or overlaps. term: smallest exact span carrying the whole expression; include intervening words only for separated verbs. Never extract an idiom's parts separately. type: idiom, phrasal_verb, slang or vocabulary.
 meaning: one brief contextual meaning; expand contractions here once. Item explanation: "" unless one short sentence adds essential usage/grammar beyond meaning; never restate it. No filler or extra examples.
 JSON: {"source_language":"${sourceLang}","output_language":"${outputLang}","badge":"...","translation":"...","explanation":"","items":[{"term":"...","type":"vocabulary","badge":"...","meaning":"...","explanation":"..."}]}` +

@@ -89,18 +89,19 @@ test("Enter still rejects malformed sentence explanations and empty translations
     }
 });
 
-test("Enter uses the configured learning language and explanation mode", async () => {
-    for (const [mode, outputLanguage] of [["native", "es"], ["simple_target", "de"]]) {
+test("Enter always uses native language, including obsolete stored preferences", async () => {
+    for (const [mode, outputLanguage] of [["native", "es"], ["simple_target", "es"]]) {
         const { service, requests } = explanationService(response({
             source_language: "de",
             output_language: outputLanguage,
-            badge: mode === "native" ? "Frase" : "Satz",
-            translation: mode === "native" ? "¡Buena suerte!" : "Ich wünsche dir Erfolg!",
+            badge: "Frase",
+            translation: "Buena suerte!",
         }), { learningLang: "de", targetLang: "es", aiExplanationLanguage: mode });
         const result = await service.explainSentence("Viel Erfolg!", await service.getTargetLang());
         assert.equal(result.detectedLang, "de");
         assert.match(requests[0].prompt, /German \(de\)/);
         assert.match(requests[0].prompt, /"learning_language":"de"/);
+        assert.match(requests[0].prompt, /"output_language":"es"/);
         assert.equal(result.explanation, "");
     }
 

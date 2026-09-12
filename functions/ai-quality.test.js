@@ -68,7 +68,7 @@ test("Enter preserves localized badges, filters invented items and enforces lang
     t.after(() => { global.GeminiProxy = saved; });
     const Translator = require("../shared/translator-service");
     let result = {
-        source_language: "de", output_language: "de", badge: "Satz", translation: "Viel Erfolg!", explanation: "Ein guter Wunsch.",
+        source_language: "de", output_language: "pl", badge: "Satz", translation: "Viel Erfolg!", explanation: "Ein guter Wunsch.",
         items: [
             { term: "Erfolg", type: "vocabulary", badge: "Wort", meaning: "gutes Ergebnis", explanation: "Ein gutes Ergebnis." },
             { term: "invented", type: "idiom", meaning: "x", explanation: "x" },
@@ -76,14 +76,14 @@ test("Enter preserves localized badges, filters invented items and enforces lang
         ],
     };
     global.GeminiProxy = { requestJSON: async (_prompt, opts) => { opts.validate?.(result); return result; } };
-    const parsed = await Translator.explainSentence("Viel Erfolg!", "pl", null, { aiExplanationLanguage: "simple_target", sourceLang: "de" });
+    const parsed = await Translator.explainSentence("Viel Erfolg!", "pl", null, { sourceLang: "de" });
     assert.equal(parsed.badge, "Satz");
     assert.equal(parsed.items.length, 1);
     assert.equal(parsed.items[0].badge, "Wort");
-    result = { ...result, output_language: "pl" };
-    await assert.rejects(Translator.explainSentence("Viel Erfolg!", "pl", null, { aiExplanationLanguage: "simple_target" }));
-    result = { ...result, translation: {} };
-    await assert.rejects(Translator.explainSentence("Viel Erfolg!", "pl", null, { aiExplanationLanguage: "native" }));
+    result = { ...result, output_language: "de" };
+    await assert.rejects(Translator.explainSentence("Viel Erfolg!", "pl", null, { sourceLang: "de" }));
+    result = { ...result, output_language: "pl", translation: {} };
+    await assert.rejects(Translator.explainSentence("Viel Erfolg!", "pl", null, { sourceLang: "de" }));
 });
 
 test("quiz retains answer variants and rejects invalid keys, booleans and ambiguous pairs", () => {
@@ -155,7 +155,7 @@ test("Enter ignores the previous request after closing and reopening the panel",
         getActiveSubtitleContext: () => null, normalizeLanguageCode: () => "en",
         SharedTranslatorService: { getLearningLang: async () => "en" },
         resolveAiBadge: () => "Sentence", showAiExplainItem: () => displayed.push(context.aiExplainQueue[0].meaning),
-        QT: { hideTooltip: noop, getTargetLang: async () => "pl", getAiExplanationLanguage: async () => "native",
+        QT: { hideTooltip: noop, getTargetLang: async () => "pl",
             geminiExplainSentence: () => new Promise((resolve) => pending.push(resolve)) },
     });
     vm.runInContext(source.slice(start, end), context);

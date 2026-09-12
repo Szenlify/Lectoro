@@ -193,17 +193,10 @@
                 ...data,
                 targetLang: Constants.normalizeSupportedLanguage(data.targetLang, defaults.targetLang),
                 learningLang: Constants.normalizeSupportedLanguage(data.learningLang, defaults.learningLang),
-                aiExplanationLanguage:
-                    data.aiExplanationLanguage === "simple_target"
-                        ? "simple_target"
-                        : "native",
             };
         }
         async function getTargetLang() {
             return (await getReadingSettings()).targetLang;
-        }
-        async function getAiExplanationLanguage() {
-            return (await getReadingSettings()).aiExplanationLanguage;
         }
         async function getLearningLang() {
             return (await getReadingSettings()).learningLang;
@@ -491,15 +484,12 @@
             if (typeof AIPrompts === "undefined") {
                 throw new Error("AIPrompts is unavailable.");
             }
-            const aiExplanationLanguage =
-                options?.aiExplanationLanguage ||
-                (await getAiExplanationLanguage());
             const sourceLang = Constants.normalizeSupportedLanguage(options.sourceLang || await getLearningLang());
             const prompt = AIPrompts.explainSentence(
                 sentence,
                 targetLang,
                 context,
-                { ...options, aiExplanationLanguage, sourceLang },
+                { sourceLang },
             );
             const parsed = await geminiRequest(prompt, {
                 temperature: 0.2,
@@ -511,12 +501,7 @@
                     if (detected !== AIPrompts.languageCode(sourceLang)) {
                         throw new Error("AI returned a different source language than the selected learning language.");
                     }
-                    AIPrompts.validateLanguage(
-                        result,
-                        aiExplanationLanguage === "simple_target"
-                            ? detected
-                            : targetLang,
-                    );
+                    AIPrompts.validateLanguage(result, targetLang);
                     requireTextFields(result, [
                         "translation",
                         "badge",
@@ -612,7 +597,6 @@
             getReadingSettings,
             getCachedTranslation: (text, lang, sourceLang) =>
                 transportCache.peek(text, lang, sourceLang),
-            getAiExplanationLanguage,
             geminiRequest,
             generateSentence,
             explainSentence,

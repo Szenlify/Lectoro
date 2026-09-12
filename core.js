@@ -1394,8 +1394,6 @@
 
         // Storage – delegates to SharedWordRepository and SharedTranslatorService
         getTargetLang: () => SharedTranslatorService.getTargetLang(),
-        getAiExplanationLanguage: () =>
-            SharedTranslatorService.getAiExplanationLanguage(),
         saveWord: (entry) => SharedWordRepository.saveWord(entry),
 
         // AI & Screenshots – delegates to SharedTranslatorService

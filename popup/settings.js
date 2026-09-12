@@ -60,10 +60,6 @@ whenPopupReady((data) => {
 
     if (subtitleTTSToggle) subtitleTTSToggle.checked = !!data.subtitleTTS;
     if (wordCloudModeToggle) wordCloudModeToggle.checked = !!data.wordCloudMode;
-    const aiExpLangEl = document.getElementById("aiExplanationLanguage");
-    if (aiExpLangEl) {
-        aiExpLangEl.value = data.aiExplanationLanguage || "native";
-    }
 });
 
 select.addEventListener("change", () => {
@@ -73,16 +69,6 @@ select.addEventListener("change", () => {
 learningLangSelect.addEventListener("change", () => {
     chrome.storage.local.set({ learningLang: learningLangSelect.value }, flashSaved);
 });
-
-const aiExpLangSelect = document.getElementById("aiExplanationLanguage");
-if (aiExpLangSelect) {
-    aiExpLangSelect.addEventListener("change", () => {
-        chrome.storage.local.set(
-            { aiExplanationLanguage: aiExpLangSelect.value },
-            flashSaved,
-        );
-    });
-}
 
 // ── Subtitle reading modes ───────────────────────────────────────
 const subtitleTTSToggle = document.getElementById("subtitleTTS");

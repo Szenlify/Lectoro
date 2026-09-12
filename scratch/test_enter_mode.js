@@ -7,7 +7,7 @@ const C = require("../shared/constants");
 const U = require("../shared/utils");
 const file = "video/subtitle-overlay.js";
 
-function session(mode = "native") {
+function session() {
     const spoken = [],
         scheduled = [],
         navigated = [],
@@ -18,7 +18,6 @@ function session(mode = "native") {
         SVG: C.SVG_ICONS,
         TTS_QUOTE_CLASS: "quote",
         aiTooltipActive: true,
-        aiExplainMode: mode,
         aiExplainSourceLang: "en",
         aiExplainTargetLang: "pl",
         aiExplainSpeechToken: 1,
@@ -67,9 +66,10 @@ function session(mode = "native") {
     return { context, spoken, scheduled, navigated, rendered };
 }
 
-for (const mode of ["native", "simple_target"]) {
-    test(`Enter speaks sentence and word meanings in the correct ${mode} language`, async () => {
-        const { context, spoken } = session(mode);
+for (const language of ["pl", "de"]) {
+    test(`Enter speaks sentence and word meanings in the configured native ${language} language`, async () => {
+        const { context, spoken } = session();
+        context.aiExplainTargetLang = language;
         await context.speakAiExplainItem(
             {
                 type: "sentence",
@@ -89,9 +89,9 @@ for (const mode of ["native", "simple_target"]) {
             1,
         );
         assert.deepEqual(spoken, [
-            { text: "meaning", lang: mode === "native" ? "pl" : "en" },
+            { text: "meaning", lang: language },
             { text: "hello", lang: "en" },
-            { text: "meaning. detail", lang: mode === "native" ? "pl" : "en" },
+            { text: "meaning. detail", lang: language },
         ]);
     });
 }

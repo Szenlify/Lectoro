@@ -139,7 +139,6 @@
         const DEFAULT_READING_SETTINGS = Object.freeze({
             targetLang: "pl",
             learningLang: "en",
-            aiExplanationLanguage: "native",
             subtitleTTS: false,
             wordCloudMode: true,
         });

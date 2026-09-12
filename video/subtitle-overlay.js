@@ -70,7 +70,6 @@
     let aiExplainSourceLang = "en";
     let aiExplainRequestId = 0;
     let aiExplainTargetLang = "pl";
-    let aiExplainMode = "native";
     let aiExplainLayout = null;
     let aiExplainSpeechToken = 0;
     let aiAutoAdvanceTimer = null;
@@ -1684,9 +1683,7 @@
 
         const isSentenceStage = item.type === "sentence";
         const explanationLang =
-            aiExplainMode === "simple_target"
-                ? aiExplainSourceLang
-                : aiExplainTargetLang;
+            aiExplainTargetLang;
         const formattedExplanation =
             !isSentenceStage && item.explanation
                 ? QT.formatSpeechMarkup(
@@ -1697,9 +1694,7 @@
                 : "";
 
         const speakLang =
-            aiExplainMode === "simple_target"
-                ? aiExplainSourceLang
-                : aiExplainTargetLang;
+            aiExplainTargetLang;
 
         const speechText = isSentenceStage
             ? item.meaning || ""
@@ -1854,9 +1849,7 @@
         try {
             if (item.type === "sentence") {
                 const sentenceLang =
-                    aiExplainMode === "simple_target"
-                        ? aiExplainSourceLang
-                        : aiExplainTargetLang;
+                    aiExplainTargetLang;
 
                 if (item.meaning) {
                     await speakUntilFinished(item.meaning, sentenceLang, {
@@ -1876,9 +1869,7 @@
                 if (isCancelled()) return;
 
                 const detailLang =
-                    aiExplainMode === "simple_target"
-                        ? aiExplainSourceLang
-                        : aiExplainTargetLang;
+                    aiExplainTargetLang;
 
                 const explanationSpeech = [item.meaning, item.explanation]
                     .filter(Boolean)
@@ -2272,44 +2263,10 @@
                     ? ""
                     : cleanCardText(rawSentenceTr) || "";
 
-                // In AI mode (especially simple_target mode where definitions are in the target language,
-                // or if meaning is missing/untranslated), ensure flashcard translation is in the user's native language!
+                // Missing translations fall back to the native language.
                 const targetNativeLang =
                     aiExplainTargetLang || (await QT.getTargetLang?.()) || "pl";
-                let aiDefinition = "";
-
-                if (aiExplainMode === "simple_target") {
-                    // In simple_target mode, currentItem.meaning is a simplified target-language definition (e.g. English).
-                    // Preserve that simple definition in aiSentence for learning,
-                    // but translate the term and context sentence to the native language for the flashcard!
-                    aiDefinition =
-                        cleanedMeaning !== cleanedTerm ? cleanedMeaning : "";
-                    try {
-                        const trTerm = await QT.translate(
-                            cleanedTerm,
-                            targetNativeLang,
-                        );
-                        if (trTerm?.translated) {
-                            cleanedMeaning =
-                                cleanCardText(trTerm.translated) ||
-                                trTerm.translated;
-                        }
-                    } catch (_) { }
-
-                    if (contextSentence) {
-                        try {
-                            const trSent = await QT.translate(
-                                contextSentence,
-                                targetNativeLang,
-                            );
-                            if (trSent?.translated) {
-                                contextSentenceTranslated =
-                                    cleanCardText(trSent.translated) ||
-                                    trSent.translated;
-                            }
-                        } catch (_) { }
-                    }
-                } else if (
+                if (
                     !cleanedMeaning ||
                     cleanedMeaning.toLowerCase() === cleanedTerm.toLowerCase()
                 ) {
@@ -2326,10 +2283,6 @@
                     } catch (_) { }
                 }
 
-                const resolvedAiSentence = [aiDefinition, cleanedExplanation]
-                    .filter(Boolean)
-                    .join(" — ");
-
                 await QT.saveWord({
                     original: cleanedTerm,
                     translated: cleanedMeaning,
@@ -2337,7 +2290,7 @@
                     tgtLang: targetNativeLang,
                     sentence: contextSentence,
                     sentenceTranslated: contextSentenceTranslated,
-                    aiSentence: resolvedAiSentence || cleanedExplanation || "",
+                    aiSentence: cleanedExplanation || "",
                     aiSentenceTranslated: contextSentenceTranslated,
                     screenshot,
                     url: window.location.href,
@@ -2453,15 +2406,12 @@
     function resolveAiBadge(
         badgeCandidate,
         type,
-        isSimpleTargetMode,
         targetLangCode,
     ) {
         if (typeof badgeCandidate === "string" && badgeCandidate.trim()) {
             return badgeCandidate.trim();
         }
-        const lang = isSimpleTargetMode
-            ? aiExplainSourceLang
-            : (targetLangCode || "pl").toLowerCase().slice(0, 2);
+        const lang = (targetLangCode || "pl").toLowerCase().slice(0, 2);
         const normType = String(type || "").toLowerCase().trim();
 
         const BADGE_MAP = {
@@ -2591,7 +2541,7 @@
         return (
             dict[normType] ||
             dict.expression ||
-            (isSimpleTargetMode ? "Word" : "Wyrażenie")
+            "Word"
         );
     }
 
@@ -2630,10 +2580,7 @@
         showAiShimmer(aiExplainLayout);
         try {
             const targetLang = await QT.getTargetLang();
-            const aiExplanationLanguage =
-                (await QT.getAiExplanationLanguage?.()) || "native";
             if (!isCurrent()) return;
-            aiExplainMode = aiExplanationLanguage;
             const context = getActiveSubtitleContext(video, text);
             const knownSourceLang = await SharedTranslatorService.getLearningLang();
             if (!isCurrent()) return;
@@ -2641,7 +2588,7 @@
                 text,
                 targetLang,
                 context,
-                { aiExplanationLanguage, sourceLang: knownSourceLang },
+                { sourceLang: knownSourceLang },
             );
             if (!isCurrent()) return;
 
@@ -2649,12 +2596,12 @@
             if (!isCurrent()) return;
 
             aiExplainSourceLang = sourceLang;
-            aiExplainTargetLang = aiExplanationLanguage === "simple_target" ? sourceLang : targetLang;
+            aiExplainTargetLang = targetLang;
             aiSavedIndices.clear();
             aiAiSavedIndices.clear();
 
             const rawTranslation =
-                res?.translation || res?.simple_sentence || "";
+                res?.translation || "";
             let translation = typeof rawTranslation === "string"
                 ? rawTranslation.trim()
                 : String(rawTranslation || "").trim();
@@ -2664,16 +2611,14 @@
             const explanation =
                 res?.explanation || (typeof res === "string" ? res : "");
 
-            const isSimpleTarget = aiExplainMode === "simple_target";
             const sentenceBadge = resolveAiBadge(
                 res?.badge,
                 "sentence",
-                isSimpleTarget,
                 aiExplainTargetLang,
             );
             const sentenceItem = {
                 type: "sentence",
-                title: sentenceBadge || (isSimpleTarget ? "Sentence" : "Zdanie"),
+                title: sentenceBadge,
                 term: text,
                 meaning: translation,
                 explanation: explanation,
@@ -2695,7 +2640,6 @@
                     badge: resolveAiBadge(
                         item.badge,
                         item.type,
-                        isSimpleTarget,
                         aiExplainTargetLang,
                     ),
                 }));
@@ -2703,7 +2647,6 @@
 
             // In Enter mode, the full sentence translation is ALWAYS the first stage (1/N)
             // in the queue, followed by subsequent breakdown items (idioms, phrasal verbs, words),
-            // regardless of whether native or simple language mode is selected.
             if (breakdownItems.length > 0) {
                 aiExplainQueue = [sentenceItem, ...breakdownItems];
             } else {
