@@ -2,8 +2,8 @@
 .header {
   display: flex;
   align-items: center;
-  gap: var(--lx-space-12px);
-  padding: var(--lx-space-20px) var(--lx-space-22px) var(--lx-space-14px);
+  gap: 12px;
+  padding: 20px 22px 14px;
   position: relative;
   z-index: 1;
 }
@@ -13,25 +13,25 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--lx-radius-12px);
+  border-radius: 12px;
   background: var(--accent-dim);
-  border: 1px solid var(--lx-color-15);
+  border: 1px solid rgba(129, 140, 248, 0.18);
   flex-shrink: 0;
-  box-shadow: var(--lx-box-shadow-01);
+  box-shadow: 0 4px 16px rgba(129, 140, 248, 0.06);
 }
 .header-icon svg {
   stroke: var(--accent);
 }
 .header h1 {
-  font-size: var(--lx-text-22px);
-  font-weight: var(--lx-weight-700);
+  font-size: 22px;
+  font-weight: 700;
   color: var(--text-primary);
-  letter-spacing: var(--lx-tracking-neg-0_4px);
+  letter-spacing: -0.4px;
 } /* Tabs */
 .tabs {
   display: flex;
-  gap: var(--lx-space-4px);
-  padding: var(--lx-space-0) var(--lx-space-14px) var(--lx-space-16px);
+  gap: 4px;
+  padding: 0 14px 16px;
   position: relative;
   z-index: 1;
 }
@@ -42,27 +42,27 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--lx-space-4px);
-  padding: var(--lx-space-9px) var(--lx-space-2px) var(--lx-space-8px);
+  gap: 4px;
+  padding: 9px 2px 8px;
   text-align: center;
   color: var(--text-muted);
   cursor: pointer;
-  border: 1px solid var(--lx-color-transparent);
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  background: var(--lx-color-transparent);
+  background: transparent;
   position: relative;
 }
 .tab-icon {
-  font-size: var(--lx-text-16px);
-  line-height: var(--lx-leading-1);
+  font-size: 16px;
+  line-height: 1;
 }
 .tab-label {
-  font-size: var(--lx-text-8_5px);
-  font-weight: var(--lx-weight-700);
+  font-size: 8.5px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: var(--lx-tracking-0_3px);
-  line-height: var(--lx-leading-1);
+  letter-spacing: 0.3px;
+  line-height: 1;
   white-space: nowrap;
   max-width: 100%;
   overflow: hidden;
@@ -78,7 +78,7 @@
   border-color: var(--glass-border);
   backdrop-filter: blur(var(--blur));
   -webkit-backdrop-filter: blur(var(--blur));
-  box-shadow: var(--lx-box-shadow-02);
+  box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.04) inset, 0 4px 20px rgba(0, 0, 0, 0.15);
 } /* Tab content */
 .tab-content {
   display: none;

@@ -1,7 +1,0 @@
-#__qt_icon button,
-#__qt_tooltip button {
-  all: unset;
-  box-sizing: border-box;
-  display: flex;
-  cursor: pointer;
-}

@@ -26,16 +26,16 @@
   flex-wrap: wrap;
 }
 .lx-gap-4 {
-  gap: var(--lx-space-4px);
+  gap: 4px;
 }
 .lx-gap-7 {
-  gap: var(--lx-space-7px);
+  gap: 7px;
 }
 .lx-gap-12 {
-  gap: var(--lx-space-12px);
+  gap: 12px;
 }
 .lx-gap-16 {
-  gap: var(--lx-space-16px);
+  gap: 16px;
 }
 .lx-text-center {
   text-align: center;

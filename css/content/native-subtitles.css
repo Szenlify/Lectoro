@@ -1,4 +1,8 @@
-/* Universal Native Subtitle Clean Hiding (DRY / Single Source of Truth) Cleanly hides native subtitle displays across Netflix, YouTube, Video.js, Shaka, Plyr, JWPlayer, Clappr, and native HTML5 video tracks. */
+/* ==========================================================================
+   Universal Native Subtitle Suppression (DRY / Single Source of Truth)
+   Hides native subtitles across Netflix, YouTube, Video.js, Shaka, Plyr, JWPlayer, etc.
+   ========================================================================== */
+
 .player-timedtext,
 .player-timedtext-text-container,
 .ytp-caption-window-container,
@@ -17,6 +21,7 @@ video::cue {
   pointer-events: none !important;
   visibility: hidden !important;
 }
+
 #subtitles-container,
 .watch-video--evidence-overlay-container {
   opacity: 0 !important;

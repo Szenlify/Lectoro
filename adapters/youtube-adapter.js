@@ -36,8 +36,6 @@
     let isCcActive = false;
     let currentTargetLang = "pl";
     let currentLearningLang = "en";
-    const liveTranslationCache = new Map();
-    const liveTranslationPending = new Set();
     const DUAL_SUBS_KEY = LectoroConstants?.STORAGE_KEYS?.DUAL_SUBTITLES || "dualSubtitles";
     let dualSubtitlesEnabled = true;
 
@@ -79,21 +77,51 @@
         return currentLearningLang || "en";
     }
 
-    async function translateLiveCue(text, targetLang, learningLang) {
-        if (!text || !targetLang || liveTranslationCache.has(text) || liveTranslationPending.has(text)) return;
-        liveTranslationPending.add(text);
+    function fetchViaBridge(url) {
+        return new Promise((resolve) => {
+            const requestId = `${Date.now()}-${++trackRequestSeq}`;
+            const timer = setTimeout(() => {
+                window.removeEventListener(FETCH_RESPONSE_EVENT, onResponse);
+                resolve("");
+            }, 6000);
+
+            function onResponse(event) {
+                if (event?.detail?.requestId === requestId) {
+                    clearTimeout(timer);
+                    window.removeEventListener(FETCH_RESPONSE_EVENT, onResponse);
+                    resolve(event.detail.text || "");
+                }
+            }
+
+            window.addEventListener(FETCH_RESPONSE_EVENT, onResponse);
+            window.dispatchEvent(
+                new CustomEvent(FETCH_REQUEST_EVENT, {
+                    detail: { requestId, url },
+                }),
+            );
+        });
+    }
+
+    async function ensureTranslationTrackLoaded(track, videoId = "") {
+        if (!track || !track.baseUrl || isFetchingTranslationTrack) return;
+        if (translationCueIndex.length > 0 && currentVideoId === videoId) return;
+        isFetchingTranslationTrack = true;
         try {
-            const service = globalThis.SharedTranslatorService;
-            if (service && typeof service.translate === "function") {
-                const res = await service.translate(text, targetLang, learningLang || "auto");
-                if (res && typeof res.translated === "string" && res.translated.trim()) {
-                    liveTranslationCache.set(text, res.translated.trim());
+            const url = track.baseUrl.includes("?")
+                ? `${track.baseUrl}&__lectoro_bridge=1`
+                : `${track.baseUrl}?__lectoro_bridge=1`;
+            const text = await fetchViaBridge(url);
+            if (text) {
+                const service = getSubtitleService();
+                const cues = service ? service.parseTimedText(text) : [];
+                if (cues.length > 0) {
+                    setTranslationCueIndex(cues, videoId || currentVideoId);
                     const video = boundVideo || document.querySelector("video");
                     if (video) syncActiveCue(video);
                 }
             }
         } catch (_) {} finally {
-            liveTranslationPending.delete(text);
+            isFetchingTranslationTrack = false;
         }
     }
 
@@ -349,24 +377,12 @@
                 if (activeTransCue && activeTransCue.text) {
                     targetTransText = activeTransCue.text;
                 }
-            } else if (targetOrigText) {
-                if (liveTranslationCache.has(targetOrigText)) {
-                    targetTransText = liveTranslationCache.get(targetOrigText);
-                } else {
-                    translateLiveCue(targetOrigText, currentTargetLang || "pl", activeTrack?.languageCode || "en");
-                }
-
-                // Pre-fetch next 2 upcoming cues so translation is ready ahead of time
-                if (cueIndex.length > 0) {
-                    const currentIdx = cueIndex.findIndex((c) => time >= c.startTime && time <= c.endTime);
-                    if (currentIdx >= 0) {
-                        for (let i = 1; i <= 2; i++) {
-                            const nextCue = cueIndex[currentIdx + i];
-                            if (nextCue?.text && !liveTranslationCache.has(nextCue.text)) {
-                                translateLiveCue(nextCue.text, currentTargetLang || "pl", activeTrack?.languageCode || "en");
-                            }
-                        }
-                    }
+            } else if (availableTracks.length > 0 && !isFetchingTranslationTrack) {
+                const targetLang = currentTargetLang || "pl";
+                const transTrack = selectTranslationTrack(availableTracks, targetLang, activeTrack);
+                if (transTrack && transTrack.baseUrl) {
+                    translationTrack = transTrack;
+                    ensureTranslationTrackLoaded(transTrack, currentVideoId);
                 }
             }
         }
@@ -646,6 +662,15 @@
                 chosenOrig = selectBestCaptionTrack(effectiveTracks, learningLang);
             }
             activeTrack = chosenOrig;
+
+            if (dualSubtitlesEnabled && effectiveTracks.length > 0) {
+                const targetLang = await getTargetLanguage();
+                const transTrack = selectTranslationTrack(effectiveTracks, targetLang, chosenOrig);
+                if (transTrack && transTrack.baseUrl && translationCueIndex.length === 0) {
+                    translationTrack = transTrack;
+                    ensureTranslationTrackLoaded(transTrack, videoId);
+                }
+            }
 
             const video = boundVideo || document.querySelector("video");
             if (video && !video.paused) startPlaybackLoop(video);
@@ -942,9 +967,6 @@
                 const cue = findActiveCueInIndex(translationCueIndex, time);
                 if (cue && cue.text) return cue.text;
             }
-            if (currentDisplayedText && liveTranslationCache.has(currentDisplayedText)) {
-                return liveTranslationCache.get(currentDisplayedText) || "";
-            }
             return currentDisplayedTranslation || "";
         },
         getAdjacentSubtitleTime,
@@ -958,10 +980,9 @@
         loadDualCaptionTracks,
         selectBestCaptionTrack,
         selectTranslationTrack,
+        ensureTranslationTrackLoaded,
         isDualSubtitlesEnabled: () => dualSubtitlesEnabled,
         setDualSubtitlesEnabled: (val) => { dualSubtitlesEnabled = !!val; },
-        translateLiveCue,
-        getLiveTranslationCache: () => liveTranslationCache,
     };
 
     globalThis.LectoroYouTubeAdapter = YouTubeAdapter;

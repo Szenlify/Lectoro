@@ -1,16 +1,25 @@
-/* Force-hide video.js control bar — only mouse movement removes this class */
+/* ==========================================================================
+   Video Player Overrides & Control Suppression
+   ========================================================================== */
+
+/* Video.js control bar hiding */
 .video-js.__qt_hide-controls .vjs-control-bar {
   display: none !important;
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;
 }
+
 .video-js.__qt_hide-controls .vjs-title {
   display: none !important;
 }
+
+/* Netflix subtitle suppression */
 html.__qt_netflix-subtitles-hidden .player-timedtext {
   visibility: hidden !important;
-} /* Netflix Player Control Suppression & Stabilization */ /* Hide Netflix maturity/content advisory (for example, "RATED 13+"). */
+}
+
+/* Netflix maturity/content advisories and report problem badges */
 .watch-video .watch-video--advisories-container,
 .watch-video [data-uia="advisory-content"],
 .watch-video--flag-container,
@@ -21,7 +30,9 @@ html.__qt_netflix-subtitles-hidden .player-timedtext {
   visibility: hidden !important;
   pointer-events: none !important;
   opacity: 0 !important;
-} /* Always hide Netflix 'Report Issue' flag button / intrusive badges */ /* Hide Netflix controls when navigating with hotkeys (WSAD, Enter, etc.) */
+}
+
+/* Netflix controls suppression on hotkey navigation */
 html.__qt_netflix-hide-controls .watch-video--bottom-controls-container,
 html.__qt_netflix-hide-controls .watch-video--top-controls-container,
 html.__qt_netflix-hide-controls .watch-video--back-container,
@@ -34,10 +45,10 @@ html.__qt_netflix-hide-controls [data-uia="watch-video-back-button"] {
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;
-  transition:
-    opacity 0s ease,
-    visibility 0s ease !important;
+  transition: opacity 0s ease, visibility 0s ease !important;
 }
+
+/* Hide Lectoro UI while screenshot capturing */
 html.__qt_netflix-capturing [class^="__qt_"],
 html.__qt_netflix-capturing [class*=" __qt_"],
 html.__qt_netflix-capturing [id^="__qt_"] {

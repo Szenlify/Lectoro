@@ -15,12 +15,7 @@
     function getRegisteredAdapters() {
         const adapters = [];
         if (globalThis.LectoroYouTubeAdapter) adapters.push(globalThis.LectoroYouTubeAdapter);
-        if (globalThis.LectoroGenericVideoAdapter) adapters.push(globalThis.LectoroGenericVideoAdapter);
         if (globalThis.LectoroNetflixAdapter) adapters.push(globalThis.LectoroNetflixAdapter);
-        if (globalThis.LectoroTedAdapter) adapters.push(globalThis.LectoroTedAdapter);
-        if (Array.isArray(globalThis.LectoroGenericAdapters)) {
-            adapters.push(...globalThis.LectoroGenericAdapters);
-        }
         return adapters;
     }
 
@@ -256,12 +251,6 @@
             }
         }
 
-        // 4. TED Talks adapter check
-        if (globalThis.LectoroTedAdapter?.isPage?.()) {
-            if (typeof globalThis.LectoroTedAdapter?.isCcActive === "function") {
-                return globalThis.LectoroTedAdapter.isCcActive(video);
-            }
-        }
 
         // 5. Native text tracks check
         if (hasEnabledNativeCaptionTrack(video)) {
@@ -544,19 +533,11 @@
             ? indexedLines
             : globalThis.LectoroBaseAdapter?.extractCueLines?.(adapterElements) || [];
 
-        // Direct container text fallback for #subtitles-container on TED
-        if (!hasIndexedLines && lines.length === 0 && globalThis.LectoroTedAdapter?.isPage?.()) {
-            const tedContainer = document.getElementById("subtitles-container");
-            if (tedContainer && !tedContainer.classList.contains("opacity-0")) {
-                const tedText = (tedContainer.textContent || "").replace(/\s+/g, " ").trim();
-                if (tedText) lines = [tedText];
-            }
-        }
         if (!hasIndexedLines && lines.length === 0 && session.video?.textTracks) {
             lines = getNativeCueLines(session.video);
         }
         if (!hasIndexedLines && lines.length === 0) {
-            const getAllCuesFn = captionAdapter?.getAllCues || (globalThis.LectoroTedAdapter?.isPage?.() ? globalThis.LectoroTedAdapter.getAllCues : null);
+            const getAllCuesFn = captionAdapter?.getAllCues;
             if (typeof getAllCuesFn === "function") {
                 const all = getAllCuesFn(session.video);
                 if (Array.isArray(all) && all.length > 0) {

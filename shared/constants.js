@@ -90,7 +90,7 @@
     GEMINI_UPLOAD_CARD_IMAGE: "QT_GEMINI_UPLOAD_CARD_IMAGE",
     GEMINI_DELETE_CARD_IMAGES: "QT_GEMINI_DELETE_CARD_IMAGES",
     GEMINI_DELETE_ALL_USER_IMAGES: "QT_GEMINI_DELETE_ALL_USER_IMAGES",
-    GOOGLE_TRANSLATE: "QT_GOOGLE_TRANSLATE",
+    TRANSLATE_TEXT: "QT_TRANSLATE_TEXT",
     TRANSLATE_SUBTITLE: "QT_TRANSLATE_SUBTITLE",
     SUBSCRIPTION_REFRESH_PROFILE: "QT_SUBSCRIPTION_REFRESH_PROFILE",
     ELEVENLABS_SYNTHESIZE: "QT_ELEVENLABS_SYNTHESIZE",
@@ -156,7 +156,6 @@
   const ENDPOINTS = Object.freeze({
     GEMINI_PROXY: "https://geminiproxy-gyagzflbra-ew.a.run.app",
     BILLING_FUNCTIONS: "https://europe-west1-extension-eng.cloudfunctions.net",
-    GOOGLE_TRANSLATE: "https://translate.googleapis.com/translate_a/single",
     GOOGLE_TTS: "https://translate.google.com/translate_tts",
   });
 
@@ -314,20 +313,17 @@
    */
   const SIMPLE_WORDS = Object.freeze(
     new Set([
-      "i",
-      "am",
-      "yes",
-      "no",
-      "ok",
-      "okay",
-      "an",
-      "oh",
-      "um",
-      "uh",
-      "ah",
-      "a",
-      "me",
-      "my",
+      "i", "am", "him", "hers", "ours", "theirs", "been", "being",
+      "yes", "no", "ok", "okay", "hello", "hi", "bye", "please",
+      "thanks", "now",
+      "don't", "doesn't", "didn't", "isn't", "aren't",
+      "an", "oh", "um", "uh", "ah", "a", "and", "are", "as", "at", "be",
+      "for", "from", "have", "he", "her",
+      "his", "if", "in", "is", "me", "my",
+      "not", "of", "on", "or", "our", "she", "so",
+      "some", "that", "the",
+      "to", "too", "us", "was", "we", "what",
+      "you", "your", "yours",
     ]),
   );
 

@@ -57,6 +57,7 @@
 
     const toast = document.createElement("div");
     toast.id = toastId;
+    toast.className = toastId;
     toast.innerHTML = `<span style="margin-right:6px">🧠</span> ${count === 1 ? "Review due!" : `${count} reviews due!`}`;
     document.body.appendChild(toast);
 
@@ -97,6 +98,7 @@
     if (!tooltipEl) {
       tooltipEl = document.createElement("div");
       tooltipEl.id = TOOLTIP_ID;
+      tooltipEl.className = TOOLTIP_ID;
       tooltipEl.setAttribute("role", "dialog");
       tooltipEl.setAttribute("aria-label", "Translation");
     }

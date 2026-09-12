@@ -235,7 +235,7 @@ test("word dictionary behavior remains case-insensitive with one checked generat
         assert.deepEqual(result.result, { abandon: entry });
     }
     assert.equal(objects.size, 1);
-    assert.equal(count.reserved, 1);
+    assert.equal(count.reserved, 0, "word translations do not deduct AI reservations");
     assert.equal(count.generated, 1, "one checked response for a new dictionary word");
 });
 
@@ -275,7 +275,7 @@ test("failed word review refunds usage and saves nothing", async () => {
             : entry,
     );
     await assert.rejects(handleLiveTranslation(body, deps), /verify/);
-    assert.equal(count.refunded, 1);
+    assert.equal(count.refunded, 0, "no refund needed because no reservation was taken");
     assert.equal(objects.size, 0);
 });
 
@@ -295,7 +295,7 @@ test("concurrent users cannot generate the same word twice", async () => {
     await assert.rejects(handleLiveTranslation(body, { ...deps, uid: "u2" }), { code: "TRANSLATION_PENDING" });
     release();
     await first;
-    assert.equal(count.reserved, 1);
+    assert.equal(count.reserved, 0);
 });
 
 test("200 source characters are cached; 201 bypass translation R2 and shared lock", async () => {
@@ -362,7 +362,7 @@ test("a checked dictionary response is validated and stripped before any R2 writ
         if (invalid) {
             await assert.rejects(handleLiveTranslation(body, deps), /Invalid generated dictionary entry/);
             assert.equal(objects.size, 0);
-            assert.equal(count.refunded, 1);
+            assert.equal(count.refunded, 0, "no refund needed as word took 0 reservations");
         } else {
             const result = await handleLiveTranslation(body, deps);
             assert.deepEqual(result.result, { abandon: entry });

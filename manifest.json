@@ -3,7 +3,7 @@
     "name": "Lectoro AI - Language Learning & Subtitles",
     "version": "1.0.0",
     "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtmvOPueMBDjgnUCbKHIBnguWJiIUF61+cCFSfTUvojuAlkAXn4kCUldxtmIB/dbE6COCzdiEZkJRgh4XD0GQlEllmvRc8Z08sjg4yvCunhSPlJnb8d/xS7At0upIFS/Z0AUFmgYKiBjpLEQg6Ts9XVtZDKjLFGkczfbbxp7zSTp0o0zFY0PvYdQ9EuSTtFea/lNCfW+mgWyn7MSkXZS3xOD1HegsvuG6gfXkR+AN8V1p6gocZJ4ZRUYhjaV7+Bnx2uio+Y/fZus7svcHftie+OCuFdJ8z67Pj0kbX/W37mjkNupL2zVQFp7KuBFeQejhWnqlIvrm8X9HEeGfVx45UQIDAQAB",
-    "description": "Learn languages faster with smart video subtitles, instant web translation, SRS flashcards, and AI explanations.",
+    "description": "Learn languages faster with smart video subtitles, instant web translation, flashcards, and AI explanations.",
     "permissions": [
         "storage",
         "alarms",
@@ -12,8 +12,6 @@
         "activeTab"
     ],
     "host_permissions": [
-        "https://translate.googleapis.com/*",
-        "https://translate.google.com/*",
         "https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev/*",
         "https://identitytoolkit.googleapis.com/*",
         "https://firestore.googleapis.com/*",
@@ -21,12 +19,7 @@
         "https://europe-west1-extension-eng.cloudfunctions.net/*",
         "https://geminiproxy-gyagzflbra-ew.a.run.app/*",
         "https://www.netflix.com/*",
-        "https://*.youtube.com/*",
-        "https://youtube.com/*",
-        "https://*.nflxvideo.net/*",
-        "https://*.nflxso.net/*",
-        "https://*.nflximg.net/*",
-        "https://*.nflxext.com/*"
+        "https://www.youtube.com/*"
     ],
     "background": {
         "service_worker": "background.js"
@@ -45,14 +38,8 @@
         "48": "icons/icon48.png",
         "128": "icons/icon128.png"
     },
-    "sandbox": {
-        "pages": [
-            "quiz-runner.html"
-        ]
-    },
     "content_security_policy": {
-        "extension_pages": "script-src 'self'; object-src 'self';",
-        "sandbox": "sandbox allow-scripts allow-forms allow-popups allow-modals; script-src 'self' 'unsafe-inline';"
+        "extension_pages": "script-src 'self'; object-src 'self';"
     },
     "content_scripts": [
         {
@@ -104,29 +91,12 @@
                 "adapters/base-adapter.js",
                 "adapters/youtube-adapter.js",
                 "adapters/netflix-adapter.js",
-                "adapters/generic-video-adapter.js",
-                "adapters/generic-adapters.js",
-                "adapters/ted-adapter.js",
                 "adapters/player-registry.js",
                 "video/subtitle-overlay.js",
-                "video/reading-modes.js",
                 "video/video-hotkeys.js",
                 "content.js"
             ],
             "run_at": "document_idle"
-        },
-        {
-            "matches": [
-                "*://*/*"
-            ],
-            "js": [
-                "video-frame-bootstrap.js"
-            ],
-            "run_at": "document_idle",
-            "all_frames": true,
-            "match_about_blank": true,
-            "match_origin_as_fallback": true
         }
     ]
-}       
-    
+}

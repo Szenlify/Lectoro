@@ -275,46 +275,71 @@
         if (options.wordByWord && options.contextual) {
             if (!words.length) return [];
             const tokens = words.map(word => word.normalize("NFKC").trim());
-            const normalizePhrase = (value) => String(value || "")
-                .normalize("NFKC")
-                .toLowerCase()
-                .replace(/['‘]/g, "’")
-                .replace(/[^\p{L}\p{M}\p{N}’ -]+/gu, " ")
-                .replace(/\s+/g, " ")
-                .trim();
-
-            // R2 phrase lookup is read-only and never invokes AI. Check 4/3/2-word
-            // windows, then keep the longest non-overlapping matches.
-            const candidates = [];
-            for (let start = 0; start < tokens.length - 1; start++) {
-                for (let length = Math.min(4, tokens.length - start); length >= 2; length--) {
-                    const source = normalizePhrase(tokens.slice(start, start + length).join(" "));
-                    if (!source || source.split(/\s+/u).length < 2) continue;
-                    candidates.push({ start, length, source });
+            const sentence = (options.context || tokens.join(" ")).normalize("NFKC").trim();
+            const decodePhrases = (data) => {
+                if (data?.phraseAnalysis !== 2 || typeof data?.t !== "string" || !data.t.trim() || !Array.isArray(data.phrases) || data.phrases.length > 12) return null;
+                const res = words.map(() => null);
+                let next = 0;
+                for (const phrase of data.phrases) {
+                    if (!phrase || !Number.isInteger(phrase.start) || phrase.start < next || !Number.isInteger(phrase.length) || phrase.length < 2 || phrase.start + phrase.length > words.length ||
+                        typeof phrase.t !== "string" || !phrase.t.trim() || phrase.t.length > 300 || /[<>\x00-\x1f]/u.test(phrase.t)) return null;
+                    res[phrase.start] = { translated: phrase.t, length: phrase.length };
+                    next = phrase.start + phrase.length;
                 }
+                return res;
+            };
+
+            let phrases = null;
+            let data = await root.DictionaryStore?.getAnalysis?.(sourceLang, targetLang, sentence, tokens);
+            if (data) phrases = decodePhrases(data);
+            if (!phrases && root.GeminiProxy?.liveTranslation) {
+                try {
+                    data = await root.GeminiProxy.liveTranslation("segments", sentence, sourceLang, targetLang, tokens);
+                    phrases = decodePhrases(data);
+                    if (phrases) await root.DictionaryStore?.putAnalysis?.(sourceLang, targetLang, sentence, tokens, data);
+                } catch (_) {}
             }
 
-            const matches = [];
-            await Promise.all(candidates.map(async (candidate) => {
-                try {
-                    const entry = await root.DictionaryStore?.getPhrase?.(sourceLang, targetLang, candidate.source);
-                    if (entry?.t) matches.push({ ...candidate, translated: singleTranslation(entry.t) || String(entry.t).split("/")[0].trim() });
-                } catch (_) {
-                    // Phrase lookup failure must never break word-by-word translation.
-                }
-            }));
+            if (!phrases) {
+                const normalizePhrase = (value) => String(value || "")
+                    .normalize("NFKC")
+                    .toLowerCase()
+                    .replace(/['‘]/g, "’")
+                    .replace(/[^\p{L}\p{M}\p{N}’ -]+/gu, " ")
+                    .replace(/\s+/g, " ")
+                    .trim();
 
-            matches.sort((a, b) => b.length - a.length || a.start - b.start);
-            const phrases = words.map(() => null);
-            const occupied = new Set();
-            for (const match of matches) {
-                let overlaps = false;
-                for (let i = match.start; i < match.start + match.length; i++) {
-                    if (occupied.has(i)) { overlaps = true; break; }
+                // R2 phrase lookup is read-only and never invokes AI. Check 4/3/2-word
+                // windows, then keep the longest non-overlapping matches.
+                const candidates = [];
+                for (let start = 0; start < tokens.length - 1; start++) {
+                    for (let length = Math.min(4, tokens.length - start); length >= 2; length--) {
+                        const source = normalizePhrase(tokens.slice(start, start + length).join(" "));
+                        if (!source || source.split(/\s+/u).length < 2) continue;
+                        candidates.push({ start, length, source });
+                    }
                 }
-                if (overlaps) continue;
-                phrases[match.start] = { translated: match.translated, length: match.length };
-                for (let i = match.start; i < match.start + match.length; i++) occupied.add(i);
+
+                const matches = [];
+                await Promise.all(candidates.map(async (candidate) => {
+                    try {
+                        const entry = await root.DictionaryStore?.getPhrase?.(sourceLang, targetLang, candidate.source);
+                        if (entry?.t) matches.push({ ...candidate, translated: singleTranslation(entry.t) || String(entry.t).split("/")[0].trim() });
+                    } catch (_) {}
+                }));
+
+                matches.sort((a, b) => b.length - a.length || a.start - b.start);
+                phrases = words.map(() => null);
+                const occupied = new Set();
+                for (const match of matches) {
+                    let overlaps = false;
+                    for (let i = match.start; i < match.start + match.length; i++) {
+                        if (occupied.has(i)) { overlaps = true; break; }
+                    }
+                    if (overlaps) continue;
+                    phrases[match.start] = { translated: match.translated, length: match.length };
+                    for (let i = match.start; i < match.start + match.length; i++) occupied.add(i);
+                }
             }
 
             // Do not translate words already covered by a phrase. Remaining single
@@ -325,7 +350,7 @@
             });
             const known = await lookupWords(singles, targetLang, sourceLang, {
                 wordByWord: true,
-                localOnly: false,
+                localOnly: true,
                 generateMissing: false,
             });
             return known.map((value, index) => phrases[index] || value);

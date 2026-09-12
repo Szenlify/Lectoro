@@ -392,7 +392,10 @@ async function handleLiveTranslation(body, deps) {
         const existing = cacheable ? await readCached() : null;
         if (usableCache(existing)) return { result: validateResult(job, existing), cached: true, usage };
 
-        reservation = await reserve();
+        // Word dictionary hover translations are 100% free for everyone (no AI credits deducted)
+        if (job.kind !== "word") {
+            reservation = await reserve();
+        }
         stage = "generation";
         const requestJson = async (prompt, schema, maxOutputTokens = 1600) => {
             const response = await generate({ contents: [{ parts: [{ text: prompt }] }], generationConfig: {
@@ -430,7 +433,7 @@ async function handleLiveTranslation(body, deps) {
             const result = { [job.input]: { ...validatedEntry, languageValidation: 1 } };
             stage = "storage";
             if (cacheable) await write(job.key, result);
-            return { result, cached: false, usage: reservation };
+            return { result, cached: false, usage };
         }
 
         // Full-sentence AI does one compact generation call. It also seeds reusable phrase files.

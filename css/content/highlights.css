@@ -1,7 +1,0 @@
-/* Reading Highlights */
-::highlight(qt-reading-sentence) {
-  background-color: var(--lx-color-190);
-}
-::highlight(qt-hover-word) {
-  background-color: var(--lx-color-194);
-}

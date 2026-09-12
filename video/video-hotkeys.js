@@ -184,7 +184,7 @@
                 if (!isHorizontalSubtitleNavigation) return;
             }
 
-            // Subtitle Word Cloud / Sentence Translation: S / ArrowDown z opóźnieniem 120ms
+            // Pause Video: S / ArrowDown
             if (
                 key === "s" ||
                 key === "S" ||
@@ -196,10 +196,6 @@
                     } else {
                         video.pause();
                     }
-
-                    setTimeout(() => {
-                        void globalThis.LectoroReadingModes?.start?.(video);
-                    }, GLOBAL_ACTION_DELAY_MS);
                 }
                 return;
             }

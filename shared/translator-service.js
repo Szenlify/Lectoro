@@ -240,98 +240,20 @@
         }
 
         async function fetchTranslation(text, targetLang, sourceLang) {
-            if (hasLocalStorage()) {
-                const data = await chrome.storage.local.get({ [RETRY_KEY]: 0 });
-                retryAt = Math.max(retryAt, Number(data[RETRY_KEY]) || 0);
-            }
-            if (retryAt > Date.now()) {
-                throw translationError(
-                    "Translation service is busy. Please try again shortly.",
-                    "RATE_LIMITED",
-                    { status: 429, retryAt },
-                );
-            }
-            const controller = new AbortController();
-            const timeout = setTimeout(
-                () => controller.abort(),
-                REQUEST_TIMEOUT_MS,
-            );
-            try {
-                const url = `${Constants.ENDPOINTS.GOOGLE_TRANSLATE}?client=gtx&sl=${encodeURIComponent(sourceLang)}&tl=${encodeURIComponent(targetLang)}&dt=t&q=${encodeURIComponent(text)}`;
-                const response = await fetch(url, {
-                    signal: controller.signal,
-                });
-                if (!response.ok) {
-                    if (response.status === 429) {
-                        const retryAfter = response.headers?.get("Retry-After");
-                        const seconds = retryAfter ? Number(retryAfter) : NaN;
-                        const serverRetryAt = Number.isFinite(seconds)
-                            ? Date.now() + seconds * 1000
-                            : Date.parse(retryAfter);
-                        retryAt = Math.max(
-                            retryAt,
-                            Date.now() + 60000,
-                            serverRetryAt || 0,
-                        );
-                        if (hasLocalStorage())
-                            await chrome.storage.local.set({
-                                [RETRY_KEY]: retryAt,
-                            });
-                    }
-                    throw translationError(
-                        `Translation service returned HTTP ${response.status}.`,
-                        response.status === 429
-                            ? "RATE_LIMITED"
-                            : "TRANSLATION_HTTP_ERROR",
-                        {
-                            status: response.status,
-                            retryAt:
-                                response.status === 429 ? retryAt : undefined,
-                        },
-                    );
-                }
-                let data;
+            const term = dictionaryTerm(text);
+            if (globalThis.LocalDictionary) {
                 try {
-                    data = await response.json();
-                } catch (_) {
-                    throw translationError(
-                        "Invalid translation response.",
-                        "INVALID_RESPONSE",
-                    );
-                }
-                if (!Array.isArray(data?.[0]))
-                    throw translationError(
-                        "Invalid translation response.",
-                        "INVALID_RESPONSE",
-                    );
-                const result = {
-                    translated: data[0]
-                        .map((part) =>
-                            typeof part?.[0] === "string" ? part[0] : "",
-                        )
-                        .join(""),
-                    detectedLang: sourceLang,
-                };
-                if (!validResult(result))
-                    throw translationError(
-                        "Empty translation response.",
-                        "INVALID_RESPONSE",
-                    );
-                return result;
-            } catch (error) {
-                if (controller.signal.aborted)
-                    throw translationError(
-                        "Translation timed out. Please try again.",
-                        "TRANSLATION_TIMEOUT",
-                    );
-                if (error.code) throw error;
-                throw translationError(
-                    "Could not connect to the translation service.",
-                    "TRANSLATION_NETWORK_ERROR",
-                );
-            } finally {
-                clearTimeout(timeout);
+                    const lookupWords = term ? [term] : String(text || "").split(/\s+/).slice(0, 5).filter(Boolean);
+                    if (lookupWords.length > 0) {
+                        const results = await globalThis.LocalDictionary.lookupWords(lookupWords, targetLang, sourceLang);
+                        const translated = Array.isArray(results) ? results.filter(Boolean).join(" ") : results;
+                        if (translated && typeof translated === "string" && translated.trim()) {
+                            return { translated: translated.trim(), detectedLang: sourceLang, provider: "dictionary" };
+                        }
+                    }
+                } catch (_) {}
             }
+            return { translated: text, detectedLang: sourceLang, provider: "local" };
         }
 
         const transportCache = createTranslateCache();
@@ -355,7 +277,7 @@
             if (sourceLang === targetLang) return { translated: text, detectedLang: sourceLang };
             if (shouldProxy()) {
                 const response = await Utils.sendRuntimeMessage({
-                    type: MSG.GOOGLE_TRANSLATE,
+                    type: MSG.TRANSLATE_TEXT,
                     text,
                     targetLang,
                     sourceLang,

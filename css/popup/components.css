@@ -1,8 +1,8 @@
 /* Toggle switch */
 .toggle-label {
-  font-size: var(--lx-text-13px);
+  font-size: 13px;
   color: var(--text-primary);
-  font-weight: var(--lx-weight-500);
+  font-weight: 500;
 }
 .toggle-switch {
   position: relative;
@@ -20,9 +20,9 @@
 .toggle-slider {
   position: absolute;
   inset: 0;
-  border-radius: var(--lx-radius-26px);
-  background: var(--lx-color-02);
-  border: 1px solid var(--lx-color-19);
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .toggle-slider::before {
@@ -32,23 +32,23 @@
   height: 20px;
   left: 2px;
   bottom: 2px;
-  border-radius: var(--lx-radius-50pct);
-  background: var(--lx-color-34);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: var(--lx-box-shadow-11);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 .toggle-switch input:checked + .toggle-slider {
   background: var(--accent-mid);
-  border-color: var(--lx-color-31);
+  border-color: rgba(129, 140, 248, 0.35);
 }
 .toggle-switch input:checked + .toggle-slider::before {
   transform: translateX(20px);
   background: var(--accent);
-  box-shadow: var(--lx-box-shadow-12);
+  box-shadow: 0 2px 8px rgba(129, 140, 248, 0.4), 0 0 0 2px rgba(129, 140, 248, 0.15);
 }
 .toggle-desc {
-  font-size: var(--lx-text-11px);
+  font-size: 11px;
   color: var(--text-secondary);
-  margin-top: var(--lx-space-10px);
-  line-height: var(--lx-leading-1_6);
+  margin-top: 10px;
+  line-height: 1.6;
 }

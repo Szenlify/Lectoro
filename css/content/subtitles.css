@@ -1,13 +1,17 @@
-/* Lectoro Universal Custom Subtitles (SSOT & Responsive) */
-#__qt_custom_subtitles_layer.__qt_custom-subtitles-layer {
+/* ==========================================================================
+   Lectoro Universal Custom Subtitles Layer (SSOT & Responsive)
+   Universal, Clean Selectors (No Chained #id.class)
+   ========================================================================== */
+
+.__qt_custom-subtitles-layer {
   position: absolute !important;
   inset: 0 !important;
   width: 100% !important;
   height: 100% !important;
   z-index: 2147483645 !important;
   pointer-events: none !important;
-  margin: var(--lx-space-0) !important;
-  padding: var(--lx-space-0) !important;
+  margin: 0 !important;
+  padding: 0 !important;
   box-sizing: border-box !important;
   display: flex !important;
   align-items: flex-end !important;
@@ -16,16 +20,17 @@
   transition: opacity 0.15s ease !important;
   isolation: isolate !important;
   contain: layout style !important;
-  color: var(--lx-color-ffffff) !important;
-  font-family: var(--lx-font-family-05) !important;
+  color: #ffffff !important;
+  font-family: "Netflix Sans Variable", "Netflix Sans", "Helvetica Neue", "Segoe UI", Roboto, Arial, sans-serif !important;
   font-style: normal !important;
-  font-weight: var(--lx-weight-600) !important;
+  font-weight: 600 !important;
   font-variant: normal !important;
   text-transform: none !important;
   text-rendering: geometricPrecision !important;
   -webkit-font-smoothing: antialiased !important;
 }
-#__qt_custom_subtitles_layer .__qt_custom-subtitles-box {
+
+.__qt_custom-subtitles-box {
   position: relative !important;
   display: flex !important;
   flex-direction: column !important;
@@ -45,44 +50,52 @@
   letter-spacing: inherit !important;
   text-transform: none !important;
   white-space: normal !important;
-  transition:
-    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 0s ease !important;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0s ease !important;
 }
-#__qt_custom_subtitles_layer .__qt_custom-sub-line {
+
+/* Original Subtitle Line (Preserves User's exact wrap/balance settings) */
+.__qt_custom-sub-line {
   display: block !important;
   width: auto !important;
   max-width: 100% !important;
-  margin: var(--lx-space-3px) auto !important;
+  margin: 3px auto !important;
   padding: var(--lectoro-sub-bg-padding, 0 4px) !important;
-  border-radius: var(--lx-radius-4px) !important;
-  background-color: var(
-    --lectoro-sub-bg-color,
-    var(--lx-color-transparent)
-  ) !important;
+  border-radius: 4px !important;
+  background-color: var(--lectoro-sub-bg-color, transparent) !important;
   box-decoration-break: clone !important;
   -webkit-box-decoration-break: clone !important;
-  color: var(--lx-color-ffffff) !important;
-  font-family: var(--lx-font-family-05) !important;
+  color: #ffffff !important;
+  font-family: "Netflix Sans Variable", "Netflix Sans", "Helvetica Neue", "Segoe UI", Roboto, Arial, sans-serif !important;
   font-size: var(--lectoro-sub-font-size, 26px) !important;
   font-style: normal !important;
-  font-weight: var(--lx-weight-600) !important;
+  font-weight: 600 !important;
   font-variant: normal !important;
-  line-height: var(--lx-leading-1_38) !important;
-  letter-spacing: var(--lx-tracking-0_015em) !important;
+  line-height: 1.38 !important;
+  letter-spacing: 0.015em !important;
   word-spacing: normal !important;
   text-align: center !important;
   text-decoration: none !important;
   text-transform: none !important;
   unicode-bidi: plaintext !important;
-  text-shadow: var(--lx-text-shadow-02) !important;
+  text-shadow:
+    -0.07em -0.07em 0 #000,
+     0.07em -0.07em 0 #000,
+    -0.07em  0.07em 0 #000,
+     0.07em  0.07em 0 #000,
+    -0.07em  0px    0 #000,
+     0.07em  0px    0 #000,
+     0px    -0.07em 0 #000,
+     0px     0.07em 0 #000,
+     0px     0.15em 0.35em rgba(0, 0, 0, 0.9) !important;
   white-space: normal !important;
   word-break: normal !important;
   overflow-wrap: break-word !important;
   text-wrap: balance !important;
   hyphens: none !important;
 }
-#__qt_custom_subtitles_layer .__qt_custom-sub-line.__qt_custom-sub-translation-line {
+
+/* Dual Subtitles: Translation Line Under Original Text */
+.__qt_custom-sub-translation-line {
   position: absolute !important;
   top: calc(100% + 4px) !important;
   left: 50% !important;
@@ -90,10 +103,10 @@
   width: max-content !important;
   max-width: min(84vw, 850px) !important;
   box-sizing: border-box !important;
-  margin: var(--lx-space-0) !important;
+  margin: 0 !important;
   font-size: calc(var(--lectoro-sub-font-size, 26px) * 0.6) !important;
   color: #d1d5db !important;
-  font-weight: var(--lx-weight-500) !important;
+  font-weight: 500 !important;
   white-space: pre-line !important;
   word-break: normal !important;
   overflow-wrap: break-word !important;
@@ -103,7 +116,9 @@
   cursor: default !important;
   z-index: 1 !important;
 }
-#__qt_custom_subtitles_layer .__qt_custom-sub-translation {
+
+/* In-place Translation Bubble Under Subtitles (E hotkey) */
+.__qt_custom-sub-translation {
   position: absolute !important;
   top: calc(100% + 6px) !important;
   left: 50% !important;
@@ -111,24 +126,30 @@
   width: max-content;
   max-width: min(84vw, 850px) !important;
   box-sizing: border-box !important;
-  margin: var(--lx-space-0) auto !important;
+  margin: 0 auto !important;
   padding: var(--lectoro-sub-bg-padding, 1px 6px) !important;
-  border-radius: var(--lx-radius-4px) !important;
-  background-color: var(
-    --lectoro-sub-bg-color,
-    var(--lx-color-transparent)
-  ) !important;
+  border-radius: 4px !important;
+  background-color: var(--lectoro-sub-bg-color, transparent) !important;
   box-decoration-break: clone !important;
   -webkit-box-decoration-break: clone !important;
-  color: var(--lx-color-dbdbdb) !important;
-  font-family: var(--lx-font-family-05) !important;
-  font-size: var(--lx-text-01) !important;
+  color: #dbdbdb !important;
+  font-family: "Netflix Sans Variable", "Netflix Sans", "Helvetica Neue", "Segoe UI", Roboto, Arial, sans-serif !important;
+  font-size: calc(var(--lectoro-sub-font-size, 26px) * 0.5) !important;
   font-style: normal !important;
-  font-weight: var(--lx-weight-500) !important;
-  line-height: var(--lx-leading-1_35) !important;
-  letter-spacing: var(--lx-tracking-0_015em) !important;
+  font-weight: 500 !important;
+  line-height: 1.35 !important;
+  letter-spacing: 0.015em !important;
   text-align: center !important;
-  text-shadow: var(--lx-text-shadow-03) !important;
+  text-shadow:
+    -0.06em -0.06em 0 #000,
+     0.06em -0.06em 0 #000,
+    -0.06em  0.06em 0 #000,
+     0.06em  0.06em 0 #000,
+    -0.06em  0px    0 #000,
+     0.06em  0px    0 #000,
+     0px    -0.06em 0 #000,
+     0px     0.06em 0 #000,
+     0       0.12em 0.3em rgba(0, 0, 0, 0.95) !important;
   white-space: pre-line !important;
   word-break: normal !important;
   overflow-wrap: break-word !important;
@@ -138,96 +159,74 @@
   z-index: 10 !important;
   animation: qtSubTranslationFadeIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
 }
-#__qt_custom_subtitles_layer .__qt_custom-sub-translation[data-sentence-state] {
+
+.__qt_custom-sub-translation[data-sentence-state] {
   width: max-content;
   animation: none !important;
   overflow: hidden !important;
 }
-#__qt_custom_subtitles_layer
-  .__qt_custom-sub-translation[data-sentence-state="loading"] {
+
+.__qt_custom-sub-translation[data-sentence-state="loading"] {
   width: 96px;
   height: 12px;
-  margin-top: var(--lx-space-4px) !important;
-  border-radius: var(--lx-radius-6px) !important;
+  margin-top: 4px !important;
+  border-radius: 6px !important;
 }
-#__qt_custom_subtitles_layer
-  .__qt_custom-sub-translation[data-sentence-state]::after {
+
+.__qt_custom-sub-translation[data-sentence-state]::after {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  background: linear-gradient(
-    105deg,
-    var(--lx-color-24) 20%,
-    var(--lx-color-163) 48%,
-    var(--lx-color-38) 78%
-  );
+  background: linear-gradient(105deg, rgba(255, 255, 255, 0.07) 20%, rgba(255, 255, 255, 0.2) 48%, rgba(255, 255, 255, 0.1) 78%);
   background-size: 240% 100%;
   animation: __qt_sentence_shimmer 1.15s linear infinite;
   transition: opacity 320ms ease;
 }
-#__qt_custom_subtitles_layer .__qt_sentence-copy {
+
+.__qt_sentence-copy {
   display: block;
   opacity: 0;
   transform: translateY(4px);
   filter: blur(3px);
-  transition:
-    opacity 360ms ease,
-    transform 360ms ease,
-    filter 360ms ease;
+  transition: opacity 360ms ease, transform 360ms ease, filter 360ms ease;
 }
-#__qt_custom_subtitles_layer [data-sentence-state="ready"]::after {
+
+[data-sentence-state="ready"]::after {
   opacity: 0;
   animation: none;
 }
-#__qt_custom_subtitles_layer [data-sentence-state="ready"] .__qt_sentence-copy {
+
+[data-sentence-state="ready"] .__qt_sentence-copy {
   opacity: 1;
   transform: translateY(0);
   filter: blur(0);
 }
-@keyframes __qt_sentence_shimmer {
-  from {
-    background-position: 150% 0;
-  }
-  to {
-    background-position: -90% 0;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  #__qt_custom_subtitles_layer
-    .__qt_custom-sub-translation[data-sentence-state]::after {
-    animation: none;
-    transition: none;
-  }
-  #__qt_custom_subtitles_layer .__qt_sentence-copy {
-    transition: none;
-  }
-}
-@keyframes qtSubTranslationFadeIn {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, -6px);
-  }
 
-  100% {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
-} /* Sentence translation supports replay on click. */
-body[data-lectoro-sub-translate-active="true"]
-  #__qt_custom_subtitles_layer
-  .__qt_custom-sub-translation {
+@keyframes __qt_sentence_shimmer {
+  from { background-position: 150% 0; }
+  to { background-position: -90% 0; }
+}
+
+@keyframes qtSubTranslationFadeIn {
+  0% { opacity: 0; transform: translate(-50%, -6px); }
+  100% { opacity: 1; transform: translate(-50%, 0); }
+}
+
+body[data-lectoro-sub-translate-active="true"] .__qt_custom-sub-translation {
   pointer-events: auto !important;
   cursor: pointer !important;
 }
-#__qt_custom_subtitles_layer .__qt_sub-word {
+
+/* Individual interactive word tokens inside subtitles */
+.__qt_sub-word {
   cursor: pointer !important;
   display: inline !important;
   pointer-events: auto !important;
-  border-radius: var(--lx-radius-4px) !important;
-  padding: var(--lx-space-0) !important;
-  margin: var(--lx-space-0) !important;
+  border-radius: 4px !important;
+  padding: 0 !important;
+  margin: 0 !important;
   color: inherit !important;
   font: inherit !important;
   line-height: inherit !important;
@@ -240,16 +239,117 @@ body[data-lectoro-sub-translate-active="true"]
   word-break: normal !important;
   overflow-wrap: normal !important;
   hyphens: none !important;
-  transition:
-    background-color 0.12s ease,
-    color 0.12s ease,
-    transform 0.12s ease,
-    box-shadow 0.12s ease !important;
+  transition: background-color 0.12s ease, color 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease !important;
 }
-#__qt_custom_subtitles_layer .__qt_sub-word:hover,
-#__qt_custom_subtitles_layer .__qt_sub-word.__qt_word-hover {
-  background: var(--lx-color-217) !important;
-  color: var(--lx-color-ffffff) !important;
-  box-shadow: var(--lx-box-shadow-75) !important;
-  text-shadow: var(--lx-text-shadow-04) !important;
+
+.__qt_sub-word:hover,
+.__qt_sub-word.__qt_word-hover {
+  background: rgba(74, 108, 247, 0.55) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25) inset !important;
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.95) !important;
+}
+
+/* AI Breakdown Highlights (Enter key multi-word phrases & idioms) */
+.__qt_ai-sub-wrap {
+  display: inline !important;
+  box-decoration-break: clone !important;
+  -webkit-box-decoration-break: clone !important;
+  border-radius: 4px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: inherit !important;
+  pointer-events: auto !important;
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+.__qt_ai-sub-wrap .__qt_sub-word,
+.__qt_ai-sub-wrap .__qt_sub-word:hover,
+.__qt_ai-sub-wrap .__qt_sub-word.__qt_word-hover,
+.__qt_sub-word.__qt_ai-sub-queued:hover,
+.__qt_sub-word.__qt_ai-sub-active:hover,
+.__qt_sub-word.__qt_ai-sub-upcoming:hover {
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  color: inherit !important;
+  text-shadow: inherit !important;
+  transition: color 0.25s ease !important;
+}
+
+.__qt_ai-sub-wrap.__qt_ai-sub-active,
+.__qt_ai-sub-active {
+  background: linear-gradient(135deg, rgba(78, 205, 196, 0.45), rgba(168, 85, 247, 0.45)) !important;
+  color: #ffffff !important;
+  text-shadow: 0 0 8px rgba(78, 205, 196, 0.8), 0 1px 2px rgba(0, 0, 0, 0.9) !important;
+  border-radius: 4px !important;
+  box-shadow: inset 0 0 0 1px #4ecdc4, 0 0 8px rgba(78, 205, 196, 0.45) !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  cursor: pointer !important;
+  animation: __qt_sub_highlight_glow_in 0.42s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+.__qt_ai-sub-wrap.__qt_ai-sub-upcoming,
+.__qt_ai-sub-wrap.__qt_ai-sub-queued,
+.__qt_ai-sub-upcoming,
+.__qt_ai-sub-queued {
+  background: rgba(168, 85, 247, 0.26) !important;
+  color: #f3e8ff !important;
+  text-shadow: 0 0 8px rgba(168, 85, 247, 0.7), 0 1px 2px rgba(0, 0, 0, 0.9) !important;
+  border-radius: 4px !important;
+  box-shadow: inset 0 0 0 1px rgba(168, 85, 247, 0.4) !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  cursor: pointer !important;
+  animation: __qt_sub_queued_fade_in 0.42s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+.__qt_ai-sub-wrap:hover,
+.__qt_ai-sub-wrap.__qt_ai-sub-queued:hover,
+.__qt_ai-sub-wrap.__qt_ai-sub-upcoming:hover,
+.__qt_ai-sub-queued:hover,
+.__qt_ai-sub-upcoming:hover {
+  background: rgba(168, 85, 247, 0.42) !important;
+  box-shadow: inset 0 0 0 1.5px #c084fc, 0 0 12px rgba(168, 85, 247, 0.65) !important;
+  color: #ffffff !important;
+  text-shadow: 0 0 10px rgba(168, 85, 247, 0.95), 0 1px 2px rgba(0, 0, 0, 0.9) !important;
+  cursor: pointer !important;
+  filter: brightness(1.15) !important;
+}
+
+.__qt_ai-sub-wrap.__qt_ai-sub-active:hover,
+.__qt_ai-sub-active:hover {
+  background: linear-gradient(135deg, rgba(78, 205, 196, 0.62), rgba(168, 85, 247, 0.62)) !important;
+  box-shadow: inset 0 0 0 1.5px #00ffea, 0 0 14px rgba(78, 205, 196, 0.75) !important;
+  color: #ffffff !important;
+  text-shadow: 0 0 10px rgba(78, 205, 196, 0.95), 0 1px 2px rgba(0, 0, 0, 0.9) !important;
+  cursor: pointer !important;
+  filter: brightness(1.15) !important;
+}
+
+body[data-lectoro-ai-active="true"] .__qt_sub-word:not(.__qt_ai-sub-active):not(.__qt_ai-sub-queued):not(.__qt_ai-sub-upcoming) {
+  cursor: default !important;
+}
+body[data-lectoro-ai-active="true"] .__qt_sub-word:not(.__qt_ai-sub-active):not(.__qt_ai-sub-queued):not(.__qt_ai-sub-upcoming):hover {
+  background: transparent !important;
+  box-shadow: none !important;
+  color: inherit !important;
+  text-shadow: inherit !important;
+}
+
+@keyframes __qt_sub_highlight_glow_in {
+  0% { box-shadow: inset 0 0 0 0 rgba(78, 205, 196, 0), 0 0 0 rgba(78, 205, 196, 0); opacity: 0.7; }
+  50% { box-shadow: inset 0 0 0 1px rgba(78, 205, 196, 0.9), 0 0 10px rgba(78, 205, 196, 0.55); opacity: 1; }
+  100% { box-shadow: inset 0 0 0 1px #4ecdc4, 0 0 8px rgba(78, 205, 196, 0.45); opacity: 1; }
+}
+
+@keyframes __qt_sub_queued_fade_in {
+  0% { box-shadow: inset 0 0 0 0 rgba(168, 85, 247, 0); opacity: 0.5; }
+  50% { box-shadow: inset 0 0 0 1px rgba(168, 85, 247, 0.6), 0 0 6px rgba(168, 85, 247, 0.3); }
+  100% { box-shadow: inset 0 0 0 1px rgba(168, 85, 247, 0.4); opacity: 1; }
 }

@@ -340,11 +340,10 @@
         } else if (args[0]) {
           requestUrl = String(args[0]);
         }
-        // ONLY intercept successful player requests for original captions (ignore our own bridge fetches or errors)
+        // Intercept player requests for timedtext captions (both original and auto-translated via tlang)
         if (
           response.ok &&
           requestUrl.includes("/api/timedtext") &&
-          !requestUrl.includes("tlang=") &&
           !requestUrl.includes("__lectoro_bridge")
         ) {
           const clone = response.clone();
@@ -381,7 +380,6 @@
     if (
       this.__lectoro_url &&
       this.__lectoro_url.includes("/api/timedtext") &&
-      !this.__lectoro_url.includes("tlang=") &&
       !this.__lectoro_url.includes("__lectoro_bridge")
     ) {
       this.addEventListener("load", () => {
@@ -428,16 +426,6 @@
   window.addEventListener(FETCH_REQUEST_EVENT, async (event) => {
     const {requestId, url} = event?.detail || {};
     if (!requestId || !url) return;
-
-    // Never fetch timedtext URLs - Lectoro intercepts YouTube's native XHR and translates via SharedTranslatorService
-    if (isTimedTextUrl(url)) {
-      window.dispatchEvent(
-        new CustomEvent(FETCH_RESPONSE_EVENT, {
-          detail: {requestId, text: "", ok: false, status: 204},
-        })
-      );
-      return;
-    }
 
     try {
       const fetchFn = typeof originalFetch === "function" ? originalFetch : window.fetch;

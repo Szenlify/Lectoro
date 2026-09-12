@@ -9,29 +9,29 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--lx-space-12px);
+  gap: 12px;
 }
 .ai-usage-title {
   color: var(--text-primary);
-  font-size: var(--lx-text-13px);
-  font-weight: var(--lx-weight-650);
+  font-size: 13px;
+  font-weight: 650;
 }
 .ai-usage-value {
   color: var(--text-primary);
-  font-size: var(--lx-text-14px);
-  font-weight: var(--lx-weight-760);
+  font-size: 14px;
+  font-weight: 760;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 .ai-usage-track {
   position: relative;
   height: 6px;
-  margin: var(--lx-space-11px) var(--lx-space-0) var(--lx-space-8px);
+  margin: 11px 0 8px;
   overflow: hidden;
-  border: 1px solid var(--lx-color-106);
-  border-radius: var(--lx-radius-99px);
-  background: var(--lx-color-113);
-  box-shadow: var(--lx-box-shadow-39);
+  border: 1px solid rgba(255, 255, 255, 0.045);
+  border-radius: 99px;
+  background: rgba(3, 10, 20, 0.5);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.28);
 }
 .ai-usage-fill {
   position: absolute;
@@ -41,11 +41,11 @@
   border-radius: inherit;
   background: linear-gradient(
     90deg,
-    var(--lx-color-818cf8),
-    var(--lx-color-a78bfa) 52%,
-    var(--lx-color-6ee7b7)
+    #818cf8,
+    #a78bfa 52%,
+    #6ee7b7
   );
-  box-shadow: var(--lx-box-shadow-40);
+  box-shadow: 0 0 14px rgba(129, 140, 248, 0.42);
   transition:
     width 0.8s cubic-bezier(0.22, 1, 0.36, 1),
     background 0.3s ease;
@@ -56,9 +56,9 @@
   inset: 0;
   background: linear-gradient(
     90deg,
-    var(--lx-color-transparent),
-    var(--lx-color-116),
-    var(--lx-color-transparent)
+    transparent,
+    rgba(255, 255, 255, 0.5),
+    transparent
   );
   transform: translateX(-100%);
   animation: ai-usage-sheen 2.4s ease-in-out infinite;
@@ -67,54 +67,54 @@
   width: 38%;
   background: linear-gradient(
     90deg,
-    var(--lx-color-transparent),
-    var(--lx-color-818cf8),
-    var(--lx-color-transparent)
+    transparent,
+    #818cf8,
+    transparent
   );
   animation: ai-usage-loading 1.25s ease-in-out infinite;
 }
 .ai-usage-card.is-warning .ai-usage-fill {
   background: linear-gradient(
     90deg,
-    var(--lx-color-f59e0b),
-    var(--lx-color-fbbf24)
+    #f59e0b,
+    #fbbf24
   );
-  box-shadow: var(--lx-box-shadow-41);
+  box-shadow: 0 0 14px rgba(251, 191, 36, 0.32);
 }
 .ai-usage-card.is-empty {
-  border-color: var(--lx-color-118);
-  background: var(--lx-color-119);
+  border-color: rgba(251, 113, 133, 0.23);
+  background: rgba(244, 63, 94, 0.035);
 }
 .ai-usage-card.is-empty .ai-usage-fill {
   background: linear-gradient(
     90deg,
-    var(--lx-color-f43f5e),
-    var(--lx-color-fb7185)
+    #f43f5e,
+    #fb7185
   );
-  box-shadow: var(--lx-box-shadow-42);
+  box-shadow: 0 0 16px rgba(244, 63, 94, 0.38);
 }
 .ai-usage-card.is-unavailable {
-  border-color: var(--lx-color-121);
-  background: var(--lx-color-122);
+  border-color: rgba(167, 139, 250, 0.14);
+  background: rgba(139, 92, 246, 0.025);
 }
 .ai-usage-card.is-unavailable .ai-usage-value,
 .ai-usage-footer {
   color: var(--text-muted);
-  font-size: var(--lx-text-10px);
+  font-size: 10px;
 } /* �� Subscription Carousel ������������������������� */
 .subscription-carousel {
   position: relative;
 }
 .subscription-plans-grid {
   display: flex;
-  gap: var(--lx-space-8px);
+  gap: 8px;
   overflow-x: auto;
   overflow-y: hidden;
   scroll-snap-type: x mandatory;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  padding: var(--lx-space-4px) var(--lx-space-0) var(--lx-space-6px);
+  padding: 4px 0 6px;
 }
 .subscription-plans-grid::-webkit-scrollbar {
   display: none;
@@ -129,20 +129,20 @@
   place-items: center;
   width: 28px;
   height: 28px;
-  border: 1px solid var(--lx-color-21);
-  border-radius: var(--lx-radius-50pct);
-  background: var(--lx-color-123);
+  border: 1px solid rgba(129, 140, 248, 0.25);
+  border-radius: 50%;
+  background: rgba(15, 30, 20, 0.85);
   backdrop-filter: blur(8px);
-  color: var(--lx-color-c7d2fe);
+  color: #c7d2fe;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: var(--lx-box-shadow-43);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 .carousel-arrow-next:hover {
-  border-color: var(--lx-color-125);
-  background: var(--lx-color-126);
+  border-color: rgba(129, 140, 248, 0.55);
+  background: rgba(99, 102, 241, 0.25);
   transform: translateY(-50%) scale(1.1);
-  box-shadow: var(--lx-box-shadow-44);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.2);
 }
 .carousel-arrow-next.is-scrolled-end {
   transform: translateY(-50%) rotate(180deg);
@@ -159,12 +159,12 @@
   width: 32px;
   background: linear-gradient(
     90deg,
-    var(--lx-color-transparent),
-    var(--lx-color-128)
+    transparent,
+    rgba(4, 26, 36, 0.85)
   );
   pointer-events: none;
   z-index: 2;
-  border-radius: var(--lx-radius-0-14px-14px-0);
+  border-radius: 0 14px 14px 0;
   transition: opacity 0.3s ease;
 }
 .subscription-carousel.is-scrolled-end::after {
@@ -172,8 +172,8 @@
 }
 .subscription-plan-card {
   color: var(--text-muted);
-  font-size: var(--lx-text-9px);
-  line-height: var(--lx-leading-1_45);
+  font-size: 9px;
+  line-height: 1.45;
 }
 .subscription-plan-card strong,
 .subscription-plan-card b {
@@ -181,35 +181,35 @@
   color: var(--text-primary);
 }
 .subscription-plan-card strong {
-  font-size: var(--lx-text-12px);
+  font-size: 12px;
 }
 .subscription-plan-card b {
-  margin: var(--lx-space-2px) var(--lx-space-0) var(--lx-space-6px);
-  font-size: var(--lx-text-10px);
+  margin: 2px 0 6px;
+  font-size: 10px;
 }
 .subscription-plan-card span {
   display: block;
 }
 .subscription-plan-current {
-  margin-top: var(--lx-space-7px);
+  margin-top: 7px;
 }
 .subscription-plan-button {
   width: 100%;
-  border: 1px solid var(--lx-color-42);
-  background: linear-gradient(135deg, var(--lx-color-131), var(--lx-color-132));
-  color: var(--lx-color-eef2ff);
+  border: 1px solid rgba(129, 140, 248, 0.45);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.34), rgba(139, 92, 246, 0.22));
+  color: #eef2ff;
   font: inherit;
-  font-weight: var(--lx-weight-800);
+  font-weight: 800;
   cursor: pointer;
   transition: 0.2s ease;
 }
 .subscription-plan-button:hover {
-  border-color: var(--lx-color-133);
+  border-color: rgba(165, 180, 252, 0.72);
   transform: translateY(-1px);
 }
 .subscription-plan-button.is-secondary {
-  background: var(--lx-color-05);
-  color: var(--lx-color-c7d2fe);
+  background: rgba(129, 140, 248, 0.08);
+  color: #c7d2fe;
 }
 .subscription-plan-button:disabled {
   opacity: 0.52;
@@ -218,64 +218,64 @@
 }
 .stripe-billing-status {
   color: var(--mint);
-  line-height: var(--lx-leading-1_4);
+  line-height: 1.4;
 }
 .stripe-billing-status.is-success {
   color: var(--mint);
 }
 .stripe-billing-status.is-error {
-  color: var(--lx-color-fca5a5);
+  color: #fca5a5;
 } /* Compact usage overview + subscription cards ------------------- */
 .setting-heading-row {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: var(--lx-space-12px);
-  margin-bottom: var(--lx-space-8px);
+  gap: 12px;
+  margin-bottom: 8px;
 }
 .settings .setting-heading-row label {
-  margin-bottom: var(--lx-space-0);
+  margin-bottom: 0;
 }
 .usage-plan-badge,
 .subscription-plan-badge {
   display: inline-flex;
   align-items: center;
   width: fit-content;
-  border: 1px solid var(--lx-color-29);
-  border-radius: var(--lx-radius-999px);
-  background: var(--lx-color-130);
-  color: var(--lx-color-c7d2fe);
-  font-size: var(--lx-text-8px);
-  font-weight: var(--lx-weight-800);
-  letter-spacing: var(--lx-tracking-0_06em);
-  line-height: var(--lx-leading-1);
+  border: 1px solid rgba(129, 140, 248, 0.2);
+  border-radius: 999px;
+  background: rgba(129, 140, 248, 0.1);
+  color: #c7d2fe;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1;
   white-space: nowrap;
 }
 .usage-plan-badge {
-  padding: var(--lx-space-5px) var(--lx-space-7px);
+  padding: 5px 7px;
 }
 .ai-usage-card {
-  padding: var(--lx-space-0) !important;
-  border-color: var(--lx-color-112) !important;
+  padding: 0 !important;
+  border-color: rgba(129, 140, 248, 0.14) !important;
   background:
     linear-gradient(
       145deg,
-      var(--lx-color-134),
-      var(--lx-color-transparent) 52%
+      rgba(129, 140, 248, 0.045),
+      transparent 52%
     ),
     var(--glass) !important;
 }
 .usage-meter {
   position: relative;
-  padding: var(--lx-space-10px) var(--lx-space-12px) var(--lx-space-9px);
+  padding: 10px 12px 9px;
 }
 .usage-meter + .usage-meter {
-  border-top: 1px solid var(--lx-color-108);
+  border-top: 1px solid rgba(255, 255, 255, 0.055);
 }
 .usage-meter-name {
   display: flex;
   align-items: center;
-  gap: var(--lx-space-9px);
+  gap: 9px;
   min-width: 0;
 }
 .usage-meter-icon {
@@ -284,84 +284,84 @@
   flex: 0 0 26px;
   width: 26px;
   height: 26px;
-  border: 1px solid var(--lx-color-29);
-  border-radius: var(--lx-radius-8px);
-  background: var(--lx-color-130);
-  color: var(--lx-color-c7d2fe);
-  font-size: var(--lx-text-8px);
-  font-weight: var(--lx-weight-850);
-  letter-spacing: var(--lx-tracking-neg-0_02em);
+  border: 1px solid rgba(129, 140, 248, 0.2);
+  border-radius: 8px;
+  background: rgba(129, 140, 248, 0.1);
+  color: #c7d2fe;
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: -0.02em;
 }
 .usage-meter-icon-voice {
-  border-color: var(--lx-color-135);
-  background: var(--lx-color-136);
-  color: var(--lx-color-99f6e4);
+  border-color: rgba(45, 212, 191, 0.18);
+  background: rgba(45, 212, 191, 0.08);
+  color: #99f6e4;
 }
 .usage-meter .ai-usage-title {
-  font-size: var(--lx-text-11px);
-  font-weight: var(--lx-weight-750);
-  line-height: var(--lx-leading-1_25);
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.25;
 }
 .usage-meter-note {
   max-width: 255px;
-  margin-top: var(--lx-space-2px);
+  margin-top: 2px;
   overflow: hidden;
   color: var(--text-muted);
-  font-size: var(--lx-text-8_5px);
-  line-height: var(--lx-leading-1_2);
+  font-size: 8.5px;
+  line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .usage-meter .ai-usage-value {
-  padding-left: var(--lx-space-8px);
-  font-size: var(--lx-text-11px);
-  font-weight: var(--lx-weight-800);
+  padding-left: 8px;
+  font-size: 11px;
+  font-weight: 800;
 }
 .usage-meter .ai-usage-track {
   height: 5px;
-  margin: var(--lx-space-7px) var(--lx-space-0) var(--lx-space-0)
-    var(--lx-space-35px);
+  margin: 7px 0 0
+    35px;
 }
 .elevenlabs-usage-meter .ai-usage-fill {
   background: linear-gradient(
     90deg,
-    var(--lx-color-2dd4bf),
-    var(--lx-color-67e8f9)
+    #2dd4bf,
+    #67e8f9
   );
-  box-shadow: var(--lx-box-shadow-46);
+  box-shadow: 0 0 12px rgba(45, 212, 191, 0.3);
 }
 .usage-meter.is-warning .ai-usage-fill {
   background: linear-gradient(
     90deg,
-    var(--lx-color-f59e0b),
-    var(--lx-color-fbbf24)
+    #f59e0b,
+    #fbbf24
   );
-  box-shadow: var(--lx-box-shadow-47);
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.28);
 }
 .usage-meter.is-empty .ai-usage-fill {
   background: linear-gradient(
     90deg,
-    var(--lx-color-f43f5e),
-    var(--lx-color-fb7185)
+    #f43f5e,
+    #fb7185
   );
-  box-shadow: var(--lx-box-shadow-48);
+  box-shadow: 0 0 12px rgba(244, 63, 94, 0.3);
 }
 .usage-meter.is-empty .ai-usage-value,
 .usage-meter.is-empty .usage-meter-note {
-  color: var(--lx-color-fda4af);
+  color: #fda4af;
 }
 .usage-meter.is-unavailable {
   opacity: 0.67;
 }
 .usage-meter.is-unavailable .ai-usage-value {
   color: var(--text-muted);
-  font-size: var(--lx-text-9px);
+  font-size: 9px;
 }
 .ai-usage-card .ai-usage-footer {
   min-height: 31px;
-  padding: var(--lx-space-7px) var(--lx-space-12px);
-  border-top: 1px solid var(--lx-color-108);
-  background: var(--lx-color-140);
+  padding: 7px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.055);
+  background: rgba(2, 12, 19, 0.18);
 }
 .usage-reset-copy {
   display: flex;
@@ -369,10 +369,10 @@
   justify-content: space-between;
   width: 100%;
   min-width: 0;
-  gap: var(--lx-space-5px);
+  gap: 5px;
   overflow: hidden;
   color: var(--mint);
-  font-size: var(--lx-text-9px);
+  font-size: 9px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -381,30 +381,30 @@
 }
 .subscription-heading {
   align-items: center;
-  margin-bottom: var(--lx-space-10px);
+  margin-bottom: 10px;
 }
 .subscription-heading p {
-  margin-top: var(--lx-space-3px);
+  margin-top: 3px;
   color: var(--text-muted);
-  font-size: var(--lx-text-9px);
-  line-height: var(--lx-leading-1_35);
+  font-size: 9px;
+  line-height: 1.35;
 }
 .subscription-trial-banner {
   display: flex;
   align-items: center;
-  gap: var(--lx-space-9px);
-  margin: var(--lx-space-0) var(--lx-space-0) var(--lx-space-9px);
-  padding: var(--lx-space-9px) var(--lx-space-11px);
-  border: 1px solid var(--lx-color-07);
-  border-radius: var(--lx-radius-12px);
+  gap: 9px;
+  margin: 0 0 9px;
+  padding: 9px 11px;
+  border: 1px solid rgba(110, 231, 183, 0.2);
+  border-radius: 12px;
   background:
     radial-gradient(
       circle at 8% 20%,
-      var(--lx-color-141),
-      var(--lx-color-transparent) 42%
+      rgba(110, 231, 183, 0.14),
+      transparent 42%
     ),
-    linear-gradient(135deg, var(--lx-color-142), var(--lx-color-143));
-  box-shadow: var(--lx-box-shadow-49);
+    linear-gradient(135deg, rgba(16, 185, 129, 0.07), rgba(99, 102, 241, 0.07));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 .subscription-trial-banner[hidden] {
   display: none;
@@ -415,15 +415,15 @@
   width: 27px;
   height: 27px;
   place-items: center;
-  border-radius: var(--lx-radius-9px);
+  border-radius: 9px;
   background: linear-gradient(
     135deg,
-    var(--lx-color-34d399),
-    var(--lx-color-6366f1)
+    #34d399,
+    #6366f1
   );
-  color: var(--lx-color-fff);
-  font-size: var(--lx-text-13px);
-  box-shadow: var(--lx-box-shadow-50);
+  color: #fff;
+  font-size: 13px;
+  box-shadow: 0 5px 16px rgba(52, 211, 153, 0.18);
 }
 .subscription-trial-banner div {
   min-width: 0;
@@ -433,15 +433,15 @@
   display: block;
 }
 .subscription-trial-banner strong {
-  color: var(--lx-color-ecfdf5);
-  font-size: var(--lx-text-10px);
-  line-height: var(--lx-leading-1_25);
+  color: #ecfdf5;
+  font-size: 10px;
+  line-height: 1.25;
 }
 .subscription-trial-banner div > span {
-  margin-top: var(--lx-space-2px);
-  color: var(--lx-color-a7f3d0);
-  font-size: var(--lx-text-8_5px);
-  line-height: var(--lx-leading-1_35);
+  margin-top: 2px;
+  color: #a7f3d0;
+  font-size: 8.5px;
+  line-height: 1.35;
 }
 .subscription-plan-card {
   position: relative;
@@ -450,18 +450,18 @@
   min-width: 0;
   min-height: 220px;
   flex-direction: column;
-  padding: var(--lx-space-12px) var(--lx-space-12px) var(--lx-space-10px);
+  padding: 12px 12px 10px;
   overflow: hidden;
-  border: 1px solid var(--lx-color-145);
-  border-radius: var(--lx-radius-14px);
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 14px;
   background:
     linear-gradient(
       160deg,
-      var(--lx-color-106),
-      var(--lx-color-transparent) 48%
+      rgba(255, 255, 255, 0.045),
+      transparent 48%
     ),
-    var(--lx-color-146);
-  box-shadow: var(--lx-box-shadow-51);
+    rgba(255, 255, 255, 0.018);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
   scroll-snap-align: start;
   transition:
     border-color 0.2s ease,
@@ -469,17 +469,17 @@
     transform 0.25s ease;
 }
 .subscription-plan-card:hover {
-  border-color: var(--lx-color-33);
+  border-color: rgba(129, 140, 248, 0.3);
 }
 .subscription-plan-card.is-recommended {
-  border-color: var(--lx-color-147);
+  border-color: rgba(129, 140, 248, 0.28);
   background:
     linear-gradient(
       155deg,
-      var(--lx-color-148),
-      var(--lx-color-transparent) 52%
+      rgba(99, 102, 241, 0.12),
+      transparent 52%
     ),
-    var(--lx-color-149);
+    rgba(255, 255, 255, 0.024);
 }
 .subscription-plan-card.has-trial-offer::after {
   position: absolute;
@@ -487,92 +487,92 @@
   right: -38px;
   width: 85px;
   height: 85px;
-  border-radius: var(--lx-radius-50pct);
-  background: var(--lx-color-13);
+  border-radius: 50%;
+  background: rgba(110, 231, 183, 0.06);
   content: "";
   pointer-events: none;
 }
 .subscription-plan-card.is-current {
-  border-color: var(--lx-color-150);
-  box-shadow: var(--lx-box-shadow-52);
+  border-color: rgba(110, 231, 183, 0.43);
+  box-shadow: 0 0 0 1px rgba(110, 231, 183, 0.07), 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 .subscription-plan-topline {
   display: flex;
   min-height: 18px;
   align-items: center;
   justify-content: space-between;
-  gap: var(--lx-space-4px);
+  gap: 4px;
 }
 .subscription-plan-card .subscription-plan-topline strong {
-  font-size: var(--lx-text-11px);
-  letter-spacing: var(--lx-tracking-0_06em);
+  font-size: 11px;
+  letter-spacing: 0.06em;
 }
 .subscription-plan-badge {
-  padding: var(--lx-space-4px) var(--lx-space-6px);
-  font-size: var(--lx-text-8_5px);
-  letter-spacing: var(--lx-tracking-0);
+  padding: 4px 6px;
+  font-size: 8.5px;
+  letter-spacing: 0;
 }
 .subscription-plan-badge.is-active {
-  border-color: var(--lx-color-07);
-  background: var(--lx-color-152);
-  color: var(--lx-color-a7f3d0);
+  border-color: rgba(110, 231, 183, 0.2);
+  background: rgba(110, 231, 183, 0.08);
+  color: #a7f3d0;
 }
 .subscription-plan-badge.is-trialing {
-  border-color: var(--lx-color-153);
-  background: var(--lx-color-154);
-  color: var(--lx-color-fde68a);
+  border-color: rgba(250, 204, 21, 0.22);
+  background: rgba(250, 204, 21, 0.09);
+  color: #fde68a;
 }
 .subscription-plan-trial-kicker {
   width: fit-content;
-  margin-top: var(--lx-space-6px);
-  color: var(--lx-color-6ee7b7);
-  font-size: var(--lx-text-8px);
-  font-weight: var(--lx-weight-850);
-  letter-spacing: var(--lx-tracking-0_08em);
-  line-height: var(--lx-leading-1);
+  margin-top: 6px;
+  color: #6ee7b7;
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  line-height: 1;
   text-transform: uppercase;
 }
 .subscription-plan-price {
   display: flex;
   min-height: 31px;
   align-items: baseline;
-  gap: var(--lx-space-3px);
-  margin: var(--lx-space-7px) var(--lx-space-0) var(--lx-space-9px);
+  gap: 3px;
+  margin: 7px 0 9px;
 }
 .subscription-plan-card .subscription-plan-price b {
-  margin: var(--lx-space-0);
-  font-size: var(--lx-text-16px);
-  letter-spacing: var(--lx-tracking-neg-0_035em);
+  margin: 0;
+  font-size: 16px;
+  letter-spacing: -0.035em;
   white-space: nowrap;
 }
 .subscription-plan-price > span {
   color: var(--text-muted);
-  font-size: var(--lx-text-9_5px);
+  font-size: 9.5px;
   white-space: nowrap;
 }
 .subscription-plan-features {
   display: flex;
   flex-direction: column;
-  gap: var(--lx-space-5px);
+  gap: 5px;
 }
 .subscription-plan-card .subscription-plan-features > span {
   display: flex;
   align-items: flex-start;
-  gap: var(--lx-space-4px);
+  gap: 4px;
   color: var(--text-secondary);
-  font-size: var(--lx-text-9_5px);
-  line-height: var(--lx-leading-1_3);
+  font-size: 9.5px;
+  line-height: 1.3;
 }
 .subscription-plan-features i {
   flex: 0 0 10px;
   color: var(--mint);
-  font-size: var(--lx-text-8px);
+  font-size: 8px;
   font-style: normal;
-  font-weight: var(--lx-weight-850);
+  font-weight: 850;
 }
 .subscription-plan-card .subscription-plan-features b {
   display: inline;
-  margin: var(--lx-space-0);
+  margin: 0;
   color: var(--text-primary);
   font-size: inherit;
 }
@@ -589,37 +589,37 @@
   flex-direction: column;
   justify-content: flex-end;
   margin-top: auto;
-  padding-top: var(--lx-space-9px);
+  padding-top: 9px;
 }
 .subscription-trial-note {
-  margin-top: var(--lx-space-6px);
+  margin-top: 6px;
   color: var(--text-muted);
-  font-size: var(--lx-text-8px);
-  line-height: var(--lx-leading-1_35);
+  font-size: 8px;
+  line-height: 1.35;
   text-align: center;
 }
 .subscription-plan-card .subscription-trial-note b {
   display: inline;
-  color: var(--lx-color-a7f3d0);
+  color: #a7f3d0;
   font-size: inherit;
 }
 .subscription-plan-current {
   display: inline-flex !important;
   align-items: center;
   min-height: 32px;
-  margin: var(--lx-space-0);
+  margin: 0;
   color: var(--mint);
-  font-size: var(--lx-text-8_5px);
-  font-weight: var(--lx-weight-800);
-  letter-spacing: var(--lx-tracking-0_04em);
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
 }
 .subscription-plan-current::before {
   width: 5px;
   height: 5px;
-  margin-right: var(--lx-space-5px);
-  border-radius: var(--lx-radius-50pct);
+  margin-right: 5px;
+  border-radius: 50%;
   background: var(--mint);
-  box-shadow: var(--lx-box-shadow-53);
+  box-shadow: 0 0 8px rgba(110, 231, 183, 0.5);
   content: "";
 }
 .subscription-plan-button {
@@ -627,24 +627,24 @@
   min-height: 30px;
   align-items: center;
   justify-content: center;
-  gap: var(--lx-space-5px);
-  margin-top: var(--lx-space-0);
-  padding: var(--lx-space-6px) var(--lx-space-8px);
-  border-radius: var(--lx-radius-8px);
-  font-size: var(--lx-text-8_5px);
+  gap: 5px;
+  margin-top: 0;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 8.5px;
 }
 .subscription-plan-button.is-loading {
-  gap: var(--lx-space-6px);
-  background: var(--lx-color-86);
+  gap: 6px;
+  background: rgba(129, 140, 248, 0.13);
 }
 .subscription-plan-button.is-trial {
-  border-color: var(--lx-color-156);
-  background: linear-gradient(135deg, var(--lx-color-157), var(--lx-color-158));
-  box-shadow: var(--lx-box-shadow-54);
+  border-color: rgba(110, 231, 183, 0.42);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.35), rgba(79, 70, 229, 0.4));
+  box-shadow: 0 6px 18px rgba(79, 70, 229, 0.12);
 }
 .subscription-plan-button.is-trial:hover {
-  border-color: var(--lx-color-160);
-  box-shadow: var(--lx-box-shadow-55);
+  border-color: rgba(167, 243, 208, 0.7);
+  box-shadow: 0 8px 22px rgba(79, 70, 229, 0.2);
 }
 .subscription-plans-grid[aria-busy="true"] .subscription-plan-card {
   pointer-events: none;
@@ -654,22 +654,19 @@
   min-height: 18px;
   align-items: center;
   justify-content: center;
-  gap: var(--lx-space-7px);
-  margin-top: var(--lx-space-7px);
-  font-size: var(--lx-text-8_5px);
+  gap: 7px;
+  margin-top: 7px;
+  font-size: 8.5px;
   text-align: center;
 }
 .subscription-plan-button .ai-loader-label {
-  font-size: var(--lx-text-11px);
+  font-size: 11px;
 }
 .stripe-billing-status .ai-loader-label {
-  font-size: var(--lx-text-10px);
-}
-.export-quiz .ai-loader-label {
-  font-size: var(--lx-text-12px);
+  font-size: 10px;
 }
 .ai-plans-section.is-highlighted .subscription-plans-grid {
-  filter: drop-shadow(0 0 12px var(--lx-color-162));
+  filter: drop-shadow(0 0 12px rgba(129, 140, 248, 0.17));
 }
 @media (prefers-reduced-motion: reduce) {
   .subscription-plan-card:hover {

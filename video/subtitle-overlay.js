@@ -2824,6 +2824,7 @@
         if (!speedOverlayEl) {
             speedOverlayEl = document.createElement("div");
             speedOverlayEl.id = C.UI_IDS.SPEED_OVERLAY;
+            speedOverlayEl.className = C.UI_IDS.SPEED_OVERLAY;
             parent.appendChild(speedOverlayEl);
         } else if (speedOverlayEl.parentElement !== parent) {
             parent.appendChild(speedOverlayEl);
@@ -3181,7 +3182,7 @@
     }
 
     function createSubtitleTranslationTask(text, modeRevision, layout = null) {
-        return globalThis.LectoroReadingModes.translate(text, modeRevision, layout);
+        return Promise.resolve(null);
     }
 
     function getSubtitleRect(elements = null) {
@@ -3352,7 +3353,7 @@
         translationAnchorLayout = layout;
         translationOverlay = document.createElement("div");
         translationOverlay.id = C.UI_IDS.SENTENCE_TRANSLATION;
-        translationOverlay.className = `${PREFIX}sub-overlay`;
+        translationOverlay.className = `${PREFIX}sentence_translation ${PREFIX}sub-overlay`;
         translationOverlay.setAttribute("role", "status");
         translationOverlay.setAttribute("aria-live", "polite");
         translationOverlay.setAttribute("aria-atomic", "true");
@@ -3571,9 +3572,7 @@
         `, layout, "Translation unavailable");
         eTranslateActive = true;
         copy.querySelector(`.${PREFIX}save-word-btn`)?.addEventListener("click", () => {
-            const video = getPlayerRegistry()?.getVideo();
             restoreOriginal();
-            void globalThis.LectoroReadingModes.start(video);
         });
     }
 
@@ -3791,6 +3790,7 @@
         if (!saveToastEl) {
             saveToastEl = document.createElement("div");
             saveToastEl.id = SAVE_TOAST_ID;
+            saveToastEl.className = SAVE_TOAST_ID;
             saveToastEl.title = "Click to close and resume playback";
             saveToastEl.addEventListener("click", dismissSaveToastNow);
             parent.appendChild(saveToastEl);

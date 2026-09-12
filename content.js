@@ -92,6 +92,7 @@
     if (iconEl) return iconEl;
     iconEl = document.createElement("div");
     iconEl.id = ICON_ID;
+    iconEl.className = ICON_ID;
 
     const readBtn = createToolbarButton("read", SVG.READ, "Read aloud", onReadClick);
     readBtn.setAttribute("aria-pressed", "false");

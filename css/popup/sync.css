@@ -1,8 +1,8 @@
 /* Cloud Sync */
 .sync-btn {
-  padding: var(--lx-space-8px) var(--lx-space-12px);
-  font-size: var(--lx-text-11px);
-  font-weight: var(--lx-weight-600);
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
   border-radius: var(--radius-md);
   border: 1px solid var(--glass-border);
   background: var(--glass);
@@ -14,36 +14,36 @@
 }
 .sync-btn:not(:disabled):hover {
   background: var(--glass-hover);
-  color: var(--lx-color-f8fafc);
+  color: #f8fafc;
 }
 .sync-primary {
   background: var(--accent-dim);
-  border-color: var(--lx-color-33);
+  border-color: rgba(129, 140, 248, 0.3);
   color: var(--accent);
 }
 .sync-primary:not(:disabled):hover {
-  background: var(--lx-color-21);
-  border-color: var(--lx-color-43);
-  color: var(--lx-color-ffffff);
-  box-shadow: var(--lx-box-shadow-38);
+  background: rgba(129, 140, 248, 0.25);
+  border-color: rgba(129, 140, 248, 0.5);
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(129, 140, 248, 0.2);
 }
 .account-deletion {
-  margin-block-start: var(--lx-space-20px);
-  padding-block-start: var(--lx-space-16px);
+  margin-block-start: 20px;
+  padding-block-start: 16px;
   border-block-start: 1px solid var(--glass-border);
 }
 .account-delete-btn {
   min-block-size: 32px;
-  padding: var(--lx-space-4px) var(--lx-space-0);
+  padding: 4px 0;
   border: 0;
-  background: var(--lx-color-transparent);
-  color: var(--lx-color-fca5a5);
+  background: transparent;
+  color: #fca5a5;
   font: inherit;
-  font-size: var(--lx-text-11px);
+  font-size: 11px;
   cursor: pointer;
 }
 .account-delete-btn:not(:disabled):hover {
-  color: var(--lx-color-fca5a5);
+  color: #fca5a5;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -58,16 +58,16 @@
 }
 .account-deletion p {
   max-inline-size: 60ch;
-  margin-block-start: var(--lx-space-4px);
+  margin-block-start: 4px;
   color: var(--text-muted);
-  font-size: var(--lx-text-11px);
-  line-height: var(--lx-leading-1_6);
+  font-size: 11px;
+  line-height: 1.6;
 }
 .sync-account-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--lx-space-12px);
+  gap: 12px;
 }
 .sync-account-details {
   flex: 1 1 140px;
@@ -76,19 +76,19 @@
 .sync-account-email {
   display: flex;
   align-items: baseline;
-  gap: var(--lx-space-6px);
+  gap: 6px;
   color: var(--text-secondary);
-  font-size: var(--lx-text-12px);
-  font-weight: var(--lx-weight-500);
+  font-size: 12px;
+  font-weight: 500;
   overflow-wrap: anywhere;
 }
 .sync-account-check {
   color: var(--mint);
 }
 .sync-last-updated {
-  margin-block-start: var(--lx-space-5px);
+  margin-block-start: 5px;
   color: var(--text-muted);
-  font-size: var(--lx-text-10px);
+  font-size: 10px;
 }
 .sync-btn:disabled {
   opacity: 0.5;
@@ -104,33 +104,27 @@
 .sync-actions {
   display: flex;
   align-items: center;
-  gap: var(--lx-space-6px);
+  gap: 6px;
   flex-wrap: wrap;
   margin-inline-start: auto;
 }
 .sync-status {
-  margin-top: var(--lx-space-9px);
-  padding: var(--lx-space-7px) var(--lx-space-9px);
+  margin-top: 9px;
+  padding: 7px 9px;
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-sm);
-  background: var(--lx-color-82);
+  background: rgba(255, 255, 255, 0.025);
   color: var(--text-muted);
-  font-size: var(--lx-text-10px);
-  line-height: var(--lx-leading-1_45);
+  font-size: 10px;
+  line-height: 1.45;
 }
 .sync-status-success {
-  border-color: var(--lx-color-109);
-  background: var(--lx-color-13);
+  border-color: rgba(110, 231, 183, 0.16);
+  background: rgba(110, 231, 183, 0.06);
   color: var(--mint);
 }
 .sync-status-error {
-  border-color: var(--lx-color-92);
-  background: var(--lx-color-57);
-  color: var(--lx-color-fca5a5);
-}
-html[data-lectoro-ai-limit-reached] #exportQuiz {
-  border-color: var(--lx-color-110);
-  background: var(--lx-color-111);
-  color: var(--lx-color-fda4af);
-  width: 100%;
+  border-color: rgba(248, 113, 113, 0.18);
+  background: rgba(248, 113, 113, 0.06);
+  color: #fca5a5;
 }
