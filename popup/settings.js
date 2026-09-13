@@ -381,7 +381,6 @@ async function refreshAiUsageUI() {
 
     renderElevenLabsUsage(subscription);
     const card = document.getElementById("aiUsageMeter");
-    const plan = document.getElementById("aiUsagePlan");
     const title = document.getElementById("aiUsageTitle");
     const value = document.getElementById("aiUsageValue");
     const track = document.getElementById("aiUsageTrack");
@@ -390,8 +389,6 @@ async function refreshAiUsageUI() {
 
     card?.classList.remove("is-warning", "is-empty");
     fill?.classList.remove("is-loading");
-    if (plan)
-        plan.textContent = `PLAN ${SubscriptionConfig.normalizePlan(subscription.plan).toUpperCase()}`;
     if (usage) {
         const used = Math.max(0, Number(usage.used || 0));
         const limit = Math.max(0, Number(usage.limit || 0));
@@ -419,7 +416,6 @@ async function refreshAiUsageUI() {
             }
         }
 
-        if (plan) plan.textContent = `PLAN ${currentPlan.toUpperCase()}`;
         if (value) value.textContent = `${used} / ${limit}`;
         if (fill) fill.style.width = `${percentage}%`;
         if (track) {
