@@ -533,5 +533,108 @@ test("YouTube JSON3 preserves time cluster boundaries between Master and Slave w
     assert.equal(aligned[1].translation, "jak go pokonać. No więc do rzeczy");
 });
 
+test("YouTube JSON3 pushes sentence start ('50 take') forward when previous sentence completed with a period ('wait.')", () => {
+    const enJson = JSON.stringify({
+        events: [
+            {
+                tStartMs: 53680,
+                dDurationMs: 5000,
+                segs: [
+                    { utf8: ">> 25", isSpeakerChange: 1 },
+                    { utf8: " minus", tOffsetMs: 1080 },
+                    { utf8: " 25", tOffsetMs: 1520 },
+                    { utf8: " Wait,", tOffsetMs: 2000 },
+                    { utf8: " wait,", tOffsetMs: 2160 },
+                    { utf8: " oh", tOffsetMs: 2480 },
+                    { utf8: " wait.", tOffsetMs: 2760 },
+                    { utf8: " 50", tOffsetMs: 3560 },
+                    { utf8: " take", tOffsetMs: 3880 },
+                ],
+            },
+            { tStartMs: 57750, dDurationMs: 930, segs: [{ utf8: "\n" }] },
+            {
+                tStartMs: 57760,
+                dDurationMs: 2600,
+                segs: [
+                    { utf8: "away" },
+                    { utf8: " 25.", tOffsetMs: 120 },
+                ],
+            },
+            { tStartMs: 58670, dDurationMs: 1690, segs: [{ utf8: "\n" }] },
+            {
+                tStartMs: 58680,
+                dDurationMs: 2800,
+                segs: [
+                    { utf8: ">> 50", isSpeakerChange: 1 },
+                    { utf8: " take", tOffsetMs: 360 },
+                    { utf8: " away", tOffsetMs: 520 },
+                    { utf8: " 25.", tOffsetMs: 640 },
+                ],
+            },
+        ],
+    });
+
+    const plJson = JSON.stringify({
+        events: [
+            {
+                tStartMs: 53680,
+                dDurationMs: 5000,
+                segs: [
+                    { utf8: "25 ", isSpeakerChange: 1 },
+                    { utf8: "minus ", tOffsetMs: 554 },
+                    { utf8: "25 ", tOffsetMs: 1108 },
+                    { utf8: "Poczekaj, ", tOffsetMs: 1662 },
+                    { utf8: "poczekaj, ", tOffsetMs: 2216 },
+                    { utf8: "ach, ", tOffsetMs: 2770 },
+                    { utf8: "poczekaj.  ", tOffsetMs: 3324 },
+                    { utf8: "50", tOffsetMs: 3878 },
+                ],
+            },
+            { tStartMs: 57750, dDurationMs: 930, segs: [{ utf8: "\n" }] },
+            {
+                tStartMs: 57760,
+                dDurationMs: 2600,
+                segs: [
+                    { utf8: "odejmij " },
+                    { utf8: "25.", tOffsetMs: 120 },
+                ],
+            },
+            { tStartMs: 58670, dDurationMs: 1690, segs: [{ utf8: "\n" }] },
+            {
+                tStartMs: 58680,
+                dDurationMs: 2800,
+                segs: [
+                    { utf8: "50 ", isSpeakerChange: 1 },
+                    { utf8: "odejmij ", tOffsetMs: 320 },
+                    { utf8: "25.", tOffsetMs: 640 },
+                ],
+            },
+        ],
+    });
+
+    const masterCues = SubtitleService.parseTimedText(enJson, "", "", { preserveTiming: true });
+    const slaveCues = SubtitleService.parseTimedText(plJson, "", "", { preserveTiming: true });
+    const aligned = SubtitleService.alignSlaveTrackToMaster(masterCues, slaveCues);
+
+    // Cluster 0: ends cleanly at 57.240s with completed sentence
+    assert.equal(aligned[0].startTime, 53.68);
+    assert.equal(aligned[0].endTime, 57.24);
+    assert.equal(aligned[0].text, "25 minus 25 Wait, wait, oh wait.");
+    assert.equal(aligned[0].translation, "25 minus 25 Poczekaj, poczekaj, ach, poczekaj.");
+
+    // Cluster 1: starts at 57.240s with complete "50 take away 25."
+    assert.equal(aligned[1].startTime, 57.24);
+    assert.equal(aligned[1].endTime, 58.68);
+    assert.equal(aligned[1].text, "50 take away 25.");
+    assert.equal(aligned[1].translation, "50 odejmij 25.");
+
+    // Cluster 2: speaker change at 58.680s
+    assert.equal(aligned[2].startTime, 58.68);
+    assert.equal(aligned[2].endTime, 61.48);
+    assert.equal(aligned[2].text, "50 take away 25.");
+    assert.equal(aligned[2].translation, "50 odejmij 25.");
+});
+
+
 
 

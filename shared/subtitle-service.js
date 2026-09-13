@@ -501,7 +501,7 @@
                 let accumulatedText = "";
                 const cleanTarget = String(part1Text || "").replace(/\s+/g, " ").trim();
                 for (let s = 0; s < segs.length; s++) {
-                    const segText = (segs[s]?.utf8 || "").trim();
+                    const segText = (segs[s]?.utf8 || "").replace(/^[>»›<«\s—–-]+/, "").trim();
                     if (!segText) continue;
                     accumulatedText = (accumulatedText + " " + segText).trim();
                     if (accumulatedText === cleanTarget || accumulatedText.startsWith(cleanTarget)) {
@@ -546,7 +546,7 @@
                 }
             }
 
-            // Pass 2: Backward Merge (orphaned sentence/clause tails at start of curr -> prev)
+            // Pass 2: Backward Merge (orphaned sentence/clause tails of 1 word at start of curr -> prev)
             for (let i = 1; i < cues.length; i++) {
                 const prev = cues[i - 1];
                 const curr = cues[i];
@@ -590,8 +590,8 @@
                 }
             }
 
-            // Pass 3: Forward Push (orphaned single word head at end of prev -> curr)
-            // "jesli jest kropka i duza litera to dodaj ja klaster do przodu"
+            // Pass 3: Forward Push (orphaned sentence head at end of prev -> curr)
+            // e.g. prev ends with complete sentence then "... wait. 50 take" and curr continues with "away 25."
             for (let i = 1; i < cues.length; i++) {
                 const prev = cues[i - 1];
                 const curr = cues[i];
@@ -601,12 +601,13 @@
                 if (curr.startTime - (prev.endTime || prev.startTime) > 1.5) continue;
 
                 // Match complete sentence ending in terminal punctuation (or comma/semicolon before capital),
-                // followed by a single word starting with a capital letter (e.g. "... beat him. So")
-                const match = prev.text.match(/^([\s\S]+(?:[.!?。！？]|[,;])["'»”’)\]]?)\s+([A-ZÀ-ÿ0-9]\S*)$/);
+                // followed by 1-3 words starting with a capital letter or digit (e.g. "... wait. 50 take")
+                const match = prev.text.match(/^([\s\S]+(?:[.!?。！？]|[,;])["'»”’)\]]?)\s+([A-ZÀ-ÿ0-9]\S*(?:\s+\S+){0,2})$/);
                 if (!match) continue;
 
                 const headText = match[1].trim();
                 const orphanHead = match[2].trim();
+                const orphanWords = orphanHead.split(/\s+/).length;
 
                 // Check that headText is not ending in an abbreviation (e.g. "Dr.") or decimal number (e.g. "1.5")
                 const lastHeadWord = headText.split(/\s+/).pop() || "";
@@ -621,13 +622,16 @@
 
                 if (isCommaPunct) {
                     if (currStartsWithUpper && !/^(?:so|now|but|and|then|however|therefore|also)\b/i.test(orphanHead)) continue;
+                } else if (currStartsWithUpper && orphanWords > 1) {
+                    // If curr starts with a capital letter (a new sentence), only push a single isolated word like "So"
+                    continue;
                 }
 
                 // Determine split timestamp corresponding to start of orphanHead in prev
                 let splitTime = getSegSplitTimestamp(prev, headText);
                 if (!splitTime || !Number.isFinite(splitTime)) {
                     const prevWords = prev.text.split(/\s+/).length;
-                    const headWords = prevWords - 1;
+                    const headWords = prevWords - orphanWords;
                     const dur = prev.endTime - prev.startTime;
                     const estDur = Math.max(0.3, dur * (headWords / prevWords));
                     splitTime = prev.startTime + estDur;
