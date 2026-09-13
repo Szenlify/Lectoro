@@ -107,12 +107,9 @@
             "bcp47LanguageTag",
             "language",
             "languageCode",
-            "locale",
-            "lang",
             "displayName",
             "languageDescription",
             "description",
-            "name",
             "trackType",
             "rawTrackType",
             "isForcedNarrative",
@@ -237,24 +234,11 @@
                         track.track_id ??
                         track.id ??
                         "",
-                    language:
-                        track.language ||
-                        track.languageCode ||
-                        track.lang ||
-                        "",
-                    bcp47:
-                        track.bcp47 ||
-                        track.bcp47LanguageTag ||
-                        track.locale ||
-                        track.languageCode ||
-                        track.language ||
-                        track.lang ||
-                        "",
+                    language: track.language || "",
+                    bcp47: track.bcp47 || track.bcp47LanguageTag || "",
                     displayName:
                         track.displayName ||
                         track.languageDescription ||
-                        track.description ||
-                        track.name ||
                         track.language ||
                         "",
                     trackType: track.trackType || track.rawTrackType || "",
