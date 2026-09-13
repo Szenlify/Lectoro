@@ -40,6 +40,10 @@
     const manifestWaiters = new Set();
     const OPTIMISTIC_SEEK_MAX_MS = 3000;
     const POST_SEEK_DOM_GRACE_MS = 450;
+    let fallbackTranslationLang = null;
+    let fallbackSourceLang = null;
+    const translatingCues = new WeakSet();
+    const cueTranslationCache = new Map();
 
     function setDualSubtitleStatus(status, error = null) {
         globalThis.LectoroSubtitleOverlay?.setDualSubtitleStatus?.({
@@ -51,6 +55,8 @@
     }
 
     function invalidateSubtitleIndex({ keepMaster = false } = {}) {
+        fallbackTranslationLang = null;
+        fallbackSourceLang = null;
         cueIndex = keepMaster
             ? cueIndex.map((cue) => ({ ...cue, translation: "" }))
             : [];
@@ -61,6 +67,67 @@
         setDualSubtitleStatus("idle");
         if (!keepMaster) {
             globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles?.([]);
+        }
+    }
+
+    function canTranslateSubtitles() {
+        return (
+            typeof globalThis.SharedTranslatorService?.translate === "function" ||
+            typeof globalThis.QT?.translate === "function"
+        );
+    }
+
+    async function translateSubtitleText(text, targetLang, sourceLang = "en") {
+        text = String(text || "").trim();
+        if (!text) return "";
+        try {
+            if (typeof globalThis.SharedTranslatorService?.translate === "function") {
+                const res = await globalThis.SharedTranslatorService.translate(text, targetLang, sourceLang);
+                if (res?.translated?.trim()) return res.translated.trim();
+            }
+            if (typeof globalThis.QT?.translate === "function") {
+                const res = await globalThis.QT.translate(text, targetLang);
+                if (res?.translated?.trim()) return res.translated.trim();
+            }
+        } catch (_) {
+            // Quietly ignore translation errors so master subtitle flow is uninterrupted
+        }
+        return "";
+    }
+
+    function ensureCueTranslation(cue, targetLang, sourceLang, revision) {
+        if (!cue || cue.translation) return;
+        const text = (cue.text || (Array.isArray(cue.lines) ? cue.lines.join(" ") : "")).trim();
+        if (!text) return;
+        const cacheKey = `${targetLang}|${text}`;
+        if (cueTranslationCache.has(cacheKey)) {
+            cue.translation = cueTranslationCache.get(cacheKey);
+            return;
+        }
+        if (translatingCues.has(cue)) return;
+        translatingCues.add(cue);
+
+        translateSubtitleText(text, targetLang, sourceLang)
+            .then((translated) => {
+                translatingCues.delete(cue);
+                if (revision !== attemptedRevision || revision !== manifestRevision) return;
+                if (translated) {
+                    cue.translation = translated;
+                    cueTranslationCache.set(cacheKey, translated);
+                    renderIndexedCue();
+                }
+            })
+            .catch(() => {
+                translatingCues.delete(cue);
+            });
+    }
+
+    function prefetchUpcomingCues(currentCue, targetLang, sourceLang, revision) {
+        const index = cueIndex.indexOf(currentCue);
+        if (index === -1) return;
+        const upcoming = cueIndex.slice(index + 1, index + 4);
+        for (const cue of upcoming) {
+            ensureCueTranslation(cue, targetLang, sourceLang, revision);
         }
     }
 
@@ -320,11 +387,20 @@
                     activeLanguage &&
                     (trackLanguage === activeLanguage ||
                         trackLanguage.startsWith(activeLanguage + "-") ||
-                        activeLanguage.startsWith(trackLanguage + "-"))
+                        activeLanguage.startsWith(trackLanguage + "-") ||
+                        sameLanguage(trackLanguage, activeLanguage) ||
+                        sameLanguage(track.bcp47, activeLanguage))
                 ) {
                     score += 300;
                 }
-                if (activeName && trackName === activeName) score += 200;
+                if (
+                    activeName &&
+                    (trackName === activeName ||
+                        sameLanguage(trackName, activeName) ||
+                        sameLanguage(track.displayName, activeName))
+                ) {
+                    score += 200;
+                }
                 if (!track.isForcedNarrative) score += 20;
 
                 return { track, score };
@@ -421,14 +497,37 @@
     }
 
     function sameLanguage(left, right) {
-        const a = normalizedValue(left);
-        const b = normalizedValue(right);
-        if (!!a && !!b && (a === b || a.startsWith(b + "-") || b.startsWith(a + "-"))) {
+        const cleanA = String(left || "")
+            .replace(/\[.*?\]|\(.*?\)/g, "")
+            .trim()
+            .toLowerCase();
+        const cleanB = String(right || "")
+            .replace(/\[.*?\]|\(.*?\)/g, "")
+            .trim()
+            .toLowerCase();
+        if (!!cleanA && !!cleanB && (cleanA === cleanB || cleanA.startsWith(cleanB + "-") || cleanB.startsWith(cleanA + "-"))) {
             return true;
         }
         const codeA = globalThis.SharedUtils?.normalizeLanguageCode?.(left) || "";
         const codeB = globalThis.SharedUtils?.normalizeLanguageCode?.(right) || "";
         return !!codeA && !!codeB && codeA === codeB;
+    }
+
+    function trackMatchesLanguage(track, target) {
+        if (!track || !target) return false;
+        const candidates = [
+            track.bcp47,
+            track.bcp47LanguageTag,
+            track.language,
+            track.languageCode,
+            track.locale,
+            track.lang,
+            track.displayName,
+            track.languageDescription,
+            track.description,
+            track.name,
+        ];
+        return candidates.some((val) => val && sameLanguage(val, target));
     }
 
     async function buildSubtitleIndex({ forceRetry = false } = {}) {
@@ -474,21 +573,57 @@
 
             if (!doubleSubEnabled) return cueIndex;
             const targetLang = settings.targetLang || defaultTargetLang;
-            if (sameLanguage(masterTrack.bcp47 || masterTrack.language, targetLang)) {
+            if (trackMatchesLanguage(masterTrack, targetLang)) {
                 setDualSubtitleStatus("idle");
                 return cueIndex;
             }
-            const slaveTrack = manifest.tracks
-                .filter((track) => sameLanguage(track.bcp47 || track.language, targetLang) || sameLanguage(track.displayName, targetLang))
-                .sort((a, b) => Number(a.isForcedNarrative) - Number(b.isForcedNarrative))[0];
-            if (!slaveTrack) throw new Error("Netflix has no subtitle track for the requested language.");
+            const isAssistiveTrack = (track) => {
+                const text = [track.displayName, track.languageDescription, track.description, track.name, track.trackType].filter(Boolean).join(" ");
+                return /\[(?:cc|sdh|ad)\]|\((?:cc|sdh|ad)\)|description|deskrypcja|deskription|audio[ -]?(?:descr|desk)|assistive/i.test(text);
+            };
+            const slaveTracks = manifest.tracks.filter((track) => trackMatchesLanguage(track, targetLang));
+            const slaveTrack = slaveTracks.sort((a, b) => {
+                const forcedDiff = Number(Boolean(a.isForcedNarrative)) - Number(Boolean(b.isForcedNarrative));
+                if (forcedDiff !== 0) return forcedDiff;
+                const assistDiff = Number(Boolean(isAssistiveTrack(a))) - Number(Boolean(isAssistiveTrack(b)));
+                if (assistDiff !== 0) return assistDiff;
+                return 0;
+            })[0];
+            if (!slaveTrack) {
+                if (canTranslateSubtitles()) {
+                    fallbackTranslationLang = targetLang;
+                    fallbackSourceLang = masterTrack.bcp47 || masterTrack.language || "en";
+                    cueIndexKey = `${master.key}|auto-${targetLang}`;
+                    setDualSubtitleStatus("ready");
+                    for (const cue of cueIndex.slice(0, 5)) {
+                        ensureCueTranslation(cue, fallbackTranslationLang, fallbackSourceLang, buildRevision);
+                    }
+                    renderIndexedCue();
+                    return cueIndex;
+                }
+                throw new Error("Netflix has no subtitle track for the requested language.");
+            }
+            fallbackTranslationLang = null;
+            fallbackSourceLang = null;
             const slave = await fetchTrackCues(slaveTrack, context);
             if (!isCurrent() || !slave) return [];
             const aligned = getSubtitleService().alignSlaveTrackToMaster(masterSentenceCues, slave.cues);
             if (!aligned.some((cue) => cue.translation)) {
+                if (canTranslateSubtitles()) {
+                    fallbackTranslationLang = targetLang;
+                    fallbackSourceLang = masterTrack.bcp47 || masterTrack.language || "en";
+                    cueIndexKey = `${master.key}|auto-${targetLang}`;
+                    setDualSubtitleStatus("ready");
+                    for (const cue of cueIndex.slice(0, 5)) {
+                        ensureCueTranslation(cue, fallbackTranslationLang, fallbackSourceLang, buildRevision);
+                    }
+                    renderIndexedCue();
+                    return cueIndex;
+                }
                 throw new Error("Netflix subtitle tracks have no matching timed cues.");
             }
             cueIndex = aligned;
+            cueIndexKey = `${master.key}|${slaveTrack.id}`;
             renderIndexedCue();
             setDualSubtitleStatus("ready");
             return cueIndex;
@@ -637,6 +772,10 @@
         if (!Number.isFinite(lookupTime)) return [];
         const cue = findIndexedCueAt(lookupTime);
         if (!cue) return [];
+        if (fallbackTranslationLang && !cue.translation) {
+            ensureCueTranslation(cue, fallbackTranslationLang, fallbackSourceLang, attemptedRevision);
+            prefetchUpcomingCues(cue, fallbackTranslationLang, fallbackSourceLang, attemptedRevision);
+        }
         const lines = Array.isArray(cue.lines) && cue.lines.length > 0
             ? [...cue.lines]
             : (cue.text ? [cue.text] : []);
@@ -1106,7 +1245,20 @@
         name: "Netflix",
         getSubtitleLanguage: () => {
             const track = activeTextTrackState.track;
-            return track?.bcp47 || track?.bcp47LanguageTag || track?.language || track?.languageCode || "";
+            return (
+                globalThis.SharedUtils?.normalizeLanguageCode?.(
+                    track?.bcp47 ||
+                    track?.bcp47LanguageTag ||
+                    track?.language ||
+                    track?.languageCode ||
+                    track?.locale ||
+                    track?.displayName ||
+                    ""
+                ) ||
+                track?.bcp47 ||
+                track?.language ||
+                ""
+            );
         },
         playerSelector: ".watch-video, [data-uia='video-canvas'], .nf-player-container",
         containerSelector: ".player-timedtext",

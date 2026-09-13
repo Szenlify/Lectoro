@@ -104,14 +104,89 @@
             },
 
             normalizeLanguageCode(value, fallback = "") {
-                const raw = String(value || "").trim().toLowerCase();
+                const raw = String(value || "")
+                    .replace(/\[.*?\]|\(.*?\)/g, "")
+                    .replace(/[,;:/].*$/, "")
+                    .trim()
+                    .toLowerCase();
                 if (!raw) return fallback;
-                const code = raw.replace(/_/g, "-").split("-")[0];
-                if (/^[a-z]{2,3}$/.test(code)) return code;
+
+                // Direct ISO 639-1 code (e.g. "ja", "de", "en", "pl") or BCP-47 tag ("ja-JP" -> "ja", "de_DE" -> "de")
+                const prefix = raw.replace(/_/g, "-").split("-")[0].trim();
+                if (/^[a-z]{2}$/.test(prefix) && C.SUPPORTED_LANGUAGES[prefix]) {
+                    return prefix;
+                }
+
+                // Known multilingual aliases & ISO 639-2/3 codes mapped to standard ISO 639-1
+                const ALIASES = {
+                    // Japanese
+                    ja: "ja", jpn: "ja", japanese: "ja", "japoński": "ja", japonski: "ja",
+                    japanisch: "ja", japonais: "ja", "japonés": "ja", japones: "ja",
+                    giapponese: "ja", "日本語": "ja", "にほんご": "ja",
+                    // German
+                    de: "de", deu: "de", ger: "de", german: "de", deutsch: "de",
+                    niemiecki: "de", allemand: "de", "alemán": "de", aleman: "de",
+                    tedesco: "de", "ドイツ語": "de",
+                    // Polish
+                    pl: "pl", pol: "pl", polish: "pl", polski: "pl", polnisch: "pl",
+                    polonais: "pl", polaco: "pl", polacco: "pl", "ポーランド語": "pl",
+                    // English
+                    en: "en", eng: "en", english: "en", angielski: "en", englisch: "en",
+                    anglais: "en", "inglés": "en", ingles: "en", inglese: "en", "英語": "en",
+                    // Spanish
+                    es: "es", spa: "es", spanish: "es", "español": "es", espanol: "es",
+                    castellano: "es", "hiszpański": "es", hiszpanski: "es", spanisch: "es",
+                    espagnol: "es", spagnolo: "es", "スペイン語": "es",
+                    // French
+                    fr: "fr", fra: "fr", fre: "fr", french: "fr", "français": "fr",
+                    francais: "fr", francuski: "fr", "französisch": "fr", franzoesisch: "fr",
+                    francese: "fr", "francés": "fr", frances: "fr", "フランス語": "fr",
+                    // Italian
+                    it: "it", ita: "it", italian: "it", italiano: "it", "włoski": "it",
+                    wloski: "it", italienisch: "it", italien: "it", "イタリア語": "it",
+                    // Korean
+                    ko: "ko", kor: "ko", korean: "ko", "한국어": "ko", "조선말": "ko",
+                    "koreański": "ko", koreanski: "ko", koreanisch: "ko", "coréen": "ko",
+                    coreen: "ko", coreano: "ko", "韓国語": "ko",
+                    // Dutch
+                    nl: "nl", nld: "nl", dut: "nl", dutch: "nl", nederlands: "nl",
+                    vlaams: "nl", holenderski: "nl", niderlandzki: "nl",
+                    "niederländisch": "nl", niederlaendisch: "nl", "holländisch": "nl",
+                    "néerlandais": "nl", neerlandais: "nl", hollandais: "nl",
+                    "neerlandés": "nl", neerlandes: "nl", holandés: "nl", olandese: "nl",
+                    "オランダ語": "nl",
+                    // Czech
+                    cs: "cs", ces: "cs", cze: "cs", czech: "cs", "čeština": "cs",
+                    cestina: "cs", czeski: "cs", tschechisch: "cs", "tchèque": "cs",
+                    tcheque: "cs", checo: "cs", ceco: "cs", "チェコ語": "cs",
+                    // Portuguese
+                    pt: "pt", por: "pt", portuguese: "pt", "português": "pt",
+                    portugues: "pt", portugalski: "pt", portugiesisch: "pt",
+                    portugais: "pt", portoghese: "pt", "ポルトガル語": "pt",
+                    // Chinese
+                    zh: "zh", zho: "zh", chi: "zh", chinese: "zh", "chiński": "zh",
+                    chinski: "zh", chinesisch: "zh", chinois: "zh", chino: "zh",
+                    cinese: "zh", "中文": "zh", "汉语": "zh", "漢語": "zh",
+                    // Ukrainian
+                    uk: "uk", ukr: "uk", ukrainian: "uk", "ukraiński": "uk",
+                    ukrainski: "uk", ukrainisch: "uk", ukrainien: "uk",
+                    ucraniano: "uk", ucraino: "uk", "українська": "uk",
+                    // Russian
+                    ru: "ru", rus: "ru", russian: "ru", rosyjski: "ru",
+                    russisch: "ru", russe: "ru", ruso: "ru", russo: "ru",
+                    "русский": "ru",
+                };
+
+                if (ALIASES[raw]) return ALIASES[raw];
+                if (ALIASES[prefix]) return ALIASES[prefix];
+
                 const language = Object.values(C.SUPPORTED_LANGUAGES).find(
-                    (item) => [item.name.toLowerCase(), item.native.toLowerCase()].includes(raw),
+                    (item) => [item.name.toLowerCase(), item.native.toLowerCase(), (item.tag || "").toLowerCase()].includes(raw),
                 );
-                return language?.code || fallback;
+                if (language?.code) return language.code;
+
+                if (/^[a-z]{2,3}$/.test(prefix)) return prefix;
+                return fallback;
             },
 
             /**
