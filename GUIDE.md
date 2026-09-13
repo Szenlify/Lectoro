@@ -105,5 +105,3 @@ Wykrywanie słowa: `core.js` (`findWordAtPoint`) → `shared/constants.js` (`isO
 | `plan.md` → `GUIDE.md`, `todo.md`, kod i testy | Szczegółowa checklista poprawek języków, napisów, UX, danych i przygotowania publikacji; opisuje zadania do wykonania, nie wdrożone funkcje. |
 
 ## Zmiany i propozycje SSOT
-
-- [x] `docs/subtitles.md` → kod napisów, testy i źródła techniczne — audyt oraz etapowa checklista naturalnych napisów pojedynczych/podwójnych, zgodności tłumaczeń, wspólnego czasu, pionowego suwaka i darmowego przetwarzania lokalnego. Opisuje plan; audyt bazowy: 49/49 testów Node/VM, bez ręcznego odbioru filmu i układu.

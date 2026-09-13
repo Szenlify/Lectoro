@@ -473,7 +473,24 @@
         const service = getSubtitleService();
         const masterCues = rawCues.map((cue) => {
             const text = String(cue.text || "").replace(/\s+/g, " ").trim();
-            return { ...cue, text, lines: [text], translation: "" };
+            const res = { ...cue, text, lines: [text], translation: "" };
+            if (cue && cue.tStartMs != null) {
+                Object.defineProperty(res, "tStartMs", {
+                    value: cue.tStartMs,
+                    writable: true,
+                    configurable: true,
+                    enumerable: false,
+                });
+            }
+            if (cue && cue.dDurationMs != null) {
+                Object.defineProperty(res, "dDurationMs", {
+                    value: cue.dDurationMs,
+                    writable: true,
+                    configurable: true,
+                    enumerable: false,
+                });
+            }
+            return res;
         });
         lastMasterTrack = { cues: masterCues, baseUrl, videoId };
         setCueIndex(masterCues, videoId);

@@ -79,6 +79,13 @@
                         line
                             .replace(/^[>»›<«\s—–-]+/, "") // Strip leading markers/arrows
                             .replace(/(?:^|\s)[>»›](?=\s)/g, " ") // Strip isolated single > markers
+                            .replace(/\s+([,.:;!?])/g, "$1") // Strip space before punctuation
+                            .replace(/,\s*,+/g, ",") // Collapse duplicate commas
+                            .replace(/([,;:])\s*\1+/g, "$1") // Collapse duplicate semicolons/colons
+                            .replace(/([.!?])\s*,\s*/g, "$1 ") // Strip comma after terminal punct
+                            .replace(/,\s*([.!?])/g, "$1") // Strip comma before terminal punct
+                            .replace(/\(\s*\)/g, " ") // Remove empty parens
+                            .replace(/\[\s*\]/g, " ") // Remove empty brackets
                             .replace(/-{2,}/g, " ")
                             .replace(/[^\S\r\n]+/g, " ")
                             .trim(),
@@ -90,8 +97,15 @@
             return text
                 .replace(/^[>»›<«\s—–-]+/, "") // Strip leading markers/arrows
                 .replace(/(?:^|\s)[>»›](?=\s)/g, " ") // Strip isolated single > markers
-                .replace(/\s+/g, " ")
+                .replace(/\s+([,.:;!?])/g, "$1") // Strip space before punctuation
+                .replace(/,\s*,+/g, ",") // Collapse duplicate commas: ", ," -> ","
+                .replace(/([,;:])\s*\1+/g, "$1") // Collapse duplicate semicolons/colons
+                .replace(/([.!?])\s*,\s*/g, "$1 ") // Strip comma after terminal punct
+                .replace(/,\s*([.!?])/g, "$1") // Strip comma before terminal punct
+                .replace(/\(\s*\)/g, " ") // Remove empty parens
+                .replace(/\[\s*\]/g, " ") // Remove empty brackets
                 .replace(/-{2,}/g, " ")
+                .replace(/\s+/g, " ")
                 .trim();
         }
 
@@ -472,6 +486,168 @@
         }
 
         /**
+         * Re-attaches orphaned sentence tails, pushes orphan sentence heads forward across cluster
+         * boundaries, and normalizes detached punctuation (e.g. leading commas or hanging opening marks).
+         */
+        function repairClusterBoundaries(cues) {
+            if (!Array.isArray(cues) || cues.length < 2) return;
+            const TERMINAL_PUNCT_RE = /[.!?。！？]["'»”’)\]]?\s*$/;
+            const ABBREV_RE = /(?:^|\s)(?:dr|mr|mrs|ms|prof|st|vs|etc|e\.g|i\.e|u\.s|jr|sr|np|ul|godz|itd|itp|tzn)\.$/i;
+            const DECIMAL_RE = /\d\.\s*$/;
+
+            function getSegSplitTimestamp(cue, part1Text) {
+                const segs = cue.segs;
+                if (!Array.isArray(segs) || segs.length < 2 || cue.tStartMs == null) return null;
+                let accumulatedText = "";
+                const cleanTarget = String(part1Text || "").replace(/\s+/g, " ").trim();
+                for (let s = 0; s < segs.length; s++) {
+                    const segText = (segs[s]?.utf8 || "").trim();
+                    if (!segText) continue;
+                    accumulatedText = (accumulatedText + " " + segText).trim();
+                    if (accumulatedText === cleanTarget || accumulatedText.startsWith(cleanTarget)) {
+                        for (let next = s + 1; next < segs.length; next++) {
+                            if (segs[next] && segs[next].tOffsetMs != null) {
+                                return (cue.tStartMs + Number(segs[next].tOffsetMs)) / 1000;
+                            }
+                        }
+                        break;
+                    }
+                }
+                return null;
+            }
+
+            // Pass 1: Detached leading punctuation in curr & hanging opening punctuation in prev
+            for (let i = 1; i < cues.length; i++) {
+                const prev = cues[i - 1];
+                const curr = cues[i];
+                if (!prev || !curr || !prev.text || !curr.text) continue;
+
+                // A. Detached leading punctuation in curr (e.g. ", but..." or "? Really?")
+                const leadMatch = curr.text.match(/^([,;:!?]|\.(?!\.\.)|[)\]}”’»]+)\s*(.*)$/);
+                if (leadMatch) {
+                    const punct = leadMatch[1];
+                    const remaining = leadMatch[2];
+                    curr.text = remaining;
+                    curr.lines = remaining ? [remaining] : [];
+                    if (!prev.text.endsWith(punct) && !/[.,;:!?]$/.test(prev.text.trim())) {
+                        prev.text = (prev.text.trim() + punct).trim();
+                        prev.lines = [prev.text];
+                    }
+                }
+
+                // B. Hanging opening punctuation at end of prev (e.g. "He said: (\"" -> move to curr)
+                const hangMatch = prev.text.match(/\s+([(\[«„“¿¡])$/);
+                if (hangMatch) {
+                    const openPunct = hangMatch[1];
+                    prev.text = prev.text.slice(0, hangMatch.index).trim();
+                    prev.lines = [prev.text];
+                    curr.text = openPunct + curr.text.trim();
+                    curr.lines = [curr.text];
+                }
+            }
+
+            // Pass 2: Backward Merge (orphaned sentence/clause tails at start of curr -> prev)
+            for (let i = 1; i < cues.length; i++) {
+                const prev = cues[i - 1];
+                const curr = cues[i];
+                if (!prev || !curr || !prev.text || !curr.text) continue;
+
+                // Only repair if previous cue did not finish its sentence
+                if (TERMINAL_PUNCT_RE.test(prev.text.trim())) continue;
+
+                // Gap check: if there is a long silence gap between cues, do not merge across it
+                if (curr.startTime - (prev.endTime || prev.startTime) > 1.5) continue;
+
+                // Check if current cue starts with a single orphan word ending in terminal punctuation,
+                // followed immediately by whitespace and an uppercase letter (new sentence)
+                const match = curr.text.match(/^(\S+[.!?。！？]["'»”’)\]]?)\s+([A-ZÀ-ÿ0-9].*)$/);
+                if (match) {
+                    const orphanText = match[1].trim();
+                    const remainingText = match[2].trim();
+
+                    if (!ABBREV_RE.test(orphanText.toLowerCase())) {
+                        let splitTime = getSegSplitTimestamp(curr, orphanText);
+                        if (!splitTime || !Number.isFinite(splitTime)) {
+                            const orphanWords = 1;
+                            const totalWords = curr.text.split(/\s+/).length;
+                            const dur = curr.endTime - curr.startTime;
+                            const estDur = Math.min(1.5, Math.max(0.3, dur * (orphanWords / totalWords)));
+                            splitTime = curr.startTime + estDur;
+                        }
+
+                        prev.text = (prev.text + " " + orphanText).trim();
+                        prev.lines = [prev.text];
+                        prev.endTime = splitTime;
+
+                        curr.text = remainingText;
+                        curr.lines = [remainingText];
+                        curr.startTime = splitTime;
+                        if (curr.tStartMs != null) {
+                            curr.tStartMs = Math.round(splitTime * 1000);
+                        }
+                        continue;
+                    }
+                }
+            }
+
+            // Pass 3: Forward Push (orphaned single word head at end of prev -> curr)
+            // "jesli jest kropka i duza litera to dodaj ja klaster do przodu"
+            for (let i = 1; i < cues.length; i++) {
+                const prev = cues[i - 1];
+                const curr = cues[i];
+                if (!prev || !curr || !prev.text || !curr.text) continue;
+
+                // Gap check: if there is a long silence gap between cues, do not push across it
+                if (curr.startTime - (prev.endTime || prev.startTime) > 1.5) continue;
+
+                // Match complete sentence ending in terminal punctuation (or comma/semicolon before capital),
+                // followed by a single word starting with a capital letter (e.g. "... beat him. So")
+                const match = prev.text.match(/^([\s\S]+(?:[.!?。！？]|[,;])["'»”’)\]]?)\s+([A-ZÀ-ÿ0-9]\S*)$/);
+                if (!match) continue;
+
+                const headText = match[1].trim();
+                const orphanHead = match[2].trim();
+
+                // Check that headText is not ending in an abbreviation (e.g. "Dr.") or decimal number (e.g. "1.5")
+                const lastHeadWord = headText.split(/\s+/).pop() || "";
+                if (ABBREV_RE.test(lastHeadWord.toLowerCase())) continue;
+                if (DECIMAL_RE.test(headText)) continue;
+
+                // orphanHead must not end in terminal punctuation (it's uncompleted/cut off)
+                if (TERMINAL_PUNCT_RE.test(orphanHead)) continue;
+
+                const currStartsWithUpper = /^[A-ZÀ-ÿ0-9]/.test(curr.text.trim());
+                const isCommaPunct = /[,;]["'»”’)\]]?$/.test(headText);
+
+                if (isCommaPunct) {
+                    if (currStartsWithUpper && !/^(?:so|now|but|and|then|however|therefore|also)\b/i.test(orphanHead)) continue;
+                }
+
+                // Determine split timestamp corresponding to start of orphanHead in prev
+                let splitTime = getSegSplitTimestamp(prev, headText);
+                if (!splitTime || !Number.isFinite(splitTime)) {
+                    const prevWords = prev.text.split(/\s+/).length;
+                    const headWords = prevWords - 1;
+                    const dur = prev.endTime - prev.startTime;
+                    const estDur = Math.max(0.3, dur * (headWords / prevWords));
+                    splitTime = prev.startTime + estDur;
+                }
+
+                prev.text = headText;
+                prev.lines = [headText];
+                prev.endTime = splitTime;
+
+                curr.text = (orphanHead + " " + curr.text).trim();
+                curr.lines = [curr.text];
+                curr.startTime = splitTime;
+                if (curr.tStartMs != null) {
+                    curr.tStartMs = Math.round(splitTime * 1000);
+                }
+            }
+        }
+        const repairOrphanedSentenceTails = repairClusterBoundaries;
+
+        /**
          * Parses YouTube JSON3 timed text format (used by YouTube API for manual and ASR captions).
          * Extracts every single word token with precise timestamps and stitches dynamic streams into complete, natural sentences.
          */
@@ -497,8 +673,54 @@
                     const text = cleanCueText(event.segs
                         .map((segment) => typeof segment?.utf8 === "string" ? segment.utf8 : "")
                         .join(""));
-                    cues.push({ startTime, endTime: startTime + duration, text });
+                    if (!text) continue;
+                    const cue = { startTime, endTime: startTime + duration, text };
+                    if (event.tStartMs != null) {
+                        Object.defineProperty(cue, "tStartMs", {
+                            value: Number(event.tStartMs),
+                            writable: true,
+                            configurable: true,
+                            enumerable: false,
+                        });
+                    }
+                    if (event.dDurationMs != null) {
+                        Object.defineProperty(cue, "dDurationMs", {
+                            value: Number(event.dDurationMs),
+                            writable: true,
+                            configurable: true,
+                            enumerable: false,
+                        });
+                    }
+                    Object.defineProperty(cue, "segs", {
+                        value: event.segs,
+                        writable: true,
+                        configurable: true,
+                        enumerable: false,
+                    });
+                    cues.push(cue);
                 }
+
+                // YouTube dynamic ASR captions use overlapping rolling windows (e.g. 2-line display).
+                // Cap each cluster's endTime to the next cluster's startTime so each phrase displays
+                // cleanly without overlapping or stealing translations, while preserving genuine silences.
+                cues.sort((a, b) => a.startTime - b.startTime);
+                for (let i = 0; i < cues.length; i++) {
+                    const current = cues[i];
+                    for (let j = i + 1; j < cues.length; j++) {
+                        const next = cues[j];
+                        if (next.startTime > current.startTime) {
+                            if (next.startTime < current.endTime) {
+                                current.endTime = next.startTime;
+                            }
+                            break;
+                        }
+                    }
+                }
+
+                // Re-attach orphaned sentence tails, push orphan sentence heads forward,
+                // and clean boundary punctuation across clusters.
+                repairClusterBoundaries(cues);
+
                 return finalizeCues(cues, options);
             }
 
@@ -1020,7 +1242,16 @@
 
             const unified = masterCues.map((master) => {
                 const text = String(master?.text || "").replace(/\s+/g, " ").trim();
-                return { ...master, text, lines: [text], translation: "" };
+                const res = { ...master, text, lines: [text], translation: "" };
+                if (master && master.tStartMs != null) {
+                    Object.defineProperty(res, "tStartMs", {
+                        value: master.tStartMs,
+                        writable: true,
+                        configurable: true,
+                        enumerable: false,
+                    });
+                }
+                return res;
             });
             if (!Array.isArray(slaveCues) || slaveCues.length === 0) return unified;
 
@@ -1032,31 +1263,67 @@
             const slaves = slaveCues
                 .filter((cue) => cue && Number.isFinite(cue.startTime) &&
                     Number.isFinite(cue.endTime) && cue.endTime > cue.startTime)
-                .map((cue) => ({ ...cue, text: cleanCueText(cue.text) }))
+                .map((cue) => {
+                    const text = cleanCueText(cue.text);
+                    const res = { ...cue, text };
+                    if (cue && cue.tStartMs != null) {
+                        Object.defineProperty(res, "tStartMs", {
+                            value: cue.tStartMs,
+                            writable: true,
+                            configurable: true,
+                            enumerable: false,
+                        });
+                    }
+                    return res;
+                })
                 .filter((cue) => cue.text)
                 .sort((a, b) => a.startTime - b.startTime);
             const translations = unified.map(() => new Set());
             let firstMaster = 0;
 
             for (const slave of slaves) {
-                // Tracks normally contain thousands of short, sequential cues.
-                // Advance past expired intervals instead of rescanning the track.
+                // 1. Direct cluster match by exact tStartMs or matching startTime (e.g. YouTube JSON3 clusters)
+                let exactOwner = -1;
+                for (let i = 0; i < masters.length; i++) {
+                    const { cue, index } = masters[i];
+                    if (
+                        (cue.tStartMs != null && slave.tStartMs != null && cue.tStartMs === slave.tStartMs) ||
+                        Math.abs(cue.startTime - slave.startTime) < 0.045
+                    ) {
+                        exactOwner = index;
+                        break;
+                    }
+                }
+
+                if (exactOwner >= 0) {
+                    translations[exactOwner].add(slave.text);
+                    continue;
+                }
+
+                // 2. Interval overlap fallback for tracks with different authoring / segmentation
                 while (firstMaster < masters.length &&
                     masters[firstMaster].cue.endTime <= slave.startTime) {
                     firstMaster++;
                 }
                 let owner = -1;
                 let greatestOverlap = 0;
+                let closestStartDiff = Infinity;
                 for (let i = firstMaster; i < masters.length; i++) {
                     const { cue, index } = masters[i];
                     if (cue.startTime >= slave.endTime) break;
                     const overlap = Math.min(cue.endTime, slave.endTime) -
                         Math.max(cue.startTime, slave.startTime);
-                    // The epsilon only resolves floating-point ties; touching
-                    // boundaries and positive gaps never count as an overlap.
-                    if (overlap > 0 && (owner < 0 || overlap > greatestOverlap + 1e-9)) {
-                        greatestOverlap = overlap;
-                        owner = index;
+                    const startDiff = Math.abs(cue.startTime - slave.startTime);
+                    if (overlap > 0) {
+                        if (
+                            owner < 0 ||
+                            overlap > greatestOverlap + 1e-4 ||
+                            (Math.abs(overlap - greatestOverlap) <= 1e-4 && startDiff < closestStartDiff)
+                        ) {
+                            greatestOverlap = overlap;
+                            closestStartDiff = startDiff;
+                            owner = index;
+                        }
                     }
                 }
                 if (owner >= 0) translations[owner].add(slave.text);
@@ -1082,6 +1349,8 @@
             parseTimedText,
             findAdjacentCueTime,
             getSurroundingContext,
+            repairClusterBoundaries,
+            repairOrphanedSentenceTails,
         });
     },
 );
