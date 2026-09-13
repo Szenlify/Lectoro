@@ -18,7 +18,7 @@
 - `shared/ai-prompts.js` → `shared/translator-service.js` — kontrakt promptu i walidacja języka odpowiedzi. Interfejs nie buduje własnych promptów wyjaśnień.
 - `content.js` → storage, `shared/utils.js` przez `QT` — czytnik zaznaczenia pobiera Learning language przed odczytem; preferuje pasujący głos Google, potem systemowy.
 - `shared/tts-service.js` → `shared/utils.js`, `shared/constants.js`, audio cache — wspólny odczyt; tłumaczenia zachowują język treści.
-- Brak zahardkodowanych języków: żaden moduł klienta nie używa wpisanych na sztywno literałów `"en"` ani `"pl"`. Zawsze stosowany jest język aktywny z ustawień użytkownika (`SharedTranslatorService`, storage) lub centralny fallback z `LectoroConstants.DEFAULT_READING_SETTINGS` (`learningLang` i `targetLang`).
+- Reguła architektury: języki aktywne i fallbacki pochodzą z ustawień użytkownika (`SharedTranslatorService`, storage) lub `LectoroConstants.DEFAULT_READING_SETTINGS`. Jawne kody języka są dopuszczalne w regułach właściwych dla konkretnego języka, nie jako zastępstwo ustawień. Audyt z 13.09.2026 wykazał pozostałe fallbacki i prompty wymagające poprawy; szczegóły w `plan.md`, sekcje 2–3.
 - `shared/subscription-config.js` / `functions/subscription-config.js` — konfiguracje planów po stronie klienta i serwera; wymagają pilnowania zgodności (propozycja SSOT na dole).
 
 ## Uruchomienie i interfejs
@@ -52,17 +52,21 @@
 | `shared/subtitle-service.js` → adaptery / nakładka | Dane napisów, kontekst sąsiednich kwestii, łączenie klocków w pełne zdania (`reconstructFullSentenceCues`) i algorytm dopasowania ścieżki podrzędnej do nadrzędnej z synchronizacją do przodu (`alignSlaveTrackToMaster`) łączący klocki w jedną linię. |
 | `video/subtitle-overlay.js` → `QT`, translator, subtitle service | Wyświetlanie napisów pojedynczych i dwujęzycznych (`doubleSubtitles`) bez użycia AI/Google Translate, wyjaśnienia Enter, kolejka odczytu i zapis fiszek; dynamiczne języki AI (`aiExplainSourceLang`, `aiExplainTargetLang`) z ustawień użytkownika. |
 | `video/reading-modes.js` → translator, nakładka | Tryb czytania (chmurki słów) pod S; reaguje na zmianę języków i ustawień (`doubleSubtitles`, `wordCloudMode`). |
-| `video/video-hotkeys.js` → nakładka / odtwarzacz | Skróty klawiaturowe wideo. |
+| `video/video-hotkeys.js` → nakładka / odtwarzacz | Skróty klawiaturowe wideo; `video/subtitle-overlay.js` rejestruje także osobny listener skrótów Enter. |
 | `shared/subtitle-translation-service.js` → worker | Wspólny przepływ tłumaczenia napisów. |
 
 Przepływ Enter: `video/subtitle-overlay.js` → `core.js` (`QT.geminiExplainSentence`) → `shared/translator-service.js` → `shared/ai-prompts.js` + `shared/gemini-proxy.js` → backend → walidacja → nakładka / TTS / fiszka.
+
+Przepływ hover słowa: `video/subtitle-overlay.js` → `QT` / `shared/translator-service.js` → worker → `shared/local-dictionary.js` / `shared/dictionary-store.js` → lokalna kopia lub R2; brakujący wpis może być generowany przez `shared/gemini-proxy.js` → `functions/live-translation.js`. Prompt wyjaśnień Enter i prompt generowania hasła słownika są odrębnymi kontraktami.
+
+Wykrywanie słowa: `core.js` (`findWordAtPoint`) → `shared/constants.js` (`isOwnUI`) — awaryjna tokenizacja napisów, również w kontenerze odtwarzacza Netflix. `video/subtitle-overlay.js` renderuje drugi rząd zwykłym tekstem, lecz obecna awaryjna tokenizacja może ponownie nadać mu interaktywność.
 
 ## Dane i usługi wspólne
 
 | Plik / moduł | Połączenie i rola |
 | --- | --- |
 | `shared/utils.js` | Wspólne narzędzia: tekst, głosy, obrazy i klucze audio; dobór głosu z fallbackiem do `DEFAULT_READING_SETTINGS.learningLang`. |
-| `shared/word-repository.js` → storage | Wspólny dostęp do zapisanych słów. |
+| `shared/word-repository.js` → storage | Wspólny dostęp do zapisanych słów; kolejka `saveWord` obejmuje pojedynczą instancję modułu, pozostałe mutacje i synchronizacja wymagają koordynacji. |
 | `shared/srs.js` → popup / worker | Reguły powtórek. |
 | `shared/dictionary-store.js` → worker | Magazyn danych słownika (R2 `dictionaries/live/` dla słówek oraz statyczne pakiety fraz `dictionaries/phrase/*.json`). |
 | `shared/local-dictionary.js` → dictionary store, tokenizer, utils | Dopasowanie haseł i znaczeń; wyszukiwanie wielowyrazowych fraz w trybie word-by-word. |
@@ -71,7 +75,7 @@ Przepływ Enter: `video/subtitle-overlay.js` → `core.js` (`QT.geminiExplainSen
 | `shared/audio-cache.js` → TTS | Pamięć podręczna nagrań. |
 | `shared/gemini-proxy.js` → worker / backend | Żądania AI, cache, uwierzytelnienie i operacje na obrazach. |
 | `shared/subscription-service.js` → konfiguracja planów / backend | Profil, limity i ich odzwierciedlenie w UI. |
-| `firebase/firebase-config.js` → `firebase/firebase-sync.js` | Konfiguracja połączenia, konto i synchronizacja danych. |
+| `firebase/firebase-config.js` → `firebase/firebase-sync.js` → `background.js` | Konfiguracja połączenia, konto i synchronizacja danych. Worker wysyła oczekujące zmiany około 60 sekund od ostatniej zmiany lokalnej; `fullSync()` dodatkowo pobiera dane z serwera. |
 | `firebase/firestore.rules`, `firebase/firebase.json` | Reguły bazy i konfiguracja wdrożenia Firebase. |
 | `shared/quiz-export.js` → `quiz.html`, `quiz-runner.html` | Generowanie i eksport quizów; dynamiczne pobieranie języka źródłowego i docelowego z ustawień użytkownika. |
 | `quiz.html` → `quiz.js`, `quiz.css` | Ekran quizu. |
@@ -98,6 +102,7 @@ Przepływ Enter: `video/subtitle-overlay.js` → `core.js` (`QT.geminiExplainSen
 | `package.json` | Polecenia `npm test`, `npm run check:syntax`, `npm run build`, `npm run audit`. |
 | `icons/*` | Ikony wskazane w manifest. |
 | `todo.md`, `p.md` | Notatki robocze; reguły architektury utrzymuj tutaj. |
+| `plan.md` → `GUIDE.md`, `todo.md`, kod i testy | Szczegółowa checklista poprawek języków, napisów, UX, danych i przygotowania publikacji; opisuje zadania do wykonania, nie wdrożone funkcje. |
 
 ## Zmiany i propozycje SSOT
 
@@ -107,3 +112,4 @@ Przepływ Enter: `video/subtitle-overlay.js` → `core.js` (`QT.geminiExplainSen
 - [x] DRY popup/tts.js i popup/review.js: Usunięcie powielonego ciągu SVG głośnika na rzecz `LectoroConstants.SVG_ICONS.SPEAKER`, przekierowanie odczytu do `SharedTtsService.speakBrowser()`, unifikacja normalizacji języka przez `LectoroConstants.langTag`.
 - [x] SSOT popup/settings.js: Zastąpienie zahardkodowanych wartości domyślnych stałymi `LectoroConstants.DEFAULT_SUBTITLE_SETTINGS.POSITION` / `BG_OPACITY` i zunifikowanie kluczy `LectoroConstants.STORAGE_KEYS`.
 - [x] Oczyszczenie CSS w `popup.css`: Usunięcie martwych selektorów (`.settings-dual-row label .label-icon`, `.sync-button-wrap`, `.subscription-heading`) przy pełnym zabezpieczeniu klas generowanych dynamicznie (`.sync-status-*`).
+- [ ] Zrealizować `plan.md` zgodnie z kolejnością partii i kryteriami odbioru; szczególnie ujednolicić kontekst języków/roli napisów, router skrótów, mutacje fiszek i naliczanie użyć. Weryfikacja bazowa z 13.09.2026: 223/223 testy oraz poprawna składnia 85 plików JS; ręczne sprawdzenie Chrome i wdrożonego backendu pozostaje zadaniem planu.
