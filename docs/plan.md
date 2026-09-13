@@ -1,4 +1,4 @@
-# Plan udoskonalenia Lectoro
+<!-- # Plan udoskonalenia Lectoro
 
 Plan przygotowany 13.09.2026 na podstawie `GUIDE.md`, całego `todo.md`, analizy kodu rozszerzenia i backendu oraz istniejących testów. Wszystkie zadania pozostają nieodhaczone. Checkbox oznacza wykonanie zadania wraz ze sprawdzeniem jego efektu; samo dopisanie propozycji nie oznacza naprawy.
 
@@ -364,4 +364,4 @@ Każdy scenariusz sprawdzić osobno na YouTube i Netflixie, jeśli dotyczy obu. 
 - [ ] W każdej partii robić małe, niezależnie sprawdzalne zmiany; po wydzieleniu modułu najpierw potwierdzić dotychczasowe działanie, a potem zmieniać UX.
 - [ ] Przed zmianami schematów/cache przygotować odwracalną migrację i sposób powrotu do poprzedniej wersji bez kasowania słów użytkownika.
 - [ ] Przy każdym odhaczonym zadaniu dopisać krótki wynik weryfikacji lub odnośnik do testu/commita; problemy wymagające ręcznej próby pozostawić otwarte do czasu jej wykonania.
-- [ ] Uznać plan za zrealizowany po zamknięciu wszystkich wymaganych zadań i scenariuszy odbioru; sama zmiana CSS, usunięcie ostrzeżenia lub zielony test jednostkowy nie kończą naprawy przepływu.
+- [ ] Uznać plan za zrealizowany po zamknięciu wszystkich wymaganych zadań i scenariuszy odbioru; sama zmiana CSS, usunięcie ostrzeżenia lub zielony test jednostkowy nie kończą naprawy przepływu. -->
