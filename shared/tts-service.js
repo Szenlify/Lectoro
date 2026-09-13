@@ -26,6 +26,8 @@
             pickBestVoice: pickVoice,
         } = Utils;
         const DEFAULT_TTS_SETTINGS = Constants.DEFAULT_TTS_SETTINGS;
+        const DEFAULT_READING_SETTINGS = Constants.DEFAULT_READING_SETTINGS;
+        const defaultLearning = DEFAULT_READING_SETTINGS?.learningLang || "en";
 
         let activeAudio = null;
         let globalSpeechToken = 0;
@@ -78,7 +80,7 @@
                 return "ja";
             if (/[\uac00-\ud7af]/.test(originalText)) return "ko";
             if (/[\u0600-\u06FF]/.test(originalText)) return "ar";
-            return baseCode !== "en" ? "en" : "";
+            return baseCode !== defaultLearning ? defaultLearning : "";
         }
 
         function isSourceLanguageQuote(
@@ -147,13 +149,13 @@
          */
         function parseSpeechSegments(
             text,
-            baseLang = "en",
+            baseLang = defaultLearning,
             { sourceLang = null, originalText = null } = {},
         ) {
             const raw = String(text ?? "").trim();
             if (!raw) return [];
 
-            const baseCode = baseLangCode(baseLang, "en");
+            const baseCode = baseLangCode(baseLang, defaultLearning);
             const srcCode = inferSourceCode(baseCode, sourceLang, originalText);
 
             // If source and base languages are identical (or source is unknown), no code-switching is needed
@@ -209,7 +211,7 @@
                     originalText,
                 );
                 const targetSegmentLang = isSourceLang
-                    ? sourceLang || "en"
+                    ? sourceLang || defaultLearning
                     : baseLang;
                 segments.push({ text: m.inner, lang: targetSegmentLang });
                 cursor = m.end;
@@ -243,7 +245,7 @@
          */
         function formatSpeechMarkup(
             text,
-            baseLang = "en",
+            baseLang = defaultLearning,
             {
                 sourceLang = null,
                 originalText = null,
@@ -253,7 +255,7 @@
             const raw = String(text ?? "");
             if (!raw) return "";
 
-            const baseCode = baseLangCode(baseLang, "en");
+            const baseCode = baseLangCode(baseLang, defaultLearning);
             const srcCode = inferSourceCode(baseCode, sourceLang, originalText);
 
             if (!srcCode || srcCode === baseCode) {
@@ -411,7 +413,7 @@
                 }
 
                 const utter = new SpeechSynthesisUtterance(seg.text);
-                utter.lang = seg.lang || lang || "en";
+                utter.lang = seg.lang || lang || defaultLearning;
                 utter.rate = rate !== null ? rate : settings.speechRate;
                 utter.volume = volume !== null ? volume : settings.ttsVolume;
                 const voice = pickVoice(settings.speechVoice, seg.lang, voices);
@@ -450,7 +452,7 @@
          */
         async function speakBrowser(
             text,
-            lang = "en",
+            lang = defaultLearning,
             {
                 rate = null,
                 volume = null,
@@ -488,7 +490,7 @@
          */
         async function speak(
             text,
-            lang = "en",
+            lang = defaultLearning,
             {
                 forceBrowser = false,
                 useConfiguredRate = true,
@@ -589,7 +591,7 @@
 
         /** Helper URL for web TTS fallback (Google TTS audio endpoint) */
         function googleTtsUrl(text, lang) {
-            const tl = encodeURIComponent(baseLangCode(lang, "en"));
+            const tl = encodeURIComponent(baseLangCode(lang, defaultLearning));
             const q = encodeURIComponent(text);
             return `${Constants.ENDPOINTS.GOOGLE_TTS}?ie=UTF-8&client=tw-ob&tl=${tl}&q=${q}`;
         }
@@ -612,7 +614,7 @@
          */
         async function getAudioBlob(
             text,
-            lang = "en",
+            lang = defaultLearning,
             {
                 forceBrowser = false,
                 voiceId = null,

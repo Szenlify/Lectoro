@@ -35,12 +35,8 @@ whenPopupReady((data) => {
         volumeRange.value = data.ttsVolume;
         volumeValue.textContent = Math.round(data.ttsVolume * 100) + "%";
     }
-    const defaultSubPos = typeof LectoroConstants !== "undefined"
-        ? LectoroConstants.DEFAULT_SUBTITLE_SETTINGS?.POSITION ?? 14
-        : 14;
-    const defaultSubBg = typeof LectoroConstants !== "undefined"
-        ? LectoroConstants.DEFAULT_SUBTITLE_SETTINGS?.BG_OPACITY ?? 0
-        : 0;
+    const defaultSubPos = LectoroConstants.DEFAULT_SUBTITLE_SETTINGS.POSITION;
+    const defaultSubBg = LectoroConstants.DEFAULT_SUBTITLE_SETTINGS.BG_OPACITY;
 
 
     const subBg = data.subtitleBgOpacity !== undefined ? data.subtitleBgOpacity : defaultSubBg;
@@ -137,9 +133,7 @@ function bindPercentageSlider(rangeEl, valueEl, storageKey, fallback = 0) {
     });
 }
 
-const subBgStorageKey = typeof LectoroConstants !== "undefined" && LectoroConstants.STORAGE_KEYS?.SUBTITLE_BG_OPACITY
-    ? LectoroConstants.STORAGE_KEYS.SUBTITLE_BG_OPACITY
-    : "subtitleBgOpacity";
+const subBgStorageKey = LectoroConstants.STORAGE_KEYS.SUBTITLE_BG_OPACITY;
 
 bindPercentageSlider(subBgRange, subBgValue, subBgStorageKey, 0);
 

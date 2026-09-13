@@ -32,17 +32,21 @@
     let lastMasterTrack = null;
     let currentDisplayedCue = null;
     let dualEnabled = true;
-    let targetLanguage = "pl";
+    const defaultTargetLang = LectoroConstants.DEFAULT_READING_SETTINGS.targetLang;
+    let targetLanguage = defaultTargetLang;
     let dualStatus = "idle";
     let settingsRevision = 0;
     const pendingFetches = new Set();
     const settingsReady = (async () => {
         try {
             const revision = settingsRevision;
-            const settings = await chrome.storage.local.get(["targetLang", "doubleSubtitles"]);
+            const settings = await chrome.storage.local.get({
+                targetLang: defaultTargetLang,
+                doubleSubtitles: true,
+            });
             if (revision !== settingsRevision) return;
             dualEnabled = settings.doubleSubtitles !== false;
-            targetLanguage = settings.targetLang || "pl";
+            targetLanguage = settings.targetLang || defaultTargetLang;
         } catch (_) {}
     })();
     let playbackRafId = null;
@@ -691,7 +695,7 @@
             if (area !== "local" || (!changes.doubleSubtitles && !changes.targetLang)) return;
             settingsRevision++;
             if (changes.doubleSubtitles) dualEnabled = changes.doubleSubtitles.newValue !== false;
-            if (changes.targetLang) targetLanguage = changes.targetLang.newValue || "pl";
+            if (changes.targetLang) targetLanguage = changes.targetLang.newValue || defaultTargetLang;
             invalidateCaptionRequest();
             if (lastMasterTrack && checkIsCcActive(boundVideo || document.querySelector("video"))) {
                 const { cues, baseUrl, videoId } = lastMasterTrack;

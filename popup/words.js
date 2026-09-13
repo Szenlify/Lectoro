@@ -30,22 +30,17 @@
      * Filter words collection using SharedWordRepository.
      */
     function filterWords(words) {
-        if (typeof SharedWordRepository !== "undefined") {
-            return SharedWordRepository.filterWords(words, {
-                filter: currentFilter,
-                query: wordSearchQuery,
-            });
-        }
-        return words;
+        return SharedWordRepository.filterWords(words, {
+            filter: currentFilter,
+            query: wordSearchQuery,
+        });
     }
 
     /**
      * Load & render words in the popup Words list.
      */
     async function loadWords() {
-        const words = typeof SharedWordRepository !== "undefined"
-            ? await SharedWordRepository.getStoredWords()
-            : [];
+        const words = await SharedWordRepository.getStoredWords();
         const filtered = filterWords(words);
 
         if (statsEl) {
@@ -156,9 +151,7 @@
         form?.addEventListener("submit", async (event) => {
             event.preventDefault();
             const formData = new FormData(form);
-            const clean = typeof SharedUtils !== "undefined" && typeof SharedUtils.cleanCardText === "function"
-                ? SharedUtils.cleanCardText
-                : (s) => String(s || "").trim();
+            const clean = SharedUtils.cleanCardText || ((s) => String(s || "").trim());
             const edits = {
                 original: clean(formData.get("original")),
                 translated: clean(formData.get("translated")),
@@ -177,21 +170,19 @@
 
     async function saveWordEdits(word, edits) {
         const editedAt = Date.now();
-        if (typeof SharedWordRepository !== "undefined") {
-            await SharedWordRepository.updateWord(
-                (candidate) =>
-                    word.id
-                        ? candidate.id === word.id
-                        : candidate.original === word.original && candidate.timestamp === word.timestamp,
-                (existing) => ({
-                    ...existing,
-                    ...edits,
-                    id: existing.id || SharedUtils?.generateId?.() || String(editedAt),
-                    updatedAt: editedAt,
-                    ttsCacheInvalidatedAt: editedAt,
-                }),
-            );
-        }
+        await SharedWordRepository.updateWord(
+            (candidate) =>
+                word.id
+                    ? candidate.id === word.id
+                    : candidate.original === word.original && candidate.timestamp === word.timestamp,
+            (existing) => ({
+                ...existing,
+                ...edits,
+                id: existing.id || SharedUtils?.generateId?.() || String(editedAt),
+                updatedAt: editedAt,
+                ttsCacheInvalidatedAt: editedAt,
+            }),
+        );
         loadWords();
     }
 

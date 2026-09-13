@@ -440,10 +440,11 @@
         const isCurrent = () => buildRevision === manifestRevision && movieId === getWatchMovieId();
 
         try {
+            const defaultTargetLang = globalThis.LectoroConstants?.DEFAULT_READING_SETTINGS?.targetLang || "pl";
             const [manifest, trackState, settings] = await Promise.all([
                 waitForTimedTextManifest(),
                 waitForActiveTextTrack(buildRevision),
-                globalThis.chrome?.storage?.local?.get({ targetLang: "pl", doubleSubtitles: true }) || {},
+                globalThis.chrome?.storage?.local?.get({ targetLang: defaultTargetLang, doubleSubtitles: true }) || {},
             ]);
             if (!isCurrent()) return [];
             doubleSubEnabled = settings.doubleSubtitles !== false;
@@ -472,7 +473,7 @@
             renderIndexedCue();
 
             if (!doubleSubEnabled) return cueIndex;
-            const targetLang = settings.targetLang || "pl";
+            const targetLang = settings.targetLang || defaultTargetLang;
             if (sameLanguage(masterTrack.bcp47 || masterTrack.language, targetLang)) {
                 setDualSubtitleStatus("idle");
                 return cueIndex;

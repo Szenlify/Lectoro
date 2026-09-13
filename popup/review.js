@@ -31,11 +31,13 @@ let reviewElVoices = [];
 let reviewVoiceProfile = null;
 let reviewVoicesLoading = false;
 
-let reviewTargetLang = "pl";
+let reviewTargetLang = LectoroConstants.DEFAULT_READING_SETTINGS.targetLang;
+let reviewLearningLang = LectoroConstants.DEFAULT_READING_SETTINGS.learningLang;
 
 whenPopupReady((data) => {
     reviewDirection = data.reviewDirection || "normal";
-    reviewTargetLang = data.targetLang || "pl";
+    reviewTargetLang = data.targetLang || LectoroConstants.DEFAULT_READING_SETTINGS.targetLang;
+    reviewLearningLang = data.learningLang || LectoroConstants.DEFAULT_READING_SETTINGS.learningLang;
     reviewSystemVoice =
         data.speechVoice === "random" ? "" : data.speechVoice || "";
     if (data.speechVoice === "random") {
@@ -49,8 +51,13 @@ whenPopupReady((data) => {
 
 if (typeof chrome !== "undefined" && chrome.storage?.onChanged) {
     chrome.storage.onChanged.addListener((changes, area) => {
-        if (area === "local" && changes.targetLang) {
-            reviewTargetLang = changes.targetLang.newValue || "pl";
+        if (area !== "local") return;
+        if (changes.targetLang) {
+            reviewTargetLang = changes.targetLang.newValue || LectoroConstants.DEFAULT_READING_SETTINGS.targetLang;
+            updateDirBtnLabel();
+        }
+        if (changes.learningLang) {
+            reviewLearningLang = changes.learningLang.newValue || LectoroConstants.DEFAULT_READING_SETTINGS.learningLang;
             updateDirBtnLabel();
         }
     });
@@ -59,16 +66,11 @@ if (typeof chrome !== "undefined" && chrome.storage?.onChanged) {
 // ── Direction toggle button ───────────────────────────────────────
 function getActiveReviewLangs() {
     const card = reviewQueue?.[reviewIndex];
-    const src = card?.srcLang || "en";
-    const tgt = card?.tgtLang || reviewTargetLang || "pl";
-    const langTagFn =
-        typeof LectoroConstants !== "undefined" &&
-        typeof LectoroConstants.langTag === "function"
-            ? LectoroConstants.langTag
-            : (c) => String(c || "?").toUpperCase();
+    const src = card?.srcLang || reviewLearningLang;
+    const tgt = card?.tgtLang || reviewTargetLang;
     return {
-        srcTag: langTagFn(src),
-        tgtTag: langTagFn(tgt),
+        srcTag: LectoroConstants.langTag(src),
+        tgtTag: LectoroConstants.langTag(tgt),
     };
 }
 
@@ -390,22 +392,10 @@ async function deleteReviewWord(w) {
     if (!confirm(`Delete "${w.original}" from database?`)) return;
     if (typeof stopPopupSpeak === "function") stopPopupSpeak();
     try {
-        if (typeof SharedWordRepository !== "undefined") {
-            await SharedWordRepository.deleteWord(
-                w.id || w.original,
-                w.timestamp,
-            );
-        } else {
-            const data = await chrome.storage.local.get({ savedWords: [] });
-            const words = (data.savedWords || []).filter(
-                (x) =>
-                    !(
-                        x.original === w.original &&
-                        x.translated === w.translated
-                    ),
-            );
-            await chrome.storage.local.set({ savedWords: words });
-        }
+        await SharedWordRepository.deleteWord(
+            w.id || w.original,
+            w.timestamp,
+        );
     } catch (err) {
         console.error("[Lectoro] Failed to delete word:", err);
     }
@@ -422,22 +412,7 @@ async function deleteAllReviews() {
     if (!confirm("Delete ALL words in the review queue?")) return;
     if (typeof stopPopupSpeak === "function") stopPopupSpeak();
     try {
-        if (typeof SharedWordRepository !== "undefined") {
-            await SharedWordRepository.deleteDueReviews();
-        } else {
-            const data = await chrome.storage.local.get({ savedWords: [] });
-            const allWords = data.savedWords || [];
-            const now = Date.now();
-            const isDueFn =
-                typeof isDueForReview === "function"
-                    ? isDueForReview
-                    : typeof SharedUtils !== "undefined" &&
-                        SharedUtils.isDueForReview
-                      ? SharedUtils.isDueForReview
-                      : () => false;
-            const remaining = allWords.filter((w) => !isDueFn(w, now));
-            await chrome.storage.local.set({ savedWords: remaining });
-        }
+        await SharedWordRepository.deleteDueReviews();
     } catch (err) {
         console.error("[Lectoro] Failed to delete review words:", err);
     }
@@ -735,8 +710,8 @@ function reviewScreenshotHtml(url) {
 
 function renderQuestion(w) {
     const card = getReviewCard();
-    const srcL = w.srcLang || "en";
-    const tgtL = w.tgtLang || "pl";
+    const srcL = w.srcLang || reviewLearningLang;
+    const tgtL = w.tgtLang || reviewTargetLang;
     const isReverse = reviewDirection === "reverse";
     const showWord = isReverse ? w.translated : w.original;
     const showLang = isReverse ? tgtL : srcL;
@@ -1042,8 +1017,8 @@ function ensureReviewAiPanel(id) {
 }
 
 function renderReviewTranslationResult(panel, result) {
-    const srcTag = (result.srcLang || "en").toUpperCase();
-    const tgtTag = (result.targetLang || "pl").toUpperCase();
+    const srcTag = (result.srcLang || reviewLearningLang).toUpperCase();
+    const tgtTag = (result.targetLang || reviewTargetLang).toUpperCase();
     const speakText = [result.wordTr, result.sentTr, result.explanation]
         .filter(Boolean)
         .join(". ");
@@ -1075,7 +1050,7 @@ function renderReviewTranslationResult(panel, result) {
                 <span class="review-ai-actions">
                     ${
                         speakText
-                            ? `<button class="review-speak-btn review-speak-sm" data-text="${escapeAttr(speakText)}" data-lang="${escapeAttr(result.targetLang)}" data-source-lang="${escapeAttr(result.srcLang || "en")}" data-original-text="${escapeAttr(result.wordTr || "")}" data-force-browser-tts="true" data-use-configured-rate="true" title="Read translation and explanation">${SPEAK_SVG}</button>`
+                            ? `<button class="review-speak-btn review-speak-sm" data-text="${escapeAttr(speakText)}" data-lang="${escapeAttr(result.targetLang)}" data-source-lang="${escapeAttr(result.srcLang || reviewLearningLang)}" data-original-text="${escapeAttr(result.wordTr || "")}" data-force-browser-tts="true" data-use-configured-rate="true" title="Read translation and explanation">${SPEAK_SVG}</button>`
                             : ""
                     }
                 </span>
@@ -1110,8 +1085,8 @@ function restoreReviewAiPanels(w) {
 function renderAnswer(w) {
     const card = getReviewCard();
     const sr = w.sr || { step: 0, interval: 0 };
-    const srcL = w.srcLang || "en";
-    const tgtL = w.tgtLang || "pl";
+    const srcL = w.srcLang || reviewLearningLang;
+    const tgtL = w.tgtLang || reviewTargetLang;
     const isReverse = reviewDirection === "reverse";
 
     // In reverse mode: question=translated, answer=original
@@ -1277,59 +1252,35 @@ function showReviewEditForm(w, returnToAnswer = reviewAnswerShown) {
             returnToAnswer ? renderAnswer(w) : renderQuestion(w);
         };
 
-        if (typeof SharedWordRepository !== "undefined") {
-            SharedWordRepository.updateWord(
-                (candidate) =>
-                    w.id
-                        ? candidate.id === w.id
-                        : (candidate.original === oldOriginal &&
-                              candidate.translated === oldTranslated) ||
-                          (candidate.original === oldOriginal &&
-                              candidate.timestamp === w.timestamp),
-                (existing) => ({
-                    ...existing,
-                    ...updatePayload,
-                    id:
-                        existing.id ||
-                        w.id ||
-                        SharedUtils?.generateId?.() ||
-                        String(editedAt),
-                }),
-            )
-                .then((updated) => {
-                    if (updated?.id) w.id = updated.id;
-                    onDone();
-                })
-                .catch((err) => {
-                    console.error(
-                        "[Lectoro] Failed to save review edits:",
-                        err,
-                    );
-                    onDone();
-                });
-        } else {
-            chrome.storage.local.get({ savedWords: [] }, (data) => {
-                const words = data.savedWords || [];
-                const idx = words.findIndex(
-                    (x) =>
-                        (w.id && x.id === w.id) ||
-                        (x.original === oldOriginal &&
-                            x.translated === oldTranslated) ||
-                        (x.original === oldOriginal &&
-                            x.timestamp === w.timestamp),
+        SharedWordRepository.updateWord(
+            (candidate) =>
+                w.id
+                    ? candidate.id === w.id
+                    : (candidate.original === oldOriginal &&
+                          candidate.translated === oldTranslated) ||
+                      (candidate.original === oldOriginal &&
+                          candidate.timestamp === w.timestamp),
+            (existing) => ({
+                ...existing,
+                ...updatePayload,
+                id:
+                    existing.id ||
+                    w.id ||
+                    SharedUtils?.generateId?.() ||
+                    String(editedAt),
+            }),
+        )
+            .then((updated) => {
+                if (updated?.id) w.id = updated.id;
+                onDone();
+            })
+            .catch((err) => {
+                console.error(
+                    "[Lectoro] Failed to save review edits:",
+                    err,
                 );
-                if (idx !== -1) {
-                    if (!words[idx].id)
-                        words[idx].id =
-                            SharedUtils?.generateId?.() || String(editedAt);
-                    words[idx] = { ...words[idx], ...updatePayload };
-                    w.id = words[idx].id;
-                    chrome.storage.local.set({ savedWords: words }, onDone);
-                } else {
-                    onDone();
-                }
+                onDone();
             });
-        }
     });
 
     // Focus first field
@@ -1350,31 +1301,14 @@ async function rateWord(grade) {
     _reviewSaving = true;
 
     try {
-        if (typeof SharedWordRepository !== "undefined") {
-            const updated = await SharedWordRepository.recordReviewRating(
-                w,
-                grade,
-            );
-            if (updated?.sr) {
-                w.sr = updated.sr;
-            } else {
-                w.sr = srUpdate(w.sr, grade);
-            }
+        const updated = await SharedWordRepository.recordReviewRating(
+            w,
+            grade,
+        );
+        if (updated?.sr) {
+            w.sr = updated.sr;
         } else {
             w.sr = srUpdate(w.sr, grade);
-            const data = await chrome.storage.local.get({ savedWords: [] });
-            const words = data.savedWords || [];
-            const idx = words.findIndex(
-                (x) =>
-                    (w.id && x.id === w.id) ||
-                    (x.original === w.original &&
-                        x.translated === w.translated),
-            );
-            if (idx !== -1) {
-                words[idx].sr = w.sr;
-                words[idx].updatedAt = Date.now();
-                await chrome.storage.local.set({ savedWords: words });
-            }
         }
     } catch (err) {
         console.error("[Lectoro] Failed to save review:", err);

@@ -30,6 +30,13 @@ chrome.storage.local.get(POPUP_INIT_KEYS, (data) => {
     _popupReadyResolver(popupState);
 });
 
+chrome.storage.onChanged?.addListener((changes, area) => {
+    if (area !== "local") return;
+    for (const [key, change] of Object.entries(changes)) {
+        popupState[key] = change.newValue;
+    }
+});
+
 // ── Elements ──────────────────────────────────────────────────────
 const select = document.getElementById("targetLang");
 const savedMsg = document.getElementById("saved");
@@ -210,8 +217,10 @@ function isReviewTabActive() {
 
 function autoSpeakReviewCard(w, answerVisible = false) {
     if (!w || !isReviewTabActive()) return;
-    const srcL = w.srcLang || "en";
-    const tgtL = w.tgtLang || "pl";
+    const defaultLearning = popupState.learningLang || LectoroConstants.DEFAULT_READING_SETTINGS.learningLang;
+    const defaultTarget = popupState.targetLang || LectoroConstants.DEFAULT_READING_SETTINGS.targetLang;
+    const srcL = w.srcLang || defaultLearning;
+    const tgtL = w.tgtLang || defaultTarget;
     const isReverse = reviewDirection === "reverse";
     const cacheOptions = {
         cacheFirst: true,

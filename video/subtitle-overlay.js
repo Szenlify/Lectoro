@@ -70,9 +70,9 @@
     let aiExplainKeydownHandler = null;
     let aiExplainQueue = [];
     let aiExplainIndex = 0;
-    let aiExplainSourceLang = "en";
+    let aiExplainSourceLang = C.DEFAULT_READING_SETTINGS.learningLang;
     let aiExplainRequestId = 0;
-    let aiExplainTargetLang = "pl";
+    let aiExplainTargetLang = C.DEFAULT_READING_SETTINGS.targetLang;
     let aiExplainLayout = null;
     let aiExplainSpeechToken = 0;
     let aiAutoAdvanceTimer = null;
@@ -2346,7 +2346,7 @@
                     cleanedTerm;
 
                 const targetNativeLang =
-                    aiExplainTargetLang || (await QT.getTargetLang?.()) || "pl";
+                    aiExplainTargetLang || (await QT.getTargetLang?.()) || C.DEFAULT_READING_SETTINGS.targetLang;
 
                 const result = await QT.geminiGenerateSentence(
                     cleanedTerm,
@@ -2488,7 +2488,7 @@
 
                 // Missing translations fall back to the native language.
                 const targetNativeLang =
-                    aiExplainTargetLang || (await QT.getTargetLang?.()) || "pl";
+                    aiExplainTargetLang || (await QT.getTargetLang?.()) || C.DEFAULT_READING_SETTINGS.targetLang;
                 if (
                     !cleanedMeaning ||
                     cleanedMeaning.toLowerCase() === cleanedTerm.toLowerCase()
@@ -2569,7 +2569,7 @@
                 } else {
                     await QT.speak(
                         speakBtn.dataset.text || "",
-                        speakBtn.dataset.lang || "pl",
+                        speakBtn.dataset.lang || subtitleTranslationLang || C.DEFAULT_READING_SETTINGS.targetLang,
                         {
                             sourceLang: speakBtn.dataset.sourceLang,
                             originalText: speakBtn.dataset.originalText,
@@ -2634,7 +2634,7 @@
         if (typeof badgeCandidate === "string" && badgeCandidate.trim()) {
             return badgeCandidate.trim();
         }
-        const lang = (targetLangCode || "pl").toLowerCase().slice(0, 2);
+        const lang = (targetLangCode || subtitleTranslationLang || C.DEFAULT_READING_SETTINGS.targetLang).toLowerCase().slice(0, 2);
         const normType = String(type || "").toLowerCase().trim();
 
         const BADGE_MAP = {

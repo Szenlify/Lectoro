@@ -768,8 +768,10 @@
     }
 
     function getExamTitle(srcLang, tgtLang) {
-        const src = (srcLang || "en").toLowerCase();
-        const tgt = (tgtLang || "pl").toLowerCase().split(/[-_]/)[0];
+        const defaultLearning = (typeof LectoroConstants !== "undefined" && LectoroConstants.DEFAULT_READING_SETTINGS?.learningLang) || "en";
+        const defaultTarget = (typeof LectoroConstants !== "undefined" && LectoroConstants.DEFAULT_READING_SETTINGS?.targetLang) || "pl";
+        const src = (srcLang || defaultLearning).toLowerCase();
+        const tgt = (tgtLang || defaultTarget).toLowerCase().split(/[-_]/)[0];
         const srcName = getLangName(src);
 
         if (tgt === "pl") {
@@ -837,16 +839,21 @@
     // ── 1. Gemini AI Quiz Generator ─────────────────────────────────────
     async function generateQuizWithGemini(words, options = {}) {
         if (!Array.isArray(words) || !words.length) throw new Error("Choose vocabulary for the quiz first.");
-        const srcLocale = words[0]?.srcLang || "en";
+        const defaultLearning = (typeof SharedTranslatorService !== "undefined" && typeof SharedTranslatorService.getLearningLang === "function")
+            ? (await SharedTranslatorService.getLearningLang())
+            : ((typeof LectoroConstants !== "undefined" && LectoroConstants.DEFAULT_READING_SETTINGS?.learningLang) || "en");
+        const defaultTarget = (typeof SharedTranslatorService !== "undefined" && typeof SharedTranslatorService.getTargetLang === "function")
+            ? (await SharedTranslatorService.getTargetLang())
+            : ((typeof LectoroConstants !== "undefined" && LectoroConstants.DEFAULT_READING_SETTINGS?.targetLang) || "pl");
+        const srcLocale = words[0]?.srcLang || defaultLearning;
         const srcLang = AIPrompts.languageCode(srcLocale);
         let tgtLang = options.tgtLang;
         if (!tgtLang) {
-            const data = await new Promise((r) => chrome.storage.local.get({ targetLang: "pl" }, r));
-            tgtLang = data.targetLang;
+            tgtLang = defaultTarget;
         }
         const tgtLocale = tgtLang;
         tgtLang = AIPrompts.languageCode(tgtLang);
-        if (words.some((word) => AIPrompts.languageCode(word?.srcLang || "en") !== srcLang)) {
+        if (words.some((word) => AIPrompts.languageCode(word?.srcLang || defaultLearning) !== srcLang)) {
             throw new Error("Choose vocabulary from one source language per quiz.");
         }
         const wordsPool = words.filter((w) => typeof w.original === "string" && w.original.trim()).slice(0, 25);
@@ -953,8 +960,10 @@
             escapeHtml: (s) => (s || "").toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"),
         });
 
-        const srcLang = (words[0]?.srcLang || "en").toLowerCase();
-        const tgtLang = (options.tgtLang || "pl").toLowerCase();
+        const defaultLearning = (typeof LectoroConstants !== "undefined" && LectoroConstants.DEFAULT_READING_SETTINGS?.learningLang) || "en";
+        const defaultTarget = (typeof LectoroConstants !== "undefined" && LectoroConstants.DEFAULT_READING_SETTINGS?.targetLang) || "pl";
+        const srcLang = (words[0]?.srcLang || defaultLearning).toLowerCase();
+        const tgtLang = (options.tgtLang || defaultTarget).toLowerCase();
         const i18n = getI18n(tgtLang);
         const title = escapeHtml(quiz.title || i18n.defaultTitle);
         const examTitle = escapeHtml(getExamTitle(srcLang, tgtLang));
@@ -1178,8 +1187,10 @@
             escapeAttr: (s) => (s || "").toString().replace(/"/g, "&quot;").replace(/'/g, "&#39;"),
         });
 
-        const srcLang = (words[0]?.srcLang || "en").toLowerCase();
-        const tgtLang = (options.tgtLang || "pl").toLowerCase();
+        const defaultLearning = (typeof LectoroConstants !== "undefined" && LectoroConstants.DEFAULT_READING_SETTINGS?.learningLang) || "en";
+        const defaultTarget = (typeof LectoroConstants !== "undefined" && LectoroConstants.DEFAULT_READING_SETTINGS?.targetLang) || "pl";
+        const srcLang = (words[0]?.srcLang || defaultLearning).toLowerCase();
+        const tgtLang = (options.tgtLang || defaultTarget).toLowerCase();
         const i18n = getI18n(tgtLang);
         const title = escapeHtml(quiz.title || i18n.defaultTitle);
         const examTitle = escapeHtml(getExamTitle(srcLang, tgtLang));

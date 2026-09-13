@@ -647,7 +647,14 @@
                         : window.speechSynthesis?.getVoices?.() || [];
                 if (!voices.length) return null;
 
-                const baseLang = (lang || "en").split("-")[0].toLowerCase();
+                const defaultLearning =
+                    (typeof LectoroConstants !== "undefined" &&
+                        LectoroConstants.DEFAULT_READING_SETTINGS
+                            ?.learningLang) ||
+                    "en";
+                const baseLang = (lang || defaultLearning)
+                    .split("-")[0]
+                    .toLowerCase();
                 const langVoices = voices.filter((v) =>
                     (v.lang || "").toLowerCase().startsWith(baseLang),
                 );

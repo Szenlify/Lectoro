@@ -1,23 +1,14 @@
 npx modern-web-guidance@latest install --choose
 
-1. Jesli mam konto płatne (nie free) zawsze przy czytaniu textu najpierw niech sprawdzi cashe pozniej zapytanie link do R2 jesli 404 bład to wtedy system voice niezaleznie w jakies funkcji czy to powtorki czy to text na internecie wszedzie gdzie uzywa sie TTS. w powtorkach tylko tam moze byc generowany glos elevenlabs i wysylaby do R2 claudflare bazy, jesli glos w bazie danych nie naliczaj znakow
-
-2. Jak sa właczone dwa tryby tryb translate full sentence oraz translate word by word wtedy na netflixie style zaczynaja znikać tych trybów zaraz po wyświetleniu
-
 3. sprawdz jak wyswietlaja sie ANKI po exporcie (zle, ma byc sam konkret bez tlumaczenia AI)
 
 4. sprawdz api jak w cloud firebase to wyglada przed publikacją
 
-5. guzik sync co ile czasu sie samo synchronizuje automatycznie (czy w ogole to robi)
-16. Cloud Sync usunac sync wymyslic sposob zeby automatycznie to robilo np po wykryciu zmiany po 3 minutach samo niech sie synchronizuje
+5. guzik sync co ile czasu sie samo synchronizuje automatycznie
 
 6. zgodnosc z CWS
 
-7. Jesli plan płatny przycisk "Z" na video generuje tlumaczenie AI idealne pod nauke a nie zwykłe tłumaczenie
-
 8. sprawdz quizy (TTS czesto zle czyta w złym głosie jak jest mieszane pytanie)
-
-9. usunalem z popup.html ze mozna all words zaznaczyc i wygenerowac quiz usun rowniez funkcje ktora to robiła bo pewnie teraz to martwy kod
 
 10. w trybie s slowo po slowie moge uzywac strzalek w bok zeby wybrac slowo do powtorek tak jak w trybie enter z chmurkami zrob ale jak nic nie nacisne strzalek w bok to jest tak jak jest teraz
 

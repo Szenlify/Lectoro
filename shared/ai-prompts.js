@@ -78,12 +78,13 @@ JSON: {"sentence":"...","translation":"...","output_language":"${languageCode(tg
             context = null,
             options = {},
         ) {
-            const sourceLang = languageCode(options.sourceLang || "en");
+            const defaultLearning = Constants?.DEFAULT_READING_SETTINGS?.learningLang || "en";
+            const sourceLang = languageCode(options.sourceLang || defaultLearning);
             const outputLang = languageCode(targetLang);
             const output = getLangName(targetLang);
             return (
                 `${RULES}
-Study this subtitle in ${getLangName(options.sourceLang || "en")}; never switch source language. All prose, meanings and badges: ${output}; source terms/expansions may be quoted. Terms: verbatim source text. Badges: short category labels.
+Study this subtitle in ${getLangName(options.sourceLang || defaultLearning)}; never switch source language. All prose, meanings and badges: ${output}; source terms/expansions may be quoted. Terms: verbatim source text. Badges: short category labels.
 Translate only the sentence in one natural line, preserving all clauses. Context resolves sense only. Do not guess missing facts. Sentence explanation: "".
 items: 0-4 worth learning, not a quota; [] is valid. Default to single words. Merge only genuine idioms or phrasal verbs whose contextual sense is lost word by word (take off, get up); never literal groups (red car, very good), transparent compounds or grammar alone. Prioritize these expressions, then slang and useful vocabulary; skip names and obvious words. Keep sentence order, no duplicates or overlaps. term: smallest exact span carrying the whole expression; include intervening words only for separated verbs. Never extract an idiom's parts separately. type: idiom, phrasal_verb, slang or vocabulary.
 meaning: one brief contextual meaning; expand contractions here once. Item explanation: "" unless one short sentence adds essential usage/grammar beyond meaning; never restate it. No filler or extra examples.
@@ -95,8 +96,8 @@ JSON: {"source_language":"${sourceLang}","output_language":"${outputLang}","badg
         function standardTranslate(
             word,
             sentence,
-            srcLang = "en",
-            tgtLang = "pl",
+            srcLang = Constants?.DEFAULT_READING_SETTINGS?.learningLang || "en",
+            tgtLang = Constants?.DEFAULT_READING_SETTINGS?.targetLang || "pl",
         ) {
             return (
                 `${RULES}
@@ -106,8 +107,10 @@ JSON: {"word_translation":"...","sentence_translation":"...","explanation":"..."
             );
         }
         function quiz(opts) {
-            const src = getLangName(opts.srcLang || "en"),
-                tgt = getLangName(opts.tgtLang || "pl");
+            const defaultLearning = Constants?.DEFAULT_READING_SETTINGS?.learningLang || "en";
+            const defaultTarget = Constants?.DEFAULT_READING_SETTINGS?.targetLang || "pl";
+            const src = getLangName(opts.srcLang || defaultLearning),
+                tgt = getLangName(opts.tgtLang || defaultTarget);
             const chosen = opts.chosenTypes?.length
                 ? [...new Set(opts.chosenTypes)]
                 : DEFAULT_QUIZ_TYPES;
@@ -132,7 +135,7 @@ JSON: {"word_translation":"...","sentence_translation":"...","explanation":"..."
 Create a practical vocabulary quiz (A2-B2) grounded in the supplied vocabulary and contexts. Test recall, meaning and usage; no trivia or trick questions. Cover different supplied words before repeating them. Distractors may use other words.
 Language tested: ${src}. Instructions, title, hints and true/false statements: ${tgt}. Test sentences, options and answers: ${src}. Matching meanings: ${tgt}. Source terms may be quoted inside instructions.
 Include exactly these sections, once each: ${chosen.join(", ")}. Exactly 2 questions per section except matching. acceptable_answers: 0-3 genuinely equivalent full answers; never invent variants to meet a quota or accept partial answers. All option answers must exactly match one option. Check each answer and ambiguity before returning.
-JSON: {"title":"...","source_language":"${languageCode(opts.srcLang || "en")}","instruction_language":"${languageCode(opts.tgtLang || "pl")}","sections":[{"type":"...","instructions":"...","questions":[]}]}. Matching uses pairs instead of questions.
+JSON: {"title":"...","source_language":"${languageCode(opts.srcLang || defaultLearning)}","instruction_language":"${languageCode(opts.tgtLang || defaultTarget)}","sections":[{"type":"...","instructions":"...","questions":[]}]}. Matching uses pairs instead of questions.
 ${chosen.map((type) => contracts[type]).join("\n")}` +
                 data({ vocabulary: opts.wordList })
             );

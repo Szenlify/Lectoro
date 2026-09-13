@@ -335,7 +335,7 @@
         );
 
         /**
-         * Stopwords / simple functional words (pronouns, auxiliary verbs, articles, prepositions)
+         * Simple functional words (pronouns, auxiliary verbs, articles, prepositions)
          * Single Source of Truth shared across subtitle overlay and word cloud filters.
          */
         const SIMPLE_WORDS = Object.freeze(
@@ -352,6 +352,26 @@
                 "an", "oh", "um", "uh", "ah", "a", "and", "as", "at",
                 "for", "from", "if", "in", "not", "of", "on", "or", "so",
                 "some", "that", "the", "to", "too", "what",
+            ]),
+        );
+
+        /**
+         * Common English stopwords and functional words for Cloze deletion keyword extraction (SSOT)
+         */
+        const CLOZE_STOP_WORDS = Object.freeze(
+            new Set([
+                ...SIMPLE_WORDS,
+                "about", "above", "after", "again", "against", "all", "any", "because",
+                "before", "below", "between", "both", "but", "by", "cannot", "doing",
+                "down", "during", "each", "few", "further", "having", "here", "here's",
+                "herself", "himself", "how", "how's", "into", "itself", "just", "let's",
+                "like", "more", "most", "mustn't", "myself", "nor", "off", "once", "only",
+                "other", "ought", "ourselves", "out", "over", "own", "same", "shan't",
+                "such", "than", "that's", "themselves", "then", "there", "there's", "these",
+                "this", "those", "through", "under", "until", "up", "very", "when", "when's",
+                "where", "where's", "which", "while", "who", "who's", "whom", "why", "why's",
+                "with", "yourself", "yourselves", "yeah", "got", "get", "going", "go",
+                "see", "say", "said",
             ]),
         );
 
@@ -374,6 +394,7 @@
             DEFAULT_READING_SETTINGS,
             ENDPOINTS,
             SIMPLE_WORDS,
+            CLOZE_STOP_WORDS,
             SVG_ICONS,
             R2_CDN_BASE_URL,
             SUPPORTED_LANGUAGES,

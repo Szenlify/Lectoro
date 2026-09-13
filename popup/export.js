@@ -19,7 +19,10 @@ async function fetchAudioBlob(text, lang, {allowFallback = true} = {}) {
   if (!allowFallback) return null;
   // Direct network fallback if SharedTtsService is unavailable
   try {
-    const baseLang = encodeURIComponent((lang || "en").split("-")[0]);
+    const defaultLearning = (typeof SharedTranslatorService !== "undefined" && typeof SharedTranslatorService.getLearningLang === "function")
+      ? (await SharedTranslatorService.getLearningLang())
+      : ((typeof LectoroConstants !== "undefined" && LectoroConstants.DEFAULT_READING_SETTINGS?.learningLang) || "en");
+    const baseLang = encodeURIComponent((lang || defaultLearning).split("-")[0]);
     const url = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${baseLang}&q=${encodeURIComponent(text)}`;
     const res = await fetch(url);
     if (!res.ok) return null;
@@ -34,205 +37,11 @@ async function fetchAudioBlob(text, lang, {allowFallback = true} = {}) {
 function findBestClozeWord(sentence) {
   if (!sentence || typeof sentence !== "string") return null;
 
-  // Common English stop words / function words to avoid clozing
-  const stopWords = new Set([
-    "a",
-    "about",
-    "above",
-    "after",
-    "again",
-    "against",
-    "all",
-    "am",
-    "an",
-    "and",
-    "any",
-    "are",
-    "aren't",
-    "as",
-    "at",
-    "be",
-    "because",
-    "been",
-    "before",
-    "being",
-    "below",
-    "between",
-    "both",
-    "but",
-    "by",
-    "can",
-    "can't",
-    "cannot",
-    "could",
-    "couldn't",
-    "did",
-    "didn't",
-    "do",
-    "does",
-    "doesn't",
-    "doing",
-    "don't",
-    "down",
-    "during",
-    "each",
-    "few",
-    "for",
-    "from",
-    "further",
-    "had",
-    "hadn't",
-    "has",
-    "hasn't",
-    "have",
-    "haven't",
-    "having",
-    "he",
-    "he'd",
-    "he'll",
-    "he's",
-    "her",
-    "here",
-    "here's",
-    "hers",
-    "herself",
-    "him",
-    "himself",
-    "his",
-    "how",
-    "how's",
-    "i",
-    "i'd",
-    "i'll",
-    "i'm",
-    "i've",
-    "if",
-    "in",
-    "into",
-    "is",
-    "isn't",
-    "it",
-    "it's",
-    "its",
-    "itself",
-    "just",
-    "let's",
-    "like",
-    "me",
-    "more",
-    "most",
-    "mustn't",
-    "my",
-    "myself",
-    "no",
-    "nor",
-    "not",
-    "now",
-    "of",
-    "off",
-    "on",
-    "once",
-    "only",
-    "or",
-    "other",
-    "ought",
-    "our",
-    "ours",
-    "ourselves",
-    "out",
-    "over",
-    "own",
-    "same",
-    "shan't",
-    "she",
-    "she'd",
-    "she'll",
-    "she's",
-    "should",
-    "shouldn't",
-    "so",
-    "some",
-    "such",
-    "than",
-    "that",
-    "that's",
-    "the",
-    "their",
-    "theirs",
-    "them",
-    "themselves",
-    "then",
-    "there",
-    "there's",
-    "these",
-    "they",
-    "they'd",
-    "they'll",
-    "they're",
-    "they've",
-    "this",
-    "those",
-    "through",
-    "to",
-    "too",
-    "under",
-    "until",
-    "up",
-    "very",
-    "was",
-    "wasn't",
-    "we",
-    "we'd",
-    "we'll",
-    "we're",
-    "we've",
-    "were",
-    "weren't",
-    "what",
-    "what's",
-    "when",
-    "when's",
-    "where",
-    "where's",
-    "which",
-    "while",
-    "who",
-    "who's",
-    "whom",
-    "why",
-    "why's",
-    "with",
-    "won't",
-    "would",
-    "wouldn't",
-    "you",
-    "you'd",
-    "you'll",
-    "you're",
-    "you've",
-    "your",
-    "yours",
-    "yourself",
-    "yourselves",
-    "yeah",
-    "yes",
-    "okay",
-    "oh",
-    "um",
-    "uh",
-    "got",
-    "get",
-    "going",
-    "go",
-    "see",
-    "say",
-    "said",
-  ]);
-
   // Tokenize into words while stripping punctuation
   const tokens = sentence.match(/[a-zA-Z\u00C0-\u024F]+(?:'[a-zA-Z]+)?/g) || [];
   if (tokens.length === 0) return null;
 
+  const stopWords = LectoroConstants.CLOZE_STOP_WORDS;
   const candidates = [];
   for (let i = 0; i < tokens.length; i++) {
     const rawWord = tokens[i];
@@ -576,10 +385,8 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
   btn.disabled = true;
 
   try {
-    const data = await new Promise((r) =>
-      chrome.storage.local.get({savedWords: []}, r)
-    );
-    const words = filterWords(data.savedWords || []);
+    const allWords = await SharedWordRepository.getStoredWords();
+    const words = filterWords(allWords);
     if (words.length === 0) {
       setBtnText(origText);
       btn.disabled = false;
@@ -589,12 +396,15 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
     const files = [];
     const lines = [];
 
+    const defaultLearningLang = (await SharedTranslatorService.getLearningLang()) || LectoroConstants.DEFAULT_READING_SETTINGS.learningLang;
+    const defaultTargetLang = (await SharedTranslatorService.getTargetLang()) || LectoroConstants.DEFAULT_READING_SETTINGS.targetLang;
+
     for (let i = 0; i < words.length; i++) {
       const w = words[i];
       setBtnText(`⏳ Downloading (${i + 1}/${words.length})…`);
 
-      const srcLangTag = escapeHtml((w.srcLang || "en").toUpperCase());
-      const tgtLangTag = escapeHtml((w.tgtLang || "pl").toUpperCase());
+      const srcLangTag = escapeHtml((w.srcLang || defaultLearningLang).toUpperCase());
+      const tgtLangTag = escapeHtml((w.tgtLang || defaultTargetLang).toUpperCase());
 
       const sentenceSource = (w.aiSentence || w.sentence || "").trim();
       const cleanOriginal = (w.original || "").trim();
@@ -735,7 +545,7 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
       // 5. Audio: priority search for ElevenLabs recording in R2 CDN / AudioCache
       let audioFile = null;
       let audioDataUri = null;
-      const ttsLang = w.srcLang || "en";
+      const ttsLang = w.srcLang || defaultLearningLang;
 
       // Candidate texts in priority order:
       // 1) Original subtitle sentence from video (w.sentence)
@@ -905,7 +715,7 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
     await recordExportSuccess("anki");
 
     // Mark as downloaded
-    markAsDownloaded(words, data.savedWords);
+    markAsDownloaded(words);
   } catch (err) {
     console.error("Anki export error:", err);
     alert("Export error: " + err.message);
@@ -921,10 +731,8 @@ document.getElementById("exportCsv").addEventListener("click", async () => {
     return;
   }
 
-  const data = await new Promise((r) =>
-    chrome.storage.local.get({savedWords: []}, r)
-  );
-  const words = filterWords(data.savedWords || []);
+  const allWords = await SharedWordRepository.getStoredWords();
+  const words = filterWords(allWords);
   if (words.length === 0) return;
 
   // BOM for Excel UTF-8
@@ -967,7 +775,7 @@ document.getElementById("exportCsv").addEventListener("click", async () => {
   await recordExportSuccess("excel");
 
   // Mark as downloaded
-  markAsDownloaded(words, data.savedWords);
+  markAsDownloaded(words);
 });
 
 // ── Export: AI-generated Quiz (Lazy Loaded) ───────────────────────
@@ -1012,10 +820,7 @@ if (exportQuizBtn) {
       return;
     }
 
-    const data = await new Promise((r) =>
-      chrome.storage.local.get({savedWords: [], targetLang: "pl"}, r)
-    );
-    const allWords = data.savedWords || [];
+    const allWords = await SharedWordRepository.getStoredWords();
     const words = filterWords(allWords);
     if (words.length === 0) {
       alert("No words available to generate quiz.");
@@ -1024,7 +829,7 @@ if (exportQuizBtn) {
 
     const scope = document.getElementById("quizScope")?.value || "5";
     const source = document.getElementById("quizSource")?.value || "recent";
-    const targetLang = data.targetLang || "pl";
+    const targetLang = (await SharedTranslatorService.getTargetLang()) || LectoroConstants.DEFAULT_READING_SETTINGS.targetLang;
 
     const labelEl = exportQuizBtn.querySelector(".quiz-btn-label");
     exportQuizBtn.disabled = true;
@@ -1050,7 +855,7 @@ if (exportQuizBtn) {
         targetLang,
       });
       if (result && result.quizWords) {
-        markAsDownloaded(result.quizWords, allWords);
+        markAsDownloaded(result.quizWords);
       }
 
       // Successfully generated: update local quota
@@ -1077,45 +882,18 @@ if (exportQuizBtn) {
 // ── Clear visible words ───────────────────────────────────────────
 document.getElementById("clearAll").addEventListener("click", async () => {
   if (!confirm("Delete visible words?")) return;
-  const words =
-    typeof SharedWordRepository !== "undefined"
-      ? await SharedWordRepository.getStoredWords()
-      : (await chrome.storage.local.get({savedWords: []})).savedWords || [];
+  const words = await SharedWordRepository.getStoredWords();
   const visibleWords = filterWords(words);
   if (visibleWords.length === 0) return;
 
-  if (typeof SharedWordRepository !== "undefined") {
-    await SharedWordRepository.deleteWords(visibleWords);
-  } else {
-    const toRemove = new Set(
-      visibleWords.map((w) => w.original + "|" + w.timestamp)
-    );
-    const remaining = words.filter(
-      (w) => !toRemove.has(w.original + "|" + w.timestamp)
-    );
-    await chrome.storage.local.set({savedWords: remaining});
-  }
+  await SharedWordRepository.deleteWords(visibleWords);
   loadWords();
 });
 
 // ── Mark exported words as downloaded ─────────────────────────────
-async function markAsDownloaded(exportedWords, allWords) {
+async function markAsDownloaded(exportedWords) {
   try {
-    if (typeof SharedWordRepository !== "undefined") {
-      await SharedWordRepository.markWordsDownloaded(exportedWords);
-    } else {
-      const exportedSet = new Set(
-        exportedWords.map((w) => (w.id ? w.id : `${w.original}|${w.timestamp}`))
-      );
-      const updated = (allWords || []).map((w) => {
-        const key = w.id ? w.id : `${w.original}|${w.timestamp}`;
-        if (exportedSet.has(key)) {
-          return {...w, downloaded: true};
-        }
-        return w;
-      });
-      await chrome.storage.local.set({savedWords: updated});
-    }
+    await SharedWordRepository.markWordsDownloaded(exportedWords);
   } catch (err) {
     console.error("[Lectoro] Failed to mark downloaded words:", err);
   }

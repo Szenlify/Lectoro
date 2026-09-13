@@ -5,13 +5,8 @@
 (() => {
     "use strict";
 
-    const { cleanTextForTTS } = typeof SharedUtils !== "undefined"
-        ? SharedUtils
-        : { cleanTextForTTS: (t) => t };
-
-    const SPEAK_SVG = typeof LectoroConstants !== "undefined" && LectoroConstants.SVG_ICONS?.SPEAKER
-        ? LectoroConstants.SVG_ICONS.SPEAKER
-        : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`;
+    const { cleanTextForTTS } = SharedUtils || { cleanTextForTTS: (t) => t };
+    const SPEAK_SVG = LectoroConstants.SVG_ICONS.SPEAKER;
 
     let popupSpeakSeq = 0;
 
@@ -57,8 +52,11 @@
 
         // Fallback if SharedTtsService is not yet loaded
         window.speechSynthesis?.cancel();
-        const utter = new SpeechSynthesisUtterance(cleanTextForTTS(text));
-        utter.lang = lang || "en";
+        const defaultLang =
+            (typeof LectoroConstants !== "undefined" &&
+                LectoroConstants.DEFAULT_READING_SETTINGS?.learningLang) ||
+            "en";
+        utter.lang = lang || defaultLang;
         window.speechSynthesis?.speak(utter);
         return { type: "utter", obj: utter };
     }

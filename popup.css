@@ -355,13 +355,6 @@ body::before {
     height: 16px;
 }
 
-.settings-dual-row label .label-icon {
-    font-size: 12px;
-    line-height: 1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
 
 .settings-dual-row .select-wrap {
     position: relative;
@@ -2924,10 +2917,6 @@ body::before {
     display: none !important;
 }
 
-.sync-button-wrap {
-    position: relative;
-    display: inline-flex;
-}
 
 .sync-actions {
     display: flex;
@@ -3398,17 +3387,6 @@ html[data-lectoro-ai-limit-reached] #exportQuiz {
     color: var(--text-ghost);
 }
 
-.subscription-heading {
-    align-items: center;
-    margin-bottom: 10px;
-}
-
-.subscription-heading p {
-    margin-top: 3px;
-    color: var(--text-muted);
-    font-size: 9px;
-    line-height: 1.35;
-}
 
 .subscription-trial-banner {
     display: flex;
