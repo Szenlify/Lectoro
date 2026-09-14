@@ -499,15 +499,21 @@
                 const segs = cue.segs;
                 if (!Array.isArray(segs) || segs.length < 2 || cue.tStartMs == null) return null;
                 let accumulatedText = "";
-                const cleanTarget = String(part1Text || "").replace(/\s+/g, " ").trim();
+                const cleanTarget = String(part1Text || "").replace(/[^\p{L}\p{N}]+/gu, " ").trim().toLowerCase();
                 for (let s = 0; s < segs.length; s++) {
                     const segText = (segs[s]?.utf8 || "").replace(/^[>»›<«\s—–-]+/, "").trim();
                     if (!segText) continue;
                     accumulatedText = (accumulatedText + " " + segText).trim();
-                    if (accumulatedText === cleanTarget || accumulatedText.startsWith(cleanTarget)) {
+                    const cleanAccum = accumulatedText.replace(/[^\p{L}\p{N}]+/gu, " ").trim().toLowerCase();
+                    if (cleanAccum === cleanTarget || cleanAccum.startsWith(cleanTarget)) {
                         for (let next = s + 1; next < segs.length; next++) {
-                            if (segs[next] && segs[next].tOffsetMs != null) {
-                                return (cue.tStartMs + Number(segs[next].tOffsetMs)) / 1000;
+                            if (segs[next]) {
+                                if (segs[next].tAbsMs != null) {
+                                    return segs[next].tAbsMs / 1000;
+                                }
+                                if (segs[next].tOffsetMs != null && cue.tStartMs != null) {
+                                    return (cue.tStartMs + Number(segs[next].tOffsetMs)) / 1000;
+                                }
                             }
                         }
                         break;
@@ -546,7 +552,7 @@
                 }
             }
 
-            // Pass 2: Backward Merge (orphaned sentence/clause tails of 1 word at start of curr -> prev)
+            // Pass 2: Backward Merge (orphaned sentence/clause tails of 1-2 words at start of curr -> prev)
             for (let i = 1; i < cues.length; i++) {
                 const prev = cues[i - 1];
                 const curr = cues[i];
@@ -558,9 +564,9 @@
                 // Gap check: if there is a long silence gap between cues, do not merge across it
                 if (curr.startTime - (prev.endTime || prev.startTime) > 1.5) continue;
 
-                // Check if current cue starts with a single orphan word ending in terminal punctuation,
+                // Check if current cue starts with 1-2 orphan words ending in terminal punctuation,
                 // followed immediately by whitespace and an uppercase letter (new sentence)
-                const match = curr.text.match(/^(\S+[.!?。！？]["'»”’)\]]?)\s+([A-ZÀ-ÿ0-9].*)$/);
+                const match = curr.text.match(/^((?:\S+\s+){0,1}\S+[.!?。！？]["'»”’)\]]?)\s+([A-ZÀ-ÿ0-9].*)$/);
                 if (match) {
                     const orphanText = match[1].trim();
                     const remainingText = match[2].trim();
@@ -568,7 +574,7 @@
                     if (!ABBREV_RE.test(orphanText.toLowerCase())) {
                         let splitTime = getSegSplitTimestamp(curr, orphanText);
                         if (!splitTime || !Number.isFinite(splitTime)) {
-                            const orphanWords = 1;
+                            const orphanWords = orphanText.split(/\s+/).length;
                             const totalWords = curr.text.split(/\s+/).length;
                             const dur = curr.endTime - curr.startTime;
                             const estDur = Math.min(1.5, Math.max(0.3, dur * (orphanWords / totalWords)));
@@ -585,24 +591,47 @@
                         if (curr.tStartMs != null) {
                             curr.tStartMs = Math.round(splitTime * 1000);
                         }
+
+                        if (Array.isArray(curr.segs)) {
+                            let splitIndex = -1;
+                            let accumulated = "";
+                            const cleanTarget = String(orphanText || "").replace(/[^\p{L}\p{N}]+/gu, " ").trim().toLowerCase();
+                            for (let s = 0; s < curr.segs.length; s++) {
+                                const segText = (curr.segs[s]?.utf8 || "").replace(/^[>»›<«\s—–-]+/, "").trim();
+                                if (!segText) continue;
+                                accumulated = (accumulated + " " + segText).trim();
+                                if (accumulated.replace(/[^\p{L}\p{N}]+/gu, " ").trim().toLowerCase() === cleanTarget) {
+                                    splitIndex = s;
+                                    break;
+                                }
+                            }
+                            if (splitIndex >= 0) {
+                                const orphanSegs = curr.segs.slice(0, splitIndex + 1);
+                                const restSegs = curr.segs.slice(splitIndex + 1);
+                                prev.segs = [...(prev.segs || []), ...orphanSegs];
+                                curr.segs = restSegs;
+                            }
+                        }
                         continue;
                     }
                 }
             }
 
             // Pass 3: Forward Push (orphaned sentence head at end of prev -> curr)
-            // e.g. prev ends with complete sentence then "... wait. 50 take" and curr continues with "away 25."
+            // Handles both short connectives ("So") and multi-word sentence beginnings (e.g. "8 months ago, I"
+            // or "Osiem miesięcy temu") where curr continues in lowercase.
             for (let i = 1; i < cues.length; i++) {
                 const prev = cues[i - 1];
                 const curr = cues[i];
                 if (!prev || !curr || !prev.text || !curr.text) continue;
 
-                // Gap check: if there is a long silence gap between cues, do not push across it
-                if (curr.startTime - (prev.endTime || prev.startTime) > 1.5) continue;
-
-                // Match complete sentence ending in terminal punctuation (or comma/semicolon before capital),
-                // followed by 1-3 words starting with a capital letter or digit (e.g. "... wait. 50 take")
-                const match = prev.text.match(/^([\s\S]+(?:[.!?。！？]|[,;])["'»”’)\]]?)\s+([A-ZÀ-ÿ0-9]\S*(?:\s+\S+){0,2})$/);
+                // Match complete sentence ending in terminal punctuation followed by orphan head.
+                // Terminal punctuation always takes priority over internal commas so clauses like "8 months ago,"
+                // are not split in half when preceded by a completed sentence.
+                let match = prev.text.match(/^([\s\S]+[.!?。！？]["'»”’)\]]?)\s+([A-ZÀ-ÿ0-9]\S*(?:\s+\S+)*)$/);
+                if (!match) {
+                    match = prev.text.match(/^([\s\S]+[,;]["'»”’)\]]?)\s+([A-ZÀ-ÿ0-9]\S*(?:\s+\S+)*)$/);
+                }
                 if (!match) continue;
 
                 const headText = match[1].trim();
@@ -647,6 +676,27 @@
                 if (curr.tStartMs != null) {
                     curr.tStartMs = Math.round(splitTime * 1000);
                 }
+
+                if (Array.isArray(prev.segs)) {
+                    let splitIndex = -1;
+                    let accumulated = "";
+                    const cleanTarget = String(headText || "").replace(/[^\p{L}\p{N}]+/gu, " ").trim().toLowerCase();
+                    for (let s = 0; s < prev.segs.length; s++) {
+                        const segText = (prev.segs[s]?.utf8 || "").replace(/^[>»›<«\s—–-]+/, "").trim();
+                        if (!segText) continue;
+                        accumulated = (accumulated + " " + segText).trim();
+                        if (accumulated.replace(/[^\p{L}\p{N}]+/gu, " ").trim().toLowerCase() === cleanTarget) {
+                            splitIndex = s;
+                            break;
+                        }
+                    }
+                    if (splitIndex >= 0) {
+                        const headSegs = prev.segs.slice(0, splitIndex + 1);
+                        const tailSegs = prev.segs.slice(splitIndex + 1);
+                        prev.segs = headSegs;
+                        curr.segs = [...tailSegs, ...(curr.segs || [])];
+                    }
+                }
             }
         }
         const repairOrphanedSentenceTails = repairClusterBoundaries;
@@ -673,12 +723,12 @@
                 for (const event of data.events) {
                     if (!event || !Array.isArray(event.segs)) continue;
                     const startTime = Number(event.tStartMs) / 1000;
-                    const duration = Number(event.dDurationMs) / 1000;
+                    const endTime = Math.round(Number(event.tStartMs) + Number(event.dDurationMs)) / 1000;
                     const text = cleanCueText(event.segs
                         .map((segment) => typeof segment?.utf8 === "string" ? segment.utf8 : "")
                         .join(""));
                     if (!text) continue;
-                    const cue = { startTime, endTime: startTime + duration, text };
+                    const cue = { startTime, endTime, text };
                     if (event.tStartMs != null) {
                         Object.defineProperty(cue, "tStartMs", {
                             value: Number(event.tStartMs),
@@ -695,8 +745,15 @@
                             enumerable: false,
                         });
                     }
+                    const segsWithAbs = event.segs.map((seg) => {
+                        const copy = { ...seg };
+                        if (event.tStartMs != null) {
+                            copy.tAbsMs = Number(event.tStartMs) + (Number(seg?.tOffsetMs) || 0);
+                        }
+                        return copy;
+                    });
                     Object.defineProperty(cue, "segs", {
-                        value: event.segs,
+                        value: segsWithAbs,
                         writable: true,
                         configurable: true,
                         enumerable: false,
@@ -1334,8 +1391,62 @@
             }
 
             for (let i = 0; i < unified.length; i++) {
-                unified[i].translation = [...translations[i]].join(" ");
+                unified[i].translation = cleanCueText([...translations[i]].join(" "));
             }
+
+            // Post-alignment repair: Fix translation spillover across cue boundaries
+            // (e.g. YouTube translates manual subtitles with sentence heads left on the previous line:
+            //  EN: "To have you in my arms" / PL: "By mieć cię w ramionach Czy to jest to"
+            //  EN: "Is this what you needed" / PL: "czego potrzebowałaś Bo"
+            //  EN: "‘Cause I’ll find the faith in anything" / PL: "znajdę wiarę w czymkolwiek")
+            for (let i = 1; i < unified.length; i++) {
+                const prev = unified[i - 1];
+                const curr = unified[i];
+                if (!prev || !curr || !prev.translation || !curr.translation) continue;
+
+                // 1. Detached leading punctuation in curr.translation (e.g. ", powtórz" or ", but...")
+                const leadPunctMatch = curr.translation.match(/^([,;:!?])\s*(.*)$/);
+                if (leadPunctMatch) {
+                    const punct = leadPunctMatch[1];
+                    const rest = leadPunctMatch[2];
+                    curr.translation = rest;
+                    if (!prev.translation.endsWith(punct) && !/[.,;:!?]$/.test(prev.translation.trim())) {
+                        prev.translation = (prev.translation.trim() + punct).trim();
+                    }
+                }
+
+                // 2. Sentence spillover: curr starts with a lowercase word, meaning its sentence head
+                // was left at the end of prev.translation as a capitalized clause.
+                const currWords = curr.translation.split(/\s+/).filter(Boolean);
+                if (currWords.length === 0) continue;
+                const firstCurrWord = currWords[0].replace(/^[„"'(«]+/, "");
+                const startsWithLower = /^[a-zà-ÿ]/.test(firstCurrWord);
+
+                if (startsWithLower) {
+                    const prevWords = prev.translation.split(/\s+/).filter(Boolean);
+                    if (prevWords.length >= 2) {
+                        // Find the last phrase starting with an uppercase letter
+                        let capitalIndex = -1;
+                        for (let w = prevWords.length - 1; w >= 1; w--) {
+                            const cleanWord = prevWords[w].replace(/^[„"'(«]+/, "");
+                            if (/^[A-ZÀ-ÿ0-9]/.test(cleanWord)) {
+                                capitalIndex = w;
+                                break;
+                            }
+                        }
+
+                        if (capitalIndex > 0) {
+                            const keptWords = prevWords.slice(0, capitalIndex).join(" ").trim();
+                            const movedWords = prevWords.slice(capitalIndex).join(" ").trim();
+                            if (keptWords && movedWords) {
+                                prev.translation = cleanCueText(keptWords);
+                                curr.translation = cleanCueText(movedWords + " " + curr.translation);
+                            }
+                        }
+                    }
+                }
+            }
+
             return unified;
         }
 

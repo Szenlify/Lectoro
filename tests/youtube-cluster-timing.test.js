@@ -635,6 +635,420 @@ test("YouTube JSON3 pushes sentence start ('50 take') forward when previous sent
     assert.equal(aligned[2].translation, "50 odejmij 25.");
 });
 
+test("YouTube ASR (youtube-genereted-json.md): recalculates word duration and clusters without desync (e.g. '8 months ago, I' and 'Osiem miesięcy temu')", () => {
+    // Exact events from docs/youtube-genereted-json.md (events 4, 5, 6)
+    const enJson = JSON.stringify({
+        wireMagic: "pb3",
+        events: [
+            {
+                tStartMs: 6319,
+                dDurationMs: 4240,
+                wWinId: 1,
+                segs: [
+                    { utf8: "across", acAsrConf: 0 },
+                    { utf8: " different", tOffsetMs: 401, acAsrConf: 0 },
+                    { utf8: " scenes", tOffsetMs: 641, acAsrConf: 0 },
+                    { utf8: " with", tOffsetMs: 1040, acAsrConf: 0 },
+                    { utf8: " animation", tOffsetMs: 1281, acAsrConf: 0 },
+                ],
+            },
+            {
+                tStartMs: 8150,
+                dDurationMs: 2409,
+                wWinId: 1,
+                aAppend: 1,
+                segs: [{ utf8: "\n" }],
+            },
+            {
+                tStartMs: 8160,
+                dDurationMs: 4240,
+                wWinId: 1,
+                segs: [
+                    { utf8: "and", acAsrConf: 0 },
+                    { utf8: " spoken", tOffsetMs: 240, acAsrConf: 0 },
+                    { utf8: " dialogue.", tOffsetMs: 640, acAsrConf: 0 },
+                    { utf8: " 8", tOffsetMs: 1439, acAsrConf: 0 },
+                    { utf8: " months", tOffsetMs: 1600, acAsrConf: 0 },
+                    { utf8: " ago,", tOffsetMs: 1840, acAsrConf: 0 },
+                    { utf8: " I", tOffsetMs: 2160, acAsrConf: 0 },
+                ],
+            },
+            {
+                tStartMs: 10549,
+                dDurationMs: 1851,
+                wWinId: 1,
+                aAppend: 1,
+                segs: [{ utf8: "\n" }],
+            },
+            {
+                tStartMs: 10559,
+                dDurationMs: 4160,
+                wWinId: 1,
+                segs: [
+                    { utf8: "posted", acAsrConf: 0 },
+                    { utf8: " a", tOffsetMs: 241, acAsrConf: 0 },
+                    { utf8: " tutorial", tOffsetMs: 481, acAsrConf: 0 },
+                    { utf8: " on", tOffsetMs: 881, acAsrConf: 0 },
+                    { utf8: " making", tOffsetMs: 1120, acAsrConf: 0 },
+                    { utf8: " AI", tOffsetMs: 1441, acAsrConf: 0 },
+                ],
+            },
+        ],
+    });
+
+    const plJson = JSON.stringify({
+        wireMagic: "pb3",
+        events: [
+            {
+                tStartMs: 6319,
+                dDurationMs: 4240,
+                wWinId: 1,
+                segs: [
+                    { utf8: "w ", acAsrConf: 0 },
+                    { utf8: "różnych ", tOffsetMs: 320, acAsrConf: 0 },
+                    { utf8: "scenach ", tOffsetMs: 640, acAsrConf: 0 },
+                    { utf8: "z ", tOffsetMs: 960, acAsrConf: 0 },
+                    { utf8: "animacją", tOffsetMs: 1280, acAsrConf: 0 },
+                ],
+            },
+            {
+                tStartMs: 8150,
+                dDurationMs: 2409,
+                wWinId: 1,
+                aAppend: 1,
+                segs: [{ utf8: "\n" }],
+            },
+            {
+                tStartMs: 8160,
+                dDurationMs: 4240,
+                wWinId: 1,
+                segs: [
+                    { utf8: "i ", acAsrConf: 0 },
+                    { utf8: "dialogami ", tOffsetMs: 432, acAsrConf: 0 },
+                    { utf8: "mówionymi.  ", tOffsetMs: 864, acAsrConf: 0 },
+                    { utf8: "Osiem ", tOffsetMs: 1296, acAsrConf: 0 },
+                    { utf8: "miesięcy ", tOffsetMs: 1728, acAsrConf: 0 },
+                    { utf8: "temu", tOffsetMs: 2160, acAsrConf: 0 },
+                ],
+            },
+            {
+                tStartMs: 10549,
+                dDurationMs: 1851,
+                wWinId: 1,
+                aAppend: 1,
+                segs: [{ utf8: "\n" }],
+            },
+            {
+                tStartMs: 10559,
+                dDurationMs: 4160,
+                wWinId: 1,
+                segs: [
+                    { utf8: "opublikowałem ", acAsrConf: 0 },
+                    { utf8: "poradnik ", tOffsetMs: 360, acAsrConf: 0 },
+                    { utf8: "na ", tOffsetMs: 720, acAsrConf: 0 },
+                    { utf8: "temat ", tOffsetMs: 1080, acAsrConf: 0 },
+                    { utf8: "tworzenia", tOffsetMs: 1440, acAsrConf: 0 },
+                ],
+            },
+        ],
+    });
+
+    const masterCues = SubtitleService.parseTimedText(enJson, "", "", { preserveTiming: true });
+    const slaveCues = SubtitleService.parseTimedText(plJson, "", "", { preserveTiming: true });
+    const aligned = SubtitleService.alignSlaveTrackToMaster(masterCues, slaveCues);
+
+    assert.equal(aligned.length, 3);
+
+    // Cue 0 (6.319s - 8.160s)
+    assert.equal(aligned[0].startTime, 6.319);
+    assert.equal(aligned[0].endTime, 8.16);
+    assert.equal(aligned[0].text, "across different scenes with animation");
+    assert.equal(aligned[0].translation, "w różnych scenach z animacją");
+
+    // Cue 1 (8.160s - 9.599s): sentence completes with "dialogue." and "mówionymi."
+    // MUST NOT have "8 months ago" left hanging!
+    assert.equal(aligned[1].startTime, 8.16);
+    assert.equal(aligned[1].endTime, 9.599);
+    assert.equal(aligned[1].text, "and spoken dialogue.");
+    assert.equal(aligned[1].translation, "i dialogami mówionymi.");
+
+    // Cue 2 (9.599s - 14.719s): starts exactly with word "8" / "Osiem" at 9.599s
+    // and continues into "posted a tutorial on making AI"
+    assert.equal(aligned[2].startTime, 9.599);
+    assert.equal(aligned[2].text, "8 months ago, I posted a tutorial on making AI");
+    assert.equal(aligned[2].translation, "Osiem miesięcy temu opublikowałem poradnik na temat tworzenia");
+});
+
+test("YouTube Manual Subtitles (youtube.md): repairs sentence spillover across lines (e.g. 'Czy to jest to' and 'Bo')", () => {
+    // Exact events from docs/youtube.md lines 62-79 & 349-366
+    const enJson = JSON.stringify({
+        wireMagic: "pb3",
+        events: [
+            {
+                tStartMs: 24280,
+                dDurationMs: 2720,
+                segs: [{ utf8: "To have you in my arms" }],
+            },
+            {
+                tStartMs: 27880,
+                dDurationMs: 2080,
+                segs: [{ utf8: "Is this what you needed" }],
+            },
+            {
+                tStartMs: 31560,
+                dDurationMs: 3320,
+                segs: [{ utf8: "‘Cause I’ll find the faith in anything" }],
+            },
+        ],
+    });
+
+    const plJson = JSON.stringify({
+        wireMagic: "pb3",
+        events: [
+            {
+                tStartMs: 24280,
+                dDurationMs: 2720,
+                segs: [{ utf8: "By mieć cię w ramionach Czy to jest to" }],
+            },
+            {
+                tStartMs: 27880,
+                dDurationMs: 2080,
+                segs: [{ utf8: "czego potrzebowałaś Bo" }],
+            },
+            {
+                tStartMs: 31560,
+                dDurationMs: 3320,
+                segs: [{ utf8: "znajdę wiarę w czymkolwiek" }],
+            },
+        ],
+    });
+
+    const masterCues = SubtitleService.parseTimedText(enJson, "", "", { preserveTiming: true });
+    const slaveCues = SubtitleService.parseTimedText(plJson, "", "", { preserveTiming: true });
+    const aligned = SubtitleService.alignSlaveTrackToMaster(masterCues, slaveCues);
+
+    assert.equal(aligned.length, 3);
+
+    // Cue 0: "To have you in my arms" -> "By mieć cię w ramionach" ("Czy to jest to" moved to Cue 1)
+    assert.equal(aligned[0].startTime, 24.28);
+    assert.equal(aligned[0].endTime, 27);
+    assert.equal(aligned[0].text, "To have you in my arms");
+    assert.equal(aligned[0].translation, "By mieć cię w ramionach");
+
+    // Cue 1: "Is this what you needed" -> "Czy to jest to czego potrzebowałaś" ("Bo" moved to Cue 2)
+    assert.equal(aligned[1].startTime, 27.88);
+    assert.equal(aligned[1].endTime, 29.96);
+    assert.equal(aligned[1].text, "Is this what you needed");
+    assert.equal(aligned[1].translation, "Czy to jest to czego potrzebowałaś");
+
+    // Cue 2: "‘Cause I’ll find the faith in anything" -> "Bo znajdę wiarę w czymkolwiek"
+    assert.equal(aligned[2].startTime, 31.56);
+    assert.equal(aligned[2].endTime, 34.88);
+    assert.equal(aligned[2].text, "‘Cause I’ll find the faith in anything");
+    assert.equal(aligned[2].translation, "Bo znajdę wiarę w czymkolwiek");
+});
+
+test("YouTube Manual Subtitles (youtube.md): repairs 'Będziesz w moich ramionach' and detached punctuation", () => {
+    // Lines 92-102 & 379-389 from docs/youtube.md
+    const enJson = JSON.stringify({
+        wireMagic: "pb3",
+        events: [
+            {
+                tStartMs: 42840,
+                dDurationMs: 2960,
+                segs: [{ utf8: "If the world ends tonight" }],
+            },
+            {
+                tStartMs: 47040,
+                dDurationMs: 2280,
+                segs: [{ utf8: "You’ll be in my arms" }],
+            },
+            {
+                tStartMs: 50320,
+                dDurationMs: 2800,
+                segs: [{ utf8: "We’ll be frozen in time" }],
+            },
+        ],
+    });
+
+    const plJson = JSON.stringify({
+        wireMagic: "pb3",
+        events: [
+            {
+                tStartMs: 42840,
+                dDurationMs: 2960,
+                segs: [{ utf8: "Jeśli świat skończy się dziś w nocy Będziesz" }],
+            },
+            {
+                tStartMs: 47040,
+                dDurationMs: 2280,
+                segs: [{ utf8: "w moich ramionach" }],
+            },
+            {
+                tStartMs: 50320,
+                dDurationMs: 2800,
+                segs: [{ utf8: "Będziemy zamrożeni w czasie" }],
+            },
+        ],
+    });
+
+    const masterCues = SubtitleService.parseTimedText(enJson, "", "", { preserveTiming: true });
+    const slaveCues = SubtitleService.parseTimedText(plJson, "", "", { preserveTiming: true });
+    const aligned = SubtitleService.alignSlaveTrackToMaster(masterCues, slaveCues);
+
+    assert.equal(aligned.length, 3);
+    assert.equal(aligned[0].text, "If the world ends tonight");
+    assert.equal(aligned[0].translation, "Jeśli świat skończy się dziś w nocy");
+
+    assert.equal(aligned[1].text, "You’ll be in my arms");
+    assert.equal(aligned[1].translation, "Będziesz w moich ramionach");
+
+    assert.equal(aligned[2].text, "We’ll be frozen in time");
+    assert.equal(aligned[2].translation, "Będziemy zamrożeni w czasie");
+});
+
+test("YouTube ASR (youtube-genereted-json.md): Events 1-3 cascade into natural sentences ('Storms pass. What matters is what we find afterward.', 'That's what we're building today.')", () => {
+    const enJson = JSON.stringify({
+        wireMagic: "pb3",
+        events: [
+            {
+                tStartMs: 0,
+                dDurationMs: 4880,
+                wWinId: 1,
+                segs: [
+                    { utf8: "Storms", acAsrConf: 0 },
+                    { utf8: " pass.", tOffsetMs: 1120, acAsrConf: 0 },
+                    { utf8: " What", tOffsetMs: 1920, acAsrConf: 0 },
+                    { utf8: " matters", tOffsetMs: 2240, acAsrConf: 0 },
+                    { utf8: " is", tOffsetMs: 2560, acAsrConf: 0 },
+                    { utf8: " what", tOffsetMs: 2800, acAsrConf: 0 },
+                    { utf8: " we", tOffsetMs: 2960, acAsrConf: 0 },
+                ],
+            },
+            {
+                tStartMs: 3110,
+                dDurationMs: 1770,
+                wWinId: 1,
+                aAppend: 1,
+                segs: [{ utf8: "\n" }],
+            },
+            {
+                tStartMs: 3120,
+                dDurationMs: 3199,
+                wWinId: 1,
+                segs: [
+                    { utf8: "find", acAsrConf: 0 },
+                    { utf8: " afterward.", tOffsetMs: 240, acAsrConf: 0 },
+                    { utf8: " That's", tOffsetMs: 1120, acAsrConf: 0 },
+                    { utf8: " what", tOffsetMs: 1360, acAsrConf: 0 },
+                    { utf8: " we're", tOffsetMs: 1520, acAsrConf: 0 },
+                ],
+            },
+            {
+                tStartMs: 4870,
+                dDurationMs: 1449,
+                wWinId: 1,
+                aAppend: 1,
+                segs: [{ utf8: "\n" }],
+            },
+            {
+                tStartMs: 4880,
+                dDurationMs: 3280,
+                wWinId: 1,
+                segs: [
+                    { utf8: "building", acAsrConf: 0 },
+                    { utf8: " today.", tOffsetMs: 240, acAsrConf: 0 },
+                    { utf8: " The", tOffsetMs: 640, acAsrConf: 0 },
+                    { utf8: " same", tOffsetMs: 800, acAsrConf: 0 },
+                    { utf8: " characters", tOffsetMs: 1040, acAsrConf: 0 },
+                ],
+            },
+        ],
+    });
+
+    const plJson = JSON.stringify({
+        wireMagic: "pb3",
+        events: [
+            {
+                tStartMs: 0,
+                dDurationMs: 4880,
+                wWinId: 1,
+                segs: [
+                    { utf8: "Burze ", acAsrConf: 0 },
+                    { utf8: "przemijają.  ", tOffsetMs: 592, acAsrConf: 0 },
+                    { utf8: "Ważne ", tOffsetMs: 1184, acAsrConf: 0 },
+                    { utf8: "jest ", tOffsetMs: 1776, acAsrConf: 0 },
+                    { utf8: "to, ", tOffsetMs: 2368, acAsrConf: 0 },
+                    { utf8: "co", tOffsetMs: 2960, acAsrConf: 0 },
+                ],
+            },
+            {
+                tStartMs: 3110,
+                dDurationMs: 1770,
+                wWinId: 1,
+                aAppend: 1,
+                segs: [{ utf8: "\n" }],
+            },
+            {
+                tStartMs: 3120,
+                dDurationMs: 3199,
+                wWinId: 1,
+                segs: [
+                    { utf8: "znajdziemy ", acAsrConf: 0 },
+                    { utf8: "później.  ", tOffsetMs: 506, acAsrConf: 0 },
+                    { utf8: "To ", tOffsetMs: 1012, acAsrConf: 0 },
+                    { utf8: "właśnie", tOffsetMs: 1518, acAsrConf: 0 },
+                ],
+            },
+            {
+                tStartMs: 4870,
+                dDurationMs: 1449,
+                wWinId: 1,
+                aAppend: 1,
+                segs: [{ utf8: "\n" }],
+            },
+            {
+                tStartMs: 4880,
+                dDurationMs: 3280,
+                wWinId: 1,
+                segs: [
+                    { utf8: "budujemy ", acAsrConf: 0 },
+                    { utf8: "dzisiaj.  ", tOffsetMs: 260, acAsrConf: 0 },
+                    { utf8: "Te ", tOffsetMs: 520, acAsrConf: 0 },
+                    { utf8: "same ", tOffsetMs: 780, acAsrConf: 0 },
+                    { utf8: "postacie", tOffsetMs: 1040, acAsrConf: 0 },
+                ],
+            },
+        ],
+    });
+
+    const masterCues = SubtitleService.parseTimedText(enJson, "", "", { preserveTiming: true });
+    const slaveCues = SubtitleService.parseTimedText(plJson, "", "", { preserveTiming: true });
+    const aligned = SubtitleService.alignSlaveTrackToMaster(masterCues, slaveCues);
+
+    assert.equal(aligned.length, 3);
+
+    // Cue 0: Sentence 1 + 2 merged cleanly from 0.0s to 4.24s
+    assert.equal(aligned[0].startTime, 0);
+    assert.equal(aligned[0].endTime, 4.24);
+    assert.equal(aligned[0].text, "Storms pass. What matters is what we find afterward.");
+    assert.equal(aligned[0].translation, "Burze przemijają. Ważne jest to, co znajdziemy później.");
+
+    // Cue 1: Sentence 3 runs from 4.24s to 5.52s
+    assert.equal(aligned[1].startTime, 4.24);
+    assert.equal(aligned[1].endTime, 5.52);
+    assert.equal(aligned[1].text, "That's what we're building today.");
+    assert.equal(aligned[1].translation, "To właśnie budujemy dzisiaj.");
+
+    // Cue 2: Sentence 4 starts at 5.52s
+    assert.equal(aligned[2].startTime, 5.52);
+    assert.equal(aligned[2].endTime, 8.16);
+    assert.equal(aligned[2].text, "The same characters");
+    assert.equal(aligned[2].translation, "Te same postacie");
+});
+
+
+
 
 
 
