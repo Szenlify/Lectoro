@@ -1,0 +1,6 @@
+W przykładzie YouTube widać istotny problem: pojedynczy blok zawiera koniec jednego zdania i początek następnego, a tłumaczenie ma inne czasy poszczególnych słów. Plan oprę na wspólnych, przygotowanych wcześniej parach napisów. Oddzielę dokładną synchronizację obu wierszy od dokładności wobec mowy, która zależy od jakości danych źródłowych.
+
+przeanalizuj dogłebnie napisy na youtube i netflix oraz smart ukladanie zdan i napis jak to zrobic mi w [PLAN.md](docs/PLAN.md) jak ukladan napisy oraz tlumaczenie czyli te drugie napisy aby byly idealnie synchronizowane bez platnych API czysto darmowo dla tysiecy uzytkownikow i zeby zawsze byly niezawodne jak to obliczyc i zawsze roz do przodu tak zeby uzytkownik mial gotowy wynik a nie w trakcie musial liczyc i zawsze w jednym rzedzie a tlumaczenie pod spodem tez w jednym rzedzie
+idealnie do nauki jezyka obcego
+json pobieranych napisow z youtube i netflixa:
+[youtube-genereted-json.md](docs/youtube-genereted-json.md) [youtube.md](docs/youtube.md) [netflix.md](docs/netflix.md)
