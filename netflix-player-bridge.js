@@ -7,6 +7,7 @@
     "use strict";
 
     const SEEK_EVENT = "__lectoro_netflix_seek";
+    const SEEK_DELTA_EVENT = "__lectoro_netflix_seek_delta";
     const PAUSE_EVENT = "__lectoro_netflix_pause";
     const PLAY_EVENT = "__lectoro_netflix_play";
     const ARTWORK_REQUEST_EVENT = "__lectoro_netflix_artwork_request";
@@ -72,14 +73,43 @@
             if (!sessionIds.length) return null;
 
             const movieId = getWatchMovieId();
+            const videoEl = document.querySelector("video");
+
+            // 1. Search for an exact match by movieId
             if (movieId) {
-                const match = sessionIds.find((id) => String(id).includes(movieId));
-                if (match) {
-                    const p = videoPlayer.getVideoPlayerBySessionId(match);
-                    if (p) return p;
+                for (const id of sessionIds) {
+                    try {
+                        const p = videoPlayer.getVideoPlayerBySessionId(id);
+                        if (p && String(p.getMovieId?.()) === String(movieId)) {
+                            return p;
+                        }
+                    } catch (_) {}
                 }
             }
 
+            // 2. Search for the player that owns the main <video> DOM element
+            if (videoEl) {
+                for (const id of sessionIds) {
+                    try {
+                        const p = videoPlayer.getVideoPlayerBySessionId(id);
+                        if (p && p.getElement?.() === videoEl) {
+                            return p;
+                        }
+                    } catch (_) {}
+                }
+            }
+
+            // 3. Search for active playing/paused player
+            for (const id of sessionIds) {
+                try {
+                    const p = videoPlayer.getVideoPlayerBySessionId(id);
+                    if (p && (p.isPlaying?.() || p.isPaused?.() || p.isReady?.())) {
+                        return p;
+                    }
+                } catch (_) {}
+            }
+
+            // 4. Fallback to watch session or first valid player with seek
             const sessionId =
                 sessionIds.find((id) => String(id).includes("watch")) ||
                 sessionIds.find((id) => {
@@ -523,6 +553,31 @@
             }
             bridgePendingSeekMs = null;
             executeBridgeSeek(requestedMs);
+        }
+    });
+
+    window.addEventListener(SEEK_DELTA_EVENT, (event) => {
+        const deltaSeconds = Number(event.detail?.deltaSeconds);
+        if (!Number.isFinite(deltaSeconds) || deltaSeconds === 0) return;
+
+        try {
+            const player = getNetflixPlayer();
+            if (player?.seek && typeof player.getCurrentTime === "function") {
+                const currentTime = player.getCurrentTime();
+                const duration = player.getDuration?.() || Infinity;
+                const targetMs = Math.max(0, Math.min(duration, currentTime + deltaSeconds * 1000));
+                lastBridgeSeekDispatchedTime = Date.now();
+                player.seek(Math.round(targetMs));
+                return;
+            }
+        } catch (err) {
+            console.warn("[Lectoro Bridge] Netflix seek delta failed:", err);
+        }
+
+        const video = document.querySelector("video");
+        if (video) {
+            const currentSec = Number(video.currentTime) || 0;
+            executeBridgeSeek(Math.max(0, (currentSec + deltaSeconds) * 1000));
         }
     });
 

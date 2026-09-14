@@ -1,0 +1,354 @@
+{
+  "wireMagic": "pb3",
+  "pens": [
+    {}
+  ],
+  "wsWinStyles": [
+    {},
+    {
+      "mhModeHint": 2,
+      "juJustifCode": 0,
+      "sdScrollDir": 3
+    }
+  ],
+  "wpWinPositions": [
+    {},
+    {
+      "apPoint": 6,
+      "ahHorPos": 20,
+      "avVerPos": 100,
+      "rcRows": 2,
+      "ccCols": 40
+    }
+  ],
+  "events": [
+    {
+      "tStartMs": 0,
+      "dDurationMs": 247760,
+      "id": 1,
+      "wpWinPosId": 1,
+      "wsWinStyleId": 1
+    },
+    {
+      "tStartMs": 160,
+      "dDurationMs": 5520,
+      "wWinId": 1,
+      "segs": [
+        {
+          "utf8": "Well",
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " guys,",
+          "tOffsetMs": 320,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " it's",
+          "tOffsetMs": 880,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " clear",
+          "tOffsetMs": 1279,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " that",
+          "tOffsetMs": 1600,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " Apple",
+          "tOffsetMs": 1999,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " will",
+          "tOffsetMs": 2400,
+          "acAsrConf": 0
+        }
+      ]
+    },
+    {
+      "tStartMs": 2869,
+      "dDurationMs": 2811,
+      "wWinId": 1,
+      "aAppend": 1,
+      "segs": [
+        {
+          "utf8": "\n"
+        }
+      ]
+    },
+    {
+      "tStartMs": 2879,
+      "dDurationMs": 5121,
+      "wWinId": 1,
+      "segs": [
+        {
+          "utf8": "copy",
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " everything",
+          "tOffsetMs": 800,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " that",
+          "tOffsetMs": 1361,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " we",
+          "tOffsetMs": 1601,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " do.",
+          "tOffsetMs": 1920,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " And",
+          "tOffsetMs": 2480,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " that's",
+          "tOffsetMs": 2561,
+          "acAsrConf": 0
+        }
+      ]
+    },
+    {
+      "tStartMs": 5670,
+      "dDurationMs": 2330,
+      "wWinId": 1,
+      "aAppend": 1,
+      "segs": [
+        {
+          "utf8": "\n"
+        }
+      ]
+    },
+    {
+      "tStartMs": 5680,
+      "dDurationMs": 4560,
+      "wWinId": 1,
+      "segs": [
+        {
+          "utf8": "why",
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " we",
+          "tOffsetMs": 240,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " made",
+          "tOffsetMs": 480,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " our",
+          "tOffsetMs": 639,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " batteries",
+          "tOffsetMs": 960,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " explode",
+          "tOffsetMs": 1520,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " a",
+          "tOffsetMs": 1920,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " few",
+          "tOffsetMs": 2159,
+          "acAsrConf": 0
+        }
+      ]
+    },
+    {
+      "tStartMs": 7990,
+      "dDurationMs": 2250,
+      "wWinId": 1,
+      "aAppend": 1,
+      "segs": [
+        {
+          "utf8": "\n"
+        }
+      ]
+    },
+    {
+      "tStartMs": 8000,
+      "dDurationMs": 5200,
+      "wWinId": 1,
+      "segs": [
+        {
+          "utf8": "years",
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " ago.",
+          "tOffsetMs": 160,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " So",
+          "tOffsetMs": 720,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " now",
+          "tOffsetMs": 960,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " Apples",
+          "tOffsetMs": 1280,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " will",
+          "tOffsetMs": 1679,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " do",
+          "tOffsetMs": 1920,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " that",
+          "tOffsetMs": 2000,
+          "acAsrConf": 0
+        }
+      ]
+    },
+    {
+      "tStartMs": 10230,
+      "dDurationMs": 2970,
+      "wWinId": 1,
+      "aAppend": 1,
+      "segs": [
+        {
+          "utf8": "\n"
+        }
+      ]
+    },
+    {
+      "tStartMs": 10240,
+      "dDurationMs": 6480,
+      "wWinId": 1,
+      "segs": [
+        {
+          "utf8": "soon.",
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " See,",
+          "tOffsetMs": 640,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " it",
+          "tOffsetMs": 880,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " was",
+          "tOffsetMs": 1120,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " a",
+          "tOffsetMs": 1279,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " a",
+          "tOffsetMs": 1439,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " tactical",
+          "tOffsetMs": 1840,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " decision.",
+          "tOffsetMs": 2399,
+          "acAsrConf": 0
+        }
+      ]
+    },
+    {
+      "tStartMs": 13190,
+      "dDurationMs": 3530,
+      "wWinId": 1,
+      "aAppend": 1,
+      "segs": [
+        {
+          "utf8": "\n"
+        }
+      ]
+    },
+    {
+      "tStartMs": 13200,
+      "dDurationMs": 6880,
+      "wWinId": 1,
+      "segs": [
+        {
+          "utf8": "Well",
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " done.",
+          "tOffsetMs": 319,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " Oh,",
+          "tOffsetMs": 880,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " hi",
+          "tOffsetMs": 1200,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " there.",
+          "tOffsetMs": 1519,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " I'm",
+          "tOffsetMs": 2240,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " Sam",
+          "tOffsetMs": 2559,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": " Tucker",
+          "tOffsetMs": 2960,
+          "acAsrConf": 0
+        }
+      ]
+    }
+  ]
+}

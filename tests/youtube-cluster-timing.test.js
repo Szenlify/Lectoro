@@ -779,7 +779,7 @@ test("YouTube ASR (youtube-genereted-json.md): recalculates word duration and cl
     assert.equal(aligned[2].translation, "Osiem miesięcy temu opublikowałem poradnik na temat tworzenia");
 });
 
-test("YouTube Manual Subtitles (youtube.md): repairs sentence spillover across lines (e.g. 'Czy to jest to' and 'Bo')", () => {
+test("YouTube Manual Subtitles (youtube.md): retains timed translation fragments without guessing sentence boundaries", () => {
     // Exact events from docs/youtube.md lines 62-79 & 349-366
     const enJson = JSON.stringify({
         wireMagic: "pb3",
@@ -829,26 +829,23 @@ test("YouTube Manual Subtitles (youtube.md): repairs sentence spillover across l
 
     assert.equal(aligned.length, 3);
 
-    // Cue 0: "To have you in my arms" -> "By mieć cię w ramionach" ("Czy to jest to" moved to Cue 1)
     assert.equal(aligned[0].startTime, 24.28);
     assert.equal(aligned[0].endTime, 27);
     assert.equal(aligned[0].text, "To have you in my arms");
-    assert.equal(aligned[0].translation, "By mieć cię w ramionach");
+    assert.equal(aligned[0].translation, "By mieć cię w ramionach Czy to jest to");
 
-    // Cue 1: "Is this what you needed" -> "Czy to jest to czego potrzebowałaś" ("Bo" moved to Cue 2)
     assert.equal(aligned[1].startTime, 27.88);
     assert.equal(aligned[1].endTime, 29.96);
     assert.equal(aligned[1].text, "Is this what you needed");
-    assert.equal(aligned[1].translation, "Czy to jest to czego potrzebowałaś");
+    assert.equal(aligned[1].translation, "czego potrzebowałaś Bo");
 
-    // Cue 2: "‘Cause I’ll find the faith in anything" -> "Bo znajdę wiarę w czymkolwiek"
     assert.equal(aligned[2].startTime, 31.56);
     assert.equal(aligned[2].endTime, 34.88);
     assert.equal(aligned[2].text, "‘Cause I’ll find the faith in anything");
-    assert.equal(aligned[2].translation, "Bo znajdę wiarę w czymkolwiek");
+    assert.equal(aligned[2].translation, "znajdę wiarę w czymkolwiek");
 });
 
-test("YouTube Manual Subtitles (youtube.md): repairs 'Będziesz w moich ramionach' and detached punctuation", () => {
+test("YouTube Manual Subtitles (youtube.md): keeps translated words with their original timed cue", () => {
     // Lines 92-102 & 379-389 from docs/youtube.md
     const enJson = JSON.stringify({
         wireMagic: "pb3",
@@ -898,10 +895,10 @@ test("YouTube Manual Subtitles (youtube.md): repairs 'Będziesz w moich ramionac
 
     assert.equal(aligned.length, 3);
     assert.equal(aligned[0].text, "If the world ends tonight");
-    assert.equal(aligned[0].translation, "Jeśli świat skończy się dziś w nocy");
+    assert.equal(aligned[0].translation, "Jeśli świat skończy się dziś w nocy Będziesz");
 
     assert.equal(aligned[1].text, "You’ll be in my arms");
-    assert.equal(aligned[1].translation, "Będziesz w moich ramionach");
+    assert.equal(aligned[1].translation, "w moich ramionach");
 
     assert.equal(aligned[2].text, "We’ll be frozen in time");
     assert.equal(aligned[2].translation, "Będziemy zamrożeni w czasie");
@@ -1052,3 +1049,15 @@ test("YouTube ASR (youtube-genereted-json.md): Events 1-3 cascade into natural s
 
 
 
+
+test("preserveCueBoundaries prevents independent sentence repairs from shifting bilingual cue text", () => {
+    const texts = ["Więc Apple wkrótce to zrobi. Widzisz", "to była decyzja taktyczna."];
+    const json = JSON.stringify({ events: texts.map((text, i) => ({
+        tStartMs: i * 2000, dDurationMs: 2000, segs: [{ utf8: text }],
+    })) });
+    const cues = SubtitleService.parseTimedText(json, "", "", {
+        preserveTiming: true, preserveCueBoundaries: true,
+    });
+    assert.deepEqual(cues.map((cue) => cue.text), texts);
+    assert.deepEqual(cues.map((cue) => [cue.startTime, cue.endTime]), [[0, 2], [2, 4]]);
+});

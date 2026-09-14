@@ -57,6 +57,7 @@
 
         const EVENT_NAMES = Object.freeze({
             NETFLIX_SEEK: "__lectoro_netflix_seek",
+            NETFLIX_SEEK_DELTA: "__lectoro_netflix_seek_delta",
             NETFLIX_PAUSE: "__lectoro_netflix_pause",
             NETFLIX_PLAY: "__lectoro_netflix_play",
             NETFLIX_ARTWORK_REQUEST: "__lectoro_netflix_artwork_request",

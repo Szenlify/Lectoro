@@ -216,8 +216,54 @@
                 return;
             }
 
-            // Previous Subtitle / Seek Backward: A / ArrowLeft
-            if (key === "a" || key === "A" || key === "ArrowLeft") {
+            // Rewind / Forward by 10s on Netflix: ArrowLeft / ArrowRight
+            if (key === "ArrowLeft") {
+                const isNetflix =
+                    (typeof registry?.isNetflixPage === "function" && registry.isNetflixPage()) ||
+                    /(^|\.)netflix\.com$/i.test(window.location.hostname);
+                if (isNetflix) {
+                    if (typeof registry?.seekNetflix === "function") {
+                        registry.seekNetflix(video, -10);
+                    } else if (typeof globalThis.LectoroNetflixAdapter?.requestSeekDelta === "function") {
+                        globalThis.LectoroNetflixAdapter.requestSeekDelta(-10, video);
+                    }
+                    return;
+                }
+                if (typeof registry?.navigateSubtitle === "function") {
+                    registry.navigateSubtitle(video, -1);
+                } else {
+                    video.currentTime = Math.max(0, video.currentTime - FALLBACK_SKIP_SECONDS);
+                    if (video.paused) video.play().catch?.(() => {});
+                }
+                return;
+            }
+
+            if (key === "ArrowRight") {
+                const isNetflix =
+                    (typeof registry?.isNetflixPage === "function" && registry.isNetflixPage()) ||
+                    /(^|\.)netflix\.com$/i.test(window.location.hostname);
+                if (isNetflix) {
+                    if (typeof registry?.seekNetflix === "function") {
+                        registry.seekNetflix(video, 10);
+                    } else if (typeof globalThis.LectoroNetflixAdapter?.requestSeekDelta === "function") {
+                        globalThis.LectoroNetflixAdapter.requestSeekDelta(10, video);
+                    }
+                    return;
+                }
+                if (typeof registry?.navigateSubtitle === "function") {
+                    registry.navigateSubtitle(video, 1);
+                } else {
+                    video.currentTime = Math.min(
+                        video.duration || Infinity,
+                        video.currentTime + FALLBACK_SKIP_SECONDS,
+                    );
+                    if (video.paused) video.play().catch?.(() => {});
+                }
+                return;
+            }
+
+            // Previous Subtitle: A
+            if (key === "a" || key === "A") {
                 const isNetflix =
                     (typeof registry?.isNetflixPage === "function" && registry.isNetflixPage()) ||
                     /(^|\.)netflix\.com$/i.test(window.location.hostname);
@@ -233,8 +279,8 @@
                 return;
             }
 
-            // Next Subtitle / Seek Forward: D / ArrowRight
-            if (key === "d" || key === "D" || key === "ArrowRight") {
+            // Next Subtitle: D
+            if (key === "d" || key === "D") {
                 const isNetflix =
                     (typeof registry?.isNetflixPage === "function" && registry.isNetflixPage()) ||
                     /(^|\.)netflix\.com$/i.test(window.location.hostname);

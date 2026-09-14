@@ -10,6 +10,7 @@
     const EVT = LectoroConstants.EVENT_NAMES;
     const UIC = LectoroConstants.UI_CLASSES;
     const SEEK_EVENT = EVT.NETFLIX_SEEK;
+    const SEEK_DELTA_EVENT = EVT.NETFLIX_SEEK_DELTA || "__lectoro_netflix_seek_delta";
     const PAUSE_EVENT = EVT.NETFLIX_PAUSE;
     const PLAY_EVENT = EVT.NETFLIX_PLAY;
     const ARTWORK_REQUEST_EVENT = EVT.NETFLIX_ARTWORK_REQUEST;
@@ -121,6 +122,28 @@
         );
         // Note: On Netflix, NEVER touch video.currentTime directly!
         // Direct currentTime manipulation desyncs Widevine DRM MSE buffers and triggers Error M7375.
+    }
+
+    function requestSeekDelta(deltaSeconds, videoFallback = null) {
+        if (!Number.isFinite(deltaSeconds) || deltaSeconds === 0) return;
+        const video =
+            videoFallback instanceof HTMLVideoElement
+                ? videoFallback
+                : document.querySelector("video");
+        const currentSec = Number(video?.currentTime) || 0;
+        const targetSec = Math.max(0, currentSec + deltaSeconds);
+
+        optimisticSeek = {
+            targetTime: targetSec,
+            createdAt: performance.now(),
+            expiresAt: performance.now() + OPTIMISTIC_SEEK_MAX_MS,
+        };
+
+        window.dispatchEvent(
+            new CustomEvent(SEEK_DELTA_EVENT, {
+                detail: { deltaSeconds },
+            }),
+        );
     }
 
     function pauseVideo(videoFallback = null) {
@@ -463,12 +486,12 @@
             const context = { movieId, buildRevision, forceRetry };
             const master = await fetchTrackCues(masterTrack, context);
             if (!isCurrent() || !master) return [];
-            const masterSentenceCues = doubleSubEnabled && getSubtitleService()?.reconstructFullSentenceCues
-                ? getSubtitleService().reconstructFullSentenceCues(master.cues, { preserveTiming: true })
-                : master.cues;
-
+            const service = getSubtitleService();
             // Publish Master immediately. Slave failures must never delay or remove it.
-            cueIndex = masterSentenceCues.map((cue) => ({ ...cue, translation: "" }));
+            const pairedMaster = service?.pairTwoClusters
+                ? service.pairTwoClusters(master.cues)
+                : master.cues;
+            cueIndex = pairedMaster.map((cue) => ({ ...cue, translation: "" }));
             cueIndexKey = master.key;
             renderIndexedCue();
 
@@ -484,11 +507,14 @@
             if (!slaveTrack) throw new Error("Netflix has no subtitle track for the requested language.");
             const slave = await fetchTrackCues(slaveTrack, context);
             if (!isCurrent() || !slave) return [];
-            const aligned = getSubtitleService().alignSlaveTrackToMaster(masterSentenceCues, slave.cues);
+            const aligned = service.alignSlaveTrackToMaster(master.cues, slave.cues);
             if (!aligned.some((cue) => cue.translation)) {
                 throw new Error("Netflix subtitle tracks have no matching timed cues.");
             }
-            cueIndex = aligned;
+            const pairedAligned = service?.pairTwoClusters
+                ? service.pairTwoClusters(aligned)
+                : aligned;
+            cueIndex = pairedAligned;
             renderIndexedCue();
             setDualSubtitleStatus("ready");
             return cueIndex;
@@ -595,12 +621,25 @@
         const endTime = Number.isFinite(cue.endTime)
             ? cue.endTime
             : cue.startTime + 3;
-        return time < endTime ? cue : null;
+        if (time < endTime) return cue;
+
+        // Scan backward for active overlapping cues (e.g. background sound ending while dialogue continues)
+        for (let i = matchIndex - 1; i >= 0 && i >= matchIndex - 8; i--) {
+            const prevCue = cueIndex[i];
+            const prevEndTime = Number.isFinite(prevCue.endTime)
+                ? prevCue.endTime
+                : prevCue.startTime + 3;
+            if (time < prevEndTime && prevCue.startTime <= time) {
+                return prevCue;
+            }
+            if (time - prevCue.startTime > 30) break;
+        }
+
+        return null;
     }
 
     function getCurrentCueLines(video = null) {
         if (!isCcActive(video)) return null;
-        if (cueIndex.length === 0) return null;
 
         const now = performance.now();
         let lookupTime = Number(video?.currentTime ?? NaN);
@@ -634,15 +673,50 @@
             }
         }
 
-        if (!Number.isFinite(lookupTime)) return [];
-        const cue = findIndexedCueAt(lookupTime);
-        if (!cue) return [];
-        const lines = Array.isArray(cue.lines) && cue.lines.length > 0
-            ? [...cue.lines]
-            : (cue.text ? [cue.text] : []);
-        lines.translation = cue.translation || "";
-        lines.cue = cue;
-        return lines;
+        // 1. Check indexed cues if available
+        if (cueIndex.length > 0 && Number.isFinite(lookupTime)) {
+            const cue = findIndexedCueAt(lookupTime);
+            if (cue) {
+                const lines = Array.isArray(cue.lines) && cue.lines.length > 0
+                    ? [...cue.lines]
+                    : (cue.text ? [cue.text] : []);
+                lines.translation = cue.translation || "";
+                lines.cue = cue;
+                return lines;
+            }
+        }
+
+        // 2. Direct DOM fallback from .player-timedtext
+        // Ensures that whenever Netflix displays a subtitle on screen, Lectoro will ALWAYS show it
+        try {
+            const player =
+                video?.closest?.(".watch-video, [data-uia='video-canvas'], .nf-player-container") ||
+                document;
+            const timedTextContainer = player.querySelector(".player-timedtext");
+            if (timedTextContainer) {
+                const cueElements = Array.from(
+                    timedTextContainer.querySelectorAll(".player-timedtext-text-container"),
+                );
+                if (cueElements.length > 0) {
+                    const domLines = globalThis.LectoroBaseAdapter?.extractCueLines
+                        ? globalThis.LectoroBaseAdapter.extractCueLines(cueElements)
+                        : [];
+                    if (domLines.length > 0) {
+                        let closestCue = null;
+                        if (cueIndex.length > 0 && Number.isFinite(lookupTime)) {
+                            closestCue = cueIndex.find(
+                                (c) => Math.abs(c.startTime - lookupTime) < 2.0,
+                            );
+                        }
+                        domLines.translation = closestCue?.translation || "";
+                        domLines.cue = closestCue || null;
+                        return domLines;
+                    }
+                }
+            }
+        } catch (_) { }
+
+        return [];
     }
 
     function getCurrentSubtitleText(video = null) {
@@ -666,15 +740,6 @@
         const cues = await ensureSubtitleIndex();
         if (!Array.isArray(cues) || cues.length === 0) return null;
 
-        const subtitleService = getSubtitleService();
-        if (subtitleService?.findAdjacentCueTime) {
-            return subtitleService.findAdjacentCueTime(
-                cues,
-                videoOrTime,
-                direction,
-            );
-        }
-
         const currentTime =
             typeof videoOrTime === "number"
                 ? videoOrTime
@@ -682,28 +747,27 @@
         if (!Number.isFinite(currentTime)) return null;
 
         if (direction > 0) {
-            const next = cues.find((cue) => cue.startTime > currentTime + 0.08);
+            const next = cues.find((cue) => cue.startTime > currentTime + 0.12);
             return next?.startTime ?? null;
         }
 
-        let previousIndex = -1;
+        // Backward navigation:
+        // Stepping backward must reliably find the preceding cue, stepping monotonically
+        // even when 'A' is held down or pressed repeatedly.
+        let targetCue = null;
         for (let index = cues.length - 1; index >= 0; index -= 1) {
-            if (cues[index].startTime <= currentTime + 0.08) {
-                previousIndex = index;
+            const cue = cues[index];
+            if (cue.startTime <= currentTime - 0.2) {
+                targetCue = cue;
                 break;
             }
         }
-        if (previousIndex < 0) return null;
 
-        const currentCue = cues[previousIndex];
-        const isInsideCurrentCue =
-            currentTime >= currentCue.startTime - 0.08 &&
-            currentTime <= (currentCue.endTime || currentCue.startTime + 3) + 0.15;
-        const targetIndex = isInsideCurrentCue
-            ? previousIndex - 1
-            : previousIndex;
+        if (targetCue) {
+            return targetCue.startTime;
+        }
 
-        return targetIndex >= 0 ? cues[targetIndex].startTime : 0;
+        return cues[0] ? cues[0].startTime : 0;
     }
 
     let cachedNetflixArtworkDataUrl = "";
@@ -1142,6 +1206,7 @@
             });
         },
         requestSeek,
+        requestSeekDelta,
         pauseVideo,
         playVideo,
         ensureControlsHidden,

@@ -1,0 +1,335 @@
+{
+  "wireMagic": "pb3",
+  "pens": [
+    {}
+  ],
+  "wsWinStyles": [
+    {},
+    {
+      "mhModeHint": 2,
+      "juJustifCode": 0,
+      "sdScrollDir": 3
+    }
+  ],
+  "wpWinPositions": [
+    {},
+    {
+      "apPoint": 6,
+      "ahHorPos": 20,
+      "avVerPos": 100,
+      "rcRows": 2,
+      "ccCols": 40
+    }
+  ],
+  "events": [
+    {
+      "tStartMs": 0,
+      "dDurationMs": 247760,
+      "id": 1,
+      "wpWinPosId": 1,
+      "wsWinStyleId": 1
+    },
+    {
+      "tStartMs": 160,
+      "dDurationMs": 5520,
+      "wWinId": 1,
+      "segs": [
+        {
+          "utf8": "No ",
+          "tOffsetMs": 0,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "cóż, ",
+          "tOffsetMs": 400,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "chłopaki, ",
+          "tOffsetMs": 800,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "jasne ",
+          "tOffsetMs": 1200,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "jest, ",
+          "tOffsetMs": 1600,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "że ",
+          "tOffsetMs": 2000,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "Apple ",
+          "tOffsetMs": 2400,
+          "acAsrConf": 0
+        }
+      ]
+    },
+    {
+      "tStartMs": 2869,
+      "dDurationMs": 2811,
+      "wWinId": 1,
+      "aAppend": 1,
+      "segs": [
+        {
+          "utf8": "\n"
+        }
+      ]
+    },
+    {
+      "tStartMs": 2879,
+      "dDurationMs": 5121,
+      "wWinId": 1,
+      "segs": [
+        {
+          "utf8": "skopiuje ",
+          "tOffsetMs": 0,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "wszystko, ",
+          "tOffsetMs": 640,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "co ",
+          "tOffsetMs": 1280,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "robimy. ",
+          "tOffsetMs": 1920,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "I ",
+          "tOffsetMs": 2560,
+          "acAsrConf": 0
+        }
+      ]
+    },
+    {
+      "tStartMs": 5670,
+      "dDurationMs": 2330,
+      "wWinId": 1,
+      "aAppend": 1,
+      "segs": [
+        {
+          "utf8": "\n"
+        }
+      ]
+    },
+    {
+      "tStartMs": 5680,
+      "dDurationMs": 4560,
+      "wWinId": 1,
+      "segs": [
+        {
+          "utf8": "dlatego ",
+          "tOffsetMs": 0,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "kilka ",
+          "tOffsetMs": 308,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "lat ",
+          "tOffsetMs": 616,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "temu ",
+          "tOffsetMs": 924,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "spowodowaliśmy ",
+          "tOffsetMs": 1232,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "eksplozję ",
+          "tOffsetMs": 1540,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "naszych ",
+          "tOffsetMs": 1848,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "baterii ",
+          "tOffsetMs": 2156,
+          "acAsrConf": 0
+        }
+      ]
+    },
+    {
+      "tStartMs": 7990,
+      "dDurationMs": 2250,
+      "wWinId": 1,
+      "aAppend": 1,
+      "segs": [
+        {
+          "utf8": "\n"
+        }
+      ]
+    },
+    {
+      "tStartMs": 8000,
+      "dDurationMs": 5200,
+      "wWinId": 1,
+      "segs": [
+        {
+          "utf8": ". ",
+          "tOffsetMs": 0,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "Więc ",
+          "tOffsetMs": 1000,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "Apple ",
+          "tOffsetMs": 2000,
+          "acAsrConf": 0
+        }
+      ]
+    },
+    {
+      "tStartMs": 10230,
+      "dDurationMs": 2970,
+      "wWinId": 1,
+      "aAppend": 1,
+      "segs": [
+        {
+          "utf8": "\n"
+        }
+      ]
+    },
+    {
+      "tStartMs": 10240,
+      "dDurationMs": 6480,
+      "wWinId": 1,
+      "segs": [
+        {
+          "utf8": "wkrótce ",
+          "tOffsetMs": 0,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "to ",
+          "tOffsetMs": 342,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "zrobi. ",
+          "tOffsetMs": 684,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "Widzisz, ",
+          "tOffsetMs": 1026,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "to ",
+          "tOffsetMs": 1368,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "była ",
+          "tOffsetMs": 1710,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "decyzja ",
+          "tOffsetMs": 2052,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "taktyczna. ",
+          "tOffsetMs": 2394,
+          "acAsrConf": 0
+        }
+      ]
+    },
+    {
+      "tStartMs": 13190,
+      "dDurationMs": 3530,
+      "wWinId": 1,
+      "aAppend": 1,
+      "segs": [
+        {
+          "utf8": "\n"
+        }
+      ]
+    },
+    {
+      "tStartMs": 13200,
+      "dDurationMs": 6880,
+      "wWinId": 1,
+      "segs": [
+        {
+          "utf8": "Dobrze ",
+          "tOffsetMs": 0,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "zrobiony. ",
+          "tOffsetMs": 328,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "O, ",
+          "tOffsetMs": 656,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "cześć. ",
+          "tOffsetMs": 984,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "Nazywam ",
+          "tOffsetMs": 1312,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "się ",
+          "tOffsetMs": 1640,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "Sam ",
+          "tOffsetMs": 1968,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "Tucker ",
+          "tOffsetMs": 2296,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "i ",
+          "tOffsetMs": 2624,
+          "acAsrConf": 0
+        },
+        {
+          "utf8": "jestem ",
+          "tOffsetMs": 2952,
+          "acAsrConf": 0
+        }
+      ]
+    }
+  ]
+}

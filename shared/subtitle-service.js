@@ -194,7 +194,15 @@
                     )
                     .map((cue) => {
                         const text = cue.text.replace(/\s+/g, " ").trim();
-                        return { ...cue, text, lines: [text] };
+                        const normalized = { ...cue, text, lines: [text] };
+                        for (const key of ["segs", "tStartMs", "dDurationMs"]) {
+                            if (cue[key] != null) {
+                                Object.defineProperty(normalized, key, {
+                                    value: cue[key], enumerable: false, writable: true, configurable: true,
+                                });
+                            }
+                        }
+                        return normalized;
                     });
             }
 
@@ -780,7 +788,7 @@
 
                 // Re-attach orphaned sentence tails, push orphan sentence heads forward,
                 // and clean boundary punctuation across clusters.
-                repairClusterBoundaries(cues);
+                if (!options.preserveCueBoundaries) repairClusterBoundaries(cues);
 
                 return finalizeCues(cues, options);
             }
@@ -1290,6 +1298,205 @@
         }
 
         /**
+         * Pairs consecutive subtitle clusters into groups of 2 (Language Reactor style).
+         * Displays two clusters at a time on Netflix and YouTube, unless a cluster or combination
+         * is very long or separated by silence, in which case it is displayed singly.
+         *
+         * @param {Array<Object>} cues
+         * @param {Object} [options]
+         * @returns {Array<Object>}
+         */
+        function pairTwoClusters(cues) {
+            if (!Array.isArray(cues) || cues.length === 0) return [];
+            if (cues.length === 1) {
+                return cues.map((c) => ({
+                    ...c,
+                    translation: typeof c.translation === "string" ? c.translation : "",
+                    lines: Array.isArray(c.lines) && c.lines.length > 0 ? c.lines : [String(c?.text || "").trim()],
+                }));
+            }
+
+            const paired = [];
+            let i = 0;
+
+            while (i < cues.length) {
+                const c1 = cues[i];
+                const c2 = cues[i + 1];
+
+                if (!c2) {
+                    paired.push({
+                        ...c1,
+                        translation: typeof c1.translation === "string" ? c1.translation : "",
+                        lines: Array.isArray(c1.lines) && c1.lines.length > 0 ? c1.lines : [String(c1?.text || "").trim()],
+                    });
+                    break;
+                }
+
+                const text1 = String(c1.text || "").trim();
+                const text2 = String(c2.text || "").trim();
+                const words1 = text1 ? text1.split(/\s+/).length : 0;
+                const words2 = text2 ? text2.split(/\s+/).length : 0;
+                const chars1 = text1.length;
+                const chars2 = text2.length;
+                const trans1 = String(c1.translation || "").trim();
+                const trans2 = String(c2.translation || "").trim();
+                const translationWords1 = trans1 ? trans1.split(/\s+/).length : 0;
+                const translationWords2 = trans2 ? trans2.split(/\s+/).length : 0;
+
+                const start1 = c1.startTime;
+                const end1 = Number.isFinite(c1.endTime) ? c1.endTime : c1.startTime + 2.5;
+                const start2 = c2.startTime;
+                const end2 = Number.isFinite(c2.endTime) ? c2.endTime : c2.startTime + 2.5;
+
+                const timeGap = start2 - end1;
+
+                // Thresholds for "bardzo długie" (very long cluster):
+                // 1. If c1 alone is very long (>= 10 words or >= 55 chars): display singly.
+                const isC1VeryLong = words1 >= 10 || chars1 >= 55 || translationWords1 >= 10 || trans1.length >= 55;
+
+                // 2. If c2 alone is very long (>= 10 words or >= 55 chars): display c1 singly so c2 will be displayed singly next.
+                const isC2VeryLong = words2 >= 10 || chars2 >= 55 || translationWords2 >= 10 || trans2.length >= 55;
+
+                // 3. If combining them would be excessively long: display singly to prevent visual overflow.
+                const combinedWords = words1 + words2;
+                const combinedChars = chars1 + chars2 + 1;
+                const lines1Count = Array.isArray(c1.lines) ? c1.lines.length : 1;
+                const lines2Count = Array.isArray(c2.lines) ? c2.lines.length : 1;
+                const isCombinedTooLong = combinedWords >= 16 || combinedChars >= 80 ||
+                    translationWords1 + translationWords2 >= 16 || trans1.length + trans2.length + 1 >= 80 ||
+                    (lines1Count >= 2 && lines2Count >= 2);
+
+                // 4. Significant scene change or prolonged silence gap between clusters (> 2.2s):
+                // Natural dialogue pauses (up to 2.2s) are paired cleanly like Language Reactor.
+                const isSignificantGap = timeGap > 2.2 || (start2 - start1 > 8.0);
+
+                if (isC1VeryLong || isC2VeryLong || isCombinedTooLong || isSignificantGap) {
+                    paired.push({
+                        ...c1,
+                        translation: typeof c1.translation === "string" ? c1.translation : "",
+                        lines: Array.isArray(c1.lines) && c1.lines.length > 0 ? c1.lines : [text1],
+                    });
+                    i += 1;
+                    continue;
+                }
+
+                // Combine the two clusters!
+                const combinedStart = start1;
+                const combinedEnd = Math.max(end1, end2);
+
+                const lines1 = Array.isArray(c1.lines) && c1.lines.length > 0 ? c1.lines : [text1];
+                const lines2 = Array.isArray(c2.lines) && c2.lines.length > 0 ? c2.lines : [text2];
+                const combinedLines = [...lines1, ...lines2].filter(Boolean);
+
+                const combinedText = combinedLines.join(" ");
+
+                // Translation combination
+                let combinedTranslation = "";
+                if (trans1 && trans2) {
+                    combinedTranslation = `${trans1}\n${trans2}`;
+                } else {
+                    combinedTranslation = trans1 || trans2 || "";
+                }
+
+                paired.push({
+                    ...c1,
+                    startTime: combinedStart,
+                    endTime: combinedEnd,
+                    text: combinedText,
+                    lines: combinedLines,
+                    translation: combinedTranslation,
+                    isPairedCluster: true,
+                    clusterCount: 2,
+                });
+
+                i += 2;
+            }
+
+            return paired;
+        }
+
+        // ASR translations retain event anchors, but word order and sentence breaks
+        // can differ inside those events. Align sentences within shared timed blocks
+        // before pairing; never move words based on capitalization or guessed meaning.
+        function alignTimedSentenceTracks(masterCues, slaveCues) {
+            const terminal = /[.!?。！？]["'»”’)\]]?$/u;
+            const abbreviation = /(?:^|\s)(?:mr|mrs|ms|dr|prof|st|vs|etc|e\.g|i\.e|np|itd|itp)\.$/iu;
+            const endsSentence = (text) => terminal.test(text.trim()) && !abbreviation.test(text.trim());
+            const hasWordTiming = (cue) => Array.isArray(cue?.segs) && cue.segs.length > 1 &&
+                cue.segs.some((seg) => Number.isFinite(seg.tOffsetMs)) &&
+                cue.segs.every((seg) => typeof seg.utf8 === "string");
+            if (!Array.isArray(slaveCues) || masterCues.length !== slaveCues.length ||
+                !masterCues.some(hasWordTiming) || !slaveCues.some(hasWordTiming) || !masterCues.every((cue, i) =>
+                    Array.isArray(cue.segs) && Array.isArray(slaveCues[i].segs) &&
+                    cue.startTime === slaveCues[i].startTime &&
+                    Number.isFinite(cue.endTime) && Number.isFinite(slaveCues[i].endTime) &&
+                    (i === 0 || cue.startTime > masterCues[i - 1].startTime))) return null;
+
+            function splitSentences(cues) {
+                const sentences = [];
+                let text = "";
+                let startTime = null;
+                for (const cue of cues) {
+                    for (const seg of cue.segs) {
+                        const piece = cleanCueText(seg.utf8);
+                        if (!piece) continue;
+                        // JSON3 may contain a whole paragraph in one segment. Such
+                        // data has no usable timestamp for its internal sentence boundary.
+                        if (/[.!?。！？]["'»”’)\]]?\s+\S/u.test(piece)) return null;
+                        const wordTime = cue.startTime + (Number(seg.tOffsetMs) || 0) / 1000;
+                        if (startTime === null) startTime = wordTime;
+                        text = cleanCueText(text + " " + piece);
+                        if (endsSentence(text)) {
+                            sentences.push({ text, startTime, complete: true });
+                            text = "";
+                            startTime = null;
+                        }
+                    }
+                }
+                if (text) sentences.push({ text, startTime, complete: false });
+                return sentences;
+            }
+
+            const result = [];
+            let blockStart = 0;
+            for (let i = 0; i < masterCues.length; i++) {
+                const master = masterCues[i];
+                const slave = slaveCues[i];
+                const next = masterCues[i + 1];
+                const silence = next && next.startTime - master.endTime > 1.5;
+                const sharedEnd = endsSentence(master.text) && endsSentence(slave.text);
+                if (!sharedEnd && !silence && next && master.endTime - masterCues[blockStart].startTime < 30) continue;
+                const originals = masterCues.slice(blockStart, i + 1);
+                const translations = slaveCues.slice(blockStart, i + 1);
+                const sourceSentences = splitSentences(originals);
+                const targetSentences = splitSentences(translations);
+                const matches = sourceSentences && targetSentences &&
+                    sourceSentences.length === targetSentences.length &&
+                    sourceSentences.every((sentence, index) => {
+                        const translated = targetSentences[index];
+                        return sentence.complete === translated.complete &&
+                            Math.abs(sentence.startTime - translated.startTime) <= 2.2 &&
+                            (index === 0 || sentence.startTime > sourceSentences[index - 1].startTime);
+                    });
+                if (matches) {
+                    sourceSentences.forEach((sentence, index) => {
+                        const endTime = sourceSentences[index + 1]?.startTime ?? master.endTime;
+                        result.push({
+                            startTime: sentence.startTime, endTime,
+                            text: sentence.text, lines: [sentence.text],
+                            translation: targetSentences[index].text,
+                        });
+                    });
+                } else {
+                    // Uncertain segmentation stays with the platform's timed cues.
+                    result.push(...alignSlaveTrackToMaster(originals, translations));
+                }
+                blockStart = i + 1;
+            }
+            return result;
+        }
+
+        /**
          * Attach a slave track to immutable master intervals. A slave cue belongs
          * to the master with the greatest positive overlap (ties prefer the earlier
          * master). It is never replayed across successive master fragments. Missing
@@ -1298,8 +1505,12 @@
          *
          * @returns {Array<{startTime: number, endTime: number, text: string, translation: string}>}
          */
-        function alignSlaveTrackToMaster(masterCues, slaveCues) {
+        function alignSlaveTrackToMaster(masterCues, slaveCues, options = {}) {
             if (!Array.isArray(masterCues) || masterCues.length === 0) return [];
+            if (options.alignSentences) {
+                const sentences = alignTimedSentenceTracks(masterCues, slaveCues);
+                if (sentences) return sentences;
+            }
 
             const unified = masterCues.map((master) => {
                 const text = String(master?.text || "").replace(/\s+/g, " ").trim();
@@ -1394,58 +1605,8 @@
                 unified[i].translation = cleanCueText([...translations[i]].join(" "));
             }
 
-            // Post-alignment repair: Fix translation spillover across cue boundaries
-            // (e.g. YouTube translates manual subtitles with sentence heads left on the previous line:
-            //  EN: "To have you in my arms" / PL: "By mieć cię w ramionach Czy to jest to"
-            //  EN: "Is this what you needed" / PL: "czego potrzebowałaś Bo"
-            //  EN: "‘Cause I’ll find the faith in anything" / PL: "znajdę wiarę w czymkolwiek")
-            for (let i = 1; i < unified.length; i++) {
-                const prev = unified[i - 1];
-                const curr = unified[i];
-                if (!prev || !curr || !prev.translation || !curr.translation) continue;
-
-                // 1. Detached leading punctuation in curr.translation (e.g. ", powtórz" or ", but...")
-                const leadPunctMatch = curr.translation.match(/^([,;:!?])\s*(.*)$/);
-                if (leadPunctMatch) {
-                    const punct = leadPunctMatch[1];
-                    const rest = leadPunctMatch[2];
-                    curr.translation = rest;
-                    if (!prev.translation.endsWith(punct) && !/[.,;:!?]$/.test(prev.translation.trim())) {
-                        prev.translation = (prev.translation.trim() + punct).trim();
-                    }
-                }
-
-                // 2. Sentence spillover: curr starts with a lowercase word, meaning its sentence head
-                // was left at the end of prev.translation as a capitalized clause.
-                const currWords = curr.translation.split(/\s+/).filter(Boolean);
-                if (currWords.length === 0) continue;
-                const firstCurrWord = currWords[0].replace(/^[„"'(«]+/, "");
-                const startsWithLower = /^[a-zà-ÿ]/.test(firstCurrWord);
-
-                if (startsWithLower) {
-                    const prevWords = prev.translation.split(/\s+/).filter(Boolean);
-                    if (prevWords.length >= 2) {
-                        // Find the last phrase starting with an uppercase letter
-                        let capitalIndex = -1;
-                        for (let w = prevWords.length - 1; w >= 1; w--) {
-                            const cleanWord = prevWords[w].replace(/^[„"'(«]+/, "");
-                            if (/^[A-ZÀ-ÿ0-9]/.test(cleanWord)) {
-                                capitalIndex = w;
-                                break;
-                            }
-                        }
-
-                        if (capitalIndex > 0) {
-                            const keptWords = prevWords.slice(0, capitalIndex).join(" ").trim();
-                            const movedWords = prevWords.slice(capitalIndex).join(" ").trim();
-                            if (keptWords && movedWords) {
-                                prev.translation = cleanCueText(keptWords);
-                                curr.translation = cleanCueText(movedWords + " " + curr.translation);
-                            }
-                        }
-                    }
-                }
-            }
+            // Keep each translation with its timed owner. Capitalization cannot
+            // distinguish a new clause from a proper noun such as Apple.
 
             return unified;
         }
@@ -1456,6 +1617,7 @@
             parseTtmlTime,
             finalizeCues,
             reconstructFullSentenceCues,
+            pairTwoClusters,
             alignSlaveTrackToMaster,
             parseYouTubeJson3,
             parseWebVtt,

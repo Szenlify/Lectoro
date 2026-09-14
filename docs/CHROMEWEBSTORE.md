@@ -2,6 +2,8 @@
 
 ## General Information
 
+- **Last Updated:** 2026-09-14
+
 - **Extension Name:** Lectoro AI - Language Learning & Subtitles
 - **Short Name:** Lectoro AI
 - **Current Version:** 1.0.0
@@ -25,7 +27,7 @@ Learn languages faster with smart video subtitles, instant web translation, SRS 
 Master new languages naturally while enjoying videos and browsing the web. Lectoro AI seamlessly transforms YouTube, Netflix, and any webpage into an interactive, bilingual learning environment.
 
 **Key Features:**
-- **Dual Bilingual Subtitles:** Watch YouTube and Netflix videos with your target language and native subtitles displayed simultaneously. Reconstructed into natural full sentences without clutter.
+- **Dual Bilingual Subtitles:** Watch YouTube and Netflix with consecutive subtitle fragments grouped in pairs in both languages. Long fragments appear individually to keep subtitles readable.
 - **Word-by-Word Translation Clouds:** Instantly hover or tap shortcut keys to see translations above unfamiliar words without pausing your flow.
 - **AI Context Explanations:** Get instant, in-depth breakdowns of complex sentences, idioms, and grammar structures directly in the video player or reading pane.
 - **Natural Voice Pronunciation:** Listen to crystal-clear speech pronunciation powered by advanced speech synthesis tuned to your learning language.
@@ -86,6 +88,13 @@ Every permission declared in `manifest.json` serves a specific, user-facing func
 ---
 
 ## Version History
+
+- **Unreleased (2026-09-14):**
+  - Match complete sentences across YouTube automatic captions and translations before grouping them in pairs.
+  - Keep translations with their timed subtitle fragments instead of moving names and sentence parts into the next subtitle.
+  - Group consecutive subtitle fragments in pairs on YouTube and Netflix, checking length in both languages.
+  - Keep pairs stable when changing the translation language or retrying on YouTube.
+  - Refresh the YouTube and Netflix subtitle screenshots to show paired fragments.
 
 - **1.0.0 (Current):**
   - Initial Manifest V3 release for Chrome Web Store.

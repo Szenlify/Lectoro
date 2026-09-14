@@ -92,7 +92,7 @@ function setup(initial = {}) {
     };
 }
 
-test("YouTube uses tlang and renders both lines from exact Master intervals, including identical consecutive text", async () => {
+test("YouTube uses tlang and renders paired clusters in both languages, including repeated text", async () => {
     const h = setup();
     const { result } = await h.begin();
     assert.equal(h.renders.at(-1).options.secondaryText, "");
@@ -101,18 +101,18 @@ test("YouTube uses tlang and renders both lines from exact Master intervals, inc
     assert.equal(slaveUrl.searchParams.get("signature"), "test");
     h.reply(h.requests[1], { text: SLAVE });
     await result;
-    assert.equal(h.adapter.getAllCues().length, 2);
-    assert.deepEqual(h.adapter.getAllCues().map((cue) => [cue.startTime, cue.endTime]), [[1, 2], [2, 3]]);
+    assert.equal(h.adapter.getAllCues().length, 1);
+    assert.deepEqual(h.adapter.getAllCues().map((cue) => [cue.startTime, cue.endTime]), [[1, 3]]);
     assert.equal(h.renders.at(-1).lines[0], "Same words");
-    assert.equal(h.renders.at(-1).options.secondaryText, "Pierwsza linia");
+    assert.equal(h.renders.at(-1).options.secondaryText, "Pierwsza linia\nDruga linia");
     h.seek(2);
-    assert.equal(h.renders.at(-1).options.secondaryText, "Druga linia");
-    assert.equal(h.renders.at(-1).options.cue.startTime, 2);
+    assert.equal(h.renders.at(-1).options.secondaryText, "Pierwsza linia\nDruga linia");
+    assert.equal(h.renders.at(-1).options.cue.startTime, 1);
     h.seek(3);
     assert.deepEqual(h.renders.at(-1).lines, []);
     assert.equal(h.renders.at(-1).options.secondaryText, "");
     h.seek(1.5);
-    assert.equal(h.renders.at(-1).options.secondaryText, "Pierwsza linia");
+    assert.equal(h.renders.at(-1).options.secondaryText, "Pierwsza linia\nDruga linia");
     assert.equal(h.statuses.at(-1).status, "ready");
 });
 
@@ -298,7 +298,7 @@ test("YouTube retains Master loading when double subtitles are disabled before M
     await tick();
     h.reply(oldRequest, { text: captionText("Stale master") });
     await first;
-    assert.equal(h.adapter.getAllCues()[0].text, "Same words");
+    assert.equal(h.adapter.getAllCues()[0].text, "Same words Same words");
     assert.equal(h.statuses.at(-1).status, "idle");
 });
 
@@ -313,6 +313,116 @@ test("YouTube suppresses subtitles while video is still loading (readyState < 2)
     h.video.readyState = 2;
     h.video.dispatchEvent({ type: "loadeddata" });
     assert.equal(h.renders.length, 1);
-    assert.deepEqual(h.renders.at(-1).lines, ["Same words"]);
+    assert.deepEqual(h.renders.at(-1).lines, ["Same words", "Same words"]);
 });
 
+
+test("YouTube language changes never merge existing pairs into four clusters", async () => {
+    const h = setup();
+    const captions = (words) => JSON.stringify({ events: words.map((text, i) => ({
+        tStartMs: (i + 1) * 1000, dDurationMs: 1000, segs: [{ utf8: text }],
+    })) });
+    const loading = h.adapter.loadCaptionTrack(track, "video1");
+    await tick();
+    h.reply(h.requests[0], { text: captions(["A", "B", "C", "D"]) });
+    await tick();
+    h.reply(h.requests[1], { text: captions(["a", "b", "c", "d"]) });
+    await loading;
+    for (const language of ["de", "fr"]) {
+        await h.settings.local.set({ targetLang: language });
+        await tick();
+        h.reply(h.requests.at(-1), { text: captions(["w", "x", "y", "z"]) });
+        await tick();
+        const cues = h.adapter.getAllCues();
+        assert.deepEqual(Array.from(cues, (cue) => cue.text), ["A B", "C D"]);
+        assert.deepEqual(Array.from(cues, (cue) => cue.translation), ["w\nx", "y\nz"]);
+        h.seek(3.5);
+        assert.deepEqual(h.renders.at(-1).lines, ["C", "D"]);
+        assert.equal(h.renders.at(-1).options.secondaryText, "y\nz");
+    }
+});
+
+test("YouTube keeps Apple translation with its source through parsing, alignment and pairing", async () => {
+    const h = setup();
+    const captions = (texts) => JSON.stringify({ events: texts.map((text, i) => ({
+        tStartMs: (1 + i * 2) * 1000, dDurationMs: 2000, segs: [{ utf8: text }],
+    })) });
+    const result = h.adapter.loadCaptionTrack(track, "video1");
+    await tick();
+    h.reply(h.requests[0], { text: captions([
+        "So now Apples will do that soon", "See, it was a a tactical decision", "Well done. Oh, hi there",
+    ]) });
+    await tick();
+    h.reply(h.requests[1], { text: captions([
+        "Więc Apple wkrótce to zrobi.", "widzisz, to była decyzja taktyczna.", "Dobrze zrobiony. O, cześć.",
+    ]) });
+    await result;
+    assert.deepEqual(h.renders.at(-1).lines, ["So now Apples will do that soon", "See, it was a a tactical decision"]);
+    assert.equal(h.renders.at(-1).options.secondaryText, "Więc Apple wkrótce to zrobi.\nwidzisz, to była decyzja taktyczna.");
+    h.seek(3.5);
+    assert.ok(h.renders.at(-1).options.secondaryText.includes("widzisz, to była decyzja taktyczna."));
+    h.seek(5.5);
+    assert.deepEqual(h.renders.at(-1).lines, ["Well done. Oh, hi there"]);
+    assert.equal(h.renders.at(-1).options.secondaryText, "Dobrze zrobiony. O, cześć.");
+});
+
+test("YouTube aligns the supplied Apple ASR sentences before pairing and preserves them on language reload", async () => {
+    const h = setup();
+    const english = read("tests/fixtures/apple-asr-en.json");
+    const polish = read("tests/fixtures/apple-asr-pl.json");
+    const result = h.adapter.loadCaptionTrack(track, "video1");
+    await tick();
+    h.reply(h.requests[0], { text: english });
+    await tick();
+    h.reply(h.requests[1], { text: polish });
+    await result;
+    const verify = () => {
+        h.seek(8.72);
+        assert.deepEqual(h.renders.at(-1).lines, [
+            "So now Apples will do that soon.", "See, it was a a tactical decision.",
+        ]);
+        assert.equal(h.renders.at(-1).options.secondaryText,
+            "Więc Apple wkrótce to zrobi.\nWidzisz, to była decyzja taktyczna.");
+        h.seek(13.2);
+        assert.deepEqual(h.renders.at(-1).lines, ["Well done.", "Oh, hi there."]);
+        assert.equal(h.renders.at(-1).options.secondaryText, "Dobrze zrobiony.\nO, cześć.");
+        h.seek(15.44);
+        assert.deepEqual(h.renders.at(-1).lines, ["I'm Sam Tucker"]);
+        assert.equal(h.renders.at(-1).options.secondaryText, "Nazywam się Sam Tucker i jestem");
+        h.seek(6);
+        assert.equal(h.renders.at(-1).options.secondaryText,
+            "I dlatego kilka lat temu spowodowaliśmy eksplozję naszych baterii.");
+    };
+    verify();
+    await h.settings.local.set({ targetLang: "de" });
+    await tick();
+    await h.settings.local.set({ targetLang: "pl" });
+    await tick();
+    h.reply(h.requests.at(-1), { text: polish });
+    await tick();
+    verify();
+});
+
+test("unmatched captions elsewhere in a video do not disable Apple sentence alignment", async () => {
+    for (const extraIn of ["en", "pl"]) {
+        const h = setup();
+        const english = JSON.parse(read("tests/fixtures/apple-asr-en.json"));
+        const polish = JSON.parse(read("tests/fixtures/apple-asr-pl.json"));
+        (extraIn === "en" ? english : polish).events.push({
+            tStartMs: 22000, dDurationMs: 1500,
+            segs: [{ utf8: "Extra" }, { utf8: " caption.", tOffsetMs: 500 }],
+        });
+        const result = h.adapter.loadCaptionTrack(track, "video1");
+        await tick();
+        h.reply(h.requests[0], { text: JSON.stringify(english) });
+        await tick();
+        h.reply(h.requests[1], { text: JSON.stringify(polish) });
+        await result;
+        h.seek(8.72);
+        assert.deepEqual(h.renders.at(-1).lines, [
+            "So now Apples will do that soon.", "See, it was a a tactical decision.",
+        ]);
+        assert.equal(h.renders.at(-1).options.secondaryText,
+            "Więc Apple wkrótce to zrobi.\nWidzisz, to była decyzja taktyczna.");
+    }
+});

@@ -249,8 +249,11 @@
             currentDisplayedTranslation = targetTranslation;
             currentDisplayedCue = activeCue;
             if (globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
+                const lines = Array.isArray(activeCue?.lines) && activeCue.lines.length > 0
+                    ? activeCue.lines
+                    : (targetText ? [targetText] : []);
                 globalThis.LectoroSubtitleOverlay.renderCustomSubtitles(
-                    targetText ? [targetText] : [],
+                    lines,
                     { secondaryText: targetTranslation, cue: activeCue },
                 );
             }
@@ -461,7 +464,7 @@
                 throw new Error(result.error || `HTTP ${result.status}`);
             }
             if (result.ok && result.text && service) {
-                const cues = service.parseTimedText(result.text, "", "", { preserveTiming: true });
+                const cues = service.parseTimedText(result.text, "", "", { preserveTiming: true, preserveCueBoundaries: true });
                 if (cues.length) return cues;
             }
         }
@@ -474,6 +477,9 @@
         const masterCues = rawCues.map((cue) => {
             const text = String(cue.text || "").replace(/\s+/g, " ").trim();
             const res = { ...cue, text, lines: [text], translation: "" };
+            if (Array.isArray(cue.segs)) {
+                Object.defineProperty(res, "segs", { value: cue.segs, enumerable: false });
+            }
             if (cue && cue.tStartMs != null) {
                 Object.defineProperty(res, "tStartMs", {
                     value: cue.tStartMs,
@@ -492,8 +498,10 @@
             }
             return res;
         });
+        const pairedMaster = service?.pairTwoClusters ? service.pairTwoClusters(masterCues) : masterCues;
+        // Rebuild translations from original clusters, never from already paired output.
         lastMasterTrack = { cues: masterCues, baseUrl, videoId };
-        setCueIndex(masterCues, videoId);
+        setCueIndex(pairedMaster, videoId);
         await settingsReady;
         if (!isCurrentRequest(generation, videoId)) return;
         if (!dualEnabled) {
@@ -506,7 +514,9 @@
             const language = targetLanguage;
             const sourceLanguage = activeTrack?.languageCode || new URL(baseUrl).searchParams.get("lang") || "";
             if (sourceLanguage.toLowerCase() === language.toLowerCase()) {
-                setCueIndex(masterCues.map((cue) => ({ ...cue, translation: cue.text })), videoId);
+                const sameLangCues = masterCues.map((cue) => ({ ...cue, translation: cue.text }));
+                const pairedSame = service?.pairTwoClusters ? service.pairTwoClusters(sameLangCues) : sameLangCues;
+                setCueIndex(pairedSame, videoId);
                 reportDualStatus("ready");
                 return;
             }
@@ -515,9 +525,10 @@
             const slaveCues = await fetchCueCandidates(translatedUrls, generation, videoId);
             if (!isCurrentRequest(generation, videoId)) return;
             if (!slaveCues.length) throw new Error("missing_translation");
-            const unifiedCues = service.alignSlaveTrackToMaster(masterCues, slaveCues);
+            const unifiedCues = service.alignSlaveTrackToMaster(masterCues, slaveCues, { alignSentences: true });
             if (!unifiedCues.some((cue) => cue.translation)) throw new Error("unaligned_translation");
-            setCueIndex(unifiedCues, videoId);
+            const pairedUnified = service?.pairTwoClusters ? service.pairTwoClusters(unifiedCues) : unifiedCues;
+            setCueIndex(pairedUnified, videoId);
             reportDualStatus("ready");
         } catch (error) {
             if (isCurrentRequest(generation, videoId)) reportDualStatus("error");
@@ -702,7 +713,7 @@
         const videoId = source.searchParams.get("v") || detail.videoId || currentVideoId;
         if (videoId && getVideoIdFromUrl() && videoId !== getVideoIdFromUrl()) return;
         if (activeTrack?.languageCode && source.searchParams.get("lang") !== activeTrack.languageCode) return;
-        const cues = getSubtitleService()?.parseTimedText(detail.text, "", "", { preserveTiming: true }) || [];
+        const cues = getSubtitleService()?.parseTimedText(detail.text, "", "", { preserveTiming: true, preserveCueBoundaries: true }) || [];
         if (cues.length) void processCaptionTrackWithDualSync(cues, detail.url, videoId);
     });
 

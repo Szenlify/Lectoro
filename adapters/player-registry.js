@@ -535,13 +535,12 @@
         const indexedLines = captionAdapter?.getCurrentCueLines?.(
             session.video,
         );
-        const hasIndexedLines = Array.isArray(indexedLines);
-        // Netflix removes and recreates its caption DOM while seeking. Once an
-        // indexed timeline exists, it is the stable source of truth and avoids
-        // briefly clearing Lectoro's subtitle overlay.
+        const hasIndexedLines = Array.isArray(indexedLines) && indexedLines.length > 0;
+        // When indexed cues are present, use them as stable source of truth.
+        // Otherwise, fall back to live DOM caption elements.
         let lines = hasIndexedLines
             ? indexedLines
-            : globalThis.LectoroBaseAdapter?.extractCueLines?.(adapterElements) || [];
+            : (globalThis.LectoroBaseAdapter?.extractCueLines?.(adapterElements) || (Array.isArray(indexedLines) ? indexedLines : []));
 
         // Direct container text fallback for #subtitles-container on TED
         if (!hasIndexedLines && lines.length === 0 && globalThis.LectoroTedAdapter?.isPage?.()) {
@@ -948,12 +947,7 @@
         video.addEventListener(
             "seeked",
             () => {
-                if (
-                    Number.isFinite(netflixVirtualTargetTime) &&
-                    Math.abs(video.currentTime - netflixVirtualTargetTime) < 0.45
-                ) {
-                    netflixVirtualTargetTime = null;
-                }
+                netflixVirtualTargetTime = null;
                 const session = videoSessions.get(video);
                 if (session === videoSessions.get(activeVideo)) {
                     dispatchSubtitleChange(session);
@@ -961,6 +955,18 @@
             },
             { passive: true },
         );
+    }
+
+    function seekNetflix(video, deltaSeconds) {
+        if (!isNetflixPage()) return;
+        const netflixAdapter = globalThis.LectoroNetflixAdapter;
+        if (typeof netflixAdapter?.requestSeekDelta === "function") {
+            netflixAdapter.requestSeekDelta(deltaSeconds, video);
+        } else if (typeof netflixAdapter?.requestSeek === "function") {
+            const current = Number(video?.currentTime) || 0;
+            const target = Math.max(0, current + deltaSeconds);
+            netflixAdapter.requestSeek(target, video);
+        }
     }
 
     async function navigateNetflixSubtitle(video, direction) {
@@ -978,19 +984,6 @@
                 direction,
             );
 
-            // Several key presses may be waiting for the first subtitle
-            // download. Rebase later continuations on the virtual target
-            // selected by the earlier press instead of repeating one cue.
-            if (
-                Number.isFinite(netflixVirtualTargetTime) &&
-                Math.abs(netflixVirtualTargetTime - baseTime) > 0.04
-            ) {
-                targetTime = await globalThis.LectoroNetflixAdapter?.getAdjacentSubtitleTime?.(
-                    netflixVirtualTargetTime,
-                    direction,
-                );
-            }
-
             if (!Number.isFinite(targetTime)) {
                 const nativeCues = getAllCues(video);
                 if (nativeCues.length > 0) {
@@ -1002,35 +995,26 @@
                 }
             }
             if (!Number.isFinite(targetTime)) {
-                // Reliable fallback: if timeline index is not available or at bounds,
-                // jump backward or forward by 5 seconds so seeking never fails
-                const fallbackDelta = direction < 0 ? -5 : 5;
+                // Reliable fallback: jump backward or forward by 10 seconds so seeking never fails
+                const fallbackDelta = direction < 0 ? -10 : 10;
                 const candidateTime = (Number.isFinite(baseTime) ? baseTime : video.currentTime) + fallbackDelta;
                 targetTime = Math.max(0, Math.min(Number.isFinite(video.duration) ? video.duration : Infinity, candidateTime));
             }
 
-            // Immediately register virtual target so consecutive rapid keypresses calculate subsequent cues
+            // Register virtual target so consecutive rapid keypresses calculate subsequent cues
             netflixVirtualTargetTime = targetTime;
 
             if (netflixVirtualResetTimer) clearTimeout(netflixVirtualResetTimer);
             netflixVirtualResetTimer = setTimeout(() => {
                 netflixVirtualTargetTime = null;
-            }, 1500);
+            }, 700);
 
-            // The bridge executes the first seek immediately and safely
-            // coalesces only genuinely rapid follow-up requests.
+            // The bridge executes the seek via Netflix player API
             globalThis.LectoroNetflixAdapter?.requestSeek?.(targetTime, video);
-
-            // Render the indexed cue now instead of waiting for Netflix to
-            // rebuild .player-timedtext after its media pipeline catches up.
-            const session = videoSessions.get(video);
-            if (session === videoSessions.get(activeVideo)) {
-                dispatchSubtitleChange(session);
-            }
         } catch (error) {
             console.warn("[Lectoro] Netflix subtitle navigation failed:", error);
             try {
-                const fallbackDelta = direction < 0 ? -5 : 5;
+                const fallbackDelta = direction < 0 ? -10 : 10;
                 const fallbackTime = Math.max(0, (video.currentTime || 0) + fallbackDelta);
                 globalThis.LectoroNetflixAdapter?.requestSeek?.(fallbackTime, video);
             } catch (_) { }
@@ -1301,6 +1285,7 @@
         getAllCues,
         getCurrentCueIndex,
         getAdjacentCueTime,
+        seekNetflix,
         navigateNetflixSubtitle,
         navigateSubtitle,
         captureVideoReviewScreenshot,

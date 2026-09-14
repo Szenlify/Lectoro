@@ -859,9 +859,11 @@
         let displayLines = rawCleanLines;
 
         if (doubleActive) {
-            // On Netflix and YouTube: combine fragmented cue segments into one single cohesive line
-            const singleRowText = rawCleanLines.join(" ").replace(/\s+/g, " ").trim();
-            displayLines = [singleRowText];
+            // Like Language Reactor: preserve distinct lines for paired clusters,
+            // or single normalized line when input is a single block with internal newlines
+            displayLines = rawCleanLines.length === 1
+                ? [rawCleanLines[0].replace(/\r?\n/g, " ").trim()]
+                : rawCleanLines;
         } else if (displayLines.length === 3) {
             const playerEl = findPlayerContainer(video);
             const actualWidth =
@@ -883,7 +885,10 @@
         const cue = options.cue || lines.cue || null;
         const rawSecondary = cue ? cue.translation : options.secondaryText;
         const secondaryText = doubleActive && typeof rawSecondary === "string"
-            ? rawSecondary.replace(/\s+/g, " ").trim() : "";
+            ? (displayLines.length >= 2
+                ? rawSecondary.replace(/[^\S\r\n]+/g, " ").trim()
+                : rawSecondary.replace(/\s+/g, " ").trim())
+            : "";
 
         if (newText === activeText && activeLines.length > 0 && activeUnifiedCue === cue) {
             const existingSecEl =
@@ -960,7 +965,7 @@
             const secEl = document.createElement("div");
             secEl.className = `${PREFIX}sub-secondary`;
             secEl.setAttribute("dir", "auto");
-            secEl.textContent = secondaryText;
+            secEl.textContent = secondaryText || "";
             secEl.setAttribute("aria-hidden", secondaryText ? "false" : "true");
             box.appendChild(secEl);
         }

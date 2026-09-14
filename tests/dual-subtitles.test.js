@@ -207,3 +207,46 @@ test("DEFAULT_READING_SETTINGS contains doubleSubtitles default to true", () => 
     assert.equal(C.UI_CLASSES.CUSTOM_SUB_SECONDARY, "__qt_sub-secondary");
 });
 
+
+test("alignment never moves Apple or other proper nouns into the next translation", () => {
+    for (const name of ["Apple", "NASA", "Łukasz", "東京"]) {
+        const master = [
+            { startTime: 1, endTime: 3, text: "So now Apples will do that soon" },
+            { startTime: 3, endTime: 5, text: "See, it was a a tactical decision" },
+            { startTime: 5, endTime: 7, text: "Well done. Oh, hi there" },
+        ];
+        const translated = [
+            `Więc ${name} wkrótce to zrobi.`,
+            "widzisz, to była decyzja taktyczna.",
+            "Dobrze zrobiony. O, cześć.",
+        ];
+        const slave = master.map((cue, i) => ({ ...cue, text: translated[i] }));
+        const before = JSON.stringify({ master, slave });
+        const aligned = SubtitleService.alignSlaveTrackToMaster(master, slave);
+        assert.deepEqual(aligned.map((cue) => cue.translation), translated);
+        assert.equal(SubtitleService.pairTwoClusters(aligned)[0].translation, translated.slice(0, 2).join("\n"));
+        assert.equal(JSON.stringify({ master, slave }), before);
+    }
+});
+
+test("sentence alignment falls back when translated sentence counts disagree", () => {
+    const source = [{ startTime: 1, endTime: 4, text: "Hello. Welcome.", segs: [
+        { utf8: "Hello.", tOffsetMs: 0 }, { utf8: "Welcome.", tOffsetMs: 1000 },
+    ] }];
+    const target = [{ startTime: 1, endTime: 4, text: "Witam serdecznie.", segs: [
+        { utf8: "Witam", tOffsetMs: 0 }, { utf8: " serdecznie.", tOffsetMs: 1000 },
+    ] }];
+    assert.deepEqual(SubtitleService.alignSlaveTrackToMaster(source, target, { alignSentences: true }),
+        SubtitleService.alignSlaveTrackToMaster(source, target));
+});
+
+test("sentence alignment leaves independently authored tracks on temporal alignment", () => {
+    const source = [{ startTime: 1, endTime: 4, text: "Hello. Welcome.", segs: [
+        { utf8: "Hello.", tOffsetMs: 0 }, { utf8: "Welcome.", tOffsetMs: 1000 },
+    ] }];
+    const target = [{ startTime: 1.5, endTime: 4, text: "Cześć. Witaj.", segs: [
+        { utf8: "Cześć.", tOffsetMs: 0 }, { utf8: "Witaj.", tOffsetMs: 1000 },
+    ] }];
+    assert.deepEqual(SubtitleService.alignSlaveTrackToMaster(source, target, { alignSentences: true }),
+        SubtitleService.alignSlaveTrackToMaster(source, target));
+});

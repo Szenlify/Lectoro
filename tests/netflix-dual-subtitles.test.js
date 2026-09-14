@@ -75,21 +75,23 @@ function harness({ slave = true, send, settings = {} } = {}) {
     };
 }
 
-test("Netflix uses official tracks, preserves exact Master gaps and passes cue identity", async (t) => {
+test("Netflix pairs both official tracks and preserves the pair throughout its interval", async (t) => {
     const h = harness(); t.after(h.dispose);
     const cues = await h.adapter.ensureSubtitleIndex();
-    assert.equal(cues.length, 2);
-    assert.equal(cues[0].endTime, 2);
-    assert.equal(cues[1].startTime, 3);
-    assert.equal(cues[0].translation, "Polski tekst");
+    assert.equal(cues.length, 1);
+    assert.equal(cues[0].startTime, 1);
+    assert.equal(cues[0].endTime, 4);
+    assert.equal(cues[0].translation, "Polski tekst\nPolski tekst");
     const first = h.adapter.getCurrentCueLines(h.video);
     assert.equal(first.cue, cues[0]);
     h.video.currentTime = 2;
-    assert.equal(h.adapter.getCurrentCueLines(h.video).length, 0);
+    assert.equal(h.adapter.getCurrentCueLines(h.video).cue, cues[0]);
     h.video.currentTime = 3;
     const second = h.adapter.getCurrentCueLines(h.video);
-    assert.equal(second.cue, cues[1]);
-    assert.notEqual(first.cue, second.cue);
+    assert.equal(second.cue, cues[0]);
+    assert.equal(first.cue, second.cue);
+    h.video.currentTime = 4;
+    assert.equal(h.adapter.getCurrentCueLines(h.video).length, 0);
     assert.equal(h.statuses.at(-1).status, "ready");
     assert.equal(h.requests.length, 2);
     assert.ok(h.requests.every((request) => request.type === "QT_FETCH_NETFLIX_TIMED_TEXT"));
@@ -122,7 +124,7 @@ test("Netflix publishes Master during Slave load, surfaces HTTP 429 and retries 
     await building;
     assert.equal(h.statuses.at(-1).status, "error");
     await h.statuses.at(-1).retry();
-    assert.equal(h.adapter.getCurrentCueLines(h.video).translation, "Tłumaczenie");
+    assert.equal(h.adapter.getCurrentCueLines(h.video).translation, "Tłumaczenie\nTłumaczenie");
     assert.equal(h.statuses.at(-1).status, "ready");
 });
 
@@ -144,7 +146,7 @@ test("Netflix target-language changes reject a stale Slave response", async (t) 
 test("Netflix disabling dual subtitles clears translation and fetches only Master", async (t) => {
     const h = harness(); t.after(h.dispose);
     await h.adapter.ensureSubtitleIndex();
-    assert.equal(h.adapter.getCurrentCueLines(h.video).translation, "Polski tekst");
+    assert.equal(h.adapter.getCurrentCueLines(h.video).translation, "Polski tekst\nPolski tekst");
     const previousRequests = h.requests.length;
     await h.local.local.set({ doubleSubtitles: false });
     assert.equal(h.adapter.getCurrentCueLines(h.video).translation, "");

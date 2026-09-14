@@ -146,9 +146,9 @@
 #__qt_tooltip {
   position: absolute;
   z-index: 2147483647;
-  max-width: min(500px, calc(100vw - 20px)) !important;
+  max-width: min(500px, calc(100vw)) !important;
   height: auto !important;
-  max-height: min(500px, calc(100vh - 48px)) !important;
+  max-height: min(500px, calc(100vh - 20px)) !important;
   bottom: auto !important;
   right: auto !important;
   box-sizing: border-box;
@@ -870,6 +870,7 @@ video::cue {
   font-weight: 500 !important;
   line-height: 1.32 !important;
   letter-spacing: 0.012em !important;
+  white-space: pre-line !important;
 }
 
 .__qt_sub-secondary:empty,
