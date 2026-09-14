@@ -26,6 +26,7 @@ const ALARMS = Object.freeze({
   UPDATE_BADGE: "updateBadge",
   AUTO_SYNC: "firebaseAutoSync",
   NEXT_DUE_REVIEW: "nextDueReview",
+  SYNC_PACK: "syncDictionaryPack",
 });
 const AUTO_SYNC_DELAY_MS = 60_000;
 const BADGE_COLOR = "#4a6cf7";
@@ -419,10 +420,31 @@ async function notifyTabsReviewDue(dueCount) {
   }
 }
 
+async function syncActiveDictionaryPack(force = false) {
+  if (!globalThis.DictionaryStore?.syncPack) return;
+  try {
+    const data = await chrome.storage.local.get([
+      KEYS.TARGET_LANGUAGE,
+      KEYS.SOURCE_LANGUAGE,
+    ]);
+    const target = data[KEYS.TARGET_LANGUAGE] || "pl";
+    const source = data[KEYS.SOURCE_LANGUAGE] || "en";
+    if (source !== target) {
+      await globalThis.DictionaryStore.syncPack(source, target, { force });
+    }
+  } catch (err) {
+    console.warn("[Lectoro] Dictionary pack sync error:", err.message);
+  }
+}
+
 chrome.alarms.create(ALARMS.UPDATE_BADGE, { periodInMinutes: 5 });
+chrome.alarms.create(ALARMS.SYNC_PACK, { periodInMinutes: 720 });
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === ALARMS.UPDATE_BADGE) updateBadge();
+  if (alarm.name === ALARMS.SYNC_PACK) {
+    syncActiveDictionaryPack().catch(() => {});
+  }
   if (alarm.name === ALARMS.AUTO_SYNC) {
     flushPendingChanges().catch((error) =>
       console.warn("[Lectoro] Auto-sync postponed:", error.message)
@@ -441,6 +463,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 chrome.runtime.onInstalled.addListener(() => {
   updateBadge();
   initializeAiUsage();
+  syncActiveDictionaryPack().catch(() => {});
 });
 chrome.runtime.onStartup.addListener(() => {
   updateBadge();
@@ -448,10 +471,14 @@ chrome.runtime.onStartup.addListener(() => {
     if (Object.keys(pending).length > 0) scheduleAutoSync();
   });
   initializeAiUsage();
+  syncActiveDictionaryPack().catch(() => {});
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") return;
+  if (changes[KEYS.TARGET_LANGUAGE] || changes[KEYS.SOURCE_LANGUAGE]) {
+    syncActiveDictionaryPack().catch(() => {});
+  }
   const savedWordsChange = changes[KEYS.SAVED_WORDS];
   if (!savedWordsChange) return;
 

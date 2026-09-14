@@ -1,0 +1,264 @@
+{
+  "schemaVersion": 2,
+  "source": "en",
+  "target": "nl",
+  "updatedAt": 1789419726729,
+  "entries": {
+    "time": {
+      "t": "tijd",
+      "d": {
+        "s": "The indefinite continued progress of existence and events.",
+        "t": "Het voortdurende verloop van momenten en gebeurtenissen."
+      },
+      "s": [
+        "period",
+        "moment"
+      ],
+      "e": [
+        {
+          "s": "I do not have enough time today.",
+          "t": "Ik heb vandaag niet genoeg tijd."
+        },
+        {
+          "s": "What time is the meeting?",
+          "t": "Hoe laat is de vergadering?"
+        },
+        {
+          "s": "Time flies when you are having fun.",
+          "t": "De tijd vliegt als je plezier hebt."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "person": {
+      "t": "persoon",
+      "d": {
+        "s": "A human being regarded as an individual.",
+        "t": "Een mens beschouwd als individu."
+      },
+      "s": [
+        "individual",
+        "human"
+      ],
+      "e": [
+        {
+          "s": "She is a kind person.",
+          "t": "Zij is een aardig persoon."
+        },
+        {
+          "s": "Only one person was in the room.",
+          "t": "Er was slechts één persoon in de kamer."
+        },
+        {
+          "s": "Each person must show an ID.",
+          "t": "Elk persoon moet een identiteitsbewijs tonen."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "year": {
+      "t": "jaar",
+      "d": {
+        "s": "A period of 365 or 366 days.",
+        "t": "Een periode van 365 of 366 dagen."
+      },
+      "s": [
+        "twelvemonth"
+      ],
+      "e": [
+        {
+          "s": "We moved here last year.",
+          "t": "We zijn vorig jaar hierheen verhuisd."
+        },
+        {
+          "s": "The project will finish next year.",
+          "t": "Het project zal volgend jaar klaar zijn."
+        },
+        {
+          "s": "It takes a year to train for this.",
+          "t": "Het duurt een jaar om hiervoor te trainen."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "way": {
+      "t": "manier",
+      "d": {
+        "s": "A method, style, or manner of doing something.",
+        "t": "Een methode, wijze of weg om iets te doen."
+      },
+      "s": [
+        "manner",
+        "method"
+      ],
+      "e": [
+        {
+          "s": "There is a better way to solve this.",
+          "t": "Er is een betere manier om dit op te lossen."
+        },
+        {
+          "s": "Can you show me the way to the station?",
+          "t": "Kun je me de weg naar het station wijzen?"
+        },
+        {
+          "s": "She did it in her own way.",
+          "t": "Ze deed het op haar eigen manier."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "day": {
+      "t": "dag",
+      "d": {
+        "s": "A period of twenty-four hours.",
+        "t": "Een periode van vierentwintig uur."
+      },
+      "s": [
+        "daytime"
+      ],
+      "e": [
+        {
+          "s": "It was a sunny day yesterday.",
+          "t": "Het was gisteren een zonnige dag."
+        },
+        {
+          "s": "I drink coffee every day.",
+          "t": "Ik drink elke dag koffie."
+        },
+        {
+          "s": "Have a nice day at work.",
+          "t": "Fijne dag op het werk."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "thing": {
+      "t": "ding",
+      "d": {
+        "s": "An object, item, or entity.",
+        "t": "Een voorwerp, object of zaak."
+      },
+      "s": [
+        "object",
+        "item"
+      ],
+      "e": [
+        {
+          "s": "What is that thing on the table?",
+          "t": "Wat is dat ding op de tafel?"
+        },
+        {
+          "s": "The best thing to do is wait.",
+          "t": "Het beste wat je kunt doen is wachten."
+        },
+        {
+          "s": "I have one more thing to say.",
+          "t": "Ik heb nog één ding te zeggen."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "man": {
+      "t": "man",
+      "d": {
+        "s": "An adult male human being.",
+        "t": "Een volwassen mannelijk mens."
+      },
+      "s": [
+        "gentleman"
+      ],
+      "e": [
+        {
+          "s": "A tall man opened the door.",
+          "t": "Een lange man opende de deur."
+        },
+        {
+          "s": "He is a wise man with great experience.",
+          "t": "Hij is een wijze man met veel ervaring."
+        },
+        {
+          "s": "The man smiled at the children.",
+          "t": "De man glimlachte naar de kinderen."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "world": {
+      "t": "wereld",
+      "d": {
+        "s": "The earth, together with all of its countries and peoples.",
+        "t": "De aarde met alle landen en volkeren."
+      },
+      "s": [
+        "earth",
+        "globe"
+      ],
+      "e": [
+        {
+          "s": "She traveled around the world.",
+          "t": "Zij reisde de wereld rond."
+        },
+        {
+          "s": "We want to make the world a better place.",
+          "t": "We willen van de wereld een betere plek maken."
+        },
+        {
+          "s": "News travels fast in our modern world.",
+          "t": "Nieuws reist snel in onze moderne wereld."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "life": {
+      "t": "leven",
+      "d": {
+        "s": "The condition that distinguishes animals and plants from inorganic matter.",
+        "t": "De toestand die levende wezens onderscheidt van anorganische materie."
+      },
+      "s": [
+        "existence",
+        "being"
+      ],
+      "e": [
+        {
+          "s": "She lived a long and happy life.",
+          "t": "Zij leidde een lang en gelukkig leven."
+        },
+        {
+          "s": "Water is essential for life.",
+          "t": "Water is essentieel voor het leven."
+        },
+        {
+          "s": "This discovery changed his life completely.",
+          "t": "Deze ontdekking veranderde zijn leven volledig."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "hand": {
+      "t": "hand",
+      "d": {
+        "s": "The end part of a person's arm beyond the wrist.",
+        "t": "Het uiteinde van de menselijke arm voorbij de pols."
+      },
+      "s": [
+        "palm"
+      ],
+      "e": [
+        {
+          "s": "He raised his hand to ask a question.",
+          "t": "Hij stak zijn hand op om een vraag te stellen."
+        },
+        {
+          "s": "She held my hand tightly.",
+          "t": "Ze hield mijn hand stevig vast."
+        },
+        {
+          "s": "Wash your hands before eating.",
+          "t": "Was je handen voor het eten."
+        }
+      ],
+      "languageValidation": 1
+    }
+  }
+}

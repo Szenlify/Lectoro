@@ -1,0 +1,264 @@
+{
+  "schemaVersion": 2,
+  "source": "en",
+  "target": "cs",
+  "updatedAt": 1789419726728,
+  "entries": {
+    "time": {
+      "t": "čas",
+      "d": {
+        "s": "The indefinite continued progress of existence and events.",
+        "t": "Neustálý běh okamžiků a událostí."
+      },
+      "s": [
+        "period",
+        "moment"
+      ],
+      "e": [
+        {
+          "s": "I do not have enough time today.",
+          "t": "Dnes nemám dost času."
+        },
+        {
+          "s": "What time is the meeting?",
+          "t": "V kolik hodin je schůzka?"
+        },
+        {
+          "s": "Time flies when you are having fun.",
+          "t": "Čas letí, když se bavíte."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "person": {
+      "t": "osoba",
+      "d": {
+        "s": "A human being regarded as an individual.",
+        "t": "Lidská bytost vnímaná jako jednotlivec."
+      },
+      "s": [
+        "individual",
+        "human"
+      ],
+      "e": [
+        {
+          "s": "She is a kind person.",
+          "t": "Ona je milá osoba."
+        },
+        {
+          "s": "Only one person was in the room.",
+          "t": "V místnosti byla jen jedna osoba."
+        },
+        {
+          "s": "Each person must show an ID.",
+          "t": "Každá osoba musí předložit průkaz totožnosti."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "year": {
+      "t": "rok",
+      "d": {
+        "s": "A period of 365 or 366 days.",
+        "t": "Období 365 nebo 366 dní."
+      },
+      "s": [
+        "twelvemonth"
+      ],
+      "e": [
+        {
+          "s": "We moved here last year.",
+          "t": "Přestěhovali jsme se sem minulý rok."
+        },
+        {
+          "s": "The project will finish next year.",
+          "t": "Projekt skončí příští rok."
+        },
+        {
+          "s": "It takes a year to train for this.",
+          "t": "Příprava na to trvá jeden rok."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "way": {
+      "t": "způsob",
+      "d": {
+        "s": "A method, style, or manner of doing something.",
+        "t": "Metoda, styl nebo cesta, jak něco udělat."
+      },
+      "s": [
+        "manner",
+        "method"
+      ],
+      "e": [
+        {
+          "s": "There is a better way to solve this.",
+          "t": "Existuje lepší způsob, jak to vyřešit."
+        },
+        {
+          "s": "Can you show me the way to the station?",
+          "t": "Můžete mi ukázat cestu na nádraží?"
+        },
+        {
+          "s": "She did it in her own way.",
+          "t": "Udělala to po svém."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "day": {
+      "t": "den",
+      "d": {
+        "s": "A period of twenty-four hours.",
+        "t": "Období dvaceti čtyř hodin."
+      },
+      "s": [
+        "daytime"
+      ],
+      "e": [
+        {
+          "s": "It was a sunny day yesterday.",
+          "t": "Včera byl slunečný den."
+        },
+        {
+          "s": "I drink coffee every day.",
+          "t": "Každý den piji kávu."
+        },
+        {
+          "s": "Have a nice day at work.",
+          "t": "Hezký den v práci."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "thing": {
+      "t": "věc",
+      "d": {
+        "s": "An object, item, or entity.",
+        "t": "Předmět, objekt nebo záležitost."
+      },
+      "s": [
+        "object",
+        "item"
+      ],
+      "e": [
+        {
+          "s": "What is that thing on the table?",
+          "t": "Co je ta věc na stole?"
+        },
+        {
+          "s": "The best thing to do is wait.",
+          "t": "Nejlepší věc je počkat."
+        },
+        {
+          "s": "I have one more thing to say.",
+          "t": "Mám ještě jednu věc na srdci."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "man": {
+      "t": "muž",
+      "d": {
+        "s": "An adult male human being.",
+        "t": "Dospělý člověk mužského pohlaví."
+      },
+      "s": [
+        "gentleman"
+      ],
+      "e": [
+        {
+          "s": "A tall man opened the door.",
+          "t": "Vysoký muž otevřel dveře."
+        },
+        {
+          "s": "He is a wise man with great experience.",
+          "t": "Je to moudrý muž s velkými zkušenostmi."
+        },
+        {
+          "s": "The man smiled at the children.",
+          "t": "Muž se usmál na děti."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "world": {
+      "t": "svět",
+      "d": {
+        "s": "The earth, together with all of its countries and peoples.",
+        "t": "Země se všemi svými státy a lidmi."
+      },
+      "s": [
+        "earth",
+        "globe"
+      ],
+      "e": [
+        {
+          "s": "She traveled around the world.",
+          "t": "Cestovala kolem světa."
+        },
+        {
+          "s": "We want to make the world a better place.",
+          "t": "Chceme udělat svět lepším místem."
+        },
+        {
+          "s": "News travels fast in our modern world.",
+          "t": "V našem moderním světě se zprávy šíří rychle."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "life": {
+      "t": "život",
+      "d": {
+        "s": "The condition that distinguishes animals and plants from inorganic matter.",
+        "t": "Stav, který odlišuje živé organismy od anorganické hmoty."
+      },
+      "s": [
+        "existence",
+        "being"
+      ],
+      "e": [
+        {
+          "s": "She lived a long and happy life.",
+          "t": "Prožila dlouhý a šťastný život."
+        },
+        {
+          "s": "Water is essential for life.",
+          "t": "Voda je pro život nezbytná."
+        },
+        {
+          "s": "This discovery changed his life completely.",
+          "t": "Tento objev zcela změnil jeho život."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "hand": {
+      "t": "ruka",
+      "d": {
+        "s": "The end part of a person's arm beyond the wrist.",
+        "t": "Koncová část lidské paže od zápěstí."
+      },
+      "s": [
+        "palm"
+      ],
+      "e": [
+        {
+          "s": "He raised his hand to ask a question.",
+          "t": "Zvedl ruku, aby položil otázku."
+        },
+        {
+          "s": "She held my hand tightly.",
+          "t": "Pevně držela mou ruku."
+        },
+        {
+          "s": "Wash your hands before eating.",
+          "t": "Před jídlem si umyjte ruce."
+        }
+      ],
+      "languageValidation": 1
+    }
+  }
+}

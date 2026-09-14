@@ -1,0 +1,264 @@
+{
+  "schemaVersion": 2,
+  "source": "en",
+  "target": "fr",
+  "updatedAt": 1789419726728,
+  "entries": {
+    "time": {
+      "t": "temps",
+      "d": {
+        "s": "The indefinite continued progress of existence and events.",
+        "t": "L'écoulement continu des moments et des événements."
+      },
+      "s": [
+        "period",
+        "moment"
+      ],
+      "e": [
+        {
+          "s": "I do not have enough time today.",
+          "t": "Je n'ai pas assez de temps aujourd'hui."
+        },
+        {
+          "s": "What time is the meeting?",
+          "t": "À quelle heure est la réunion ?"
+        },
+        {
+          "s": "Time flies when you are having fun.",
+          "t": "Le temps passe vite quand on s'amuse."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "person": {
+      "t": "personne",
+      "d": {
+        "s": "A human being regarded as an individual.",
+        "t": "Un être humain considéré comme un individu."
+      },
+      "s": [
+        "individual",
+        "human"
+      ],
+      "e": [
+        {
+          "s": "She is a kind person.",
+          "t": "C'est une personne gentille."
+        },
+        {
+          "s": "Only one person was in the room.",
+          "t": "Une seule personne était dans la pièce."
+        },
+        {
+          "s": "Each person must show an ID.",
+          "t": "Chaque personne doit présenter une pièce d'identité."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "year": {
+      "t": "année",
+      "d": {
+        "s": "A period of 365 or 366 days.",
+        "t": "Une période de 365 ou 366 jours."
+      },
+      "s": [
+        "twelvemonth"
+      ],
+      "e": [
+        {
+          "s": "We moved here last year.",
+          "t": "Nous avons emménagé ici l'année dernière."
+        },
+        {
+          "s": "The project will finish next year.",
+          "t": "Le projet se terminera l'année prochaine."
+        },
+        {
+          "s": "It takes a year to train for this.",
+          "t": "Il faut un an d'entraînement pour cela."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "way": {
+      "t": "façon",
+      "d": {
+        "s": "A method, style, or manner of doing something.",
+        "t": "Une méthode, un moyen ou un chemin."
+      },
+      "s": [
+        "manner",
+        "method"
+      ],
+      "e": [
+        {
+          "s": "There is a better way to solve this.",
+          "t": "Il y a une meilleure façon de résoudre cela."
+        },
+        {
+          "s": "Can you show me the way to the station?",
+          "t": "Pouvez-vous me montrer le chemin de la gare ?"
+        },
+        {
+          "s": "She did it in her own way.",
+          "t": "Elle l'a fait à sa façon."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "day": {
+      "t": "jour",
+      "d": {
+        "s": "A period of twenty-four hours.",
+        "t": "Une période de vingt-quatre heures."
+      },
+      "s": [
+        "daytime"
+      ],
+      "e": [
+        {
+          "s": "It was a sunny day yesterday.",
+          "t": "Hier était une journée ensoleillée."
+        },
+        {
+          "s": "I drink coffee every day.",
+          "t": "Je bois du café tous les jours."
+        },
+        {
+          "s": "Have a nice day at work.",
+          "t": "Passe une bonne journée au travail."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "thing": {
+      "t": "chose",
+      "d": {
+        "s": "An object, item, or entity.",
+        "t": "Un objet, un élément ou une entité."
+      },
+      "s": [
+        "object",
+        "item"
+      ],
+      "e": [
+        {
+          "s": "What is that thing on the table?",
+          "t": "Quelle est cette chose sur la table ?"
+        },
+        {
+          "s": "The best thing to do is wait.",
+          "t": "La meilleure chose à faire est d'attendre."
+        },
+        {
+          "s": "I have one more thing to say.",
+          "t": "J'ai encore une chose à dire."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "man": {
+      "t": "homme",
+      "d": {
+        "s": "An adult male human being.",
+        "t": "Un être humain adulte de sexe masculin."
+      },
+      "s": [
+        "gentleman"
+      ],
+      "e": [
+        {
+          "s": "A tall man opened the door.",
+          "t": "Un grand homme a ouvert la porte."
+        },
+        {
+          "s": "He is a wise man with great experience.",
+          "t": "C'est un homme sage avec une grande expérience."
+        },
+        {
+          "s": "The man smiled at the children.",
+          "t": "L'homme a souri aux enfants."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "world": {
+      "t": "monde",
+      "d": {
+        "s": "The earth, together with all of its countries and peoples.",
+        "t": "La terre avec tous ses pays et ses peuples."
+      },
+      "s": [
+        "earth",
+        "globe"
+      ],
+      "e": [
+        {
+          "s": "She traveled around the world.",
+          "t": "Elle a voyagé autour du monde."
+        },
+        {
+          "s": "We want to make the world a better place.",
+          "t": "Nous voulons faire du monde un endroit meilleur."
+        },
+        {
+          "s": "News travels fast in our modern world.",
+          "t": "Les nouvelles voyagent vite dans notre monde moderne."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "life": {
+      "t": "vie",
+      "d": {
+        "s": "The condition that distinguishes animals and plants from inorganic matter.",
+        "t": "L'état qui distingue les êtres vivants de la matière inorganique."
+      },
+      "s": [
+        "existence",
+        "being"
+      ],
+      "e": [
+        {
+          "s": "She lived a long and happy life.",
+          "t": "Elle a vécu une vie longue et heureuse."
+        },
+        {
+          "s": "Water is essential for life.",
+          "t": "L'eau est essentielle à la vie."
+        },
+        {
+          "s": "This discovery changed his life completely.",
+          "t": "Cette découverte a complètement changé sa vie."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "hand": {
+      "t": "main",
+      "d": {
+        "s": "The end part of a person's arm beyond the wrist.",
+        "t": "La partie terminale du bras humain au-delà du poignet."
+      },
+      "s": [
+        "palm"
+      ],
+      "e": [
+        {
+          "s": "He raised his hand to ask a question.",
+          "t": "Il a levé la main pour poser une question."
+        },
+        {
+          "s": "She held my hand tightly.",
+          "t": "Elle a serré ma main fermement."
+        },
+        {
+          "s": "Wash your hands before eating.",
+          "t": "Lavez-vous les mains avant de manger."
+        }
+      ],
+      "languageValidation": 1
+    }
+  }
+}

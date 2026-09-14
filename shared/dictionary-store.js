@@ -144,6 +144,19 @@
                     tx.onabort = tx.onerror = () => reject(tx.error || new Error("Dictionary write failed"));
                 });
             },
+            async batchPut(records) {
+                if (!records || !records.length) return;
+                const db = await open();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction("records", "readwrite");
+                    const store = tx.objectStore("records");
+                    for (const record of records) {
+                        store.put(record);
+                    }
+                    tx.oncomplete = () => resolve();
+                    tx.onabort = tx.onerror = () => reject(tx.error || new Error("Dictionary batch write failed"));
+                });
+            },
         };
     }
 
@@ -336,7 +349,115 @@
             rememberLive(key, data);
             await save({ key, data, bytes: new TextEncoder().encode(JSON.stringify(data)).length, lastUsed: now() });
         }
-        return Object.freeze({ getLive, putLive, getPhrase, setPhraseDictionary, getAnalysis, putAnalysis });
+        async function syncPack(source, target, { force = false } = {}) {
+            const supported = root.LectoroConstants?.SUPPORTED_LANGUAGES;
+            if (!supported || !Object.hasOwn(supported, source) || !Object.hasOwn(supported, target) || source === target) {
+                return { updated: false, reason: "unsupported_pair" };
+            }
+            const pair = `${source}-${target}`;
+            const metaKey = `pack_meta:${pair}`;
+            const metaRecord = await read(metaKey);
+            const meta = metaRecord?.data || {};
+
+            const lastCheck = meta.lastCheck || 0;
+            const savedEtag = meta.etag || null;
+
+            if (!force && (now() - lastCheck) < 12 * 60 * 60 * 1000) {
+                return { updated: false, reason: "checked_recently", etag: savedEtag };
+            }
+
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 20000);
+            try {
+                const headers = {};
+                if (savedEtag) {
+                    headers["If-None-Match"] = savedEtag;
+                }
+                const response = await fetcher(BASE_URL + `packs/${pair}.json`, {
+                    signal: controller.signal,
+                    credentials: "omit",
+                    redirect: "error",
+                    cache: "no-cache",
+                    headers,
+                });
+
+                if (response.status === 304) {
+                    await save({
+                        key: metaKey,
+                        data: { ...meta, lastCheck: now() },
+                        bytes: 100,
+                        lastUsed: now(),
+                    });
+                    return { updated: false, notModified: true, etag: savedEtag };
+                }
+
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        await save({
+                            key: metaKey,
+                            data: { ...meta, lastCheck: now() },
+                            bytes: 100,
+                            lastUsed: now(),
+                        });
+                        return { updated: false, reason: "not_found" };
+                    }
+                    throw Object.assign(new Error(`Dictionary pack HTTP ${response.status}`), { status: response.status });
+                }
+
+                const newEtag = response.headers?.get ? (response.headers.get("etag") || response.headers.get("ETag")) : null;
+                const jsonText = await response.text();
+                const packData = JSON.parse(jsonText);
+
+                if (!isObject(packData?.entries)) {
+                    throw new Error("Invalid dictionary pack format");
+                }
+
+                const records = [];
+                const timestamp = now();
+                let wordsCount = 0;
+
+                for (const [rawWord, entry] of Object.entries(packData.entries)) {
+                    const word = rawWord.normalize("NFKC").trim().toLowerCase();
+                    try {
+                        validateLive(entry);
+                        if (entry.languageValidation === 1) {
+                            const key = liveKey(source, target, word);
+                            rememberLive(key, entry);
+                            records.push({
+                                key,
+                                data: entry,
+                                bytes: 300,
+                                lastUsed: timestamp,
+                            });
+                            wordsCount++;
+                        }
+                    } catch (_) {}
+                }
+
+                if (typeof persistence.batchPut === "function" && records.length) {
+                    await persistence.batchPut(records);
+                } else {
+                    for (const record of records) {
+                        await save(record);
+                    }
+                }
+
+                await save({
+                    key: metaKey,
+                    data: { etag: newEtag, lastCheck: timestamp, wordsCount },
+                    bytes: 100,
+                    lastUsed: timestamp,
+                });
+
+                return { updated: true, wordsCount, etag: newEtag };
+            } catch (error) {
+                root.console?.warn(`Dictionary pack sync failed for ${pair}:`, error.message);
+                return { updated: false, error: error.message };
+            } finally {
+                clearTimeout(timer);
+            }
+        }
+        return Object.freeze({ getLive, putLive, getPhrase, setPhraseDictionary, getAnalysis, putAnalysis, syncPack });
     }
 
     root.DictionaryStore = createStore();

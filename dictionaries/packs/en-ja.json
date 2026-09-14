@@ -1,0 +1,264 @@
+{
+  "schemaVersion": 2,
+  "source": "en",
+  "target": "ja",
+  "updatedAt": 1789419726728,
+  "entries": {
+    "time": {
+      "t": "時間",
+      "d": {
+        "s": "The indefinite continued progress of existence and events.",
+        "t": "出来事や存在が連続して経過すること。"
+      },
+      "s": [
+        "period",
+        "moment"
+      ],
+      "e": [
+        {
+          "s": "I do not have enough time today.",
+          "t": "今日は十分な時間がありません。"
+        },
+        {
+          "s": "What time is the meeting?",
+          "t": "会議は何時ですか？"
+        },
+        {
+          "s": "Time flies when you are having fun.",
+          "t": "楽しんでいると時間はあっという間に過ぎます。"
+        }
+      ],
+      "languageValidation": 1
+    },
+    "person": {
+      "t": "人",
+      "d": {
+        "s": "A human being regarded as an individual.",
+        "t": "個人としての人間。"
+      },
+      "s": [
+        "individual",
+        "human"
+      ],
+      "e": [
+        {
+          "s": "She is a kind person.",
+          "t": "彼女は親切な人です。"
+        },
+        {
+          "s": "Only one person was in the room.",
+          "t": "部屋には一人しかいませんでした。"
+        },
+        {
+          "s": "Each person must show an ID.",
+          "t": "各人が身分証明書を提示しなければなりません。"
+        }
+      ],
+      "languageValidation": 1
+    },
+    "year": {
+      "t": "年",
+      "d": {
+        "s": "A period of 365 or 366 days.",
+        "t": "365日または366日の期間。"
+      },
+      "s": [
+        "twelvemonth"
+      ],
+      "e": [
+        {
+          "s": "We moved here last year.",
+          "t": "私たちは去年にここへ引っ越してきました。"
+        },
+        {
+          "s": "The project will finish next year.",
+          "t": "プロジェクトは来年完了します。"
+        },
+        {
+          "s": "It takes a year to train for this.",
+          "t": "これに向けてトレーニングするには1年かかります。"
+        }
+      ],
+      "languageValidation": 1
+    },
+    "way": {
+      "t": "方法",
+      "d": {
+        "s": "A method, style, or manner of doing something.",
+        "t": "何かを行う手段ややり方、道。"
+      },
+      "s": [
+        "manner",
+        "method"
+      ],
+      "e": [
+        {
+          "s": "There is a better way to solve this.",
+          "t": "これを解決するもっと良い方法があります。"
+        },
+        {
+          "s": "Can you show me the way to the station?",
+          "t": "駅への道を教えてもらえますか？"
+        },
+        {
+          "s": "She did it in her own way.",
+          "t": "彼女は自分自身のやり方でそれをやりました。"
+        }
+      ],
+      "languageValidation": 1
+    },
+    "day": {
+      "t": "日",
+      "d": {
+        "s": "A period of twenty-four hours.",
+        "t": "24時間の期間、または昼間。"
+      },
+      "s": [
+        "daytime"
+      ],
+      "e": [
+        {
+          "s": "It was a sunny day yesterday.",
+          "t": "昨日は晴れた日でした。"
+        },
+        {
+          "s": "I drink coffee every day.",
+          "t": "私は毎日コーヒーを飲みます。"
+        },
+        {
+          "s": "Have a nice day at work.",
+          "t": "仕事場で良い一日をお過ごしください。"
+        }
+      ],
+      "languageValidation": 1
+    },
+    "thing": {
+      "t": "物",
+      "d": {
+        "s": "An object, item, or entity.",
+        "t": "物体、項目、または事柄。"
+      },
+      "s": [
+        "object",
+        "item"
+      ],
+      "e": [
+        {
+          "s": "What is that thing on the table?",
+          "t": "テーブルの上のあの物は何ですか？"
+        },
+        {
+          "s": "The best thing to do is wait.",
+          "t": "最も良い事は待つことです。"
+        },
+        {
+          "s": "I have one more thing to say.",
+          "t": "言いたい事がもう一つあります。"
+        }
+      ],
+      "languageValidation": 1
+    },
+    "man": {
+      "t": "男性",
+      "d": {
+        "s": "An adult male human being.",
+        "t": "大人の人間の男性。"
+      },
+      "s": [
+        "gentleman"
+      ],
+      "e": [
+        {
+          "s": "A tall man opened the door.",
+          "t": "背の高い男性がドアを開けました。"
+        },
+        {
+          "s": "He is a wise man with great experience.",
+          "t": "彼は経験豊かな賢い男性です。"
+        },
+        {
+          "s": "The man smiled at the children.",
+          "t": "その男性は子供たちに微笑みかけました。"
+        }
+      ],
+      "languageValidation": 1
+    },
+    "world": {
+      "t": "世界",
+      "d": {
+        "s": "The earth, together with all of its countries and peoples.",
+        "t": "すべての国や人々を含む地球。"
+      },
+      "s": [
+        "earth",
+        "globe"
+      ],
+      "e": [
+        {
+          "s": "She traveled around the world.",
+          "t": "彼女は世界中を旅しました。"
+        },
+        {
+          "s": "We want to make the world a better place.",
+          "t": "私たちは世界をもっと良い場所にしたいと考えています。"
+        },
+        {
+          "s": "News travels fast in our modern world.",
+          "t": "現代の世界ではニュースが速く伝わります。"
+        }
+      ],
+      "languageValidation": 1
+    },
+    "life": {
+      "t": "人生",
+      "d": {
+        "s": "The condition that distinguishes animals and plants from inorganic matter.",
+        "t": "生物を無機物と区別する状態、または生涯。"
+      },
+      "s": [
+        "existence",
+        "being"
+      ],
+      "e": [
+        {
+          "s": "She lived a long and happy life.",
+          "t": "彼女は長くて幸せな人生を送りました。"
+        },
+        {
+          "s": "Water is essential for life.",
+          "t": "水は生命に不可欠です。"
+        },
+        {
+          "s": "This discovery changed his life completely.",
+          "t": "この発見は彼の人生を完全に変えました。"
+        }
+      ],
+      "languageValidation": 1
+    },
+    "hand": {
+      "t": "手",
+      "d": {
+        "s": "The end part of a person's arm beyond the wrist.",
+        "t": "手首から先の身体の部分。"
+      },
+      "s": [
+        "palm"
+      ],
+      "e": [
+        {
+          "s": "He raised his hand to ask a question.",
+          "t": "彼は質問するために手を挙げました。"
+        },
+        {
+          "s": "She held my hand tightly.",
+          "t": "彼女は私の手を強く握りました。"
+        },
+        {
+          "s": "Wash your hands before eating.",
+          "t": "食事の前には手を洗いましょう。"
+        }
+      ],
+      "languageValidation": 1
+    }
+  }
+}

@@ -1,5 +1,7 @@
 const { onRequest } = require("firebase-functions/v2/https");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { defineSecret } = require("firebase-functions/params");
+const { consolidateAll } = require("./consolidate-dictionary");
 const {
     SUBSCRIPTION_PLANS,
     SUBSCRIPTION_LIMITS,
@@ -50,7 +52,7 @@ function getR2SecretAccessKey() {
 function getR2Config() {
     return {
         accountId: process.env.R2_ACCOUNT_ID || "94b9a2de404c8e3f8efa532d0607b5f1",
-        accessKeyId: process.env.R2_ACCESS_KEY_ID || "75713468bf056703eec66c5821e564f5",
+        accessKeyId: process.env.R2_ACCESS_KEY_ID || "fa5ae76d960a9dad174cef0c23989065",
         secretAccessKey: getR2SecretAccessKey(),
         bucketName: process.env.R2_BUCKET_NAME || "lectoro-media",
         publicUrl: process.env.R2_PUBLIC_URL || "https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev",
@@ -348,6 +350,24 @@ exports.geminiProxy = onRequest(
                 console.warn("[liveTranslation]", error.stage || "request", error.message, "input:", JSON.stringify(req.body?.text));
                 const { status, ...failure } = translationError(error);
                 return res.status(status).json(failure);
+            }
+        }
+
+        if (req.body?.action === "consolidateDictionary") {
+            const pair = req.body?.pair || "all";
+            const force = req.body?.force === true;
+            const config = getR2Config();
+            try {
+                if (pair === "all") {
+                    const results = await consolidateAll(config, { forceUpload: force });
+                    return res.status(200).json({ success: true, results });
+                } else {
+                    const result = await consolidatePair(config, pair, { forceUpload: force });
+                    return res.status(200).json({ success: true, result });
+                }
+            } catch (error) {
+                console.warn("[consolidateDictionary]", error.message);
+                return res.status(500).json({ error: error.message });
             }
         }
 
@@ -718,3 +738,20 @@ exports.geminiProxy = onRequest(
         });
     },
 );
+
+exports.consolidateDictionaryDaily = onSchedule(
+    {
+        schedule: "0 3 * * *",
+        timeZone: "Europe/Warsaw",
+        memory: "1GiB",
+        timeoutSeconds: 540,
+        secrets: [r2SecretAccessKey],
+    },
+    async () => {
+        const config = getR2Config();
+        console.log("[consolidateDictionaryDaily] Starting daily consolidation...");
+        const results = await consolidateAll(config);
+        console.log("[consolidateDictionaryDaily] Finished daily consolidation:", JSON.stringify(results));
+    },
+);
+
