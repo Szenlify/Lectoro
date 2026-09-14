@@ -865,8 +865,8 @@ video::cue {
 /* Secondary Subtitle Line (Dual / Translated sentence) */
 .__qt_sub-secondary,
 .__qt_custom-sub-secondary {
-  color: #e2e8f0 !important;
-  font-size: var(--lectoro-sub-secondary-size, calc(var(--lectoro-sub-font-size, 26px) * 0.76)) !important;
+  color: #dbdbdb !important;
+  font-size: var(--lectoro-sub-secondary-size, calc(var(--lectoro-sub-font-size, 26px) * 0.70)) !important;
   font-weight: 500 !important;
   line-height: 1.32 !important;
   letter-spacing: 0.012em !important;
