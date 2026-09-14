@@ -130,3 +130,102 @@ test("combined translation length prevents oversized bilingual pairs", () => {
     }));
     assert.equal(SubtitleService.pairTwoClusters(cues).length, 2);
 });
+
+test("reconcileCuesAtTerminalPunctuation pushes orphan head ('We'll') forward when translation ends at period", () => {
+    // User scenario:
+    // Prev: "collector or I could go for IE. We'll" / "kolekcjonerskim, albo mogę zdecydować się na IE."
+    // Curr: "see. But now that I got my LDR, I should" / "Zobaczymy. Ale teraz, kiedy mam już swój związek na odległość, powinnam"
+    const cues = [
+        {
+            startTime: 10.0,
+            endTime: 12.5,
+            text: "collector or I could go for IE. We'll",
+            lines: ["collector or I could go for IE. We'll"],
+            translation: "kolekcjonerskim, albo mogę zdecydować się na IE.",
+        },
+        {
+            startTime: 12.5,
+            endTime: 16.0,
+            text: "see. But now that I got my LDR, I should",
+            lines: ["see. But now that I got my LDR, I should"],
+            translation: "Zobaczymy. Ale teraz, kiedy mam już swój związek na odległość, powinnam",
+        },
+    ];
+
+    const reconciled = SubtitleService.reconcileCuesAtTerminalPunctuation(cues);
+    assert.equal(reconciled[0].text, "collector or I could go for IE.");
+    assert.deepEqual(reconciled[0].lines, ["collector or I could go for IE."]);
+    assert.equal(reconciled[0].translation, "kolekcjonerskim, albo mogę zdecydować się na IE.");
+
+    assert.equal(reconciled[1].text, "We'll see. But now that I got my LDR, I should");
+    assert.deepEqual(reconciled[1].lines, ["We'll see. But now that I got my LDR, I should"]);
+    assert.equal(reconciled[1].translation, "Zobaczymy. Ale teraz, kiedy mam już swój związek na odległość, powinnam");
+});
+
+test("reconcileCuesAtTerminalPunctuation pushes orphan translation forward when upper text ends at period", () => {
+    const cues = [
+        {
+            startTime: 10.0,
+            endTime: 12.5,
+            text: "collector or I could go for IE.",
+            lines: ["collector or I could go for IE."],
+            translation: "kolekcjonerskim, albo mogę zdecydować się na IE. Zobaczymy",
+        },
+        {
+            startTime: 12.5,
+            endTime: 16.0,
+            text: "We'll see. But now that I got my LDR, I should",
+            lines: ["We'll see. But now that I got my LDR, I should"],
+            translation: "Ale teraz, kiedy mam już swój związek na odległość, powinnam",
+        },
+    ];
+
+    const reconciled = SubtitleService.reconcileCuesAtTerminalPunctuation(cues);
+    assert.equal(reconciled[0].text, "collector or I could go for IE.");
+    assert.equal(reconciled[0].translation, "kolekcjonerskim, albo mogę zdecydować się na IE.");
+
+    assert.equal(reconciled[1].text, "We'll see. But now that I got my LDR, I should");
+    assert.equal(reconciled[1].translation, "Zobaczymy Ale teraz, kiedy mam już swój związek na odległość, powinnam");
+});
+
+test("reconcileCuesAtTerminalPunctuation does not split on abbreviations or decimals", () => {
+    const cues = [
+        {
+            startTime: 1.0,
+            endTime: 3.0,
+            text: "I met with Dr. Smith today",
+            lines: ["I met with Dr. Smith today"],
+            translation: "Spotkałem się z dr. Smithem dzisiaj",
+        },
+        {
+            startTime: 3.2,
+            endTime: 5.0,
+            text: "and it cost 3.50 dollars.",
+            lines: ["and it cost 3.50 dollars."],
+            translation: "i to kosztowało 3.50 dolarów.",
+        },
+    ];
+
+    const reconciled = SubtitleService.reconcileCuesAtTerminalPunctuation(cues);
+    assert.equal(reconciled[0].text, "I met with Dr. Smith today");
+    assert.equal(reconciled[1].text, "and it cost 3.50 dollars.");
+});
+
+test("pairTwoClusters does not attach incomplete sentence head to completed sentence", () => {
+    const cues = [
+        { startTime: 1.0, endTime: 3.0, text: "collector or I could go for IE.", translation: "kolekcjonerskim, albo mogę zdecydować się na IE." },
+        { startTime: 3.1, endTime: 3.8, text: "We'll", translation: "" },
+        { startTime: 3.9, endTime: 4.8, text: "see.", translation: "Zobaczymy." },
+        { startTime: 5.0, endTime: 7.0, text: "But now that I got my LDR, I should", translation: "Ale teraz, kiedy mam już swój związek na odległość, powinnam" },
+    ];
+
+    const paired = SubtitleService.pairTwoClusters(cues);
+    // Cluster 0 ends at period, so it is kept singly and not polluted with "We'll"
+    assert.equal(paired[0].text, "collector or I could go for IE.");
+    assert.equal(paired[0].translation, "kolekcjonerskim, albo mogę zdecydować się na IE.");
+
+    // "We'll" pairs cleanly with "see."
+    assert.equal(paired[1].text, "We'll see.");
+    assert.equal(paired[1].translation, "Zobaczymy.");
+});
+

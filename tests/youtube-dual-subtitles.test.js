@@ -426,3 +426,36 @@ test("unmatched captions elsewhere in a video do not disable Apple sentence alig
             "Więc Apple wkrótce to zrobi.\nWidzisz, to była decyzja taktyczna.");
     }
 });
+
+test("YouTube reconciles subtitles ending in a period across upper and lower tracks (user scenario)", async () => {
+    const h = setup();
+    const english = JSON.stringify({
+        events: [
+            { tStartMs: 1000, dDurationMs: 2500, segs: [{ utf8: "collector or I could go for IE. We'll" }] },
+            { tStartMs: 3500, dDurationMs: 3000, segs: [{ utf8: "see. But now that I got my LDR, I should" }] },
+        ],
+    });
+    const polish = JSON.stringify({
+        events: [
+            { tStartMs: 1000, dDurationMs: 2500, segs: [{ utf8: "kolekcjonerskim, albo mogę zdecydować się na IE." }] },
+            { tStartMs: 3500, dDurationMs: 3000, segs: [{ utf8: "Zobaczymy. Ale teraz, kiedy mam już swój związek na odległość, powinnam" }] },
+        ],
+    });
+    const result = h.adapter.loadCaptionTrack(track, "video1");
+    await tick();
+    h.reply(h.requests[0], { text: english });
+    await tick();
+    h.reply(h.requests[1], { text: polish });
+    await result;
+
+    // At 1.5s (first cue), "We'll" must be pushed to second cue
+    h.seek(1.5);
+    assert.deepEqual(h.renders.at(-1).lines, ["collector or I could go for IE."]);
+    assert.equal(h.renders.at(-1).options.secondaryText, "kolekcjonerskim, albo mogę zdecydować się na IE.");
+
+    // At 3.6s (second cue), "We'll" is prepended to the second cue
+    h.seek(3.6);
+    assert.deepEqual(h.renders.at(-1).lines, ["We'll see. But now that I got my LDR, I should"]);
+    assert.equal(h.renders.at(-1).options.secondaryText, "Zobaczymy. Ale teraz, kiedy mam już swój związek na odległość, powinnam");
+});
+

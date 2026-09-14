@@ -497,38 +497,38 @@
          * Re-attaches orphaned sentence tails, pushes orphan sentence heads forward across cluster
          * boundaries, and normalizes detached punctuation (e.g. leading commas or hanging opening marks).
          */
+        function getSegSplitTimestamp(cue, part1Text) {
+            const segs = cue.segs;
+            if (!Array.isArray(segs) || segs.length < 2 || cue.tStartMs == null) return null;
+            let accumulatedText = "";
+            const cleanTarget = String(part1Text || "").replace(/[^\p{L}\p{N}]+/gu, " ").trim().toLowerCase();
+            for (let s = 0; s < segs.length; s++) {
+                const segText = (segs[s]?.utf8 || "").replace(/^[>»›<«\s—–-]+/, "").trim();
+                if (!segText) continue;
+                accumulatedText = (accumulatedText + " " + segText).trim();
+                const cleanAccum = accumulatedText.replace(/[^\p{L}\p{N}]+/gu, " ").trim().toLowerCase();
+                if (cleanAccum === cleanTarget || cleanAccum.startsWith(cleanTarget)) {
+                    for (let next = s + 1; next < segs.length; next++) {
+                        if (segs[next]) {
+                            if (segs[next].tAbsMs != null) {
+                                return segs[next].tAbsMs / 1000;
+                            }
+                            if (segs[next].tOffsetMs != null && cue.tStartMs != null) {
+                                return (cue.tStartMs + Number(segs[next].tOffsetMs)) / 1000;
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
+            return null;
+        }
+
         function repairClusterBoundaries(cues) {
             if (!Array.isArray(cues) || cues.length < 2) return;
             const TERMINAL_PUNCT_RE = /[.!?。！？]["'»”’)\]]?\s*$/;
             const ABBREV_RE = /(?:^|\s)(?:dr|mr|mrs|ms|prof|st|vs|etc|e\.g|i\.e|u\.s|jr|sr|np|ul|godz|itd|itp|tzn)\.$/i;
             const DECIMAL_RE = /\d\.\s*$/;
-
-            function getSegSplitTimestamp(cue, part1Text) {
-                const segs = cue.segs;
-                if (!Array.isArray(segs) || segs.length < 2 || cue.tStartMs == null) return null;
-                let accumulatedText = "";
-                const cleanTarget = String(part1Text || "").replace(/[^\p{L}\p{N}]+/gu, " ").trim().toLowerCase();
-                for (let s = 0; s < segs.length; s++) {
-                    const segText = (segs[s]?.utf8 || "").replace(/^[>»›<«\s—–-]+/, "").trim();
-                    if (!segText) continue;
-                    accumulatedText = (accumulatedText + " " + segText).trim();
-                    const cleanAccum = accumulatedText.replace(/[^\p{L}\p{N}]+/gu, " ").trim().toLowerCase();
-                    if (cleanAccum === cleanTarget || cleanAccum.startsWith(cleanTarget)) {
-                        for (let next = s + 1; next < segs.length; next++) {
-                            if (segs[next]) {
-                                if (segs[next].tAbsMs != null) {
-                                    return segs[next].tAbsMs / 1000;
-                                }
-                                if (segs[next].tOffsetMs != null && cue.tStartMs != null) {
-                                    return (cue.tStartMs + Number(segs[next].tOffsetMs)) / 1000;
-                                }
-                            }
-                        }
-                        break;
-                    }
-                }
-                return null;
-            }
 
             // Pass 1: Detached leading punctuation in curr & hanging opening punctuation in prev
             for (let i = 1; i < cues.length; i++) {
@@ -1298,6 +1298,162 @@
         }
 
         /**
+         * Reconciles cue boundaries at terminal punctuation (periods, question marks, exclamation marks)
+         * across upper text and translation.
+         *
+         * If either the upper text or translation ends with terminal punctuation (a completed sentence),
+         * both languages are displayed together up to that terminal punctuation, and any trailing words
+         * belonging to the subsequent sentence are transferred forward to the next cue.
+         *
+         * E.g.:
+         * Prev:
+         *   text: "collector or I could go for IE. We'll"
+         *   translation: "kolekcjonerskim, albo mogę zdecydować się na IE."
+         * Curr:
+         *   text: "see. But now that I got my LDR, I should"
+         *   translation: "Zobaczymy. Ale teraz, kiedy mam już swój związek na odległość, powinnam"
+         *
+         * Result:
+         * Prev:
+         *   text: "collector or I could go for IE."
+         *   translation: "kolekcjonerskim, albo mogę zdecydować się na IE."
+         * Curr:
+         *   text: "We'll see. But now that I got my LDR, I should"
+         *   translation: "Zobaczymy. Ale teraz, kiedy mam już swój związek na odległość, powinnam"
+         *
+         * @param {Array<Object>} cues
+         * @returns {Array<Object>}
+         */
+        function reconcileCuesAtTerminalPunctuation(cues) {
+            if (!Array.isArray(cues) || cues.length < 2) return cues;
+
+            const TERMINAL_PUNCT_RE = /[.!?。！？]["'»”’)\]]?\s*$/;
+            const ABBREV_RE = /(?:^|\s)(?:dr|mr|mrs|ms|prof|st|vs|etc|e\.g|i\.e|u\.s|jr|sr|np|ul|godz|itd|itp|tzn)\.$/i;
+            const DECIMAL_RE = /\d\.\s*$/;
+
+            const endsWithTerminal = (str) => {
+                const trimmed = String(str || "").trim();
+                if (!TERMINAL_PUNCT_RE.test(trimmed)) return false;
+                const lastWord = trimmed.split(/\s+/).pop() || "";
+                if (ABBREV_RE.test(lastWord.toLowerCase())) return false;
+                if (DECIMAL_RE.test(trimmed)) return false;
+                return true;
+            };
+
+            function splitAtLastTerminalPunctuation(str) {
+                const text = String(str || "").trim();
+                if (!text || endsWithTerminal(text)) return null;
+
+                const match = text.match(/^([\s\S]+[.!?。！？]["'»”’)\]]?)\s+([^.!?。！？\s][\s\S]*)$/);
+                if (!match) return null;
+
+                const head = match[1].trim();
+                const tail = match[2].trim();
+
+                const lastHeadWord = head.split(/\s+/).pop() || "";
+                if (ABBREV_RE.test(lastHeadWord.toLowerCase())) return null;
+                if (DECIMAL_RE.test(head)) return null;
+                if (TERMINAL_PUNCT_RE.test(tail)) return null;
+
+                return { head, tail };
+            }
+
+            for (let i = 0; i < cues.length - 1; i++) {
+                const prev = cues[i];
+                const curr = cues[i + 1];
+                if (!prev || !curr) continue;
+
+                const timeGap = (curr.startTime ?? 0) - (prev.endTime ?? prev.startTime ?? 0);
+                if (timeGap > 2.5) continue;
+
+                const prevText = String(prev.text || "").trim();
+                const currText = String(curr.text || "").trim();
+                const prevTrans = String(prev.translation || "").trim();
+                const currTrans = String(curr.translation || "").trim();
+
+                const textSplit = splitAtLastTerminalPunctuation(prevText);
+                const transSplit = splitAtLastTerminalPunctuation(prevTrans);
+
+                if (textSplit) {
+                    const transFinished = endsWithTerminal(prevTrans);
+                    const isLowerContinuation = /^[a-zà-ÿ]/.test(currText);
+                    const shouldPushText = transFinished || !prevTrans || isLowerContinuation;
+
+                    if (shouldPushText) {
+                        const { head, tail } = textSplit;
+                        let splitTime = getSegSplitTimestamp(prev, head);
+                        if (!splitTime || !Number.isFinite(splitTime)) {
+                            const prevWords = prevText.split(/\s+/).length;
+                            const headWords = head.split(/\s+/).length;
+                            const dur = (Number.isFinite(prev.endTime) ? prev.endTime : prev.startTime + 2.5) - prev.startTime;
+                            const estDur = Math.max(0.3, dur * (headWords / Math.max(1, prevWords)));
+                            splitTime = prev.startTime + estDur;
+                        }
+
+                        prev.text = head;
+                        prev.endTime = splitTime;
+                        if (Array.isArray(prev.lines)) {
+                            prev.lines = prev.lines
+                                .map((l) => l.trim())
+                                .filter((l) => l !== tail)
+                                .map((l) => l.endsWith(tail) ? l.slice(0, -tail.length).trim() : l)
+                                .filter(Boolean);
+                            if (prev.lines.length === 0) prev.lines = [head];
+                        } else {
+                            prev.lines = [head];
+                        }
+
+                        curr.text = `${tail} ${currText}`.trim();
+                        curr.startTime = Math.min(curr.startTime, splitTime);
+                        if (curr.tStartMs != null) {
+                            curr.tStartMs = Math.round(curr.startTime * 1000);
+                        }
+                        if (Array.isArray(curr.lines) && curr.lines.length > 0) {
+                            curr.lines[0] = `${tail} ${curr.lines[0]}`.trim();
+                        } else {
+                            curr.lines = [curr.text];
+                        }
+
+                        if (Array.isArray(prev.segs) && prev.segs.length > 1) {
+                            let splitIndex = -1;
+                            let accumulated = "";
+                            const cleanTarget = head.replace(/[^\p{L}\p{N}]+/gu, " ").trim().toLowerCase();
+                            for (let s = 0; s < prev.segs.length; s++) {
+                                const segText = (prev.segs[s]?.utf8 || "").replace(/^[>»›<«\s—–-]+/, "").trim();
+                                if (!segText) continue;
+                                accumulated = (accumulated + " " + segText).trim();
+                                if (accumulated.replace(/[^\p{L}\p{N}]+/gu, " ").trim().toLowerCase() === cleanTarget) {
+                                    splitIndex = s;
+                                    break;
+                                }
+                            }
+                            if (splitIndex >= 0) {
+                                const headSegs = prev.segs.slice(0, splitIndex + 1);
+                                const tailSegs = prev.segs.slice(splitIndex + 1);
+                                prev.segs = headSegs;
+                                curr.segs = [...tailSegs, ...(curr.segs || [])];
+                            }
+                        }
+                    }
+                }
+
+                if (transSplit) {
+                    const textFinished = endsWithTerminal(prev.text);
+                    const currTransContinues = /^[a-zà-ÿ]/.test(currTrans);
+                    const shouldPushTrans = textFinished || !prev.text || currTransContinues;
+
+                    if (shouldPushTrans) {
+                        const { head, tail } = transSplit;
+                        prev.translation = head;
+                        curr.translation = currTrans ? `${tail} ${currTrans}`.trim() : tail;
+                    }
+                }
+            }
+
+            return cues;
+        }
+
+        /**
          * Pairs consecutive subtitle clusters into groups of 2 (Language Reactor style).
          * Displays two clusters at a time on Netflix and YouTube, unless a cluster or combination
          * is very long or separated by silence, in which case it is displayed singly.
@@ -1308,6 +1464,7 @@
          */
         function pairTwoClusters(cues) {
             if (!Array.isArray(cues) || cues.length === 0) return [];
+            cues = reconcileCuesAtTerminalPunctuation(cues.map((c) => ({ ...c })));
             if (cues.length === 1) {
                 return cues.map((c) => ({
                     ...c,
@@ -1315,6 +1472,18 @@
                     lines: Array.isArray(c.lines) && c.lines.length > 0 ? c.lines : [String(c?.text || "").trim()],
                 }));
             }
+
+            const TERMINAL_PUNCT_RE = /[.!?。！？]["'»”’)\]]?\s*$/;
+            const ABBREV_RE = /(?:^|\s)(?:dr|mr|mrs|ms|prof|st|vs|etc|e\.g|i\.e|u\.s|jr|sr|np|ul|godz|itd|itp|tzn)\.$/i;
+            const DECIMAL_RE = /\d\.\s*$/;
+            const endsWithTerminal = (str) => {
+                const trimmed = String(str || "").trim();
+                if (!TERMINAL_PUNCT_RE.test(trimmed)) return false;
+                const lastWord = trimmed.split(/\s+/).pop() || "";
+                if (ABBREV_RE.test(lastWord.toLowerCase())) return false;
+                if (DECIMAL_RE.test(trimmed)) return false;
+                return true;
+            };
 
             const paired = [];
             let i = 0;
@@ -1370,7 +1539,15 @@
                 // Natural dialogue pauses (up to 2.2s) are paired cleanly like Language Reactor.
                 const isSignificantGap = timeGap > 2.2 || (start2 - start1 > 8.0);
 
-                if (isC1VeryLong || isC2VeryLong || isCombinedTooLong || isSignificantGap) {
+                // 5. Terminal punctuation boundary protection:
+                // If c1 finishes a sentence with terminal punctuation, but c2 does not finish its sentence,
+                // pairing them attaches an incomplete sentence head onto a completed sentence.
+                // Keep c1 singly so it displays cleanly together up to the period!
+                const c1FinishesSentence = endsWithTerminal(text1) || (trans1 && endsWithTerminal(trans1));
+                const c2FinishesSentence = endsWithTerminal(text2) || (trans2 && endsWithTerminal(trans2));
+                const breaksSentenceAcrossPair = c1FinishesSentence && !c2FinishesSentence;
+
+                if (isC1VeryLong || isC2VeryLong || isCombinedTooLong || isSignificantGap || breaksSentenceAcrossPair) {
                     paired.push({
                         ...c1,
                         translation: typeof c1.translation === "string" ? c1.translation : "",
@@ -1412,7 +1589,7 @@
                 i += 2;
             }
 
-            return paired;
+            return reconcileCuesAtTerminalPunctuation(paired);
         }
 
         // ASR translations retain event anchors, but word order and sentence breaks
@@ -1425,12 +1602,8 @@
             const hasWordTiming = (cue) => Array.isArray(cue?.segs) && cue.segs.length > 1 &&
                 cue.segs.some((seg) => Number.isFinite(seg.tOffsetMs)) &&
                 cue.segs.every((seg) => typeof seg.utf8 === "string");
-            if (!Array.isArray(slaveCues) || masterCues.length !== slaveCues.length ||
-                !masterCues.some(hasWordTiming) || !slaveCues.some(hasWordTiming) || !masterCues.every((cue, i) =>
-                    Array.isArray(cue.segs) && Array.isArray(slaveCues[i].segs) &&
-                    cue.startTime === slaveCues[i].startTime &&
-                    Number.isFinite(cue.endTime) && Number.isFinite(slaveCues[i].endTime) &&
-                    (i === 0 || cue.startTime > masterCues[i - 1].startTime))) return null;
+            if (!Array.isArray(masterCues) || !Array.isArray(slaveCues) ||
+                !masterCues.some(hasWordTiming) || !slaveCues.some(hasWordTiming)) return null;
 
             function splitSentences(cues) {
                 const sentences = [];
@@ -1457,43 +1630,70 @@
                 return sentences;
             }
 
+            // Map each master cue to its matching slave cue by tStartMs or matching startTime
+            const matchedPairs = masterCues.map((m) => {
+                const matchedSlave = slaveCues.find((s) =>
+                    (m.tStartMs != null && s.tStartMs != null && m.tStartMs === s.tStartMs) ||
+                    Math.abs(m.startTime - s.startTime) < 0.045
+                ) || null;
+                return { master: m, slave: matchedSlave };
+            });
+
+            if (!matchedPairs.some((p) => p.slave && hasWordTiming(p.slave))) return null;
+
             const result = [];
             let blockStart = 0;
             for (let i = 0; i < masterCues.length; i++) {
                 const master = masterCues[i];
-                const slave = slaveCues[i];
+                const slave = matchedPairs[i].slave;
                 const next = masterCues[i + 1];
+                const nextSlave = matchedPairs[i + 1]?.slave;
                 const silence = next && next.startTime - master.endTime > 1.5;
-                const sharedEnd = endsSentence(master.text) && endsSentence(slave.text);
-                if (!sharedEnd && !silence && next && master.endTime - masterCues[blockStart].startTime < 30) continue;
+                const sharedEnd = slave && endsSentence(master.text) && endsSentence(slave.text);
+                const isUnmatched = !slave || (next && !nextSlave);
+
+                if (!sharedEnd && !silence && !isUnmatched && next && master.endTime - masterCues[blockStart].startTime < 30) continue;
+
                 const originals = masterCues.slice(blockStart, i + 1);
-                const translations = slaveCues.slice(blockStart, i + 1);
-                const sourceSentences = splitSentences(originals);
-                const targetSentences = splitSentences(translations);
-                const matches = sourceSentences && targetSentences &&
-                    sourceSentences.length === targetSentences.length &&
-                    sourceSentences.every((sentence, index) => {
-                        const translated = targetSentences[index];
-                        return sentence.complete === translated.complete &&
-                            Math.abs(sentence.startTime - translated.startTime) <= 2.2 &&
-                            (index === 0 || sentence.startTime > sourceSentences[index - 1].startTime);
-                    });
-                if (matches) {
-                    sourceSentences.forEach((sentence, index) => {
-                        const endTime = sourceSentences[index + 1]?.startTime ?? master.endTime;
-                        result.push({
-                            startTime: sentence.startTime, endTime,
-                            text: sentence.text, lines: [sentence.text],
-                            translation: targetSentences[index].text,
+                const translations = matchedPairs.slice(blockStart, i + 1).map((p) => p.slave);
+
+                const canAlignBlock = translations.every(Boolean) &&
+                    translations.length === originals.length &&
+                    originals.every(hasWordTiming) && translations.every(hasWordTiming);
+
+                if (canAlignBlock) {
+                    const sourceSentences = splitSentences(originals);
+                    const targetSentences = splitSentences(translations);
+                    const matches = sourceSentences && targetSentences &&
+                        sourceSentences.length === targetSentences.length &&
+                        sourceSentences.every((sentence, index) => {
+                            const translated = targetSentences[index];
+                            return sentence.complete === translated.complete &&
+                                Math.abs(sentence.startTime - translated.startTime) <= 2.2 &&
+                                (index === 0 || sentence.startTime > sourceSentences[index - 1].startTime);
                         });
-                    });
-                } else {
-                    // Uncertain segmentation stays with the platform's timed cues.
-                    result.push(...alignSlaveTrackToMaster(originals, translations));
+                    if (matches) {
+                        sourceSentences.forEach((sentence, index) => {
+                            const endTime = sourceSentences[index + 1]?.startTime ?? master.endTime;
+                            result.push({
+                                startTime: sentence.startTime, endTime,
+                                text: sentence.text, lines: [sentence.text],
+                                translation: targetSentences[index].text,
+                            });
+                        });
+                        blockStart = i + 1;
+                        continue;
+                    }
                 }
+
+                // Uncertain segmentation or unmatched cues stay with platform's timed cues
+                const relevantSlaves = slaveCues.filter((s) =>
+                    s.startTime >= originals[0].startTime - 0.5 && s.endTime <= master.endTime + 0.5
+                );
+                result.push(...alignSlaveTrackToMaster(originals, relevantSlaves.length > 0 ? relevantSlaves : slaveCues));
                 blockStart = i + 1;
             }
-            return result;
+            return result.length > 0 ? result : null;
         }
 
         /**
@@ -1628,6 +1828,7 @@
             getSurroundingContext,
             repairClusterBoundaries,
             repairOrphanedSentenceTails,
+            reconcileCuesAtTerminalPunctuation,
         });
     },
 );
