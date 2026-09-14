@@ -727,10 +727,10 @@ video::cue {
 
 .__qt_subtitles-drag-handle {
   display: flex !important;
-  align-items: center !important;
+  align-items: end !important;
   justify-content: center !important;
   width: 48px !important;
-  height: 14px !important;
+  height: 34px !important;
   margin: 0 auto 2px auto !important;
   cursor: ns-resize !important;
   cursor: grab !important;
@@ -785,7 +785,7 @@ video::cue {
 /* Real-time vertical position badge during dragging */
 .__qt_subtitles-drag-badge {
   position: absolute !important;
-  bottom: calc(100% + 4px) !important;
+  bottom: calc(100% + -14px) !important;
   left: 50% !important;
   transform: translateX(-50%) translateY(4px) !important;
   padding: 2px 8px !important;
@@ -865,7 +865,7 @@ video::cue {
 /* Secondary Subtitle Line (Dual / Translated sentence) */
 .__qt_sub-secondary,
 .__qt_custom-sub-secondary {
-  color: #dbdbdb !important;
+  color: #ffb31a !important;
   font-size: var(--lectoro-sub-secondary-size, calc(var(--lectoro-sub-font-size, 26px) * 0.70)) !important;
   font-weight: 500 !important;
   line-height: 1.32 !important;
