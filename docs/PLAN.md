@@ -26,7 +26,7 @@ Stworzyć system do nauki języków obcych (Lectoro), który:
 - Niezawodność
 - Skalowalność (tysiące użytkowników)
 - Idealna synchronizacja napisów i tłumaczenia
-- Szybkie obliczenia (wynik dostępny od razu)
+- Szybkie obliczenia napisy do przodu (wynik dostępny od razu)
 
 # 4. Proces implementacji
 
