@@ -2,6 +2,7 @@
 
 Ten folder zawiera pakiety słowników oraz statyczne frazy używane przez rozszerzenie Lectoro.
 
+R2_ACCESS_KEY_ID="de6bc2bd824ee7c     0963e2df93f80c22b" R2_SECRET_ACCESS_KEY="002c7085343b60e2b26d8c3f83a577546d1b085a     21488fe5fef7e743b9ca1c40" node functions/consolidate-cli.js all --force
 ---
 
 ## 📁 Struktura folderu
