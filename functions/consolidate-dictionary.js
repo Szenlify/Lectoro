@@ -35,7 +35,7 @@ async function streamToString(stream) {
 /**
  * Consolidates live word translations into the consolidated language pack on R2.
  */
-async function consolidatePair(config, pair, { s3Client, localFallbackDir, forceUpload = false } = {}) {
+async function consolidatePair(config, pair, { s3Client, localFallbackDir, forceUpload = false, saveLocal = false } = {}) {
     const s3 = s3Client || getR2Client(config);
     const bucket = config.bucketName || "lectoro-media";
     const packKey = `dictionaries/packs/${pair}.json`;
@@ -67,28 +67,44 @@ async function consolidatePair(config, pair, { s3Client, localFallbackDir, force
         }
     }
 
-    // 2. If pack was not on R2, check local starter pack fallback
-    if (!packExistedOnR2) {
-        const fallbackPath = path.join(
-            localFallbackDir || path.join(__dirname, "../dictionaries/packs"),
-            `${pair}.json`
-        );
-        if (fs.existsSync(fallbackPath)) {
-            try {
-                const localPack = JSON.parse(fs.readFileSync(fallbackPath, "utf-8"));
-                if (localPack?.entries) {
+    let newWordsAdded = 0;
+
+    // 2. Merge local pack entries if local file exists (allows manual additions in project folder)
+    const fallbackPath = path.join(
+        localFallbackDir || path.join(__dirname, "../dictionaries/packs"),
+        `${pair}.json`
+    );
+    if (fs.existsSync(fallbackPath)) {
+        try {
+            const localPack = JSON.parse(fs.readFileSync(fallbackPath, "utf-8"));
+            if (localPack?.entries && typeof localPack.entries === "object") {
+                if (!packExistedOnR2) {
                     pack = localPack;
                     console.log(`[Consolidator] Seeded ${pair} from local starter pack (${Object.keys(pack.entries).length} words).`);
+                } else {
+                    let localMergedCount = 0;
+                    for (const [rawWord, entry] of Object.entries(localPack.entries)) {
+                        const word = rawWord.normalize("NFKC").trim().toLowerCase();
+                        if (entry && (entry.languageValidation === 1 || entry.t)) {
+                            if (!pack.entries[word]) {
+                                newWordsAdded++;
+                                localMergedCount++;
+                            }
+                            pack.entries[word] = entry;
+                        }
+                    }
+                    if (localMergedCount > 0) {
+                        console.log(`[Consolidator] Merged ${localMergedCount} new/local words from ${pair}.json into pack.`);
+                    }
                 }
-            } catch (err) {
-                console.warn(`[Consolidator] Failed reading local starter pack for ${pair}:`, err.message);
             }
+        } catch (err) {
+            console.warn(`[Consolidator] Failed reading local pack for ${pair}:`, err.message);
         }
     }
 
     // 3. List and merge all live words under dictionaries/live/<pair>/
     let continuationToken = null;
-    let newWordsAdded = 0;
     let liveFilesExamined = 0;
 
     do {
@@ -155,6 +171,19 @@ async function consolidatePair(config, pair, { s3Client, localFallbackDir, force
         console.log(`[Consolidator] Uploaded ${packKey}: ${totalWords} words (+${newWordsAdded} new).`);
     } else {
         console.log(`[Consolidator] ${pair} is already up to date (${totalWords} words, 0 new).`);
+    }
+
+    if (saveLocal && totalWords > 0) {
+        const localPath = path.join(
+            localFallbackDir || path.join(__dirname, "../dictionaries/packs"),
+            `${pair}.json`
+        );
+        try {
+            fs.writeFileSync(localPath, JSON.stringify(pack, null, 2), "utf-8");
+            console.log(`[Consolidator] Synced local pack file: ${localPath}`);
+        } catch (localErr) {
+            console.warn(`[Consolidator] Could not write local pack file:`, localErr.message);
+        }
     }
 
     return {

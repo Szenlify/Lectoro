@@ -3,6 +3,8 @@ https://console.cloud.google.com/apis/api/cloudscheduler.googleapis.com/overview
 
 firebase deploy --only functions:consolidateDictionaryDaily --project extension-eng --config functions/firebase.json
 
+UX jesli ktos tlumaczy word by word lub enter jak za duzo zapytan do gemini
+
 3. sprawdz jak wyswietlaja sie ANKI po exporcie (zle, ma byc sam konkret bez tlumaczenia AI)
 
 4. sprawdz api jak w cloud firebase to wyglada przed publikacją

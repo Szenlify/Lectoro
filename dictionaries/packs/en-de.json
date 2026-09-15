@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "source": "en",
   "target": "de",
-  "updatedAt": 1789419726727,
+  "updatedAt": 1789500960170,
   "entries": {
     "time": {
       "t": "Zeit",
@@ -256,6 +256,107 @@
         {
           "s": "Wash your hands before eating.",
           "t": "Wasche deine Hände vor dem Essen."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "my": {
+      "t": "mein / meine / meiner / meines",
+      "d": {
+        "s": "Used to indicate that something belongs to or is associated with the speaker.",
+        "t": "Zeigt an, dass etwas dem Sprecher gehört oder mit ihm verbunden ist."
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "This is my book.",
+          "t": "Das ist mein Buch."
+        },
+        {
+          "s": "She is my sister.",
+          "t": "Sie ist meine Schwester."
+        },
+        {
+          "s": "I like my new job.",
+          "t": "Ich mag meinen neuen Job."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "stack": {
+      "t": "Stapel",
+      "d": {
+        "s": "A pile of objects, typically of the same kind, neatly arranged one on top of another.",
+        "t": "Ein Haufen von Objekten, typischerweise von gleicher Art, ordentlich übereinander gestapelt."
+      },
+      "s": [
+        "pile",
+        "heap"
+      ],
+      "e": [
+        {
+          "s": "He left a stack of books on the table.",
+          "t": "Er ließ einen Stapel Bücher auf dem Tisch liegen."
+        },
+        {
+          "s": "The chimney emitted a thick black stack of smoke.",
+          "t": "Der Schornstein stieß einen dicken schwarzen Rauchstapel aus."
+        },
+        {
+          "s": "She organized the papers into a neat stack.",
+          "t": "Sie ordnete die Papiere zu einem ordentlichen Stapel."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "early": {
+      "t": "früh",
+      "d": {
+        "s": "Happening or done before the usual or expected time.",
+        "t": "Frühzeitig oder vor der üblichen oder erwarteten Zeit geschehen oder getan."
+      },
+      "s": [
+        "premature",
+        "prompt"
+      ],
+      "e": [
+        {
+          "s": "The early bird catches the worm.",
+          "t": "Der frühe Vogel fängt den Wurm."
+        },
+        {
+          "s": "We arrived early for the meeting.",
+          "t": "Wir kamen frühzeitig zu dem Treffen."
+        },
+        {
+          "s": "She made an early retirement.",
+          "t": "Sie nahm einen frühen Ruhestand."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "game": {
+      "t": "Spiel",
+      "d": {
+        "s": "An activity engaged in for diversion or amusement.",
+        "t": "Eine Aktivität, die zur Zerstreuung oder Belustigung ausgeübt wird."
+      },
+      "s": [
+        "play",
+        "amusement"
+      ],
+      "e": [
+        {
+          "s": "The children are playing a game.",
+          "t": "Die Kinder spielen ein Spiel."
+        },
+        {
+          "s": "Board games are popular.",
+          "t": "Brettspiele sind beliebt."
+        },
+        {
+          "s": "He is good at video games.",
+          "t": "Er ist gut in Videospielen."
         }
       ],
       "languageValidation": 1

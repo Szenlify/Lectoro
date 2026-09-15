@@ -32,11 +32,11 @@ async function main() {
     console.log(`[Consolidator CLI] Using Access Key ID: ${config.accessKeyId}`);
 
     if (targetArg === "all") {
-        const results = await consolidateAll(config, { forceUpload });
+        const results = await consolidateAll(config, { forceUpload, saveLocal: true });
         console.log("\nSummary of all pairs:");
         console.table(results);
     } else {
-        const result = await consolidatePair(config, targetArg, { forceUpload });
+        const result = await consolidatePair(config, targetArg, { forceUpload, saveLocal: true });
         console.log("\nResult:", result);
     }
 }

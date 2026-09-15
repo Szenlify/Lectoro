@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "source": "en",
   "target": "cs",
-  "updatedAt": 1789419726728,
+  "updatedAt": 1789500962933,
   "entries": {
     "time": {
       "t": "čas",
@@ -256,6 +256,314 @@
         {
           "s": "Wash your hands before eating.",
           "t": "Před jídlem si umyjte ruce."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "level": {
+      "t": "úroveň / rovina",
+      "d": {
+        "s": "A position on a scale of intensity or amount, or a stage in a process.",
+        "t": "Úroveň, stupeň, hladina"
+      },
+      "s": [
+        "stage",
+        "rank"
+      ],
+      "e": [
+        {
+          "s": "The water level in the river is rising.",
+          "t": "Hladina vody v řece stoupá."
+        },
+        {
+          "s": "He has reached a high level of skill.",
+          "t": "Dosáhl vysoké úrovně dovedností."
+        },
+        {
+          "s": "The game has multiple difficulty levels.",
+          "t": "Hra má více úrovní obtížnosti."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "get": {
+      "t": "dostat / získat / obdržet",
+      "d": {
+        "s": "come to have, obtain, or receive",
+        "t": "získat, obdržet, dostat"
+      },
+      "s": [
+        "obtain",
+        "receive"
+      ],
+      "e": [
+        {
+          "s": "I need to get some sleep.",
+          "t": "Potřebuji se trochu vyspat."
+        },
+        {
+          "s": "She got a new job.",
+          "t": "Dostala novou práci."
+        },
+        {
+          "s": "Can you get me a glass of water?",
+          "t": "Můžeš mi přinést sklenici vody?"
+        }
+      ],
+      "languageValidation": 1
+    },
+    "difficult": {
+      "t": "obtížný / těžký",
+      "d": {
+        "s": "Needing or using a lot of effort or skill.",
+        "t": "Vyžadující hodně úsilí nebo dovednosti."
+      },
+      "s": [
+        "hard",
+        "challenging"
+      ],
+      "e": [
+        {
+          "s": "This is a difficult problem to solve.",
+          "t": "Toto je obtížný problém k vyřešení."
+        },
+        {
+          "s": "He found the exam very difficult.",
+          "t": "Zkouška mu přišla velmi těžká."
+        },
+        {
+          "s": "It was a difficult decision to make.",
+          "t": "Bylo to těžké rozhodnutí."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "like": {
+      "t": "jako / lubić",
+      "d": {
+        "s": "used to indicate similarity or resemblance",
+        "t": "jako / podobně"
+      },
+      "s": [
+        "as",
+        "similarly"
+      ],
+      "e": [
+        {
+          "s": "He looks like his father.",
+          "t": "Vypadá jako jeho otec."
+        },
+        {
+          "s": "She sings like an angel.",
+          "t": "Zpívá jako anděl."
+        },
+        {
+          "s": "It feels like rain.",
+          "t": "Vypadá to na déšť."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "cuz": {
+      "t": "protože",
+      "d": {
+        "s": "Because; as.",
+        "t": "Protože; jelikož."
+      },
+      "s": [
+        "because",
+        "as"
+      ],
+      "e": [
+        {
+          "s": "I'm going home now cuz I'm tired.",
+          "t": "Jdu teď domů, protože jsem unavený."
+        },
+        {
+          "s": "He failed the test cuz he didn't study.",
+          "t": "Neprošel u testu, protože se neučil."
+        },
+        {
+          "s": "We can't go out cuz it's raining.",
+          "t": "Nemůžeme jít ven, protože prší."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "guy": {
+      "t": "chlap / chlápek / chlapík",
+      "d": {
+        "s": "A man or boy.",
+        "t": "Muž nebo chlapec."
+      },
+      "s": [
+        "man",
+        "fellow"
+      ],
+      "e": [
+        {
+          "s": "He's a really nice guy.",
+          "t": "Je to opravdu milý chlap."
+        },
+        {
+          "s": "Who is that guy over there?",
+          "t": "Kdo je tam ten chlapík?"
+        },
+        {
+          "s": "The guy I met yesterday was friendly.",
+          "t": "Chlápek, kterého jsem včera potkal, byl přátelský."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "very": {
+      "t": "velmi",
+      "d": {
+        "s": "To a high degree; extremely.",
+        "t": "Velmi; hodně."
+      },
+      "s": [
+        "extremely",
+        "highly"
+      ],
+      "e": [
+        {
+          "s": "This is a very important point.",
+          "t": "Toto je velmi důležitý bod."
+        },
+        {
+          "s": "She was very happy to see him.",
+          "t": "Byla velmi šťastná, že ho viděla."
+        },
+        {
+          "s": "The weather is very cold today.",
+          "t": "Dnes je velmi chladné počasí."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "armor": {
+      "t": "zbroj / pancíř",
+      "d": {
+        "s": "A piece of protective clothing or covering worn to defend the body, especially in combat.",
+        "t": "Obrnění, zbroj, pancíř (kus ochranného oděvu nebo krytu nošený k ochraně těla, zejména v boji)."
+      },
+      "s": [
+        "armour",
+        "body armor"
+      ],
+      "e": [
+        {
+          "s": "The knight wore heavy armor into battle.",
+          "t": "Rytíř si do bitvy oblékl těžkou zbroj."
+        },
+        {
+          "s": "The tank's armor was thick enough to withstand the attack.",
+          "t": "Pancíř tanku byl dostatečně silný, aby odolal útoku."
+        },
+        {
+          "s": "Body armor is essential for soldiers in combat zones.",
+          "t": "Neprůstřelná vesta je nezbytná pro vojáky v bojových zónách."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "matchup": {
+      "t": "zápas",
+      "d": {
+        "s": "A contest or game between two people or teams.",
+        "t": "Zápas nebo hra mezi dvěma lidmi nebo týmy."
+      },
+      "s": [
+        "contest",
+        "game"
+      ],
+      "e": [
+        {
+          "s": "The football matchup between the rivals was intense.",
+          "t": "Fotbalový zápas mezi rivaly byl napínavý."
+        },
+        {
+          "s": "This chess matchup is expected to be very close.",
+          "t": "Očekává se, že tento šachový zápas bude velmi těsný."
+        },
+        {
+          "s": "We're analyzing the strengths and weaknesses of each team before the matchup.",
+          "t": "Před zápasem analyzujeme silné a slabé stránky každého týmu."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "reason": {
+      "t": "důvod / příčina",
+      "d": {
+        "s": "a cause, motive, or justification for an action or event.",
+        "t": "důvod, příčina, motiv"
+      },
+      "s": [
+        "cause",
+        "motive"
+      ],
+      "e": [
+        {
+          "s": "What is the reason for your absence?",
+          "t": "Jaký je důvod vaší nepřítomnosti?"
+        },
+        {
+          "s": "He gave a good reason for being late.",
+          "t": "Uvedl dobrý důvod svého pozdního příchodu."
+        },
+        {
+          "s": "There must be a reason for this behavior.",
+          "t": "Musí existovat důvod tohoto chování."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "one": {
+      "t": "jeden / jednička",
+      "d": {
+        "s": "The cardinal number corresponding to the lowest positive integer; a single item or person.",
+        "t": "Číslovka označující nejmenší kladné celé číslo; jedna věc nebo osoba."
+      },
+      "s": [
+        "single"
+      ],
+      "e": [
+        {
+          "s": "He scored one goal in the first half.",
+          "t": "V prvním poločase vstřelil jeden gól."
+        },
+        {
+          "s": "There is only one way to solve this problem.",
+          "t": "Existuje pouze jeden způsob, jak tento problém vyřešit."
+        },
+        {
+          "s": "She is the one I was looking for.",
+          "t": "Ona je ta, kterou jsem hledal."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "this": {
+      "t": "tento / tato / toto",
+      "d": {
+        "s": "Used to refer to a person or thing that is present in the immediate vicinity or that has just been mentioned.",
+        "t": "Tento, tato, toto (ukazuje na osobu nebo věc v bezprostřední blízkosti nebo právě zmíněnou)."
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "This book is very interesting.",
+          "t": "Tato kniha je velmi zajímavá."
+        },
+        {
+          "s": "What is this noise?",
+          "t": "Co je to za hluk?"
+        },
+        {
+          "s": "I like this song.",
+          "t": "Líbí se mi tato píseň."
         }
       ],
       "languageValidation": 1

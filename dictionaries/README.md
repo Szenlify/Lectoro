@@ -44,7 +44,7 @@ R2_SECRET_ACCESS_KEY="TWÓJ_SECRET_KEY" node functions/consolidate-cli.js en-pl 
 R2_SECRET_ACCESS_KEY="TWÓJ_SECRET_KEY" node functions/consolidate-cli.js all --force
 ```
 
-> **Wskazówka:** `R2_ACCESS_KEY_ID` (`fa5ae76d960a9dad174cef0c23989065`) oraz `R2_ACCOUNT_ID` są już domyślnie skonfigurowane w skrypcie, więc wystarczy podać sam `R2_SECRET_ACCESS_KEY`.
+> **Wskazówka:** `R2_ACCESS_KEY_ID` (`de6bc2bd824ee7c0963e2df93f80c22b`) oraz `R2_ACCOUNT_ID` są już domyślnie skonfigurowane w skrypcie, więc wystarczy podać sam `R2_SECRET_ACCESS_KEY`.
 
 ---
 

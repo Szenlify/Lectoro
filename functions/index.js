@@ -52,7 +52,7 @@ function getR2SecretAccessKey() {
 function getR2Config() {
     return {
         accountId: process.env.R2_ACCOUNT_ID || "94b9a2de404c8e3f8efa532d0607b5f1",
-        accessKeyId: process.env.R2_ACCESS_KEY_ID || "fa5ae76d960a9dad174cef0c23989065",
+        accessKeyId: process.env.R2_ACCESS_KEY_ID || "de6bc2bd824ee7c0963e2df93f80c22b",
         secretAccessKey: getR2SecretAccessKey(),
         bucketName: process.env.R2_BUCKET_NAME || "lectoro-media",
         publicUrl: process.env.R2_PUBLIC_URL || "https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev",

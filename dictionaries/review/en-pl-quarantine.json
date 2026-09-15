@@ -1,0 +1,80 @@
+{
+  "description": "Oryginalne wpisy odłożone z pakietu do weryfikacji kontekstowej. Ten plik nie jest pakietem do importu.",
+  "entries": {
+    "mais": {
+      "t": "więcej / ale",
+      "d": {
+        "s": "More, in addition, also, further.",
+        "t": "Więcej, ponadto, także, dalej."
+      },
+      "s": [
+        "furthermore",
+        "additionally"
+      ],
+      "e": [
+        {
+          "s": "I want mais.",
+          "t": "Chcę więcej."
+        },
+        {
+          "s": "He is mais tall.",
+          "t": "On jest wyższy."
+        },
+        {
+          "s": "Do you want mais?",
+          "t": "Chcesz więcej?"
+        }
+      ],
+      "languageValidation": 1
+    },
+    "polygrade": {
+      "t": "poligrad",
+      "d": {
+        "s": "A substance or material that has been processed to have multiple layers or grades.",
+        "t": "Substancja lub materiał, który został przetworzony tak, aby miał wiele warstw lub gatunków."
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "The new polygrade material offers superior insulation.",
+          "t": "Nowy materiał poligradowy oferuje doskonałą izolację."
+        },
+        {
+          "s": "This polygrade coating protects against corrosion.",
+          "t": "Ta poligradowa powłoka chroni przed korozją."
+        },
+        {
+          "s": "The manufacturer uses a special polygrade process.",
+          "t": "Producent stosuje specjalny proces poligradowy."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "bottomish": {
+      "t": "dolny / denny",
+      "d": {
+        "s": "Relating to or approaching the bottom.",
+        "t": "Dotyczący dna lub zbliżający się do niego."
+      },
+      "s": [
+        "low",
+        "under"
+      ],
+      "e": [
+        {
+          "s": "The boat had a bottomish appearance.",
+          "t": "Łódź miała dolny wygląd."
+        },
+        {
+          "s": "He felt a bottomish sensation.",
+          "t": "Czuł dolne odczucie."
+        },
+        {
+          "s": "The bottomish part of the ocean is dark.",
+          "t": "Dolna część oceanu jest ciemna."
+        }
+      ],
+      "languageValidation": 1
+    }
+  }
+}

@@ -52,38 +52,63 @@ function createMockS3({ r2Files = new Map() } = {}) {
 }
 
 test("consolidatePair creates pack from local starter pack and live R2 words", async () => {
-    const r2Files = new Map();
-    // Simulate a new live word in R2: dictionaries/live/en-pl/<hash>.json
-    const newLiveWord = {
-        house: {
-            languageValidation: 1,
-            t: "dom",
-            d: { s: "A building for human habitation.", t: "Budynek mieszkalny dla ludzi." },
-            s: ["residence"],
-            e: [
-                { s: "They bought a new house.", t: "Kupili nowy dom." },
-                { s: "The house has a large garden.", t: "Dom ma duży ogród." },
-                { s: "Welcome to my house.", t: "Witamy w moim domu." }
-            ]
+    const fs = require("node:fs");
+    const os = require("node:os");
+    const path = require("node:path");
+
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "consolidate-test-"));
+    const starterPack = {
+        schemaVersion: 2,
+        source: "en",
+        target: "pl",
+        entries: {
+            time: {
+                t: "czas",
+                d: { s: "Continued progress of existence.", t: "Upływ czasu." },
+                s: ["moment"],
+                e: [{ s: "Time flies.", t: "Czas leci." }],
+                languageValidation: 1
+            }
         }
     };
-    r2Files.set("dictionaries/live/en-pl/abcdef123456.json", JSON.stringify(newLiveWord));
+    fs.writeFileSync(path.join(tmpDir, "en-pl.json"), JSON.stringify(starterPack), "utf-8");
 
-    const s3Client = createMockS3({ r2Files });
-    const config = { bucketName: "lectoro-media" };
+    try {
+        const r2Files = new Map();
+        // Simulate a new live word in R2: dictionaries/live/en-pl/<hash>.json
+        const newLiveWord = {
+            house: {
+                languageValidation: 1,
+                t: "dom",
+                d: { s: "A building for human habitation.", t: "Budynek mieszkalny dla ludzi." },
+                s: ["residence"],
+                e: [
+                    { s: "They bought a new house.", t: "Kupili nowy dom." },
+                    { s: "The house has a large garden.", t: "Dom ma duży ogród." },
+                    { s: "Welcome to my house.", t: "Witamy w moim domu." }
+                ]
+            }
+        };
+        r2Files.set("dictionaries/live/en-pl/abcdef123456.json", JSON.stringify(newLiveWord));
 
-    const result = await consolidatePair(config, "en-pl", { s3Client });
+        const s3Client = createMockS3({ r2Files });
+        const config = { bucketName: "lectoro-media" };
 
-    assert.equal(result.uploaded, true);
-    assert.equal(result.newWordsAdded, 1);
-    // Starter pack has 10 words + 1 new word = 11 words
-    assert.equal(result.totalWords >= 11, true);
+        const result = await consolidatePair(config, "en-pl", { s3Client, localFallbackDir: tmpDir });
 
-    const savedPackJson = s3Client.uploaded.get("dictionaries/packs/en-pl.json");
-    assert.ok(savedPackJson);
-    const savedPack = JSON.parse(savedPackJson);
-    assert.equal(savedPack.entries.house.t, "dom");
-    assert.equal(savedPack.entries.time.t, "czas");
+        assert.equal(result.uploaded, true);
+        assert.equal(result.newWordsAdded, 1);
+        // Starter pack has 1 word + 1 new word = 2 words
+        assert.equal(result.totalWords, 2);
+
+        const savedPackJson = s3Client.uploaded.get("dictionaries/packs/en-pl.json");
+        assert.ok(savedPackJson);
+        const savedPack = JSON.parse(savedPackJson);
+        assert.equal(savedPack.entries.house.t, "dom");
+        assert.equal(savedPack.entries.time.t, "czas");
+    } finally {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
 });
 
 test("consolidatePair skips invalid entries without languageValidation", async () => {
@@ -109,11 +134,20 @@ test("consolidatePair skips invalid entries without languageValidation", async (
         bogus: { languageValidation: 0, t: "złe" }
     }));
 
-    const s3Client = createMockS3({ r2Files });
-    const config = { bucketName: "lectoro-media" };
+    const fs = require("node:fs");
+    const os = require("node:os");
+    const path = require("node:path");
+    const emptyTmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "consolidate-test-empty-"));
 
-    const result = await consolidatePair(config, "en-pl", { s3Client });
+    try {
+        const s3Client = createMockS3({ r2Files });
+        const config = { bucketName: "lectoro-media" };
 
-    assert.equal(result.newWordsAdded, 0);
-    assert.equal(result.uploaded, false);
+        const result = await consolidatePair(config, "en-pl", { s3Client, localFallbackDir: emptyTmpDir });
+
+        assert.equal(result.newWordsAdded, 0);
+        assert.equal(result.uploaded, false);
+    } finally {
+        fs.rmSync(emptyTmpDir, { recursive: true, force: true });
+    }
 });
