@@ -710,6 +710,75 @@
         const repairOrphanedSentenceTails = repairClusterBoundaries;
 
         /**
+         * Repairs YouTube translated JSON3 streams where machine translation bundles
+         * multiple sentences into a single event and leaves subsequent events empty ("\n").
+         */
+        function repairEmptyTranslatedEvents(events) {
+            if (!Array.isArray(events) || events.length < 2) return events;
+            const SENTENCE_SPLIT_RE = /(?<=[.!?。！？]["'»”’)\]]?)\s+(?=[A-ZÀ-ÿ0-9])/u;
+            const ABBREV_RE = /(?:^|\s)(?:dr|mr|mrs|ms|prof|st|vs|etc|e\.g|i\.e|u\.s|jr|sr|np|ul|godz|itd|itp|tzn)\.$/i;
+
+            for (let i = 0; i < events.length - 1; i++) {
+                const curr = events[i];
+                if (!curr || !Array.isArray(curr.segs)) continue;
+
+                const currText = curr.segs
+                    .map((s) => (typeof s?.utf8 === "string" ? s.utf8 : ""))
+                    .join("");
+                const cleanCurr = cleanCueText(currText);
+                if (!cleanCurr) continue;
+
+                const next = events[i + 1];
+                if (!next || !Array.isArray(next.segs)) continue;
+
+                // Skip ASR rolling window scroll signals (which start < 400ms before the following text event)
+                if (events[i + 2] && (Number(events[i + 2].tStartMs) - Number(next.tStartMs) < 400)) {
+                    continue;
+                }
+
+                const nextText = next.segs
+                    .map((s) => (typeof s?.utf8 === "string" ? s.utf8 : ""))
+                    .join("");
+                const cleanNext = cleanCueText(nextText);
+
+                if (!cleanNext) {
+                    let emptyCount = 0;
+                    while (i + 1 + emptyCount < events.length) {
+                        const candidate = events[i + 1 + emptyCount];
+                        if (!candidate || !Array.isArray(candidate.segs)) break;
+                        const cText = cleanCueText(candidate.segs.map((s) => s?.utf8 || "").join(""));
+                        if (cText) break;
+                        if (candidate.aAppend && events[i + 2 + emptyCount] &&
+                            (Number(events[i + 2 + emptyCount].tStartMs) - Number(candidate.tStartMs) < 100)) {
+                            break;
+                        }
+                        emptyCount++;
+                    }
+
+                    if (emptyCount > 0) {
+                        const parts = currText.split(SENTENCE_SPLIT_RE);
+                        if (parts.length > 1) {
+                            const firstPart = parts[0].trim();
+                            const lastWord = cleanCueText(firstPart).split(/\s+/).pop() || "";
+                            if (!ABBREV_RE.test(lastWord)) {
+                                const slots = Math.min(emptyCount, parts.length - 1);
+                                curr.segs = [{ utf8: firstPart }];
+                                for (let s = 1; s <= slots; s++) {
+                                    const isLastSlot = s === slots;
+                                    const textForSlot = isLastSlot
+                                        ? parts.slice(s).join(" ").trim()
+                                        : parts[s].trim();
+                                    events[i + s].segs = [{ utf8: textForSlot }];
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return events;
+        }
+
+        /**
          * Parses YouTube JSON3 timed text format (used by YouTube API for manual and ASR captions).
          * Extracts every single word token with precise timestamps and stitches dynamic streams into complete, natural sentences.
          */
@@ -725,6 +794,8 @@
                 return [];
             }
             if (!data || !Array.isArray(data.events)) return [];
+
+            repairEmptyTranslatedEvents(data.events);
 
             if (options.preserveTiming) {
                 const cues = [];
@@ -1668,6 +1739,10 @@
                         sourceSentences.length === targetSentences.length &&
                         sourceSentences.every((sentence, index) => {
                             const translated = targetSentences[index];
+                            if (originals.length > 1 && (!sentence.complete || !translated.complete)) return false;
+                            const sWords = sentence.text.split(/\s+/).length;
+                            const tWords = translated.text.split(/\s+/).length;
+                            if (sWords > 16 || tWords > 16 || sentence.text.length > 85 || translated.text.length > 85) return false;
                             return sentence.complete === translated.complete &&
                                 Math.abs(sentence.startTime - translated.startTime) <= 2.2 &&
                                 (index === 0 || sentence.startTime > sourceSentences[index - 1].startTime);
@@ -1804,9 +1879,6 @@
             for (let i = 0; i < unified.length; i++) {
                 unified[i].translation = cleanCueText([...translations[i]].join(" "));
             }
-
-            // Keep each translation with its timed owner. Capitalization cannot
-            // distinguish a new clause from a proper noun such as Apple.
 
             return unified;
         }

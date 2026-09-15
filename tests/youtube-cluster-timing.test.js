@@ -1061,3 +1061,82 @@ test("preserveCueBoundaries prevents independent sentence repairs from shifting 
     assert.deepEqual(cues.map((cue) => cue.text), texts);
     assert.deepEqual(cues.map((cue) => [cue.startTime, cue.endTime]), [[0, 2], [2, 4]]);
 });
+
+test("YouTube JSON3 repairs machine-translated bundled sentences followed by empty cues ('\\n')", () => {
+    const enJson = JSON.stringify({
+        events: [
+            {
+                tStartMs: 51760,
+                dDurationMs: 1920,
+                segs: [{ utf8: "Here since one and\nthe party ain’t done" }],
+            },
+            {
+                tStartMs: 53680,
+                dDurationMs: 1880,
+                segs: [{ utf8: "So we still gon have\nsome fun now" }],
+            },
+        ],
+    });
+
+    const plJson = JSON.stringify({
+        events: [
+            {
+                tStartMs: 51760,
+                dDurationMs: 1920,
+                segs: [{ utf8: "tu od rana, a\nimpreza się nie skończyła. Więc nadal będziemy się dobrze bawić." }],
+            },
+            {
+                tStartMs: 53680,
+                dDurationMs: 1880,
+                segs: [{ utf8: "\n" }],
+            },
+        ],
+    });
+
+    const masterCues = SubtitleService.parseTimedText(enJson, "", "", { preserveTiming: true });
+    const slaveCues = SubtitleService.parseTimedText(plJson, "", "", { preserveTiming: true });
+    const aligned = SubtitleService.alignSlaveTrackToMaster(masterCues, slaveCues);
+
+    assert.equal(aligned.length, 2);
+    assert.equal(aligned[0].startTime, 51.76);
+    assert.equal(aligned[0].endTime, 53.68);
+    assert.equal(aligned[0].text, "Here since one and the party ain’t done");
+    assert.equal(aligned[0].translation, "tu od rana, a impreza się nie skończyła.");
+
+    assert.equal(aligned[1].startTime, 53.68);
+    assert.equal(aligned[1].endTime, 55.56);
+    assert.equal(aligned[1].text, "So we still gon have some fun now");
+    assert.equal(aligned[1].translation, "Więc nadal będziemy się dobrze bawić.");
+});
+
+test("YouTube sentence alignment preserves individual timed cues for run-on speech/lyrics without terminal punctuation", () => {
+    const enJson = JSON.stringify({
+        events: [
+            { tStartMs: 15879, dDurationMs: 3641, segs: [{ utf8: "I took a page out of your favorite book" }] },
+            { tStartMs: 19520, dDurationMs: 3759, segs: [{ utf8: "you saw me last just by the way you look" }] },
+            { tStartMs: 23279, dDurationMs: 3361, segs: [{ utf8: "Tau me a language that I never speak" }] },
+        ],
+    });
+    const plJson = JSON.stringify({
+        events: [
+            { tStartMs: 15879, dDurationMs: 3641, segs: [{ utf8: "Wziąłem stronę z twojej ulubionej książki" }] },
+            { tStartMs: 19520, dDurationMs: 3759, segs: [{ utf8: "Widziałaś mnie ostatnio, po prostu patrząc" }] },
+            { tStartMs: 23279, dDurationMs: 3361, segs: [{ utf8: "Tau, język, którym nigdy nie mówię," }] },
+        ],
+    });
+
+    const master = SubtitleService.parseTimedText(enJson, "", "", { preserveTiming: true });
+    const slave = SubtitleService.parseTimedText(plJson, "", "", { preserveTiming: true });
+    const aligned = SubtitleService.alignSlaveTrackToMaster(master, slave, { alignSentences: true });
+
+    // Must NOT merge all three cues into one single cue
+    assert.equal(aligned.length, 3);
+    assert.equal(aligned[0].text, "I took a page out of your favorite book");
+    assert.equal(aligned[0].translation, "Wziąłem stronę z twojej ulubionej książki");
+    assert.equal(aligned[1].text, "you saw me last just by the way you look");
+    assert.equal(aligned[1].translation, "Widziałaś mnie ostatnio, po prostu patrząc");
+    assert.equal(aligned[2].text, "Tau me a language that I never speak");
+    assert.equal(aligned[2].translation, "Tau, język, którym nigdy nie mówię,");
+});
+
+
