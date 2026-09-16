@@ -118,6 +118,7 @@ test("renderer takes Slave exclusively from current cue and clears it on repeate
         aiTooltipActive: false, isSubHovering: false, subClickLocked: false,
         ensureCustomSubtitlesLayer: () => ({ layer: node(), box }),
         getPlayerRegistry: () => ({ getVideo: () => null }), cleanCardText: text => text.trim(),
+        getPlatformName: () => "netflix",
         isDoubleSubtitlesActive: () => true, isSentenceOverlayOpen: () => false,
         syncCustomSubtitlePosition() {},
         SharedPhraseDetector: { tokenizeSubtitleLine: text => [{ type: "text", text }] },
@@ -147,6 +148,16 @@ test("renderer takes Slave exclusively from current cue and clears it on repeate
     render(["First line", "Second line", "Third line"]);
     assert.equal(box.children.length, 1);
     assert.equal(box.children[0].textContent, "First line Second line Third line");
+    context.getPlatformName = () => "youtube";
+    render(["First line", "Second line"]);
+    assert.equal(box.children.length, 1);
+    assert.equal(box.children[0].textContent, "First line Second line");
+    for (const platform of ["ted", "videojs", "generic"]) {
+        context.getPlatformName = () => platform;
+        render(["First line", "Second line"]);
+        assert.deepEqual(box.children.map(el => el.textContent), ["First line", "Second line"]);
+    }
+    context.getPlatformName = () => "netflix";
     context.isDoubleSubtitlesActive = () => true;
     render(["Second speaker"], { cue: overlapping.allCues[1] });
     assert.equal(box.children.at(-1).textContent, "Drugi");
