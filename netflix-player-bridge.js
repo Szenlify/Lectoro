@@ -40,7 +40,7 @@
             hasManifestForCurrentMovie = false;
             latestTimedTextManifest = null;
             latestTimedTextSignature = "";
-            window.dispatchEvent(
+            window.dispatchEvent?.(
                 new CustomEvent(PLAYER_STATE_RESET_EVENT, {
                     detail: { movieId },
                 }),
@@ -72,10 +72,19 @@
             const sessionIds = videoPlayer.getAllPlayerSessionIds?.() || [];
             if (!sessionIds.length) return null;
 
+            // 1. First priority: look for active session starting with "watch" (matches Language Reactor)
+            const watchSessionId = sessionIds.find((id) => String(id).startsWith("watch"));
+            if (watchSessionId) {
+                try {
+                    const p = videoPlayer.getVideoPlayerBySessionId(watchSessionId);
+                    if (p && typeof p.seek === "function") return p;
+                } catch (_) {}
+            }
+
             const movieId = getWatchMovieId();
             const videoEl = document.querySelector("video");
 
-            // 1. Search for an exact match by movieId
+            // 2. Search for an exact match by movieId
             if (movieId) {
                 for (const id of sessionIds) {
                     try {
@@ -87,39 +96,36 @@
                 }
             }
 
-            // 2. Search for the player that owns the main <video> DOM element
+            // 3. Search for the player that owns or contains the main <video> DOM element
             if (videoEl) {
                 for (const id of sessionIds) {
                     try {
                         const p = videoPlayer.getVideoPlayerBySessionId(id);
-                        if (p && p.getElement?.() === videoEl) {
+                        if (p && (p.getElement?.() === videoEl || p.getElement?.()?.contains?.(videoEl))) {
                             return p;
                         }
                     } catch (_) {}
                 }
             }
 
-            // 3. Search for active playing/paused player
+            // 4. Search for active playing/paused player
             for (const id of sessionIds) {
                 try {
                     const p = videoPlayer.getVideoPlayerBySessionId(id);
-                    if (p && (p.isPlaying?.() || p.isPaused?.() || p.isReady?.())) {
+                    if (p && (p.getPlaying?.() || p.isPlaying?.() || p.getPaused?.() || p.isPaused?.())) {
                         return p;
                     }
                 } catch (_) {}
             }
 
-            // 4. Fallback to watch session or first valid player with seek
-            const sessionId =
-                sessionIds.find((id) => String(id).includes("watch")) ||
-                sessionIds.find((id) => {
+            // 5. Fallback to any valid player with seek
+            for (const id of sessionIds) {
+                try {
                     const p = videoPlayer.getVideoPlayerBySessionId(id);
-                    return p && typeof p.seek === "function";
-                }) ||
-                sessionIds[0];
-            return sessionId
-                ? videoPlayer.getVideoPlayerBySessionId(sessionId)
-                : null;
+                    if (p && typeof p.seek === "function") return p;
+                } catch (_) {}
+            }
+            return null;
         } catch (_) {
             return null;
         }
@@ -535,7 +541,7 @@
     let bridgePendingSeekMs = null;
     const MIN_BRIDGE_SEEK_GAP_MS = 120;
 
-    function executeBridgeSeek(targetMs) {
+    function executeBridgeSeek(targetMs, shouldPlay = false) {
         try {
             const player = getNetflixPlayer();
             if (player?.seek) {
@@ -546,6 +552,13 @@
 
                 lastBridgeSeekDispatchedTime = Date.now();
                 player.seek(Math.round(finalMs));
+                if (shouldPlay) {
+                    try {
+                        if (player.getPaused?.() || !player.getPlaying?.()) {
+                            player.play?.();
+                        }
+                    } catch (_) {}
+                }
                 return true;
             }
         } catch (err) {
@@ -596,6 +609,7 @@
     window.addEventListener(SEEK_EVENT, (event) => {
         const requestedMs = Number(event.detail?.targetMs);
         if (!Number.isFinite(requestedMs) || requestedMs < 0) return;
+        const shouldPlay = !!event.detail?.play;
 
         bridgePendingSeekMs = requestedMs;
         const now = Date.now();
@@ -609,7 +623,7 @@
                 if (Number.isFinite(bridgePendingSeekMs)) {
                     const target = bridgePendingSeekMs;
                     bridgePendingSeekMs = null;
-                    executeBridgeSeek(target);
+                    executeBridgeSeek(target, shouldPlay);
                 }
             }, MIN_BRIDGE_SEEK_GAP_MS - elapsed);
         } else {
@@ -618,7 +632,7 @@
                 bridgePendingSeekTimer = null;
             }
             bridgePendingSeekMs = null;
-            executeBridgeSeek(requestedMs);
+            executeBridgeSeek(requestedMs, shouldPlay);
         }
     });
 
@@ -860,7 +874,7 @@
                 }
             } catch (_) { }
         }
-        window.dispatchEvent(
+        window.dispatchEvent?.(
             new CustomEvent(TRACK_RESPONSE_EVENT, {
                 detail: {
                     requestId: event.detail?.requestId || "",

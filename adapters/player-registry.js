@@ -1011,6 +1011,17 @@
 
             // The bridge executes the seek via Netflix player API
             globalThis.LectoroNetflixAdapter?.requestSeek?.(targetTime, video);
+            if (wasPlaying) {
+                setTimeout(() => {
+                    if (video && video.paused) {
+                        if (globalThis.LectoroNetflixAdapter?.playVideo) {
+                            globalThis.LectoroNetflixAdapter.playVideo(video);
+                        } else {
+                            video.play?.().catch?.(() => {});
+                        }
+                    }
+                }, 100);
+            }
         } catch (error) {
             console.warn("[Lectoro] Netflix subtitle navigation failed:", error);
             try {

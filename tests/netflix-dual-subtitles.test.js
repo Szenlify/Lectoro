@@ -267,7 +267,10 @@ test("Netflix adapter rankDownloads prefers webvtt-lssdh-ios8 profile over other
 test("Netflix bridge JSON.stringify unlocks all tracks and adds webvtt-lssdh-ios8 profile (LR parity)", () => {
     const source = read("netflix-player-bridge.js");
     const context = vm.createContext({
-        window: { addEventListener: () => {}, location: { pathname: "/watch/123" } },
+        JSON,
+        Function,
+        console,
+        window: { addEventListener: () => {}, dispatchEvent: () => {}, location: { pathname: "/watch/123" } },
         document: { querySelector: () => null, addEventListener: () => {} },
         history: { pushState: () => {}, replaceState: () => {} },
         setInterval: () => {},
@@ -292,7 +295,8 @@ test("Netflix bridge JSON.stringify unlocks all tracks and adds webvtt-lssdh-ios
 test("Netflix bridge Function.prototype.apply configures Cadmium DRM buffering (LR parity)", () => {
     const source = read("netflix-player-bridge.js");
     const context = vm.createContext({
-        window: { addEventListener: () => {}, location: { pathname: "/watch/123" } },
+        console,
+        window: { addEventListener: () => {}, dispatchEvent: () => {}, location: { pathname: "/watch/123" } },
         document: { querySelector: () => null, addEventListener: () => {} },
         history: { pushState: () => {}, replaceState: () => {} },
         setInterval: () => {},
@@ -300,12 +304,10 @@ test("Netflix bridge Function.prototype.apply configures Cadmium DRM buffering (
     });
     vm.runInContext(source, context);
 
-    function probe(key) {
-        return key;
-    }
-    assert.equal(probe.apply(null, ["unused", ["preciseSeeking"]]), true);
-    assert.equal(probe.apply(null, ["unused", ["minBufferingTimeInMilliseconds"]]), 1000);
-    assert.equal(probe.apply(null, ["unused", ["fatalOnUnexpectedSeeking"]]), false);
+    const check = (key) => vm.runInContext(`(function probe(k) { return k; }).apply(null, ["${key}"])`, context);
+    assert.equal(check("preciseSeeking"), true);
+    assert.equal(check("minBufferingTimeInMilliseconds"), 1000);
+    assert.equal(check("fatalOnUnexpectedSeeking"), false);
 });
 
 test("Language Reactor Module 151 multiOverlap attaches spanning translation to both master cues", () => {
@@ -320,6 +322,42 @@ test("Language Reactor Module 151 multiOverlap attaches spanning translation to 
     assert.equal(aligned.length, 2);
     assert.equal(aligned[0].translation, "Czekaj na mnie, musimy iść.");
     assert.equal(aligned[1].translation, "Czekaj na mnie, musimy iść.");
+});
+
+test("Netflix getAdjacentSubtitleTime navigates dialogue cues accurately with 125ms offset (A and D keys)", async (t) => {
+    const h = harness(); t.after(h.dispose);
+    await h.adapter.ensureSubtitleIndex();
+
+    // Cue 0 is 1.000s --> 2.000s
+    // Cue 1 is 3.000s --> 4.000s
+
+    // At 0.875s (start of Cue 0 with 125ms offset), pressing D (next) jumps to Cue 1 (2.875s)
+    const nextFromStart = await h.adapter.getAdjacentSubtitleTime(0.875, 1);
+    assert.equal(nextFromStart, 2.875);
+
+    // At 1.5s (inside Cue 0), pressing D (next) jumps to Cue 1 (2.875s)
+    const nextFromInside = await h.adapter.getAdjacentSubtitleTime(1.5, 1);
+    assert.equal(nextFromInside, 2.875);
+
+    // At 2.5s (in silence between Cue 0 and Cue 1), pressing D (next) jumps to Cue 1 (2.875s)
+    const nextFromGap = await h.adapter.getAdjacentSubtitleTime(2.5, 1);
+    assert.equal(nextFromGap, 2.875);
+
+    // At 2.5s (in silence between Cue 0 and Cue 1), pressing A (prev) rewinds to Cue 0 (0.875s)
+    const prevFromGap = await h.adapter.getAdjacentSubtitleTime(2.5, -1);
+    assert.equal(prevFromGap, 0.875);
+
+    // At 3.9s (> 750ms into Cue 1), pressing A (prev) replays Cue 1 from beginning (2.875s)
+    const replayCue1 = await h.adapter.getAdjacentSubtitleTime(3.9, -1);
+    assert.equal(replayCue1, 2.875);
+
+    // At 2.875s (beginning of Cue 1), pressing A (prev) jumps back to Cue 0 (0.875s)
+    const prevFromCue1 = await h.adapter.getAdjacentSubtitleTime(2.875, -1);
+    assert.equal(prevFromCue1, 0.875);
+
+    // At end of video (after Cue 1), pressing D (next) returns null
+    const nextPastEnd = await h.adapter.getAdjacentSubtitleTime(5.0, 1);
+    assert.equal(nextPastEnd, null);
 });
 
 

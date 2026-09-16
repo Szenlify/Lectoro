@@ -59,7 +59,7 @@
             const registry = getRegistry();
             const overlay = getOverlay();
 
-            const video = registry?.getVideo({ requireNearbyMouse: true });
+            const video = registry?.getVideo({ requireNearbyMouse: true }) || registry?.getVideo();
             if (!video) return;
 
             const isHorizontalSubtitleNavigation = [

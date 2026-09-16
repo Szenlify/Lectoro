@@ -105,6 +105,11 @@
     function requestSeek(targetSeconds, videoFallback = null) {
         if (!Number.isFinite(targetSeconds)) return;
         const targetMs = Math.round(Math.max(0, targetSeconds) * 1000);
+        const video =
+            videoFallback instanceof HTMLVideoElement
+                ? videoFallback
+                : document.querySelector("video");
+        const wasPlaying = video ? !video.paused : true;
 
         // Netflix rebuilds .player-timedtext after a seek. Keep the indexed cue
         // available while that DOM is temporarily empty so Lectoro can render it
@@ -117,7 +122,7 @@
 
         window.dispatchEvent(
             new CustomEvent(SEEK_EVENT, {
-                detail: { targetMs },
+                detail: { targetMs, play: wasPlaying },
             }),
         );
         // Note: On Netflix, NEVER touch video.currentTime directly!
@@ -530,7 +535,7 @@
         }
         if (cueIndexPromise) return cueIndexPromise;
         // Keep a failed build quiet until Retry, a new manifest, or a setting/track change.
-        if (attemptedRevision === manifestRevision) return Promise.resolve(cueIndex);
+        if (attemptedRevision === manifestRevision && cueIndex.length > 0) return Promise.resolve(cueIndex);
         const scheduledRevision = manifestRevision;
         const pending = (async () => {
             await Promise.resolve();
@@ -729,6 +734,10 @@
     /**
      * Finds target seek time for A (previous) or D (next) key navigation.
      * Safely handles both HTMLVideoElement instances and numeric timestamps.
+     * Matches Language Reactor:
+     * - Uses exact cue boundaries with 125ms audio pre-roll buffer.
+     * - D (Next): advances to the next dialogue cue (never gets stuck on current cue).
+     * - A (Prev): replays current cue if > 750ms in, or jumps to previous cue if near start or in silence.
      */
     async function getAdjacentSubtitleTime(videoOrTime, direction) {
         const cues = await ensureSubtitleIndex();
@@ -740,28 +749,62 @@
                 : Number(videoOrTime?.currentTime ?? NaN);
         if (!Number.isFinite(currentTime)) return null;
 
-        if (direction > 0) {
-            const next = cues.find((cue) => cue.startTime > currentTime + 0.12);
-            return next ? Math.max(0, next.startTime - 0.125) : null;
-        }
+        const ADVANCE_OFFSET = 0.125; // 125ms LR audio pre-roll buffer
 
-        // Backward navigation:
-        // Stepping backward must reliably find the preceding cue, stepping monotonically
-        // even when 'A' is held down or pressed repeatedly.
-        let targetCue = null;
-        for (let index = cues.length - 1; index >= 0; index -= 1) {
-            const cue = cues[index];
-            if (cue.startTime <= currentTime - 0.2) {
-                targetCue = cue;
+        // 1. Determine active cue index (including 125ms advance pre-roll buffer)
+        let activeIndex = -1;
+        for (let i = 0; i < cues.length; i++) {
+            const c = cues[i];
+            if (currentTime >= c.startTime - ADVANCE_OFFSET - 0.05 && currentTime < c.endTime) {
+                activeIndex = i;
                 break;
             }
         }
 
-        if (targetCue) {
-            return Math.max(0, targetCue.startTime - 0.125);
+        // 2. Find last started cue before currentTime
+        let lastStartedIndex = -1;
+        for (let i = cues.length - 1; i >= 0; i--) {
+            if (cues[i].startTime - ADVANCE_OFFSET <= currentTime) {
+                lastStartedIndex = i;
+                break;
+            }
         }
 
-        return cues[0] ? Math.max(0, cues[0].startTime - 0.125) : 0;
+        let targetIndex = -1;
+        if (direction > 0) {
+            // Forward (Next dialogue: 'D')
+            if (activeIndex !== -1) {
+                targetIndex = activeIndex + 1;
+            } else if (lastStartedIndex !== -1) {
+                targetIndex = lastStartedIndex + 1;
+            } else {
+                targetIndex = 0;
+            }
+        } else {
+            // Backward (Previous dialogue / Replay: 'A')
+            if (activeIndex !== -1) {
+                const activeCue = cues[activeIndex];
+                // If playback has progressed more than 750ms into this cue, replay from start
+                if (currentTime > activeCue.startTime + 0.75) {
+                    targetIndex = activeIndex;
+                } else {
+                    targetIndex = activeIndex - 1;
+                }
+            } else if (lastStartedIndex !== -1) {
+                // In silence: jump back to the dialogue that just finished
+                targetIndex = lastStartedIndex;
+            } else {
+                targetIndex = 0;
+            }
+        }
+
+        if (targetIndex >= 0 && targetIndex < cues.length) {
+            return Math.max(0, cues[targetIndex].startTime - ADVANCE_OFFSET);
+        }
+        if (direction < 0 && cues.length > 0) {
+            return Math.max(0, cues[0].startTime - ADVANCE_OFFSET);
+        }
+        return null;
     }
 
     let cachedNetflixArtworkDataUrl = "";
