@@ -75,22 +75,35 @@ function harness({ slave = true, send, settings = {} } = {}) {
     };
 }
 
-test("Netflix pairs both official tracks and preserves the pair throughout its interval", async (t) => {
+test("Netflix aligns both official tracks cue-by-cue matching Language Reactor (no artificial cluster fusing)", async (t) => {
     const h = harness(); t.after(h.dispose);
     const cues = await h.adapter.ensureSubtitleIndex();
-    assert.equal(cues.length, 1);
+    assert.equal(cues.length, 2);
     assert.equal(cues[0].startTime, 1);
-    assert.equal(cues[0].endTime, 4);
-    assert.equal(cues[0].translation, "Polski tekst\nPolski tekst");
+    assert.equal(cues[0].endTime, 2);
+    assert.equal(cues[0].translation, "Polski tekst");
+    assert.equal(cues[1].startTime, 3);
+    assert.equal(cues[1].endTime, 4);
+    assert.equal(cues[1].translation, "Polski tekst");
+
+    // Cue 1 active at 1.5s
+    h.video.currentTime = 1.5;
     const first = h.adapter.getCurrentCueLines(h.video);
     assert.equal(first.cue, cues[0]);
-    h.video.currentTime = 2;
-    assert.equal(h.adapter.getCurrentCueLines(h.video).cue, cues[0]);
-    h.video.currentTime = 3;
+    assert.equal(first.translation, "Polski tekst");
+
+    // During silence gap between 2.0s and 2.875s, no cue is displayed (no ghosting/hanging subtitles)
+    h.video.currentTime = 2.5;
+    assert.equal(h.adapter.getCurrentCueLines(h.video).length, 0);
+
+    // Cue 2 active at 3.5s
+    h.video.currentTime = 3.5;
     const second = h.adapter.getCurrentCueLines(h.video);
-    assert.equal(second.cue, cues[0]);
-    assert.equal(first.cue, second.cue);
-    h.video.currentTime = 4;
+    assert.equal(second.cue, cues[1]);
+    assert.equal(second.translation, "Polski tekst");
+
+    // After cue 2 (at 4.5s), empty
+    h.video.currentTime = 4.5;
     assert.equal(h.adapter.getCurrentCueLines(h.video).length, 0);
     assert.equal(h.statuses.at(-1).status, "ready");
     assert.equal(h.requests.length, 2);
@@ -124,7 +137,7 @@ test("Netflix publishes Master during Slave load, surfaces HTTP 429 and retries 
     await building;
     assert.equal(h.statuses.at(-1).status, "error");
     await h.statuses.at(-1).retry();
-    assert.equal(h.adapter.getCurrentCueLines(h.video).translation, "Tłumaczenie\nTłumaczenie");
+    assert.equal(h.adapter.getCurrentCueLines(h.video).translation, "Tłumaczenie");
     assert.equal(h.statuses.at(-1).status, "ready");
 });
 
@@ -146,7 +159,7 @@ test("Netflix target-language changes reject a stale Slave response", async (t) 
 test("Netflix disabling dual subtitles clears translation and fetches only Master", async (t) => {
     const h = harness(); t.after(h.dispose);
     await h.adapter.ensureSubtitleIndex();
-    assert.equal(h.adapter.getCurrentCueLines(h.video).translation, "Polski tekst\nPolski tekst");
+    assert.equal(h.adapter.getCurrentCueLines(h.video).translation, "Polski tekst");
     const previousRequests = h.requests.length;
     await h.local.local.set({ doubleSubtitles: false });
     assert.equal(h.adapter.getCurrentCueLines(h.video).translation, "");
@@ -236,3 +249,77 @@ test("Netflix bridge accepts official manifest.tracks downloads and rejects audi
     assert.equal(manifest.tracks[1].bcp47, "pl");
     assert.equal(manifest.tracks[1].downloads[0].urls[0], "https://cdn.nflxvideo.net/slave.vtt");
 });
+
+test("Netflix adapter rankDownloads prefers webvtt-lssdh-ios8 profile over other profiles (LR parity)", () => {
+    const context = vm.createContext({ normalizedValue: (v) => String(v || "").toLowerCase().trim() });
+    loadFunction(context, "adapters/netflix-adapter.js", "rankDownloads");
+    const downloads = [
+        { profile: "dfxp-ls-sdh", urls: ["https://cdn.nflxvideo.net/dfxp.xml"] },
+        { profile: "webvtt-lssdh-ios8", urls: ["https://cdn.nflxvideo.net/webvtt-lssdh.vtt"] },
+        { profile: "simplesdh", urls: ["https://cdn.nflxvideo.net/simple.xml"] },
+        { profile: "webvtt-lssdh", urls: ["https://cdn.nflxvideo.net/webvtt.vtt"] },
+    ];
+    const ranked = context.rankDownloads({ downloads });
+    assert.equal(ranked[0].profile, "webvtt-lssdh-ios8");
+    assert.equal(ranked[1].profile, "webvtt-lssdh");
+});
+
+test("Netflix bridge JSON.stringify unlocks all tracks and adds webvtt-lssdh-ios8 profile (LR parity)", () => {
+    const source = read("netflix-player-bridge.js");
+    const context = vm.createContext({
+        window: { addEventListener: () => {}, location: { pathname: "/watch/123" } },
+        document: { querySelector: () => null, addEventListener: () => {} },
+        history: { pushState: () => {}, replaceState: () => {} },
+        setInterval: () => {},
+        CustomEvent: class { constructor(type, detail) { this.type = type; this.detail = detail; } },
+    });
+    vm.runInContext(source, context);
+
+    const manifestRequest = {
+        params: {
+            supportsPartialHydration: false,
+            profiles: ["dfxp-ls-sdh"],
+        },
+    };
+    const stringified = context.JSON.stringify(manifestRequest);
+    const parsed = JSON.parse(stringified);
+
+    assert.equal(parsed.params.supportsPartialHydration, true);
+    assert.equal(parsed.params.showAllSubDubTracks, true);
+    assert.ok(parsed.params.profiles.includes("webvtt-lssdh-ios8"));
+});
+
+test("Netflix bridge Function.prototype.apply configures Cadmium DRM buffering (LR parity)", () => {
+    const source = read("netflix-player-bridge.js");
+    const context = vm.createContext({
+        window: { addEventListener: () => {}, location: { pathname: "/watch/123" } },
+        document: { querySelector: () => null, addEventListener: () => {} },
+        history: { pushState: () => {}, replaceState: () => {} },
+        setInterval: () => {},
+        CustomEvent: class { constructor(type, detail) { this.type = type; this.detail = detail; } },
+    });
+    vm.runInContext(source, context);
+
+    function probe(key) {
+        return key;
+    }
+    assert.equal(probe.apply(null, ["unused", ["preciseSeeking"]]), true);
+    assert.equal(probe.apply(null, ["unused", ["minBufferingTimeInMilliseconds"]]), 1000);
+    assert.equal(probe.apply(null, ["unused", ["fatalOnUnexpectedSeeking"]]), false);
+});
+
+test("Language Reactor Module 151 multiOverlap attaches spanning translation to both master cues", () => {
+    const masterCues = [
+        { startTime: 1.0, endTime: 2.5, text: "Wait for me," },
+        { startTime: 2.6, endTime: 4.0, text: "we have to go." },
+    ];
+    const slaveCues = [
+        { startTime: 0.9, endTime: 4.1, text: "Czekaj na mnie, musimy iść." },
+    ];
+    const aligned = subtitleService.alignSlaveTrackToMaster(masterCues, slaveCues, { multiOverlap: true });
+    assert.equal(aligned.length, 2);
+    assert.equal(aligned[0].translation, "Czekaj na mnie, musimy iść.");
+    assert.equal(aligned[1].translation, "Czekaj na mnie, musimy iść.");
+});
+
+

@@ -336,7 +336,22 @@
         }
         const manifestMovieId = String(manifest.movieId || "");
         if (!manifestMovieId) return;
+
+        // Language Reactor parity: merge hydrated tracks from previous manifests so downloads are never lost
         if (timedTextManifestsByMovieId.has(manifestMovieId)) {
+            const existing = timedTextManifestsByMovieId.get(manifestMovieId);
+            if (existing && Array.isArray(existing.tracks)) {
+                const trackMap = new Map(existing.tracks.map((t) => [t.id, t]));
+                for (const newTrack of manifest.tracks) {
+                    const prev = trackMap.get(newTrack.id);
+                    if (prev && (!newTrack.downloads || newTrack.downloads.length === 0) && prev.downloads?.length > 0) {
+                        trackMap.set(newTrack.id, { ...newTrack, downloads: prev.downloads });
+                    } else {
+                        trackMap.set(newTrack.id, newTrack);
+                    }
+                }
+                manifest.tracks = Array.from(trackMap.values());
+            }
             timedTextManifestsByMovieId.delete(manifestMovieId);
         } else if (
             timedTextManifestsByMovieId.size >= MAX_CACHED_TIMED_TEXT_MANIFESTS
@@ -380,8 +395,59 @@
         } catch (_) { }
     }
 
-    // ── 1. Intercept JSON.parse with Fast-Path Guard ─────────────────────
+    // ── 0. Intercept JSON.stringify to unlock all language tracks (Language Reactor parity) ──
+    const nativeJsonStringify = JSON.stringify;
     const nativeJsonParse = JSON.parse;
+
+    JSON.stringify = function lectoraNetflixJsonStringify(value, replacer, space) {
+        if (value === undefined) return nativeJsonStringify.apply(this, arguments);
+        try {
+            if (value && typeof value === "object" && value.params) {
+                if (value.params.supportsPartialHydration !== undefined) {
+                    value.params.supportsPartialHydration = true;
+                    value.params.showAllSubDubTracks = true;
+                }
+                if (Array.isArray(value.params.profiles)) {
+                    if (!value.params.profiles.includes("webvtt-lssdh-ios8")) {
+                        value.params.profiles.push("webvtt-lssdh-ios8");
+                    }
+                }
+            }
+        } catch (_) { }
+        return nativeJsonStringify.apply(this, arguments);
+    };
+
+    // ── 0b. Proxy Function.prototype.apply for Netflix Cadmium DRM buffer stability ──
+    try {
+        const nativeApply = Function.prototype.apply;
+        Function.prototype.apply = new Proxy(nativeApply, {
+            apply: function (target, thisArg, argList) {
+                if (
+                    argList &&
+                    argList[1] &&
+                    argList[1][0] &&
+                    typeof argList[1][0] === "string"
+                ) {
+                    const key = argList[1][0];
+                    if (
+                        key === "preciseSeeking" ||
+                        key === "preciseseeking" ||
+                        key === "preciseseekingontwocoredevice"
+                    ) {
+                        return true;
+                    }
+                    if (key === "minBufferingTimeInMilliseconds") return 1000;
+                    if (key === "minDecoderBufferMilliseconds") return 500;
+                    if (key === "optimalDecoderBufferMilliseconds") return 2000;
+                    if (key === "reserveForSkipbackBufferMs") return 30000;
+                    if (key === "fatalOnUnexpectedSeeking" || key === "fatalOnUnexpectedSeeked") return false;
+                }
+                return target.call(thisArg, ...(argList || []));
+            },
+        });
+    } catch (_) { }
+
+    // ── 1. Intercept JSON.parse with Fast-Path Guard ─────────────────────
     JSON.parse = function lectoraNetflixJsonParse(...args) {
         const data = nativeJsonParse.apply(this, args);
         const raw = typeof args[0] === "string" ? args[0] : "";

@@ -1847,7 +1847,14 @@
                     continue;
                 }
 
-                // 2. Interval overlap fallback for tracks with different authoring / segmentation
+                // 2. Interval overlap fallback for tracks with different authoring / segmentation (Language Reactor Module 151)
+                // Filter out sound effects in brackets or symbols-only cues from translation matching
+                const trimmedSlave = slave.text.trim();
+                const isSlaveDialogue =
+                    (!trimmedSlave.startsWith("[") || !trimmedSlave.endsWith("]")) &&
+                    /[\p{L}\p{N}]/u.test(trimmedSlave);
+                if (!isSlaveDialogue) continue;
+
                 while (firstMaster < masters.length &&
                     masters[firstMaster].cue.endTime <= slave.startTime) {
                     firstMaster++;
@@ -1855,6 +1862,8 @@
                 let owner = -1;
                 let greatestOverlap = 0;
                 let closestStartDiff = Infinity;
+                const matchedIndices = [];
+
                 for (let i = firstMaster; i < masters.length; i++) {
                     const { cue, index } = masters[i];
                     if (cue.startTime >= slave.endTime) break;
@@ -1873,7 +1882,27 @@
                         }
                     }
                 }
-                if (owner >= 0) translations[owner].add(slave.text);
+                if (owner >= 0) matchedIndices.push(owner);
+
+                // Language Reactor Module 151: attach translation to other master cues if overlap > 500ms or > 80% of master cue duration
+                if (options.multiOverlap) {
+                    for (let i = firstMaster; i < masters.length; i++) {
+                        const { cue, index } = masters[i];
+                        if (cue.startTime >= slave.endTime) break;
+                        const overlap = Math.min(cue.endTime, slave.endTime) -
+                            Math.max(cue.startTime, slave.startTime);
+                        const masterDuration = cue.endTime - cue.startTime;
+                        if (overlap > 0.5 || (masterDuration > 0 && (overlap / masterDuration) > 0.8)) {
+                            if (!matchedIndices.includes(index)) {
+                                matchedIndices.push(index);
+                            }
+                        }
+                    }
+                }
+
+                for (const idx of matchedIndices) {
+                    translations[idx].add(slave.text);
+                }
             }
 
             for (let i = 0; i < unified.length; i++) {

@@ -520,9 +520,28 @@
                 reportDualStatus("ready");
                 return;
             }
-            const translatedUrls = ["json3", "vtt", "srv3", ""].map((fmt) =>
-                buildTimedTextUrl(baseUrl, { lang: sourceLanguage, tlang: language, fmt }));
-            const slaveCues = await fetchCueCandidates(translatedUrls, generation, videoId);
+            let slaveCues = [];
+            // 1. First priority (like LR): Check if an official human translation track exists in availableTracks
+            const humanTrack = (availableTracks || []).find((t) => {
+                if (!t || t.kind === "asr" || !t.baseUrl) return false;
+                const langCode = (t.languageCode || "").toLowerCase();
+                const vssId = (t.vssId || "").toLowerCase();
+                const target = language.toLowerCase();
+                return langCode === target || langCode.startsWith(target + "-") || vssId.includes("." + target);
+            });
+
+            if (humanTrack?.baseUrl) {
+                const humanUrls = ["json3", "vtt", "srv3", ""].map((fmt) =>
+                    buildTimedTextUrl(humanTrack.baseUrl, { fmt }));
+                slaveCues = await fetchCueCandidates(humanUrls, generation, videoId);
+            }
+
+            // 2. Fallback to machine translation (mTranslations with &tlang=...)
+            if (!slaveCues.length) {
+                const translatedUrls = ["json3", "vtt", "srv3", ""].map((fmt) =>
+                    buildTimedTextUrl(baseUrl, { lang: sourceLanguage, tlang: language, fmt }));
+                slaveCues = await fetchCueCandidates(translatedUrls, generation, videoId);
+            }
             if (!isCurrentRequest(generation, videoId)) return;
             if (!slaveCues.length) throw new Error("missing_translation");
             const unifiedCues = service.alignSlaveTrackToMaster(masterCues, slaveCues, { alignSentences: true });

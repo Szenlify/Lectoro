@@ -19,9 +19,43 @@
   const NAV_EVENT = "__lectoro_youtube_navigation";
 
   let currentVideoId = "";
+  let interceptedPlayerInstance = null;
+  let cachedPotToken = "";
+  let cachedPotVideoId = "";
+
+  // ── Intercept YouTube Player instance via Function.prototype.bind (LR parity) ──
+  const originalBind = Function.prototype.bind;
+  Function.prototype.bind = function lectoroPlayerBindHook(...args) {
+    if (
+      args[0] &&
+      typeof args[0] === "object" &&
+      typeof args[0].getPlayerResponse === "function"
+    ) {
+      interceptedPlayerInstance = args[0];
+    }
+    return originalBind.apply(this, args);
+  };
+
+  function extractPotToken(rawUrl) {
+    try {
+      if (typeof rawUrl === "string" && rawUrl.includes("/timedtext")) {
+        const query = rawUrl.split("?")[1];
+        if (query) {
+          const params = new URLSearchParams(query);
+          const pot = params.get("pot");
+          const v = params.get("v");
+          if (pot) {
+            cachedPotToken = pot;
+            if (v) cachedPotVideoId = v;
+          }
+        }
+      }
+    } catch (_) {}
+  }
 
   function getYouTubePlayer() {
     return (
+      interceptedPlayerInstance ||
       document.getElementById("movie_player") ||
       document.querySelector(".html5-video-player")
     );
@@ -285,6 +319,7 @@
   if (typeof originalFetch === "function") {
     window.fetch = async function (...args) {
       const requestUrl = typeof args[0] === "string" ? args[0] : args[0]?.url || "";
+      extractPotToken(requestUrl);
       const requestVideoId = getCurrentVideoId();
       const response = await originalFetch.apply(this, args);
       try {
@@ -320,6 +355,7 @@
   const originalXhrSend = XMLHttpRequest.prototype.send;
   XMLHttpRequest.prototype.open = function (method, url, ...rest) {
     this.__lectoro_url = typeof url === "string" ? url : "";
+    extractPotToken(this.__lectoro_url);
     this.__lectoro_video_id = getCurrentVideoId();
     return originalXhrOpen.call(this, method, url, ...rest);
   };
@@ -395,6 +431,9 @@
       const target = new URL(url, window.location.href);
       if (target.protocol !== "https:" || !/(^|\.)youtube\.com$/i.test(target.hostname) || target.pathname !== "/api/timedtext") {
         throw new Error("invalid_timedtext_url");
+      }
+      if (!target.searchParams.has("pot") && cachedPotToken) {
+        target.searchParams.set("pot", cachedPotToken);
       }
       if (typeof originalFetch === "function") {
         const controller = new AbortController();

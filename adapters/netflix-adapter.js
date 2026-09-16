@@ -361,7 +361,8 @@
             .map((download, order) => {
                 const profile = normalizedValue(download.profile);
                 let score = -order;
-                if (profile.includes("webvtt")) score += 400;
+                if (profile.includes("webvtt-lssdh-ios8")) score += 500;
+                else if (profile.includes("webvtt")) score += 400;
                 else if (profile.includes("dfxp") || profile.includes("ttml")) {
                     score += 300;
                 } else if (profile.includes("simple")) {
@@ -488,10 +489,9 @@
             if (!isCurrent() || !master) return [];
             const service = getSubtitleService();
             // Publish Master immediately. Slave failures must never delay or remove it.
-            const pairedMaster = service?.pairTwoClusters
-                ? service.pairTwoClusters(master.cues)
-                : master.cues;
-            cueIndex = pairedMaster.map((cue) => ({ ...cue, translation: "" }));
+            // On Netflix, cues are authored professionally in full dialog utterances (matching LR).
+            // Do NOT pair/merge cues across silence gaps.
+            cueIndex = master.cues.map((cue) => ({ ...cue, translation: "" }));
             cueIndexKey = master.key;
             renderIndexedCue();
 
@@ -507,14 +507,11 @@
             if (!slaveTrack) throw new Error("Netflix has no subtitle track for the requested language.");
             const slave = await fetchTrackCues(slaveTrack, context);
             if (!isCurrent() || !slave) return [];
-            const aligned = service.alignSlaveTrackToMaster(master.cues, slave.cues);
+            const aligned = service.alignSlaveTrackToMaster(master.cues, slave.cues, { multiOverlap: true });
             if (!aligned.some((cue) => cue.translation)) {
                 throw new Error("Netflix subtitle tracks have no matching timed cues.");
             }
-            const pairedAligned = service?.pairTwoClusters
-                ? service.pairTwoClusters(aligned)
-                : aligned;
-            cueIndex = pairedAligned;
+            cueIndex = aligned;
             renderIndexedCue();
             setDualSubtitleStatus("ready");
             return cueIndex;
@@ -603,12 +600,13 @@
         if (!Number.isFinite(time) || cueIndex.length === 0) return null;
 
         // Binary search for the last cue whose start is not after `time`.
+        // Apply 125ms lead-in buffer matching Language Reactor (cue.startTime - 0.125)
         let low = 0;
         let high = cueIndex.length - 1;
         let matchIndex = -1;
         while (low <= high) {
             const middle = (low + high) >> 1;
-            if (cueIndex[middle].startTime <= time) {
+            if (cueIndex[middle].startTime - 0.125 <= time) {
                 matchIndex = middle;
                 low = middle + 1;
             } else {
@@ -621,7 +619,7 @@
         const endTime = Number.isFinite(cue.endTime)
             ? cue.endTime
             : cue.startTime + 3;
-        if (time < endTime) return cue;
+        if (time < endTime && time >= cue.startTime - 0.125) return cue;
 
         // Scan backward for active overlapping cues (e.g. background sound ending while dialogue continues)
         for (let i = matchIndex - 1; i >= 0 && i >= matchIndex - 8; i--) {
@@ -629,7 +627,7 @@
             const prevEndTime = Number.isFinite(prevCue.endTime)
                 ? prevCue.endTime
                 : prevCue.startTime + 3;
-            if (time < prevEndTime && prevCue.startTime <= time) {
+            if (time < prevEndTime && time >= prevCue.startTime - 0.125) {
                 return prevCue;
             }
             if (time - prevCue.startTime > 30) break;
@@ -673,7 +671,7 @@
             }
         }
 
-        // 1. Check indexed cues if available
+        // 1. Check indexed cues if available (Primary source of truth matching LR)
         if (cueIndex.length > 0 && Number.isFinite(lookupTime)) {
             const cue = findIndexedCueAt(lookupTime);
             if (cue) {
@@ -684,10 +682,12 @@
                 lines.cue = cue;
                 return lines;
             }
+            // If indexed cues are loaded for this movie and no cue matches lookupTime,
+            // we are in a dialogue pause. Return empty to prevent ghost subtitles or stale fallback.
+            return [];
         }
 
-        // 2. Direct DOM fallback from .player-timedtext
-        // Ensures that whenever Netflix displays a subtitle on screen, Lectoro will ALWAYS show it
+        // 2. Direct DOM fallback from .player-timedtext (only when cueIndex is not yet loaded)
         try {
             const player =
                 video?.closest?.(".watch-video, [data-uia='video-canvas'], .nf-player-container") ||
@@ -702,14 +702,8 @@
                         ? globalThis.LectoroBaseAdapter.extractCueLines(cueElements)
                         : [];
                     if (domLines.length > 0) {
-                        let closestCue = null;
-                        if (cueIndex.length > 0 && Number.isFinite(lookupTime)) {
-                            closestCue = cueIndex.find(
-                                (c) => Math.abs(c.startTime - lookupTime) < 2.0,
-                            );
-                        }
-                        domLines.translation = closestCue?.translation || "";
-                        domLines.cue = closestCue || null;
+                        domLines.translation = "";
+                        domLines.cue = null;
                         return domLines;
                     }
                 }
@@ -748,7 +742,7 @@
 
         if (direction > 0) {
             const next = cues.find((cue) => cue.startTime > currentTime + 0.12);
-            return next?.startTime ?? null;
+            return next ? Math.max(0, next.startTime - 0.125) : null;
         }
 
         // Backward navigation:
@@ -764,10 +758,10 @@
         }
 
         if (targetCue) {
-            return targetCue.startTime;
+            return Math.max(0, targetCue.startTime - 0.125);
         }
 
-        return cues[0] ? cues[0].startTime : 0;
+        return cues[0] ? Math.max(0, cues[0].startTime - 0.125) : 0;
     }
 
     let cachedNetflixArtworkDataUrl = "";
