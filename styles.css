@@ -870,7 +870,7 @@ video::cue {
   font-weight: 500 !important;
   line-height: 1.32 !important;
   letter-spacing: 0.012em !important;
-  white-space: pre-line !important;
+  white-space: normal !important;
 }
 
 .__qt_sub-secondary:empty,

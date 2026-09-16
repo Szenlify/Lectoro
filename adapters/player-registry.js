@@ -535,9 +535,8 @@
         const indexedLines = captionAdapter?.getCurrentCueLines?.(
             session.video,
         );
-        const hasIndexedLines = Array.isArray(indexedLines) && indexedLines.length > 0;
-        // When indexed cues are present, use them as stable source of truth.
-        // Otherwise, fall back to live DOM caption elements.
+        const hasIndexedLines = Array.isArray(indexedLines);
+        // An empty indexed result is an authored gap, not a request for stale DOM text.
         let lines = hasIndexedLines
             ? indexedLines
             : (globalThis.LectoroBaseAdapter?.extractCueLines?.(adapterElements) || (Array.isArray(indexedLines) ? indexedLines : []));
@@ -576,7 +575,7 @@
         }
         const fullText = lines.join(" ").trim();
         // Both rows must come from the same timeline read, including empty gaps.
-        const secondaryText = lines.cue?.translation || lines.translation || "";
+        const secondaryText = lines.translation ?? lines.cue?.translation ?? "";
         if (typeof subtitleChangeCallback === "function") {
             subtitleChangeCallback({
                 lines,
@@ -607,7 +606,21 @@
         });
     }
 
+    function startSubtitleClock(session) {
+        if (!isNetflixPage() || session.subtitleFrame != null || document.hidden ||
+            session.video.paused || session.video.ended || !session.video.isConnected ||
+            session !== videoSessions.get(activeVideo)) return;
+        session.subtitleFrame = requestAnimationFrame(() => {
+            session.subtitleFrame = null;
+            if (session !== videoSessions.get(activeVideo) || !session.video.isConnected || document.hidden) return;
+            dispatchSubtitleChange(session);
+            startSubtitleClock(session);
+        });
+    }
+
     function disconnectCaptionObserver(session) {
+        if (session.subtitleFrame != null) cancelAnimationFrame(session.subtitleFrame);
+        session.subtitleFrame = null;
         session.domObserver?.disconnect();
         session.domObserver = null;
         if (session.domFrame !== null) cancelAnimationFrame(session.domFrame);
@@ -687,6 +700,7 @@
 
         refreshNativeTracks(session);
         refreshCaptionBinding(session, true);
+        startSubtitleClock(session);
         if (globalThis.LectoroGenericVideoAdapter?.ensureControlsHidden) {
             globalThis.LectoroGenericVideoAdapter.ensureControlsHidden();
         }
@@ -730,6 +744,7 @@
             binding: null,
             domObserver: null,
             domFrame: null,
+            subtitleFrame: null,
             lastFallbackAt: 0,
         };
         const signal = controller.signal;
@@ -837,7 +852,10 @@
         const session = videoSessions.get(activeVideo);
         if (!session) return;
         if (document.hidden) disconnectCaptionObserver(session);
-        else refreshCaptionBinding(session, true);
+        else {
+            refreshCaptionBinding(session, true);
+            startSubtitleClock(session);
+        }
     });
     window.addEventListener("pagehide", () => {
         for (const session of Array.from(liveVideoSessions)) {
@@ -907,6 +925,13 @@
 
     function getAdjacentCueTime(cues, currentTime, direction) {
         if (!Array.isArray(cues) || cues.length === 0) return null;
+        if (globalThis.LectoroUniversalVideoController?.calculateAdjacentCueTime) {
+            return globalThis.LectoroUniversalVideoController.calculateAdjacentCueTime(
+                cues,
+                currentTime,
+                direction,
+            );
+        }
         if (globalThis.SharedSubtitleService?.findAdjacentCueTime) {
             return globalThis.SharedSubtitleService.findAdjacentCueTime(
                 cues,

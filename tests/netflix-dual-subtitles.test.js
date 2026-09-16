@@ -361,3 +361,84 @@ test("Netflix getAdjacentSubtitleTime navigates dialogue cues accurately with 12
 });
 
 
+
+test("Netflix keeps authored lines before and after translation loads", async (t) => {
+    const pending = deferred();
+    const h = harness({ send: async (message) => message.url.includes("master")
+        ? { text: vtt("First line\nSecond line") } : pending.promise });
+    t.after(h.dispose);
+    const building = h.adapter.ensureSubtitleIndex();
+    await tick();
+    assert.deepEqual(Array.from(h.adapter.getCurrentCueLines(h.video)), ["First line", "Second line"]);
+    pending.resolve({ text: vtt("Tłumaczenie") });
+    await building;
+    assert.deepEqual(Array.from(h.adapter.getCurrentCueLines(h.video)), ["First line", "Second line"]);
+});
+
+test("Netflix retains short replies contained in another simultaneous line", async (t) => {
+    const text = "WEBVTT\n\n00:00:01.000 --> 00:00:03.000\nYes, of course.\n\n00:00:01.000 --> 00:00:03.000\nYes\n";
+    const h = harness({ settings: { doubleSubtitles: false }, send: async () => ({ text }) });
+    t.after(h.dispose);
+    await h.adapter.ensureSubtitleIndex();
+    assert.deepEqual(Array.from(h.adapter.getCurrentCueLines(h.video)), ["Yes, of course.", "Yes"]);
+});
+
+test("Netflix overlapping lines disappear at their own authored ends", async (t) => {
+    const text = "WEBVTT\n\n00:00:01.000 --> 00:00:03.000\nLong reply\n\n00:00:01.020 --> 00:00:02.400\nShort reply\n";
+    const h = harness({ settings: { doubleSubtitles: false }, send: async () => ({ text }) });
+    t.after(h.dispose);
+    await h.adapter.ensureSubtitleIndex();
+    assert.deepEqual(Array.from(h.adapter.getCurrentCueLines(h.video)), ["Long reply", "Short reply"]);
+    h.video.currentTime = 2.5;
+    assert.deepEqual(Array.from(h.adapter.getCurrentCueLines(h.video)), ["Long reply"]);
+});
+
+test("Netflix spanning translation survives an exact start match into the next cue", () => {
+    const cues = subtitleService.alignSlaveTrackToMaster([
+        { startTime: 1, endTime: 2, text: "First" },
+        { startTime: 2, endTime: 4, text: "Second" },
+    ], [{ startTime: 1, endTime: 4, text: "Cała wypowiedź" }], { multiOverlap: true });
+    assert.deepEqual(cues.map(cue => cue.translation), ["Cała wypowiedź", "Cała wypowiedź"]);
+});
+
+test("Netflix finds long active cues behind ended cues older than thirty seconds", async (t) => {
+    const text = "WEBVTT\n\n00:00:01.000 --> 00:01:00.000\nLong cue\n\n00:00:02.000 --> 00:00:03.000\nShort cue\n";
+    const h = harness({ settings: { doubleSubtitles: false }, send: async () => ({ text }) });
+    t.after(h.dispose);
+    await h.adapter.ensureSubtitleIndex();
+    h.video.currentTime = 40;
+    assert.deepEqual(Array.from(h.adapter.getCurrentCueLines(h.video)), ["Long cue"]);
+});
+
+test("Netflix buffering preserves active subtitles without refetching on recovery", async (t) => {
+    const h = harness(); t.after(h.dispose);
+    await h.adapter.ensureSubtitleIndex();
+    const requests = h.requests.length;
+    h.setActive({ playerReady: false, isCcActive: false, track: null });
+    await h.poll();
+    assert.equal(h.adapter.getCurrentCueLines(h.video)[0], "Same words");
+    h.setActive({ playerReady: true, isCcActive: true, track: { id: "master", language: "en" } });
+    await h.poll();
+    assert.equal(h.requests.length, requests);
+});
+
+test("Netflix confirmed subtitle-off polling hides indexed subtitles", async (t) => {
+    const h = harness(); t.after(h.dispose);
+    await h.adapter.ensureSubtitleIndex();
+    h.setActive({ playerReady: true, isCcActive: false, track: null });
+    await h.poll();
+    assert.equal(h.adapter.getCurrentCueLines(h.video), null);
+    assert.equal(h.renders.at(-1).lines.length, 0);
+});
+
+test("Netflix normal playback follows exact cue boundaries without seek pre-roll", async (t) => {
+    const text = "WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nFirst\n\n00:00:02.000 --> 00:00:03.000\nSecond\n";
+    const h = harness({ settings: { doubleSubtitles: false }, send: async () => ({ text }) });
+    t.after(h.dispose);
+    await h.adapter.ensureSubtitleIndex();
+    for (const [time, expected] of [[0.875, []], [0.999, []], [1, ["First"]],
+        [1.9, ["First"]], [1.999, ["First"]], [2, ["Second"]], [3, []]]) {
+        h.video.currentTime = time;
+        assert.deepEqual(Array.from(h.adapter.getCurrentCueLines(h.video)), expected, `at ${time}s`);
+    }
+});

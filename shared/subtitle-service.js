@@ -170,7 +170,7 @@
          * Sorts, merges overlapping cues with identical start times,
          * and guarantees monotonically increasing, complete cue objects with comfortable reading durations.
          */
-        function finalizeCues(rawCues, { preserveTiming = false } = {}) {
+        function finalizeCues(rawCues, { preserveTiming = false, preserveLines = false } = {}) {
             if (!Array.isArray(rawCues)) return [];
 
             const sorted = rawCues
@@ -194,7 +194,11 @@
                     )
                     .map((cue) => {
                         const text = cue.text.replace(/\s+/g, " ").trim();
-                        const normalized = { ...cue, text, lines: [text] };
+                        const lines = preserveLines
+                            ? (cue.lines?.length ? cue.lines : cue.text.split(/\r?\n/))
+                                .map((line) => line.replace(/\s+/g, " ").trim()).filter(Boolean)
+                            : [text];
+                        const normalized = { ...cue, text, lines };
                         for (const key of ["segs", "tStartMs", "dDurationMs"]) {
                             if (cue[key] != null) {
                                 Object.defineProperty(normalized, key, {
@@ -1073,8 +1077,17 @@
          * @param {number} direction - 1 for next, -1 for previous
          * @returns {number|null} target seek time in seconds, or null
          */
-        function findAdjacentCueTime(cues, videoOrTime, direction) {
+        function findAdjacentCueTime(cues, videoOrTime, direction, options = {}) {
             if (!Array.isArray(cues) || cues.length === 0) return null;
+
+            if (globalThis.LectoroUniversalVideoController?.calculateAdjacentCueTime) {
+                return globalThis.LectoroUniversalVideoController.calculateAdjacentCueTime(
+                    cues,
+                    videoOrTime,
+                    direction,
+                    options,
+                );
+            }
 
             const currentTime =
                 typeof videoOrTime === "number"
@@ -1084,21 +1097,23 @@
             if (!Number.isFinite(currentTime)) return null;
 
             const dir = direction >= 0 ? 1 : -1;
-            const TIME_EPSILON = 0.08;
-            const REPLAY_THRESHOLD_SECONDS = 1.2;
+            const TIME_EPSILON = 0.05;
+            const thresholdRatio = typeof options.thresholdRatio === "number" ? options.thresholdRatio : 0.5;
+            const minReplaySec = typeof options.minReplaySeconds === "number" ? options.minReplaySeconds : 0.4;
+            const advanceOffset = typeof options.advanceOffset === "number" ? options.advanceOffset : 0;
 
             if (dir > 0) {
                 // Find next cue that starts strictly after current time
                 const next = cues.find(
-                    (c) => c.startTime > currentTime + TIME_EPSILON,
+                    (c) => (c.startTime - advanceOffset) > currentTime + TIME_EPSILON,
                 );
-                return next ? next.startTime : null;
+                return next ? Math.max(0, next.startTime - advanceOffset) : null;
             }
 
             // Search backward for previous/current cue
             let currentOrPreviousIndex = -1;
             for (let i = cues.length - 1; i >= 0; i--) {
-                if (cues[i].startTime <= currentTime + TIME_EPSILON) {
+                if ((cues[i].startTime - advanceOffset) <= currentTime + TIME_EPSILON) {
                     currentOrPreviousIndex = i;
                     break;
                 }
@@ -1110,23 +1125,29 @@
 
             const currentCue = cues[currentOrPreviousIndex];
             const isInsideCue =
-                currentTime >= currentCue.startTime - TIME_EPSILON &&
+                currentTime >= (currentCue.startTime - advanceOffset) - TIME_EPSILON &&
                 currentTime <=
-                    (currentCue.endTime || currentCue.startTime + 3) + 0.2;
+                    ((Number.isFinite(currentCue.endTime) ? currentCue.endTime : currentCue.startTime + 2.5) - advanceOffset) + 0.15;
 
             if (isInsideCue) {
-                const timeSinceStart = currentTime - currentCue.startTime;
-                if (timeSinceStart > REPLAY_THRESHOLD_SECONDS) {
-                    // In the middle of sentence: rewind to sentence start
-                    return currentCue.startTime;
+                const cueDuration = Math.max(
+                    0.5,
+                    (Number.isFinite(currentCue.endTime) ? currentCue.endTime : currentCue.startTime + 2.5) - currentCue.startTime,
+                );
+                const timeSinceStart = currentTime - (currentCue.startTime - advanceOffset);
+                const replayThreshold = Math.max(minReplaySec, cueDuration * thresholdRatio);
+
+                if (timeSinceStart >= replayThreshold) {
+                    // Past 50% threshold: rewind to current sentence start
+                    return Math.max(0, currentCue.startTime - advanceOffset);
                 }
-                // At sentence start: jump to previous sentence
+                // Before 50% threshold: jump to previous sentence
                 const prevIndex = currentOrPreviousIndex - 1;
-                return prevIndex >= 0 ? cues[prevIndex].startTime : 0;
+                return prevIndex >= 0 ? Math.max(0, cues[prevIndex].startTime - advanceOffset) : 0;
             }
 
             // Between cues: jump to the cue that just ended
-            return currentCue.startTime;
+            return Math.max(0, currentCue.startTime - advanceOffset);
         }
 
         /**
@@ -1789,7 +1810,8 @@
 
             const unified = masterCues.map((master) => {
                 const text = String(master?.text || "").replace(/\s+/g, " ").trim();
-                const res = { ...master, text, lines: [text], translation: "" };
+                const lines = options.preserveLines && master.lines?.length ? [...master.lines] : [text];
+                const res = { ...master, text, lines, translation: "" };
                 if (master && master.tStartMs != null) {
                     Object.defineProperty(res, "tStartMs", {
                         value: master.tStartMs,
@@ -1844,7 +1866,7 @@
 
                 if (exactOwner >= 0) {
                     translations[exactOwner].add(slave.text);
-                    continue;
+                    if (!options.multiOverlap) continue;
                 }
 
                 // 2. Interval overlap fallback for tracks with different authoring / segmentation (Language Reactor Module 151)

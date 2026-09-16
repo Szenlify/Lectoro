@@ -216,21 +216,12 @@
                 return;
             }
 
-            // Rewind / Forward by 10s on Netflix: ArrowLeft / ArrowRight
-            if (key === "ArrowLeft") {
-                const isNetflix =
-                    (typeof registry?.isNetflixPage === "function" && registry.isNetflixPage()) ||
-                    /(^|\.)netflix\.com$/i.test(window.location.hostname);
-                if (isNetflix) {
-                    if (typeof registry?.seekNetflix === "function") {
-                        registry.seekNetflix(video, -10);
-                    } else if (typeof globalThis.LectoroNetflixAdapter?.requestSeekDelta === "function") {
-                        globalThis.LectoroNetflixAdapter.requestSeekDelta(-10, video);
-                    }
-                    return;
-                }
+            // Previous Subtitle / Replay: ArrowLeft / A (identically to YouTube across all platforms)
+            if (key === "ArrowLeft" || key === "a" || key === "A") {
                 if (typeof registry?.navigateSubtitle === "function") {
                     registry.navigateSubtitle(video, -1);
+                } else if (typeof globalThis.LectoroUniversalVideoController?.navigateSubtitle === "function") {
+                    globalThis.LectoroUniversalVideoController.navigateSubtitle(video, -1);
                 } else {
                     video.currentTime = Math.max(0, video.currentTime - FALLBACK_SKIP_SECONDS);
                     if (video.paused) video.play().catch?.(() => {});
@@ -238,58 +229,13 @@
                 return;
             }
 
-            if (key === "ArrowRight") {
-                const isNetflix =
-                    (typeof registry?.isNetflixPage === "function" && registry.isNetflixPage()) ||
-                    /(^|\.)netflix\.com$/i.test(window.location.hostname);
-                if (isNetflix) {
-                    if (typeof registry?.seekNetflix === "function") {
-                        registry.seekNetflix(video, 10);
-                    } else if (typeof globalThis.LectoroNetflixAdapter?.requestSeekDelta === "function") {
-                        globalThis.LectoroNetflixAdapter.requestSeekDelta(10, video);
-                    }
-                    return;
-                }
+            // Next Subtitle: ArrowRight / D (identically to YouTube across all platforms)
+            if (key === "ArrowRight" || key === "d" || key === "D") {
                 if (typeof registry?.navigateSubtitle === "function") {
                     registry.navigateSubtitle(video, 1);
+                } else if (typeof globalThis.LectoroUniversalVideoController?.navigateSubtitle === "function") {
+                    globalThis.LectoroUniversalVideoController.navigateSubtitle(video, 1);
                 } else {
-                    video.currentTime = Math.min(
-                        video.duration || Infinity,
-                        video.currentTime + FALLBACK_SKIP_SECONDS,
-                    );
-                    if (video.paused) video.play().catch?.(() => {});
-                }
-                return;
-            }
-
-            // Previous Subtitle: A
-            if (key === "a" || key === "A") {
-                const isNetflix =
-                    (typeof registry?.isNetflixPage === "function" && registry.isNetflixPage()) ||
-                    /(^|\.)netflix\.com$/i.test(window.location.hostname);
-
-                if (typeof registry?.navigateSubtitle === "function") {
-                    registry.navigateSubtitle(video, -1);
-                } else if (typeof registry?.navigateNetflixSubtitle === "function" && isNetflix) {
-                    registry.navigateNetflixSubtitle(video, -1);
-                } else if (!isNetflix) {
-                    video.currentTime = Math.max(0, video.currentTime - FALLBACK_SKIP_SECONDS);
-                    if (video.paused) video.play().catch?.(() => {});
-                }
-                return;
-            }
-
-            // Next Subtitle: D
-            if (key === "d" || key === "D") {
-                const isNetflix =
-                    (typeof registry?.isNetflixPage === "function" && registry.isNetflixPage()) ||
-                    /(^|\.)netflix\.com$/i.test(window.location.hostname);
-
-                if (typeof registry?.navigateSubtitle === "function") {
-                    registry.navigateSubtitle(video, 1);
-                } else if (typeof registry?.navigateNetflixSubtitle === "function" && isNetflix) {
-                    registry.navigateNetflixSubtitle(video, 1);
-                } else if (!isNetflix) {
                     video.currentTime = Math.min(
                         video.duration || Infinity,
                         video.currentTime + FALLBACK_SKIP_SECONDS,

@@ -741,83 +741,6 @@
         }
     }
 
-    let measureCanvas = null;
-    let measureCtx = null;
-
-    function measureTextWidth(text, fontSizePx) {
-        if (!text) return 0;
-        try {
-            if (!measureCanvas && typeof document !== "undefined") {
-                measureCanvas = document.createElement("canvas");
-                measureCtx = measureCanvas.getContext("2d");
-            }
-            if (measureCtx) {
-                measureCtx.font = `600 ${fontSizePx}px "Netflix Sans Variable", "Netflix Sans", "Helvetica Neue", "Segoe UI", Roboto, sans-serif`;
-                return measureCtx.measureText(text).width;
-            }
-        } catch (_) { }
-        return text.length * fontSizePx * 0.55;
-    }
-
-    /**
-     * Consolidates 3-line subtitles into 2 lines if they can comfortably fit
-     * within the available subtitle box width without overflowing/wrapping.
-     */
-    function consolidateLinesIfFit(lines, maxAvailableWidth, fontSizePx) {
-        if (!Array.isArray(lines) || lines.length !== 3) {
-            return lines;
-        }
-
-        // Available width for text inside line container with safety margin
-        const maxWidth = Math.max(200, maxAvailableWidth - 48);
-
-        const [l0, l1, l2] = lines;
-
-        const comboA_line0 = `${l0} ${l1}`.trim();
-        const comboA_line1 = l2.trim();
-
-        const comboB_line0 = l0.trim();
-        const comboB_line1 = `${l1} ${l2}`.trim();
-
-        const wA0 = measureTextWidth(comboA_line0, fontSizePx);
-        const wA1 = measureTextWidth(comboA_line1, fontSizePx);
-
-        const wB0 = measureTextWidth(comboB_line0, fontSizePx);
-        const wB1 = measureTextWidth(comboB_line1, fontSizePx);
-
-        const fitsA = wA0 <= maxWidth && wA1 <= maxWidth;
-        const fitsB = wB0 <= maxWidth && wB1 <= maxWidth;
-
-        // Check if l1 or l2 starts with a dialogue speaker dash (e.g. "- Yes", "— No", "– Sure")
-        const isL1SpeakerChange = /^[-–—]\s*\S/.test(l1);
-        const isL2SpeakerChange = /^[-–—]\s*\S/.test(l2);
-
-        if (fitsA && fitsB) {
-            if (isL1SpeakerChange) {
-                return [comboB_line0, comboB_line1];
-            }
-            if (isL2SpeakerChange) {
-                return [comboA_line0, comboA_line1];
-            }
-            // Choose the combination with more balanced line widths
-            const diffA = Math.abs(wA0 - wA1);
-            const diffB = Math.abs(wB0 - wB1);
-            return diffA <= diffB
-                ? [comboA_line0, comboA_line1]
-                : [comboB_line0, comboB_line1];
-        }
-
-        if (fitsB && !isL2SpeakerChange) {
-            return [comboB_line0, comboB_line1];
-        }
-
-        if (fitsA && !isL1SpeakerChange) {
-            return [comboA_line0, comboA_line1];
-        }
-
-        return lines;
-    }
-
     function renderCustomSubtitles(lines = [], options = {}) {
         const { layer, box } = ensureCustomSubtitlesLayer();
         const registry = getPlayerRegistry();
@@ -856,38 +779,19 @@
         const doubleActive = isDoubleSubtitlesActive();
         box.classList.toggle(`${PREFIX}subtitles-dual`, doubleActive);
         box.classList.toggle(`${PREFIX}dual-subtitles`, doubleActive);
-        let displayLines = rawCleanLines;
-
-        if (doubleActive) {
-            // Like Language Reactor: preserve distinct lines for paired clusters,
-            // or single normalized line when input is a single block with internal newlines
-            displayLines = rawCleanLines.length === 1
-                ? [rawCleanLines[0].replace(/\r?\n/g, " ").trim()]
-                : rawCleanLines;
-        } else if (displayLines.length === 3) {
-            const playerEl = findPlayerContainer(video);
-            const actualWidth =
-                playerEl?.offsetWidth || window.innerWidth || 1280;
-            const fontSizePx = Math.max(
-                20,
-                Math.min(54, Math.round(actualWidth * 0.026 + 4)),
-            );
-            const maxBoxWidth = actualWidth * 0.92;
-            displayLines = consolidateLinesIfFit(
-                displayLines,
-                maxBoxWidth,
-                fontSizePx,
-            );
-        }
+        // Authored line breaks describe the source layout, not our available width.
+        // Keep one text block per language; CSS wraps only when it no longer fits.
+        const displayLines = [rawCleanLines.join(" ").replace(/\s+/g, " ").trim()];
         const newText = displayLines.join(" ").replace(/\s+/g, " ").trim();
 
         // Slave text belongs to this exact Master cue, never to a text-only cache.
         const cue = options.cue || lines.cue || null;
-        const rawSecondary = cue ? cue.translation : options.secondaryText;
+        // Netflix may have several independently timed cues on screen at once.
+        const rawSecondary = lines.allCues?.length > 1
+            ? lines.translation
+            : cue ? cue.translation : options.secondaryText;
         const secondaryText = doubleActive && typeof rawSecondary === "string"
-            ? (displayLines.length >= 2
-                ? rawSecondary.replace(/[^\S\r\n]+/g, " ").trim()
-                : rawSecondary.replace(/\s+/g, " ").trim())
+            ? rawSecondary.replace(/\s+/g, " ").trim()
             : "";
 
         if (newText === activeText && activeLines.length > 0 && activeUnifiedCue === cue) {

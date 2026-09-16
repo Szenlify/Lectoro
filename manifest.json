@@ -112,6 +112,7 @@
                 "video/dual-subtitle-toast.js",
                 "video/subtitle-overlay.js",
                 "video/reading-modes.js",
+                "video/universal-video-controller.js",
                 "video/video-hotkeys.js",
                 "content.js"
             ],

@@ -434,7 +434,7 @@
                         response.text,
                         download.profile,
                         response.contentType,
-                        { preserveTiming: true },
+                        { preserveTiming: true, preserveLines: true },
                     );
                     if (!cues.length) throw new Error("Netflix subtitle track contains no readable cues.");
                     return { cues, key: [movieId, track.id, download.profile, url].join("|") };
@@ -512,7 +512,7 @@
             if (!slaveTrack) throw new Error("Netflix has no subtitle track for the requested language.");
             const slave = await fetchTrackCues(slaveTrack, context);
             if (!isCurrent() || !slave) return [];
-            const aligned = service.alignSlaveTrackToMaster(master.cues, slave.cues, { multiOverlap: true });
+            const aligned = service.alignSlaveTrackToMaster(master.cues, slave.cues, { multiOverlap: true, preserveLines: true });
             if (!aligned.some((cue) => cue.translation)) {
                 throw new Error("Netflix subtitle tracks have no matching timed cues.");
             }
@@ -571,6 +571,9 @@
             const previousKey = trackStateKey(activeTextTrackState);
             const nextKey = trackStateKey(nextState);
             const previousMovieId = activeTextTrackState.movieId;
+            // An unavailable player is not a confirmed subtitle-off selection.
+            // Preserve the last usable state throughout buffering/seeking.
+            if (!nextState.playerReady && cueIndex.length > 0 && nextState.movieId === previousMovieId) return;
             activeTextTrackState = nextState;
             if (previousKey === nextKey) {
                 if (
@@ -579,12 +582,6 @@
                 ) {
                     ensureSubtitleIndex().catch(() => { });
                 }
-                return;
-            }
-
-            // Do not wipe subtitles if this is just a transient buffering or seeking blip on the same movie
-            const isTransient = !nextState.playerReady || (!nextState.isCcActive && !nextState.track);
-            if (isTransient && cueIndex.length > 0 && nextState.movieId === previousMovieId) {
                 return;
             }
 
@@ -601,44 +598,20 @@
         }
     }
 
+    function findActiveIndexedCuesAt(time) {
+        if (!Number.isFinite(time)) return [];
+        // Match LR normal playback: begin <= media time < end.
+        // Seek pre-roll must not advance the display of the next spoken line.
+        const active = [];
+        for (const cue of cueIndex) {
+            if (cue.startTime > time) break;
+            if (time < cue.endTime) active.push(cue);
+        }
+        return active;
+    }
+
     function findIndexedCueAt(time) {
-        if (!Number.isFinite(time) || cueIndex.length === 0) return null;
-
-        // Binary search for the last cue whose start is not after `time`.
-        // Apply 125ms lead-in buffer matching Language Reactor (cue.startTime - 0.125)
-        let low = 0;
-        let high = cueIndex.length - 1;
-        let matchIndex = -1;
-        while (low <= high) {
-            const middle = (low + high) >> 1;
-            if (cueIndex[middle].startTime - 0.125 <= time) {
-                matchIndex = middle;
-                low = middle + 1;
-            } else {
-                high = middle - 1;
-            }
-        }
-        if (matchIndex < 0) return null;
-
-        const cue = cueIndex[matchIndex];
-        const endTime = Number.isFinite(cue.endTime)
-            ? cue.endTime
-            : cue.startTime + 3;
-        if (time < endTime && time >= cue.startTime - 0.125) return cue;
-
-        // Scan backward for active overlapping cues (e.g. background sound ending while dialogue continues)
-        for (let i = matchIndex - 1; i >= 0 && i >= matchIndex - 8; i--) {
-            const prevCue = cueIndex[i];
-            const prevEndTime = Number.isFinite(prevCue.endTime)
-                ? prevCue.endTime
-                : prevCue.startTime + 3;
-            if (time < prevEndTime && time >= prevCue.startTime - 0.125) {
-                return prevCue;
-            }
-            if (time - prevCue.startTime > 30) break;
-        }
-
-        return null;
+        return findActiveIndexedCuesAt(time)[0] || null;
     }
 
     function getCurrentCueLines(video = null) {
@@ -678,13 +651,13 @@
 
         // 1. Check indexed cues if available (Primary source of truth matching LR)
         if (cueIndex.length > 0 && Number.isFinite(lookupTime)) {
-            const cue = findIndexedCueAt(lookupTime);
-            if (cue) {
-                const lines = Array.isArray(cue.lines) && cue.lines.length > 0
-                    ? [...cue.lines]
-                    : (cue.text ? [cue.text] : []);
-                lines.translation = cue.translation || "";
-                lines.cue = cue;
+            const active = findActiveIndexedCuesAt(lookupTime);
+            if (active.length) {
+                const lines = [...new Set(active.flatMap((cue) =>
+                    cue.lines?.length ? cue.lines : [cue.text]).filter(Boolean))];
+                lines.translation = [...new Set(active.map((cue) => cue.translation).filter(Boolean))].join("\n");
+                lines.cue = active[0];
+                lines.allCues = active;
                 return lines;
             }
             // If indexed cues are loaded for this movie and no cue matches lookupTime,
@@ -747,7 +720,14 @@
             typeof videoOrTime === "number"
                 ? videoOrTime
                 : Number(videoOrTime?.currentTime ?? NaN);
-        if (!Number.isFinite(currentTime)) return null;
+        if (globalThis.LectoroUniversalVideoController?.calculateAdjacentCueTime) {
+            return globalThis.LectoroUniversalVideoController.calculateAdjacentCueTime(
+                cues,
+                currentTime,
+                direction,
+                { advanceOffset: 0.125 },
+            );
+        }
 
         const ADVANCE_OFFSET = 0.125; // 125ms LR audio pre-roll buffer
 
