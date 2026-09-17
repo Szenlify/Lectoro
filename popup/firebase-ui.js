@@ -94,6 +94,9 @@ async function renderSyncUI() {
     if (renderRevision !== firebaseUiRenderRevision || !container.isConnected)
         return;
 
+    const lang = (typeof SharedI18n !== "undefined" && SharedI18n.getLang) ? SharedI18n.getLang() : "en";
+    const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, lang, p) : k);
+
     if (!user) {
         const signingIn = firebaseUiAction === "sign-in";
         const signedOutStatusHtml = firebaseUiFeedback
@@ -101,10 +104,10 @@ async function renderSyncUI() {
             : "";
         container.innerHTML = `
             <div style="font-size:12px; color:var(--text-muted); margin-bottom:12px; line-height:1.5;">
-                Data and settings remain local until you sign in with Firebase.
+                ${t("cloud_sync_desc")}
             </div>
             <button id="firebaseSignIn" class="sync-btn sync-primary" style="width:100%;" ${signingIn ? "disabled" : ""}>
-                ${signingIn ? "⏳ Signing in..." : "🔑 Sign in with Google"}
+                ${signingIn ? t("signing_in") : t("sign_in_google")}
             </button>
             ${signedOutStatusHtml}`;
         document
@@ -140,19 +143,19 @@ async function renderSyncUI() {
         typeof SharedUtils !== "undefined" && SharedUtils.formatTime
             ? SharedUtils.formatTime(data.lastFirebaseSync)
             : data.lastFirebaseSync
-              ? new Date(data.lastFirebaseSync).toLocaleTimeString("en-US")
-              : "never";
+              ? new Date(data.lastFirebaseSync).toLocaleTimeString(lang === "pl" ? "pl-PL" : "en-US")
+              : t("never_synced");
     const syncing =
         firebaseUiAction === "sync" || firebaseUiAction === "sign-in";
     const signingOut = firebaseUiAction === "sign-out";
     const deletingAccount = firebaseUiAction === "delete-account";
     const syncButtonText = syncing
-        ? "⏳ Syncing..."
+        ? t("syncing")
         : firebaseUiFeedback?.type === "success"
-          ? "✓ Done!"
+          ? t("sync_done")
           : firebaseUiFeedback?.type === "error"
-            ? "↻ Retry"
-            : "🔄 Sync";
+            ? t("sync_retry")
+            : t("sync_now");
     const statusHtml = firebaseUiFeedback
         ? `<div class="sync-status sync-status-${firebaseUiFeedback.type}">${escapeSyncHtml(firebaseUiFeedback.message)}</div>`
         : data.lastFirebaseSyncError
@@ -163,12 +166,12 @@ async function renderSyncUI() {
         <div class="sync-account-row">
             <div class="sync-account-details">
                 <div class="sync-account-email"><span class="sync-account-check" aria-hidden="true">✓</span><span>${escapeSyncHtml(user.email)}</span></div>
-                <div class="sync-last-updated">Last synced: ${lastSyncText}</div>
+                <div class="sync-last-updated">${t("last_synced", { time: lastSyncText })}</div>
             </div>
             <div class="sync-actions">
                 <button id="firebaseSyncNow" class="sync-btn sync-primary" ${syncing || signingOut || deletingAccount ? "disabled" : ""}>${syncButtonText}</button>
                 <button id="firebaseSignOut" class="sync-btn" ${firebaseUiAction ? "disabled" : ""}>
-                    ${signingOut ? "Signing out..." : "Sign out"}
+                    ${signingOut ? "Signing out..." : t("sign_out")}
                 </button>
             </div>
         </div>
@@ -177,9 +180,9 @@ async function renderSyncUI() {
     if (accountDeletion) {
         accountDeletion.hidden = false;
         accountDeletion.innerHTML = `
-            <p id="accountDeletionDescription">Permanently delete your account and synced words and screenshots. This cannot be undone. If you have an active subscription, cancel it in your billing settings before deleting your account to stop future charges.</p>
+            <p id="accountDeletionDescription">${t("delete_account_desc")}</p>
             ${firebaseUiFeedback?.type === "error" ? `<div class="sync-status sync-status-error" role="alert">${escapeSyncHtml(firebaseUiFeedback.message)}</div>` : ""}<button id="firebaseDeleteAccount" class="account-delete-btn" ${firebaseUiAction ? "disabled" : ""} aria-describedby="accountDeletionDescription">
-                ${deletingAccount ? "Deleting account..." : "Delete account"}
+                ${deletingAccount ? "Deleting account..." : t("delete_account")}
             </button>`;
     }
 

@@ -32,6 +32,10 @@
             element.id = "__qt_dual_subtitle_toast";
             const nativePopover = "popover" in HTMLElement.prototype;
             if (nativePopover) element.setAttribute("popover", "manual");
+            const t = (k, d) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k) : d);
+            const failText = t("video_toast_fail", "Failed to load dual subtitles. Please try again.");
+            const retryText = t("video_toast_retry", "Retry");
+            const closeText = t("video_toast_close", "Close notification");
             element.setAttribute("aria-label", "Lectoro AI notification");
             element.innerHTML = `
                 <span class="__qt_dual-toast-logo">
@@ -43,14 +47,14 @@
                         <div class="__qt_dual-toast-header">
                             <strong class="__qt_dual-toast-title">Lectoro AI</strong>
                         </div>
-                        <p class="__qt_dual-toast-desc">Failed to load dual subtitles. Please try again.</p>
+                        <p class="__qt_dual-toast-desc">${failText}</p>
                     </div>
                     <button type="button" class="__qt_dual-toast-retry">
                         <span class="__qt_dual-toast-retry-icon" aria-hidden="true">↻</span>
-                        <span>Retry</span>
+                        <span>${retryText}</span>
                     </button>
                 </div>
-                <button type="button" class="__qt_dual-toast-close" aria-label="Close notification">✕</button>
+                <button type="button" class="__qt_dual-toast-close" aria-label="${closeText}">✕</button>
                 <span class="__qt_dual-toast-progress" aria-hidden="true"></span>`;
             element.querySelector("img").src = chrome.runtime.getURL("icons/icon48.png");
             const bar = element.querySelector(".__qt_dual-toast-progress");

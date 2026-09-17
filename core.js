@@ -763,14 +763,15 @@
         const P = PREFIX;
         const seen = new Set();
         const sense = dictionary.senses[0];
+        const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, targetLang, p) : k);
         function textRows(source, target, extra = "", definition = false) {
             const text = `<span class="${P}dictionary-line-text" lang="${escapeAttr(srcLang)}" dir="auto">${escapeHtml(source)}</span>`;
-            const actions = `${extra}${speakButtonHtml(source, srcLang, definition ? "Play definition" : "Play example")}`;
+            const actions = `${extra}${speakButtonHtml(source, srcLang, definition ? t("play_definition") : t("play_example"))}`;
             const className = definition ? `${P}dictionary-definition` : `${P}dictionary-example`;
             if (!target) return `<div class="${className} ${P}dictionary-line">${text}${actions}</div>`;
             return `<details class="${className} ${P}example-reveal">
-                <summary class="${P}dictionary-line" title="Show translation">${text}${actions}</summary>
-                <div class="${P}example-translation"><p lang="${escapeAttr(targetLang)}" dir="auto">${escapeHtml(target)}</p>${speakButtonHtml(target, targetLang, definition ? "Play definition translation" : "Play translation")}</div>
+                <summary class="${P}dictionary-line" title="${escapeAttr(t("show_translation"))}">${text}${actions}</summary>
+                <div class="${P}example-translation"><p lang="${escapeAttr(targetLang)}" dir="auto">${escapeHtml(target)}</p>${speakButtonHtml(target, targetLang, definition ? t("play_definition") : t("play_translation"))}</div>
             </details>`;
         }
         const defText = typeof sense.definition === "string" ? sense.definition.trim() : "";
@@ -781,7 +782,7 @@
             : [];
         const synonyms =
             synonymsList.length
-                ? `<p class="${P}dictionary-synonyms" lang="${escapeAttr(srcLang)}" dir="auto"><span class="${P}dictionary-caption">Synonyms</span> ${synonymsList
+                ? `<p class="${P}dictionary-synonyms" lang="${escapeAttr(srcLang)}" dir="auto"><span class="${P}dictionary-caption">${escapeHtml(t("synonyms"))}</span> ${synonymsList
                       .slice(0, 2)
                       .map((s) => escapeHtml(s.trim()))
                       .join(", ")}</p>`
@@ -804,10 +805,10 @@
                 return true;
             });
         if (!examples.length && !definition && !synonyms) return "";
-        return `<section class="${P}dictionary-details" aria-label="Dictionary details">${definition ? `<div class="${P}dictionary-definition-section"><div class="${P}dictionary-caption">Overview</div>${definition}</div>` : ""}${synonyms}${examples.length ? `<div class="${P}dictionary-caption">Examples</div>` : ""}${examples
+        return `<section class="${P}dictionary-details" aria-label="Dictionary details">${definition ? `<div class="${P}dictionary-definition-section"><div class="${P}dictionary-caption">${escapeHtml(t("overview"))}</div>${definition}</div>` : ""}${synonyms}${examples.length ? `<div class="${P}dictionary-caption">${escapeHtml(t("examples"))}</div>` : ""}${examples
             .slice(0, 3)
             .map((example) => textRows(example.source, example.target,
-                `<button type="button" class="${P}save-example" data-src="${escapeAttr(example.source)}" data-translated="${escapeAttr(example.target)}" data-src-lang="${escapeAttr(srcLang)}" data-tgt-lang="${escapeAttr(targetLang)}" title="Add sentence to review" aria-label="${escapeAttr(`Add to review: ${example.source}`)}" aria-pressed="false">${SVG.SAVE}</button>`))
+                `<button type="button" class="${P}save-example" data-src="${escapeAttr(example.source)}" data-translated="${escapeAttr(example.target)}" data-src-lang="${escapeAttr(srcLang)}" data-tgt-lang="${escapeAttr(targetLang)}" title="${escapeAttr(t("add_to_review"))}" aria-label="${escapeAttr(`${t("add_to_review")}: ${example.source}`)}" aria-pressed="false">${SVG.SAVE}</button>`))
             .join("")}</section>`;
     }
 
@@ -820,12 +821,14 @@
     }) {
         const P = PREFIX;
         const dataAttrs = `data-src="${escapeAttr(original)}" data-translated="${escapeAttr(translated)}" data-src-lang="${escapeAttr(srcLang)}" data-tgt-lang="${escapeAttr(targetLang)}"`;
+        const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, targetLang, p) : k);
 
         const saveFooterHtml = buildSaveFooterHtml(dataAttrs, {
             showExampleStatus: true,
-            aiLabel: "AI Sentence",
-            saveTitle: "Save word",
-            aiTitle: "Generate AI sentence (Gemini)",
+            saveLabel: t("save_word"),
+            saveTitle: t("save_word"),
+            aiLabel: t("ai_sentence"),
+            aiTitle: t("ai_sentence_title"),
         });
 
         return `
@@ -837,14 +840,14 @@
                     <span class="${P}label">${langTag(srcLang)}</span>
                     <span class="${P}text ${P}original">${escapeHtml(original)}</span>
                     <span class="${P}word-actions">
-                        ${speakButtonHtml(original, srcLang, "Play original")}
+                        ${speakButtonHtml(original, srcLang, t("play_original"))}
                     </span>
                 </div>
                 <div class="${P}row">
                     <span class="${P}label">${langTag(targetLang)}</span>
                     <span class="${P}text ${P}translated">${escapeHtml(translated)}</span>
                     <span class="${P}word-actions">
-                        ${speakButtonHtml(translated, targetLang, "Play translation")}
+                        ${speakButtonHtml(translated, targetLang, t("play_translation"))}
                     </span>
                 </div>
                 ${buildDictionaryDetailsHtml(dictionary, srcLang, targetLang)}

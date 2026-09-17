@@ -77,12 +77,18 @@ function updateDirBtnLabel() {
     const btn = document.getElementById("reviewDirBtn");
     if (!btn) return;
     const { srcTag, tgtTag } = getActiveReviewLangs();
+    const titleNormal = typeof SharedI18n !== "undefined"
+        ? SharedI18n.t("review_dir_title", null, { src: srcTag, tgt: tgtTag })
+        : `Change review direction (${srcTag} → ${tgtTag})`;
+    const titleReverse = typeof SharedI18n !== "undefined"
+        ? SharedI18n.t("review_dir_title", null, { src: tgtTag, tgt: srcTag })
+        : `Change review direction (${tgtTag} → ${srcTag})`;
     if (reviewDirection === "normal") {
         btn.innerHTML = `${srcTag} <span class="dir-arrow">→</span> ${tgtTag}`;
-        btn.title = `Change review direction (${srcTag} → ${tgtTag})`;
+        btn.title = titleNormal;
     } else {
         btn.innerHTML = `${tgtTag} <span class="dir-arrow">→</span> ${srcTag}`;
-        btn.title = `Change review direction (${tgtTag} → ${srcTag})`;
+        btn.title = titleReverse;
     }
 }
 
@@ -150,15 +156,16 @@ function renderFreeVoiceTeaser() {
     const content = document.getElementById("reviewElevenLabsContent");
     if (!content) return;
     if (content.querySelector(".review-voice-teaser")) return;
+    const t = (k, d) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k) : d);
     content.innerHTML = `
         <div class="review-voice-teaser">
-            <div class="review-voice-teaser-title"><span>Natural AI voices</span><span>🔒</span></div>
-            <p>Listen to authentic accents and choose a voice for your reviews.</p>
+            <div class="review-voice-teaser-title"><span>${t("review_voice_natural_title", "Natural AI voices")}</span><span>🔒</span></div>
+            <p>${t("review_voice_natural_desc", "Listen to authentic accents and choose a voice for your reviews.")}</p>
             <div class="review-voice-chips" aria-hidden="true">
                 <span class="review-voice-chip">Liam</span>
                 <span class="review-voice-chip">Matilda</span>
             </div>
-            <button type="button" class="review-voice-upgrade" id="reviewVoiceUpgrade">Unlock ElevenLabs voices</button>
+            <button type="button" class="review-voice-upgrade" id="reviewVoiceUpgrade">${t("review_voice_unlock_btn", "Unlock ElevenLabs voices")}</button>
         </div>`;
     content
         .querySelector("#reviewVoiceUpgrade")
@@ -244,7 +251,10 @@ function renderElevenLabsVoiceSelect() {
             });
             syncElevenLabsVoiceActiveState();
             syncReviewVoiceButton();
-            setReviewVoiceStatus(`✓ Voice selected: ${voice.name}`, "ok");
+            const voiceMsg = typeof SharedI18n !== "undefined"
+                ? SharedI18n.t("review_voice_selected", null, { name: voice.name })
+                : `✓ Voice selected: ${voice.name}`;
+            setReviewVoiceStatus(voiceMsg, "ok");
         });
 
         list.appendChild(item);
@@ -256,7 +266,10 @@ function renderElevenLabsVoiceSelect() {
 async function loadReviewElevenLabsVoices() {
     if (reviewVoicesLoading || reviewElVoices.length) return;
     reviewVoicesLoading = true;
-    setReviewVoiceStatus("Loading voices…");
+    const loadingMsg = typeof SharedI18n !== "undefined"
+        ? SharedI18n.t("review_voice_loading")
+        : "Loading voices…";
+    setReviewVoiceStatus(loadingMsg);
     try {
         const rawVoices =
             await SubscriptionService.getElevenLabsVoices("review");
@@ -275,16 +288,24 @@ async function loadReviewElevenLabsVoices() {
             }
         }
         renderElevenLabsVoiceSelect();
+        const availMsg = reviewElVoices.length
+            ? (typeof SharedI18n !== "undefined"
+                ? SharedI18n.t("review_voice_available", null, { count: reviewElVoices.length })
+                : `${reviewElVoices.length} voices available`)
+            : (typeof SharedI18n !== "undefined"
+                ? SharedI18n.t("review_voice_none")
+                : "No voices available.");
         setReviewVoiceStatus(
-            reviewElVoices.length
-                ? `${reviewElVoices.length} voices available`
-                : "No voices available.",
+            availMsg,
             reviewElVoices.length ? "" : "error",
         );
         syncReviewVoiceButton();
     } catch (error) {
+        const fetchFailedMsg = typeof SharedI18n !== "undefined"
+            ? SharedI18n.t("review_voice_fetch_failed")
+            : (error.message || "Failed to fetch voices.");
         setReviewVoiceStatus(
-            error.message || "Failed to fetch voices.",
+            fetchFailedMsg,
             "error",
         );
     } finally {
@@ -297,7 +318,10 @@ async function updateReviewVoiceUI() {
         reviewVoiceProfile = await SubscriptionService.effectiveProfile(false);
     } catch (error) {
         reviewVoiceProfile = null;
-        setReviewVoiceStatus(error.message || "Failed to check plan.", "error");
+        const planFailedMsg = typeof SharedI18n !== "undefined"
+            ? SharedI18n.t("review_voice_plan_failed")
+            : (error.message || "Failed to check plan.");
+        setReviewVoiceStatus(planFailedMsg, "error");
     }
 
     const enabled =
@@ -368,7 +392,10 @@ document
         });
         syncElevenLabsVoiceActiveState();
         syncReviewVoiceButton();
-        setReviewVoiceStatus("✓ Using system voice.", "ok");
+        const sysMsg = typeof SharedI18n !== "undefined"
+            ? SharedI18n.t("review_voice_system_used")
+            : "✓ Using system voice.";
+        setReviewVoiceStatus(sysMsg, "ok");
     });
 
 document.addEventListener("click", (event) => {
@@ -388,7 +415,10 @@ document.addEventListener("keydown", (event) => {
 
 // ── Delete review words & queue management ────────────────────────
 async function deleteReviewWord(w) {
-    if (!confirm(`Delete "${w.original}" from database?`)) return;
+    const confirmMsg = typeof SharedI18n !== "undefined"
+        ? SharedI18n.t("review_delete_word_confirm", null, { word: w.original })
+        : `Delete "${w.original}" from database?`;
+    if (!confirm(confirmMsg)) return;
     if (typeof stopPopupSpeak === "function") stopPopupSpeak();
     try {
         await SharedWordRepository.deleteWord(
@@ -408,7 +438,10 @@ async function deleteReviewWord(w) {
 }
 
 async function deleteAllReviews() {
-    if (!confirm("Delete ALL words in the review queue?")) return;
+    const confirmMsg = typeof SharedI18n !== "undefined"
+        ? SharedI18n.t("review_delete_all_confirm")
+        : "Delete ALL words in the review queue?";
+    if (!confirm(confirmMsg)) return;
     if (typeof stopPopupSpeak === "function") stopPopupSpeak();
     try {
         await SharedWordRepository.deleteDueReviews();
@@ -541,11 +574,13 @@ function renderReview() {
         countEl.textContent = "";
         progressBar.style.width = "100%";
         if (deleteAllBtn) deleteAllBtn.style.display = "none";
+        const emptyTitle = typeof SharedI18n !== "undefined" ? SharedI18n.t("review_empty_title") : "No cards to review!";
+        const emptySub = typeof SharedI18n !== "undefined" ? SharedI18n.t("review_empty_sub") : "Add new words or come back later.";
         card.innerHTML = `
             <div class="review-empty">
                 <div class="review-empty-icon">✅</div>
-                <div class="review-empty-text">No cards to review!</div>
-                <div class="review-empty-sub">Add new words or come back later.</div>
+                <div class="review-empty-text">${emptyTitle}</div>
+                <div class="review-empty-sub">${emptySub}</div>
             </div>`;
         updateReviewTabBadge(0);
         return;
@@ -563,11 +598,15 @@ function renderReview() {
         }
         countEl.textContent = `${reviewTotalDue}/${reviewTotalDue}`;
         progressBar.style.width = "100%";
+        const doneTitle = typeof SharedI18n !== "undefined" ? SharedI18n.t("review_done_title") : "Congratulations!";
+        const doneSub = typeof SharedI18n !== "undefined"
+            ? SharedI18n.t("review_done_sub", null, { total: reviewTotalDue })
+            : `You completed all ${reviewTotalDue} reviews for now!`;
         card.innerHTML = `
             <div class="review-done">
                 <div class="review-done-icon">🎉</div>
-                <div class="review-done-text">Congratulations!</div>
-                <div class="review-done-sub">You completed all ${reviewTotalDue} reviews for now!</div>
+                <div class="review-done-text">${doneTitle}</div>
+                <div class="review-done-sub">${doneSub}</div>
             </div>`;
         updateReviewTabBadge(0);
         return;
@@ -590,18 +629,23 @@ function reviewControlsHtml(sr, answerShown) {
     const originalSideShown =
         (reviewDirection === "normal" && !answerShown) ||
         (reviewDirection === "reverse" && answerShown);
+    const t = (k, d) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k) : d);
+    const flipText = answerShown
+        ? t("review_show_question", "Show question")
+        : t("review_show_answer", "Show answer");
+
     return `
 <button class="review-flip-btn" type="button">
     <span class="review-flip-keys">
         <kbd>↓</kbd>
         <kbd>S</kbd>
     </span>
-    <span>${answerShown ? "Show question" : "Show answer"}</span>
+    <span>${flipText}</span>
 </button>
 
 <div class="review-controls">
     <div class="review-rating">
-        <div class="review-rating-label">Did you know the answer?</div>
+        <div class="review-rating-label">${t("review_know_question", "Did you know the answer?")}</div>
 
         <div class="review-rating-buttons review-rating-buttons-2">
             <button class="review-rate-btn rate-no" data-grade="1" type="button">
@@ -611,7 +655,7 @@ function reviewControlsHtml(sr, answerShown) {
                 </span>
 
                 <span class="rate-copy">
-                    <span class="rate-label">Don't know</span>
+                    <span class="rate-label">${t("review_dont_know_btn", "Don't know")}</span>
                     <span class="review-next-info">${labels[0]}</span>
                 </span>
             </button>
@@ -623,7 +667,7 @@ function reviewControlsHtml(sr, answerShown) {
                 </span>
 
                 <span class="rate-copy">
-                    <span class="rate-label">Know</span>
+                    <span class="rate-label">${t("review_know_btn", "Know")}</span>
                     <span class="review-next-info">${labels[1]}</span>
                 </span>
             </button>
@@ -636,7 +680,7 @@ function reviewControlsHtml(sr, answerShown) {
                 <kbd>↑</kbd>
                 <kbd>W</kbd>
             </span>
-            speak
+            ${t("review_shortcut_speak", "speak")}
         </span>
 
         <span>
@@ -644,7 +688,7 @@ function reviewControlsHtml(sr, answerShown) {
                 <kbd>↓</kbd>
                 <kbd>S</kbd>
             </span>
-            flip
+            ${t("review_shortcut_flip", "flip")}
         </span>
 
         ${
@@ -654,7 +698,7 @@ function reviewControlsHtml(sr, answerShown) {
                     <span class="shortcut-keys">
                         <kbd>Enter</kbd>
                     </span>
-                    AI explain & translate
+                    ${t("review_shortcut_ai", "AI explain & translate")}
                 </span>
                 `
                 : ""
@@ -663,11 +707,11 @@ function reviewControlsHtml(sr, answerShown) {
 
     <div class="review-actions-row">
         <button class="review-edit-btn" type="button">
-            <span aria-hidden="true">✏️</span> Edit
+            <span aria-hidden="true">✏️</span> ${t("words_edit", "Edit")}
         </button>
 
         <button class="review-delete-btn" type="button">
-            <span aria-hidden="true">🗑</span> Delete
+            <span aria-hidden="true">🗑</span> ${t("words_delete", "Delete")}
         </button>
     </div>
 </div>

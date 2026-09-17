@@ -80,6 +80,11 @@ async function ensureTabLoaded(tabName) {
         const content = document.getElementById(`tab-${tabName}`);
         if (!content) throw new Error(`Failed to mount tab: ${tabName}.`);
 
+        if (typeof SharedI18n !== "undefined") {
+            const lang = select?.value || popupState?.targetLang || "en";
+            SharedI18n.applyToDOM(content, lang);
+        }
+
         if (tabName === "words") {
             wordListEl = document.getElementById("wordList");
             statsEl = document.getElementById("stats");

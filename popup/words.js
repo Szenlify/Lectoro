@@ -44,18 +44,21 @@
         const filtered = filterWords(words);
 
         if (statsEl) {
-            statsEl.textContent = `${filtered.length} of ${words.length} words`;
+            statsEl.textContent = typeof SharedI18n !== "undefined"
+                ? SharedI18n.t("words_stats", null, { filtered: filtered.length, total: words.length })
+                : `${filtered.length} of ${words.length} words`;
         }
 
         if (!wordListEl) return;
 
         if (filtered.length === 0) {
+            const emptyText = typeof SharedI18n !== "undefined" ? SharedI18n.t("words_empty") : "No saved words";
             wordListEl.innerHTML = `
                 <div class="empty-state">
                     <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                         <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
                     </svg>
-                    <div>No saved words</div>
+                    <div>${emptyText}</div>
                 </div>`;
             return;
         }
@@ -64,6 +67,8 @@
         currentSortedWords = sorted;
 
         const EDIT_SVG = LectoroConstants.SVG_ICONS.EDIT;
+        const editLabel = typeof SharedI18n !== "undefined" ? SharedI18n.t("words_edit") : "Edit";
+        const deleteLabel = typeof SharedI18n !== "undefined" ? SharedI18n.t("words_delete") : "Delete";
 
         wordListEl.innerHTML = sorted
             .map((w, i) => {
@@ -85,10 +90,10 @@
                         <div class="wi-meta">${date} · ${(w.srcLang || "?").toUpperCase()}→${(w.tgtLang || "?").toUpperCase()}</div>
                     </div>
                     <div class="wi-actions">
-                        <button class="wi-edit" type="button" data-index="${i}" title="Edit" aria-label="Edit ${escapeAttr(w.original)}">
+                        <button class="wi-edit" type="button" data-index="${i}" title="${editLabel}" aria-label="${editLabel} ${escapeAttr(w.original)}">
                             ${EDIT_SVG}
                         </button>
-                        <button class="wi-delete" type="button" data-id="${escapeAttr(w.id || "")}" data-original="${escapeAttr(w.original)}" data-ts="${w.timestamp}" title="Delete" aria-label="Delete ${escapeAttr(w.original)}">✕</button>
+                        <button class="wi-delete" type="button" data-id="${escapeAttr(w.id || "")}" data-original="${escapeAttr(w.original)}" data-ts="${w.timestamp}" title="${deleteLabel}" aria-label="${deleteLabel} ${escapeAttr(w.original)}">✕</button>
                     </div>
                 </div>`;
             })
@@ -117,7 +122,10 @@
     }
 
     async function deleteWord(idOrOriginal, timestamp) {
-        if (!confirm(`Are you sure you want to delete this word and its context sentence?`)) {
+        const confirmMsg = typeof SharedI18n !== "undefined"
+            ? SharedI18n.t("words_delete_confirm")
+            : "Are you sure you want to delete this word and its context sentence?";
+        if (!confirm(confirmMsg)) {
             return;
         }
         await SharedWordRepository.deleteWord(idOrOriginal, timestamp);
@@ -126,23 +134,24 @@
 
     function showWordEditForm(item, word) {
         item.classList.add("is-editing");
+        const t = (k, d) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k) : d);
         item.innerHTML = `
             <form class="wi-edit-form">
-                <label>Original</label>
+                <label>${t("words_label_original", "Original")}</label>
                 <input class="wi-edit-original" name="original" type="text" value="${escapeAttr(word.original)}" required>
 
-                <label>Translation</label>
+                <label>${t("words_label_translated", "Translation")}</label>
                 <input name="translated" type="text" value="${escapeAttr(word.translated)}" required>
 
-                <label>Context sentence (original)</label>
+                <label>${t("words_label_sentence", "Context sentence (original)")}</label>
                 <textarea name="sentence" rows="2">${escapeHtml(word.sentence || "")}</textarea>
 
-                <label>Context sentence (translation)</label>
+                <label>${t("words_label_sentence_translated", "Context sentence (translation)")}</label>
                 <textarea name="sentenceTranslated" rows="2">${escapeHtml(word.sentenceTranslated || "")}</textarea>
 
                 <div class="wi-edit-actions">
-                    <button class="wi-edit-cancel" type="button">Cancel</button>
-                    <button class="wi-edit-save" type="submit">Save</button>
+                    <button class="wi-edit-cancel" type="button">${t("btn_cancel", "Cancel")}</button>
+                    <button class="wi-edit-save" type="submit">${t("btn_save", "Save")}</button>
                 </div>
             </form>`;
 

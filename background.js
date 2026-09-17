@@ -2,6 +2,7 @@
 
 importScripts(
   "shared/constants.js",
+  "shared/i18n.js",
   "shared/subscription-config.js",
   "shared/utils.js",
   "shared/srs.js",

@@ -1,6 +1,23 @@
 // ── Settings: load & save language ────────────────────────────────
 const learningLangSelect = document.getElementById("learningLang");
 const swapLanguagesButton = document.getElementById("swapLanguages");
+
+function getPopupLang() {
+    return select?.value || popupState?.targetLang || "en";
+}
+
+function applyPopupTranslations(lang = null) {
+    const activeLang = lang || getPopupLang();
+    if (typeof SharedI18n !== "undefined") {
+        SharedI18n.applyToDOM(document, activeLang);
+    }
+    const grid = document.getElementById("subscriptionPlansGrid");
+    if (grid) {
+        grid.dataset.renderedKey = "";
+    }
+    void refreshSubscriptionUi();
+}
+
 async function swapTranslationLanguages() {
     if (swapLanguagesButton.disabled) return;
     swapLanguagesButton.disabled = true;
@@ -10,6 +27,7 @@ async function swapTranslationLanguages() {
         await chrome.storage.local.set({ learningLang, targetLang });
         learningLangSelect.value = learningLang;
         select.value = targetLang;
+        applyPopupTranslations(targetLang);
         flashSaved();
     } catch (error) {
         swapLanguagesButton.title = "Could not swap languages. Try again.";
@@ -25,6 +43,7 @@ whenPopupReady((data) => {
     const learningLang = LectoroConstants.normalizeSupportedLanguage(data.learningLang, defaults.learningLang);
     select.value = targetLang;
     learningLangSelect.value = learningLang;
+    applyPopupTranslations(targetLang);
     // Retired languages and existing installs receive usable settings immediately.
     if (data.targetLang !== targetLang || data.learningLang !== learningLang) {
         chrome.storage.local.set({ targetLang, learningLang });
@@ -54,7 +73,9 @@ whenPopupReady((data) => {
 });
 
 select.addEventListener("change", () => {
-    chrome.storage.local.set({ targetLang: select.value }, flashSaved);
+    const newLang = select.value;
+    chrome.storage.local.set({ targetLang: newLang }, flashSaved);
+    applyPopupTranslations(newLang);
 });
 
 learningLangSelect.addEventListener("change", () => {
@@ -141,7 +162,9 @@ function renderSubscriptionPlans(subscription, signedIn = true) {
     const trialBanner = document.getElementById("subscriptionTrialBanner");
     if (trialBanner) trialBanner.hidden = hasPaidPlan || !trialEligible;
 
-    const renderKey = `${activePlan}:${signedIn}:${hasPaidPlan}:${trialEligible}:${isTrialing}`;
+    const lang = getPopupLang();
+    const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, lang, p) : k);
+    const renderKey = `${activePlan}:${signedIn}:${hasPaidPlan}:${trialEligible}:${isTrialing}:${lang}`;
     if (grid.dataset.renderedKey === renderKey && grid.children.length > 0) {
         return;
     }
@@ -156,68 +179,78 @@ function renderSubscriptionPlans(subscription, signedIn = true) {
                 planId !== SubscriptionConfig.SUBSCRIPTION_PLANS.FREE &&
                 !hasPaidPlan &&
                 trialEligible;
-            const price =
-                limits.priceMonthly.amount === 0
-                    ? "$0"
-                    : new Intl.NumberFormat("en-US", {
-                        style: "currency",
-                        currency: limits.priceMonthly.currency || "USD",
-                    }).format(limits.priceMonthly.amount);
+            const localizedPrice = typeof SharedI18n !== "undefined" && SharedI18n.getLocalizedPrice
+                ? SharedI18n.getLocalizedPrice(planId, lang)
+                : null;
+            const price = localizedPrice
+                ? localizedPrice.formatted
+                : (limits.priceMonthly.amount === 0
+                    ? (lang === "pl" ? "0 zł" : "$0")
+                    : `$${limits.priceMonthly.amount}`);
             const tts = limits.elevenLabs.enabled
-                ? `${limits.elevenLabs.charactersPerMonth.toLocaleString("en-US")} ElevenLabs characters`
-                : "Basic voice";
+                ? `${limits.elevenLabs.charactersPerMonth.toLocaleString(lang)} ElevenLabs`
+                : t("basic_voice");
             let action =
-                '<span class="subscription-plan-current">Current plan</span>';
+                `<span class="subscription-plan-current">${t("plan_current")}</span>`;
             if (!isCurrent) {
                 if (planId === SubscriptionConfig.SUBSCRIPTION_PLANS.FREE) {
                     action = hasPaidPlan
-                        ? '<button type="button" class="subscription-plan-button is-secondary" data-billing-action="portal"><span class="subscription-button-label">Manage on Stripe</span></button>'
+                        ? `<button type="button" class="subscription-plan-button is-secondary" data-billing-action="portal"><span class="subscription-button-label">${t("manage_on_stripe")}</span></button>`
                         : "";
                 } else if (hasPaidPlan) {
                     action =
-                        '<button type="button" class="subscription-plan-button" data-billing-action="portal"><span class="subscription-button-label">Change plan</span><span aria-hidden="true">→</span></button>';
+                        `<button type="button" class="subscription-plan-button" data-billing-action="portal"><span class="subscription-button-label">${t("change_plan")}</span><span aria-hidden="true">→</span></button>`;
                 } else {
-                    action = `<button type="button" class="subscription-plan-button ${hasTrialOffer ? "is-trial" : ""}" data-billing-action="checkout" data-plan="${planId}"><span class="subscription-button-label">${hasTrialOffer ? "Start 3-day trial" : `Choose ${limits.displayName}`}</span><span aria-hidden="true">→</span></button>`;
+                    const btnLabel = hasTrialOffer ? t("start_trial") : t("choose_plan", { name: limits.displayName });
+                    action = `<button type="button" class="subscription-plan-button ${hasTrialOffer ? "is-trial" : ""}" data-billing-action="checkout" data-plan="${planId}"><span class="subscription-button-label">${btnLabel}</span><span aria-hidden="true">→</span></button>`;
                 }
             } else if (hasPaidPlan) {
                 action =
-                    '<button type="button" class="subscription-plan-button is-secondary" data-billing-action="portal"><span class="subscription-button-label">Manage plan</span><span aria-hidden="true">→</span></button>';
+                    `<button type="button" class="subscription-plan-button is-secondary" data-billing-action="portal"><span class="subscription-button-label">${t("manage_plan")}</span><span aria-hidden="true">→</span></button>`;
             }
             const billingNote = hasTrialOffer
-                ? `<span class="subscription-trial-note"><b>$0 today</b> · then ${price}/mo.<br>Cancel anytime.</span>`
+                ? `<span class="subscription-trial-note">${t("billing_note_trial", { price })}</span>`
                 : "";
+
+            const subtitleLimitText = Number.isFinite(limits.subtitles?.charactersPerHour)
+                ? t("chars_per_hour", { count: limits.subtitles.charactersPerHour.toLocaleString(lang) })
+                : t("unlimited");
+            const aiUsesText = planId === SubscriptionConfig.SUBSCRIPTION_PLANS.FREE
+                ? t("feature_ai_uses")
+                : t("feature_ai_uses_mo");
+
             return `<article class="subscription-plan-card ${isCurrent ? "is-current" : ""} ${isRecommended ? "is-recommended" : ""} ${hasTrialOffer ? "has-trial-offer" : ""}">
                 <div class="subscription-plan-topline">
                     <strong>${limits.displayName}</strong>
                     ${isCurrent && isTrialing
-                    ? '<span class="subscription-plan-badge is-trialing">Trial</span>'
+                    ? `<span class="subscription-plan-badge is-trialing">${t("badge_trial")}</span>`
                     : isCurrent
-                        ? '<span class="subscription-plan-badge is-active">Active</span>'
+                        ? `<span class="subscription-plan-badge is-active">${t("badge_active")}</span>`
                         : isRecommended
-                            ? '<span class="subscription-plan-badge">Popular</span>'
+                            ? `<span class="subscription-plan-badge">${t("badge_popular")}</span>`
                             : ""
                 }
                 </div>
-                ${hasTrialOffer ? `<div class="subscription-plan-trial-kicker">3 days free</div>` : ""}
-                <div class="subscription-plan-price"><b>${price}</b><span>${limits.priceMonthly.amount === 0 ? "forever" : "/ month"}</span></div>
+                ${hasTrialOffer ? `<div class="subscription-plan-trial-kicker">${t("trial_kicker")}</div>` : ""}
+                <div class="subscription-plan-price"><b>${price}</b><span>${limits.priceMonthly.amount === 0 ? t("price_forever") : t("price_per_month")}</span></div>
                 <div class="subscription-plan-features">
                     <span>
     <i aria-hidden="true">✓</i>
-    <b>${Number.isFinite(limits.subtitles?.charactersPerHour) ? `${limits.subtitles.charactersPerHour.toLocaleString("en-US")} chars/h` : "Unlimited"}</b> translate
+    <b>${subtitleLimitText}</b> ${t("feature_translate")}
 </span>
                     <span>
     <i aria-hidden="true">✓</i>
-    <b>${limits.ai.usesPerMonth.toLocaleString("en-US")}</b>
-    ${planId === SubscriptionConfig.SUBSCRIPTION_PLANS.FREE ? "AI uses" : "AI uses / mo"}
+    <b>${limits.ai.usesPerMonth.toLocaleString(lang)}</b>
+    ${aiUsesText}
 </span>
-                    <span><i aria-hidden="true">✓</i><b>${limits.srs.maxSavedCards.toLocaleString("en-US")}</b> SRS flashcards</span>
-                    <span><i aria-hidden="true">✓</i><b>${planId === SubscriptionConfig.SUBSCRIPTION_PLANS.FREE ? "3/mo" : "Unlimited"}</b> Anki & Excel export</span>
+                    <span><i aria-hidden="true">✓</i><b>${limits.srs.maxSavedCards.toLocaleString(lang)}</b> ${t("feature_srs_flashcards")}</span>
+                    <span><i aria-hidden="true">✓</i><b>${planId === SubscriptionConfig.SUBSCRIPTION_PLANS.FREE ? "3/mo" : t("unlimited")}</b> ${t("feature_export")}</span>
                     ${limits.elevenLabs.enabled
-                    ? '<span><i aria-hidden="true">✓</i><b>Natural voices</b></span>'
+                    ? `<span><i aria-hidden="true">✓</i><b>${t("feature_natural_voices")}</b></span>`
                     : ""
                 }
                     ${limits.elevenLabs.enabled
-                    ? '<span><i aria-hidden="true">✓</i><b>Unlimited AI practice</b></span>'
+                    ? `<span><i aria-hidden="true">✓</i><b>${t("feature_unlimited_practice")}</b></span>`
                     : ""
                 }
                     <span class="${limits.elevenLabs.enabled ? "" : "is-muted"}"><i aria-hidden="true">${limits.elevenLabs.enabled ? "✓" : "—"}</i>${tts}</span>
@@ -270,6 +303,8 @@ function renderElevenLabsUsage(subscription) {
     const fill = document.getElementById("elevenLabsUsageFill");
     if (!card || !subscription) return;
 
+    const lang = getPopupLang();
+    const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, lang, p) : k);
     const plan = SubscriptionConfig.normalizePlan(subscription.plan);
     const limits = SubscriptionConfig.getPlanLimits(plan).elevenLabs;
     const used = Math.max(
@@ -295,10 +330,10 @@ function renderElevenLabsUsage(subscription) {
 
     if (!limits.enabled) {
         card.classList.add("is-unavailable");
-        if (title) title.textContent = "Natural voices in reviews";
-        if (value) value.textContent = "Unavailable";
+        if (title) title.textContent = t("elevenlabs_unavailable");
+        if (value) value.textContent = t("status_unavailable");
         if (fill) fill.style.width = "0%";
-        if (info) info.textContent = "ElevenLabs from BASIC plan";
+        if (info) info.textContent = t("elevenlabs_from_basic");
         return;
     }
 
@@ -306,14 +341,15 @@ function renderElevenLabsUsage(subscription) {
     if (fill) fill.style.width = `${percentage}%`;
     if (limitReached) {
         card.classList.add("is-empty");
-        if (title) title.textContent = "ElevenLabs limit reached";
-        if (info) info.textContent = "ElevenLabs: 0 characters left";
+        if (title) title.textContent = t("elevenlabs_limit_reached");
+        if (info) info.textContent = `ElevenLabs: ${t("elevenlabs_chars_left", { left: 0 })}`;
     } else {
         if (percentage >= 80) card.classList.add("is-warning");
+        const formattedLeft = left.toLocaleString(lang === "pl" ? "pl-PL" : "en-US");
         if (title)
-            title.textContent = `${left.toLocaleString("en-US")} characters left`;
+            title.textContent = t("elevenlabs_chars_left", { left: formattedLeft });
         if (info)
-            info.textContent = `ElevenLabs: ${left.toLocaleString("en-US")} characters left`;
+            info.textContent = `ElevenLabs: ${t("elevenlabs_chars_left", { left: formattedLeft })}`;
     }
 }
 
@@ -398,25 +434,28 @@ async function refreshAiUsageUI() {
     );
     const isPaidPlan = currentPlan !== "free";
 
+    const lang = getPopupLang();
+    const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, lang, p) : k);
+
     if (planBadge) {
         if (isPaidPlan) {
-            planBadge.textContent = `${currentPlan.toUpperCase()} PLAN`;
+            planBadge.textContent = `${currentPlan.toUpperCase()} ${t("badge_plan")}`;
             planBadge.className = "ai-plan-badge is-pro";
         } else if (signedIn) {
-            planBadge.textContent = "FREE PLAN";
+            planBadge.textContent = t("plan_free");
             planBadge.className = "ai-plan-badge";
         } else {
-            planBadge.textContent = "GUEST MODE (FREE)";
+            planBadge.textContent = t("guest_mode");
             planBadge.className = "ai-plan-badge is-guest";
         }
     }
 
     if (upgradeBtn) {
         if (isPaidPlan) {
-            upgradeBtn.textContent = "Manage plan →";
+            upgradeBtn.textContent = t("manage_plan");
             upgradeBtn.dataset.billingAction = "portal";
         } else {
-            upgradeBtn.textContent = "Unlock Pro (3-day trial $0) →";
+            upgradeBtn.textContent = t("unlock_pro_trial");
             delete upgradeBtn.dataset.billingAction;
         }
     }
@@ -456,11 +495,11 @@ async function refreshAiUsageUI() {
         if (limitReached) {
             usageCardContainer?.classList.add("is-empty");
             card?.classList.add("is-empty");
-            if (title) title.textContent = "AI credit limit reached";
+            if (title) title.textContent = t("credits_limit_reached");
             if (isPaidPlan) {
-                info.textContent = "Limit renewal:";
+                info.textContent = t("credits_renewal_prefix");
             } else {
-                info.textContent = "Free limit renews monthly";
+                info.textContent = t("credits_renew_monthly");
             }
         } else {
             if (percentage >= 80) {
@@ -468,17 +507,17 @@ async function refreshAiUsageUI() {
                 card?.classList.add("is-warning");
             }
             if (title)
-                title.textContent = `${left} credits remaining this month`;
+                title.textContent = t("credits_remaining", { left });
             if (isPaidPlan) {
-                info.textContent = "Limit renewal:";
+                info.textContent = t("credits_renewal_prefix");
             } else if (signedIn) {
-                info.textContent = "Credits renew monthly";
+                info.textContent = t("credits_renew_monthly");
             } else {
-                info.textContent = "Sign in to sync saved words";
+                info.textContent = t("sign_in_to_sync");
             }
         }
     } else {
-        if (title) title.textContent = "Data temporarily unavailable";
+        if (title) title.textContent = t("data_unavailable");
         if (value) value.textContent = "— / —";
         if (fill) {
             fill.style.width = "38%";

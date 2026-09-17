@@ -287,7 +287,9 @@ async function enforceExportQuota(type) {
 
   if (quotaState.isFree) {
     if (quotaState.used >= quotaState.limit) {
-      const message = `You have reached the monthly limit of ${quotaState.limit} free ${label} exports. Upgrade to Basic or Pro for unlimited exports!`;
+      const message = typeof SharedI18n !== "undefined"
+        ? SharedI18n.t("export_quota_limit", null, { limit: quotaState.limit, type: label })
+        : `You have reached the monthly limit of ${quotaState.limit} free ${label} exports. Upgrade to Basic or Pro for unlimited exports!`;
       if (
         typeof GeminiProxy !== "undefined" &&
         typeof GeminiProxy.showUpgradePrompt === "function"
@@ -318,9 +320,10 @@ async function enforceExportQuota(type) {
         1,
         Math.ceil((ONE_HOUR_MS - (Date.now() - oldestTs)) / 60000)
       );
-      alert(
-        `Hourly limit of ${quotaState.paidLimit} quizzes reached. Try again in ${waitMins} min.`
-      );
+      const hourlyMsg = typeof SharedI18n !== "undefined"
+        ? SharedI18n.t("export_quiz_hourly_limit", null, { limit: quotaState.paidLimit, wait: waitMins })
+        : `Hourly limit of ${quotaState.paidLimit} quizzes reached. Try again in ${waitMins} min.`;
+      alert(hourlyMsg);
       return false;
     }
   }
@@ -337,7 +340,9 @@ async function updateAllExportBadgesUI() {
       if (state.isFree) {
         badge.style.display = "inline-block";
         badge.textContent = `${state.used}/${state.limit}`;
-        badge.title = `${item.title}: used ${state.used} of ${state.limit} this month`;
+        badge.title = typeof SharedI18n !== "undefined"
+          ? SharedI18n.t("export_badge_tooltip", null, { title: item.title, used: state.used, limit: state.limit })
+          : `${item.title}: used ${state.used} of ${state.limit} this month`;
         badge.classList.toggle("is-limit", state.used >= state.limit);
       } else {
         badge.style.display = "none";
@@ -696,7 +701,7 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
     });
 
     // Build and download ZIP
-    setBtnText("⏳ Packing ZIP…");
+    setBtnText(typeof SharedI18n !== "undefined" ? SharedI18n.t("export_packing_zip") : "⏳ Packing ZIP…");
     const zipData = buildZip(files);
     const blob = new Blob([zipData], {type: "application/zip"});
     const url = URL.createObjectURL(blob);
@@ -715,7 +720,10 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
     markAsDownloaded(words);
   } catch (err) {
     console.error("Anki export error:", err);
-    alert("Export error: " + err.message);
+    const errText = typeof SharedI18n !== "undefined"
+      ? SharedI18n.t("export_error", null, { error: err.message })
+      : ("Export error: " + err.message);
+    alert(errText);
   } finally {
     setBtnText(origText);
     btn.disabled = false;
@@ -820,7 +828,7 @@ if (exportQuizBtn) {
     const allWords = await SharedWordRepository.getStoredWords();
     const words = filterWords(allWords);
     if (words.length === 0) {
-      alert("No words available to generate quiz.");
+      alert(typeof SharedI18n !== "undefined" ? SharedI18n.t("quiz_no_words") : "No words available to generate quiz.");
       return;
     }
 
@@ -860,13 +868,17 @@ if (exportQuizBtn) {
     } catch (err) {
       console.error("Quiz export error:", err);
       if (!GeminiProxy?.isLimitError?.(err)) {
-        alert("Quiz generation error: " + (err.message || err));
+        const qErr = typeof SharedI18n !== "undefined"
+          ? SharedI18n.t("quiz_error", null, { error: err.message || err })
+          : ("Quiz generation error: " + (err.message || err));
+        alert(qErr);
       }
     } finally {
       exportQuizBtn.disabled = false;
       exportQuizBtn.classList.remove("loading");
+      const readyLabel = typeof SharedI18n !== "undefined" ? SharedI18n.t("quiz_btn_ready") : "✨ AI Quiz";
       if (labelEl) {
-        labelEl.textContent = "✨ AI Quiz";
+        labelEl.textContent = readyLabel;
       } else {
         exportQuizBtn.innerHTML = origText;
       }
@@ -878,7 +890,10 @@ if (exportQuizBtn) {
 
 // ── Clear visible words ───────────────────────────────────────────
 document.getElementById("clearAll").addEventListener("click", async () => {
-  if (!confirm("Delete visible words?")) return;
+  const confirmClear = typeof SharedI18n !== "undefined"
+    ? SharedI18n.t("words_clear_all_confirm")
+    : "Delete visible words?";
+  if (!confirm(confirmClear)) return;
   const words = await SharedWordRepository.getStoredWords();
   const visibleWords = filterWords(words);
   if (visibleWords.length === 0) return;

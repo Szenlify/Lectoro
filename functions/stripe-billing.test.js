@@ -70,6 +70,7 @@ test("trial Checkout requires a card and defers billing for exactly three days",
         trialDays: 3,
     });
     assert.equal(options.payment_method_collection, "always");
+    assert.deepEqual(options.adaptive_pricing, { enabled: true });
     assert.equal(options.subscription_data.trial_period_days, 3);
     assert.equal(options.metadata.trialDays, "3");
     assert.match(options.success_url, /status=trial_success/);
@@ -85,6 +86,35 @@ test("Checkout starts normal billing when trial is no longer available", () => {
     assert.equal(options.payment_method_collection, "always");
     assert.equal(options.subscription_data.trial_period_days, undefined);
     assert.match(options.success_url, /status=success/);
+});
+
+test("Checkout session options adapt locale based on user native language", () => {
+    const optDe = _test.checkoutSessionOptions({
+        customerId: "cus_test",
+        uid: "firebase_user",
+        plan: "basic",
+        priceId: "price_basic",
+        lang: "de",
+    });
+    assert.equal(optDe.locale, "de");
+
+    const optPt = _test.checkoutSessionOptions({
+        customerId: "cus_test",
+        uid: "firebase_user",
+        plan: "basic",
+        priceId: "price_basic",
+        lang: "pt",
+    });
+    assert.equal(optPt.locale, "pt-BR");
+
+    const optUnknown = _test.checkoutSessionOptions({
+        customerId: "cus_test",
+        uid: "firebase_user",
+        plan: "basic",
+        priceId: "price_basic",
+        lang: "xyz",
+    });
+    assert.equal(optUnknown.locale, "auto");
 });
 
 test("Stripe result page clearly confirms a trial without claiming a payment", () => {

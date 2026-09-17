@@ -12,19 +12,19 @@
         <div class="header-icon">
             <img src="/icons/icon48.png" height="32" width="32" alt="Lectoro Icon">
         </div>
-        <h1><span>Lectoro <span style="color: rgb(0, 232, 193);">AI</span> - Language Learning</span></h1>
+        <h1><span>Lectoro <span style="color: rgb(0, 232, 193);">AI</span> - <span data-i18n="header_title">Language Learning</span></span></h1>
     </div>
 
     <!-- Tabs -->
     <div class="tabs">
         <button class="tab active" data-tab="settings"><span class="tab-icon">⚙️</span><span
-                class="tab-label">Settings</span></button>
+                class="tab-label" data-i18n="tab_settings">Settings</span></button>
         <button class="tab" data-tab="help"><span class="tab-icon">🚨</span><span
-                class="tab-label">Guide</span></button>
+                class="tab-label" data-i18n="tab_guide">Guide</span></button>
         <button class="tab" data-tab="words"><span class="tab-icon">📚</span><span
-                class="tab-label">Words</span></button>
+                class="tab-label" data-i18n="tab_words">Words</span></button>
         <button class="tab" data-tab="review" id="tabReview"><span class="tab-icon">🧠</span><span
-                class="tab-label">Review</span></button>
+                class="tab-label" data-i18n="tab_review">Review</span></button>
     </div>
 
     <!-- Settings Tab -->
@@ -33,7 +33,7 @@
         <div class="settings">
             <!-- Cloud Sync -->
             <div class="setting-group">
-                <label>☁️ Cloud Sync</label>
+                <label data-i18n="cloud_sync">☁️ Cloud Sync</label>
                 <div class="glass-card">
                     <div id="syncContent"></div>
                 </div>
@@ -42,13 +42,14 @@
             <div class="settings-dual-row language-direction-row">
                 <div class="setting-group">
                     <label for="learningLang">
-                        <span>Learning</span>
+                        <span data-i18n="learning_lang">Learning</span>
                     </label>
                     <div class="select-wrap">
                         <select id="learningLang" title="Choose the language you are learning"></select>
                     </div>
                 </div>
                 <button type="button" id="swapLanguages" class="swap-languages" title="Swap translation languages"
+                    data-i18n-title="swap_languages" data-i18n-aria="swap_languages"
                     aria-label="Swap learning and native languages">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -57,7 +58,7 @@
                 </button>
                 <div class="setting-group">
                     <label for="targetLang">
-                        <span>Native</span>
+                        <span data-i18n="native_lang">Native</span>
                     </label>
                     <div class="select-wrap">
                         <select id="targetLang" title="Select your native language">
@@ -92,7 +93,7 @@
                             <div class="usage-meter-name">
                                 <span class="usage-meter-icon usage-meter-icon-ai" aria-hidden="true">✦</span>
                                 <div>
-                                    <div class="ai-usage-title">AI Explanations (Enter)</div>
+                                    <div class="ai-usage-title" data-i18n="ai_explanations">AI Explanations (Enter)</div>
                                     <div class="usage-meter-note" id="aiUsageTitle">Checking limit...</div>
                                 </div>
                             </div>
@@ -109,7 +110,7 @@
                             <div class="usage-meter-name">
                                 <span class="usage-meter-icon usage-meter-icon-voice" aria-hidden="true">E</span>
                                 <div>
-                                    <div class="ai-usage-title">ElevenLabs Natural Voices</div>
+                                    <div class="ai-usage-title" data-i18n="elevenlabs_voices">ElevenLabs Natural Voices</div>
                                     <div class="usage-meter-note" id="elevenLabsUsageTitle">Checking usage...
                                     </div>
                                 </div>
@@ -123,8 +124,8 @@
                     </div>
 
                     <div class="ai-free-perks-strip">
-                        <div class="ai-free-perk-item"><i aria-hidden="true">✓</i> <span>Dual subtitles: <b>Unlimited</b></span></div>
-                        <div class="ai-free-perk-item"><i aria-hidden="true">✓</i> <span>Dictionary & words (S): <b>Unlimited</b></span></div>
+                        <div class="ai-free-perk-item"><i aria-hidden="true">✓</i> <span data-i18n="perk_subtitles">Dual subtitles: <b>Unlimited</b></span></div>
+                        <div class="ai-free-perk-item"><i aria-hidden="true">✓</i> <span data-i18n="perk_dictionary">Dictionary & words (S): <b>Unlimited</b></span></div>
                     </div>
 
                     <div class="ai-usage-footer">
@@ -141,17 +142,17 @@
                 <div class="setting-heading-row section-header-row">
                     <div class="section-title-wrap">
                         <div class="section-title">
-                            <span>Subscription plans</span>
+                            <span data-i18n="subscription_plans">Subscription plans</span>
                         </div>
-                        <p class="section-subtitle-desc">Unlock natural voices and enhanced AI learning</p>
+                        <p class="section-subtitle-desc" data-i18n="subscription_subtitle">Unlock natural voices and enhanced AI learning</p>
                     </div>
 
                 </div>
                 <div class="subscription-trial-banner" id="subscriptionTrialBanner" hidden>
                     <span class="subscription-trial-icon" aria-hidden="true">✦</span>
                     <div>
-                        <strong>3-day full access for $0</strong>
-                        <span>Card required · $0 charged for the first 3 days</span>
+                        <strong data-i18n="trial_banner_title">3-day full access for $0</strong>
+                        <span data-i18n="trial_banner_desc">Card required · $0 charged for the first 3 days</span>
                     </div>
                 </div>
                 <div class="subscription-carousel" id="subscriptionCarousel">
@@ -177,28 +178,28 @@
                     <div class="section-title-wrap">
                         <div class="section-title">
                             <span class="section-title-icon">💬</span>
-                            <span>Subtitles</span>
+                            <span data-i18n="subtitles_title">Subtitles</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="setting-group">
-                    <label>Reading Modes</label>
+                    <label data-i18n="reading_modes">Reading Modes</label>
                     <div class="glass-card">
                         <div class="toggle-row">
-                            <span class="toggle-label">Double subtitles</span>
+                            <span class="toggle-label" data-i18n="double_subtitles">Double subtitles</span>
                             <label class="toggle-switch">
                                 <input type="checkbox" id="doubleSubtitles" checked>
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
-                        <div class="toggle-desc">Bilingual subtitles (Netflix & YouTube): master full sentence on top,
+                        <div class="toggle-desc" data-i18n="double_subtitles_desc">Bilingual subtitles (Netflix & YouTube): master full sentence on top,
                             aligned translation below.</div>
                     </div>
                 </div>
 
                 <div class="setting-group">
-                    <label for="subBgRange">Subtitle background opacity</label>
+                    <label for="subBgRange" data-i18n="subtitle_bg_opacity">Subtitle background opacity</label>
                     <div class="glass-card">
                         <div class="slider-row">
                             <input type="range" id="subBgRange" min="0" max="100" step="5" value="0">
@@ -217,15 +218,15 @@
                     <div class="section-title-wrap">
                         <div class="section-title">
                             <span class="section-title-icon">🔊</span>
-                            <span>Speech & Voice</span>
+                            <span data-i18n="speech_voice_title">Speech & Voice</span>
                         </div>
-                        <p class="section-subtitle-desc">Google voice follows your learning language. Adjust speech
+                        <p class="section-subtitle-desc" data-i18n="speech_voice_desc">Google voice follows your learning language. Adjust speech
                             speed and playback volume.</p>
                     </div>
                 </div>
 
                 <div class="setting-group">
-                    <label for="rateRange">Speech rate</label>
+                    <label for="rateRange" data-i18n="speech_rate">Speech rate</label>
                     <div class="glass-card">
                         <div class="slider-row">
                             <input type="range" id="rateRange" min="0.3" max="2" step="0.1" value="0.95">
@@ -235,7 +236,7 @@
                 </div>
 
                 <div class="setting-group">
-                    <label for="volumeRange">TTS Reader volume</label>
+                    <label for="volumeRange" data-i18n="tts_volume">TTS Reader volume</label>
                     <div class="glass-card">
                         <div class="slider-row">
                             <input type="range" id="volumeRange" min="0" max="1" step="0.05" value="1">
@@ -245,7 +246,7 @@
                 </div>
             </div>
 
-            <div class="saved-msg" id="saved">✓ Saved</div>
+            <div class="saved-msg" id="saved" data-i18n="saved_msg">✓ Saved</div>
             <div class="account-deletion" id="accountDeletion" hidden></div>
         </div>
     </div>
@@ -258,14 +259,15 @@
 
                 <!-- Filters -->
                 <div class="filters">
-                    <button class="filter-btn active" data-filter="all">All</button>
-                    <button class="filter-btn" data-filter="today">Today</button>
-                    <button class="filter-btn" data-filter="week">Week</button>
-                    <button class="filter-btn" data-filter="month">Month</button>
-                    <button class="filter-btn" data-filter="new">🆕 Unsynced</button>
+                    <button class="filter-btn active" data-filter="all" data-i18n="filter_all">All</button>
+                    <button class="filter-btn" data-filter="today" data-i18n="filter_today">Today</button>
+                    <button class="filter-btn" data-filter="week" data-i18n="filter_week">Week</button>
+                    <button class="filter-btn" data-filter="month" data-i18n="filter_month">Month</button>
+                    <button class="filter-btn" data-filter="new" data-i18n="filter_unsynced">🆕 Unsynced</button>
                 </div>
                 <!-- Search -->
                 <input type="text" id="wordSearch" class="word-search"
+                    data-i18n-placeholder="search_placeholder"
                     placeholder="Search word, translation, or sentence...">
                 <div class="stats" id="stats"></div>
 
@@ -279,18 +281,18 @@
                         <div class="quiz-compact-group">
 
                             <select class="quiz-select-compact" id="quizScope" title="Number of words in quiz">
-                                <option value="5" selected>5 words</option>
-                                <option value="10">10 words</option>
-                                <option value="15">15 words</option>
-                                <option value="20">20 words</option>
+                                <option value="5" selected data-i18n="quiz_scope_5">5 words</option>
+                                <option value="10" data-i18n="quiz_scope_10">10 words</option>
+                                <option value="15" data-i18n="quiz_scope_15">15 words</option>
+                                <option value="20" data-i18n="quiz_scope_20">20 words</option>
                             </select>
                             <select class="quiz-select-compact" id="quizSource" title="Quiz word source">
-                                <option value="recent" selected>Recent</option>
-                                <option value="random">Random</option>
+                                <option value="recent" selected data-i18n="quiz_source_recent">Recent</option>
+                                <option value="random" data-i18n="quiz_source_random">Random</option>
                             </select>
                             <button type="button" class="export-btn export-quiz" id="exportQuiz"
                                 title="Generate interactive AI quiz">
-                                <span class="quiz-btn-label">✨ AI Quiz</span>
+                                <span class="quiz-btn-label" data-i18n="quiz_ai_btn">✨ AI Quiz</span>
                                 <span class="quiz-free-badge" id="quizFreeBadge" style="display:none;"
                                     title="Free quizzes">0/3</span>
                             </button>
@@ -300,18 +302,21 @@
                         <div class="export-compact-actions">
                             <button type="button" class="export-btn export-anki" id="exportAnki"
                                 title="Export to Anki deck (.zip)">
-                                <span class="export-btn-label">📋 Anki</span>
+                                <span class="export-btn-label" data-i18n="export_anki">📋 Anki</span>
                                 <span class="quiz-free-badge export-free-badge" id="ankiFreeBadge" style="display:none;"
                                     title="Free Anki exports">0/3</span>
                             </button>
                             <button type="button" class="export-btn export-csv" id="exportCsv"
                                 title="Export to Excel (.csv)">
-                                <span class="export-btn-label">📊 Excel</span>
+                                <span class="export-btn-label" data-i18n="export_excel">📊 Excel</span>
                                 <span class="quiz-free-badge export-free-badge" id="excelFreeBadge"
                                     style="display:none;" title="Free Excel exports">0/3</span>
                             </button>
                             <button type="button" class="export-btn export-clear" id="clearAll"
-                                title="Delete visible words">
+                                title="Delete visible words"
+                                data-i18n-title="export_clear_title"
+                                aria-label="Delete visible words"
+                                data-i18n-aria="export_clear_title">
                                 🗑
                             </button>
                         </div>
@@ -328,7 +333,7 @@
             <div class="review-panel">
                 <div class="review-header">
                     <span class="review-icon">🧠</span>
-                    <span class="review-title">Daily Review</span>
+                    <span class="review-title" data-i18n="review_daily_title">Daily Review</span>
                     <span class="review-count" id="reviewCount"></span>
                     <button class="review-dir-btn" id="reviewDirBtn" title="Change review direction">EN <span
                             class="dir-arrow">→</span> PL</button>
@@ -339,15 +344,15 @@
                                 <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
                                 <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
                             </svg>
-                            <span id="reviewVoiceBtnLabel">Voice</span>
+                            <span id="reviewVoiceBtnLabel" data-i18n="review_voice_label">Voice</span>
                             <span class="review-voice-ai-badge" id="reviewVoiceAiBadge">AI</span>
                             <span class="review-voice-chevron" aria-hidden="true">⌄</span>
                         </button>
                         <div class="review-voice-menu" id="reviewVoiceMenu" hidden>
                             <div class="review-voice-menu-head">
                                 <div>
-                                    <strong>Review voice</strong>
-                                    <span>Listen and memorize more naturally</span>
+                                    <strong data-i18n="review_voice_natural_title">Review voice</strong>
+                                    <span data-i18n="review_voice_natural_desc">Listen and memorize more naturally</span>
                                 </div>
                                 <button type="button" class="review-voice-close" id="reviewVoiceClose"
                                     aria-label="Close">×</button>
@@ -355,8 +360,8 @@
                             <button type="button" class="review-voice-system" id="reviewBrowserVoiceOption">
                                 <span class="review-voice-avatar system">🔊</span>
                                 <span class="review-voice-option-copy">
-                                    <strong>System voice</strong>
-                                    <small>Fast and unlimited</small>
+                                    <strong data-i18n="review_voice_system">System voice</strong>
+                                    <small data-i18n="review_voice_system_desc">Fast and unlimited</small>
                                 </span>
                                 <span class="review-voice-check" aria-hidden="true">✓</span>
                             </button>
@@ -391,56 +396,53 @@
                 <div class="help-section">
                     <div class="help-section-header">
                         <span class="help-icon-badge badge-mint">🎬</span>
-                        <span class="help-section-title">Watching Videos</span>
+                        <span class="help-section-title" data-i18n="guide_watching_videos">Watching Videos</span>
                     </div>
                     <div class="glass-card help-card">
-                        <p class="help-lead">Works on video platforms with captions including
-                            <a href="https://www.youtube.com" target="_blank">youtube.com</a>,
-                            <a href="https://www.netflix.com" target="_blank">netflix.com</a>,
-                            <a href="https://www.ted.com" target="_blank">ted.com</a> and many more. Turn on closed
-                            captions (CC)</strong>, then click any subtitle to see translations, or use hotkeys:
+                        <p class="help-lead" data-i18n="guide_video_desc">Works on video platforms with captions including
+                            youtube.com, netflix.com, ted.com and many more. Turn on closed captions (CC), then click any subtitle to see translations, or use hotkeys:
                         </p>
 
                         <div class="shortcut-group">
-                            <div class="shortcut-group-title">▶️ Playback</div>
+                            <div class="shortcut-group-title" data-i18n="guide_playback">▶️ Playback</div>
                             <div class="shortcut-row">
                                 <div class="key-combo"><span class="key">W</span><span class="key-or">/</span><span
                                         class="key">↑</span></div>
-                                <span class="shortcut-desc">Play / Pause</span>
+                                <span class="shortcut-desc" data-i18n="guide_play_pause">Play / Pause</span>
                             </div>
                             <div class="shortcut-row">
                                 <div class="key-combo"><span class="key">A</span><span class="key-or">/</span><span
                                         class="key">←</span></div>
-                                <span class="shortcut-desc">Previous subtitle / rewind</span>
+                                <span class="shortcut-desc" data-i18n="guide_prev_sub">Previous subtitle / rewind</span>
                             </div>
                             <div class="shortcut-row">
                                 <div class="key-combo"><span class="key">D</span><span class="key-or">/</span><span
                                         class="key">→</span></div>
-                                <span class="shortcut-desc">Next subtitle / fast forward</span>
+                                <span class="shortcut-desc" data-i18n="guide_next_sub">Next subtitle / fast forward</span>
                             </div>
                             <div class="shortcut-row">
                                 <div class="key-combo"><span class="key">[</span><span class="key-or">/</span><span
                                         class="key">]</span></div>
-                                <span class="shortcut-desc">Slow down / speed up playback</span>
+                                <span class="shortcut-desc" data-i18n="guide_speed">Slow down / speed up playback</span>
                             </div>
                         </div>
 
                         <div class="shortcut-group">
-                            <div class="shortcut-group-title">🧠 Learning</div>
+                            <div class="shortcut-group-title" data-i18n="guide_learning">🧠 Learning</div>
                             <div class="shortcut-row">
                                 <div class="key-combo"><span class="key">S</span><span class="key-or">/</span><span
                                         class="key">↓</span>
                                 </div>
-                                <span class="shortcut-desc">Translate & read current subtitle aloud</span>
+                                <span class="shortcut-desc" data-i18n="guide_translate_tts">Translate & read current subtitle aloud</span>
                             </div>
                             <div class="shortcut-row">
                                 <div class="key-combo"><span class="key">Z</span></div>
-                                <span class="shortcut-desc">Save current sentence for review</span>
+                                <span class="shortcut-desc" data-i18n="guide_save_sentence">Save current sentence for review</span>
                             </div>
                             <div class="shortcut-row">
                                 <div class="key-combo"><span class="key">Q</span><span class="key-or">/</span><span
                                         class="key">Enter</span></div>
-                                <span class="shortcut-desc">AI sentence explanation ✨</span>
+                                <span class="shortcut-desc" data-i18n="guide_ai_explain">AI sentence explanation ✨</span>
                             </div>
                         </div>
                     </div>
@@ -450,23 +452,21 @@
                 <div class="help-section">
                     <div class="help-section-header">
                         <span class="help-icon-badge badge-accent">🖱️</span>
-                        <span class="help-section-title">Text Translation</span>
+                        <span class="help-section-title" data-i18n="guide_text_translation">Text Translation</span>
                     </div>
                     <div class="glass-card help-card">
                         <div class="help-steps">
                             <div class="help-step">
                                 <span class="step-num">1</span>
-                                <span class="step-text">Select any word or drag across a sentence on any webpage.</span>
+                                <span class="step-text" data-i18n="guide_step_1">Select any word or drag across a sentence on any webpage.</span>
                             </div>
                             <div class="help-step">
                                 <span class="step-num">2</span>
-                                <span class="step-text">Click the translation icon that appears next to your
-                                    selection.</span>
+                                <span class="step-text" data-i18n="guide_step_2">Click the translation icon that appears next to your selection.</span>
                             </div>
                             <div class="help-step">
                                 <span class="step-num">3</span>
-                                <span class="step-text">Done! View translation, listen via TTS, and practice in
-                                    <strong>📚 Words</strong>.</span>
+                                <span class="step-text" data-i18n="guide_step_3">Done! View translation, listen via TTS, and practice in Words.</span>
                             </div>
                         </div>
                     </div>
@@ -476,14 +476,14 @@
                 <div class="help-section">
                     <div class="help-section-header">
                         <span class="help-icon-badge badge-amber">🧩</span>
-                        <span class="help-section-title">Learning & Review</span>
+                        <span class="help-section-title" data-i18n="guide_learning_review">Learning & Review</span>
                     </div>
                     <div class="glass-card help-card">
-                        <p>Every saved word or sentence is stored in <strong>📚 Words</strong>,
+                        <p data-i18n="guide_learning_review_desc">Every saved word or sentence is stored in Words,
                             where you can export to Anki, Excel, or generate interactive AI quizzes.</p>
                         <div class="help-tip">
                             <span class="help-tip-icon">💡</span>
-                            <span>The <strong>🧠 Review</strong> tab offers daily spaced repetition sessions to help you
+                            <span data-i18n="guide_tip">The Review tab offers daily spaced repetition sessions to help you
                                 remember vocabulary long-term.</span>
                         </div>
                     </div>
@@ -496,13 +496,16 @@
     <footer class="popup-footer"
         style="padding: 10px 16px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 10px; color: #94a3b8; text-align: center;">
         <div><a href="https://lectoroai.vercel.app/privacy" target="_blank" rel="noopener noreferrer"
+                data-i18n="footer_privacy"
                 style="color: #38bdf8; text-decoration: none;">Privacy Policy</a> &bull; <a
                 href="https://lectoroai.vercel.app/terms" target="_blank" rel="noopener noreferrer"
+                data-i18n="footer_terms"
                 style="color: #38bdf8; text-decoration: none;">Terms</a></div>
-        <div style="margin-top: 4px; font-size: 10px; color: #64748b;">Subscription seller is Lectoro, not Google LLC.
+        <div style="margin-top: 4px; font-size: 10px; color: #64748b;" data-i18n="footer_seller">Subscription seller is Lectoro, not Google LLC.
         </div>
     </footer>
     <script src="shared/constants.js"></script>
+    <script src="shared/i18n.js"></script>
     <script src="shared/subscription-config.js"></script>
     <script src="shared/utils.js"></script>
     <script src="shared/srs.js"></script>

@@ -2663,14 +2663,14 @@
 
         const BADGE_MAP = {
             pl: {
-                sentence: "Sentence",
+                sentence: "Zdanie",
                 idiom: "Idiom",
-                phrasal_verb: "Phrasal Verb",
+                phrasal_verb: "Czasownik złożony",
                 slang: "Slang",
-                vocabulary: "Word",
-                word: "Word",
-                expression: "Expression",
-                collocation: "Collocation",
+                vocabulary: "Słowo",
+                word: "Słowo",
+                expression: "Wyrażenie",
+                collocation: "Kolokacja",
             },
             en: {
                 sentence: "Sentence",
@@ -2803,11 +2803,24 @@
         aiPaywallActive = true;
         ensureAiExplainKeydownListener();
 
+        const lang = (subtitleTranslationLang || (typeof SharedI18n !== "undefined" ? SharedI18n.getLang() : "en")).toLowerCase().slice(0, 2);
+        const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, lang, p) : k);
+
+        const titleText = t("paywall_ai_title");
+        const bannerTitle = t("video_paywall_banner_title");
+        const bannerSub = t("video_paywall_banner_sub");
+        const offerTitle = t("video_paywall_offer_title");
+        const perk1 = `<strong>${t("video_paywall_perk1")}</strong>`;
+        const perk2 = `<strong>${t("video_paywall_perk2")}</strong>`;
+        const perk3 = `<strong>${t("video_paywall_perk3")}</strong>`;
+        const resumeText = t("video_paywall_resume");
+        const upgradeText = t("video_paywall_cta");
+
         const html = `
             <div class="${PREFIX}header ${PREFIX}paywall-header">
                 <div class="${PREFIX}paywall-badge-title">
                     <span class="${PREFIX}paywall-icon">✨</span>
-                    <span>Free AI monthly limit reached</span>
+                    <span>${titleText}</span>
                 </div>
                 <button type="button" class="${PREFIX}paywall-close-btn" aria-label="Close (W)" title="Close and resume (W)">✕</button>
             </div>
@@ -2816,24 +2829,24 @@
                     <div class="${PREFIX}paywall-status-banner">
                         <span class="${PREFIX}paywall-check">✓</span>
                         <div class="${PREFIX}paywall-status-text">
-                            <strong>Dual subtitles and dictionary (S) remain unlimited!</strong>
-                            <span>You can continue watching with bilingual subtitles anytime.</span>
+                            <strong>${bannerTitle}</strong>
+                            <span>${bannerSub}</span>
                         </div>
                     </div>
-                    <div class="${PREFIX}paywall-offer-title">Unlock Lectoro PRO to learn without limits:</div>
+                    <div class="${PREFIX}paywall-offer-title">${offerTitle}</div>
                     <ul class="${PREFIX}paywall-perks-list">
-                        <li><span class="${PREFIX}paywall-spark">✦</span> <strong>Unlimited AI explanations (Enter)</strong> (idioms, grammar)</li>
-                        <li><span class="${PREFIX}paywall-spark">✦</span> <strong>Cloud sync</strong> across all your devices</li>
-                        <li><span class="${PREFIX}paywall-spark">✦</span> <strong>Unlimited SRS flashcards</strong>, AI quizzes and Anki export</li>
+                        <li><span class="${PREFIX}paywall-spark">✦</span> ${perk1}</li>
+                        <li><span class="${PREFIX}paywall-spark">✦</span> ${perk2}</li>
+                        <li><span class="${PREFIX}paywall-spark">✦</span> ${perk3}</li>
                     </ul>
                 </div>
             </div>
             <div class="${PREFIX}save-footer ${PREFIX}paywall-footer">
                 <button type="button" class="${PREFIX}paywall-btn-ghost ${PREFIX}paywall-resume-btn" title="Resume playback">
-                    Continue watching (W)
+                    ${resumeText}
                 </button>
                 <button type="button" class="${PREFIX}paywall-btn-primary ${PREFIX}paywall-upgrade-btn">
-                    Try Pro free for 3 days →
+                    ${upgradeText}
                 </button>
             </div>`;
 
@@ -3764,22 +3777,24 @@
     }
 
     function showReadingError(error, layout = translationAnchorLayout) {
+        const lang = (subtitleTranslationLang || (typeof SharedI18n !== "undefined" ? SharedI18n.getLang() : "en")).toLowerCase().slice(0, 2);
+        const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, lang, p) : k);
         const rateLimited = error?.code === "RATE_LIMITED" || error?.status === 429;
         const message = error?.code === "AI_LIMIT_REACHED"
-            ? "Your monthly AI limit has been reached. Saved translations remain available."
+            ? t("paywall_ai_desc")
             : error?.code === "AUTH_REQUIRED"
-                ? "Translation unavailable. Please try again."
+                ? t("translation_unavailable")
             : rateLimited
-            ? "Translation service is busy. Please try again shortly."
+            ? t("video_reading_error_busy")
             : error?.runtimeError
-                ? "Extension connection lost. Refresh this video page and try again."
-                : "Could not translate subtitles. Please try again.";
+                ? t("video_reading_error_conn")
+                : t("video_reading_error_generic");
         console.warn("[Lectoro] Subtitle translation failed:", error);
         const copy = applyAiExplanation(`
-            <div class="${PREFIX}header">Translation unavailable</div>
+            <div class="${PREFIX}header">${t("translation_unavailable")}</div>
             <div class="${PREFIX}body"><div class="${PREFIX}ai-text">${QT.escapeHtml(message)}</div></div>
-            <div class="${PREFIX}save-footer"><button type="button" class="${PREFIX}save-word-btn">Try again</button></div>
-        `, layout, "Translation unavailable");
+            <div class="${PREFIX}save-footer"><button type="button" class="${PREFIX}save-word-btn">${t("try_again")}</button></div>
+        `, layout, t("translation_unavailable"));
         eTranslateActive = true;
         copy.querySelector(`.${PREFIX}save-word-btn`)?.addEventListener("click", () => {
             const video = getPlayerRegistry()?.getVideo();
@@ -3790,6 +3805,8 @@
 
     function showSubtitleLimitOverlay(quota, layout = translationAnchorLayout) {
         clearTimeout(quotaCountdownTimer);
+        const lang = (subtitleTranslationLang || (typeof SharedI18n !== "undefined" ? SharedI18n.getLang() : "en")).toLowerCase().slice(0, 2);
+        const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, lang, p) : k);
         const resetAt =
             quota?.resetAt || Date.now() + (quota?.resetInMs || 3600000);
 
@@ -3801,26 +3818,29 @@
         }
 
         const initialRemaining = formatRemaining(resetAt - Date.now());
+        const limitFormatted = Number(quota?.limit || 0).toLocaleString(lang);
+        const limitDesc = t("video_sub_limit_desc", { limit: limitFormatted });
+        const limitReset = t("video_sub_limit_reset", { time: `<strong style="color: #38bdf8;" class="${PREFIX}countdown-text">${initialRemaining}</strong>` });
 
         const html = `
             <div class="${PREFIX}header">
-                <span>🔒 Free Subtitle Limit</span>
+                <span>${t("video_sub_limit_title")}</span>
             </div>
             <div class="${PREFIX}body">
                 <div style="padding: 8px 4px; font-size: 13px; line-height: 1.5; color: #f1f5f9;">
-                    Free limit of <strong>${QT.escapeHtml(Number(quota.limit).toLocaleString("en-US"))} characters / hour</strong> reached.<br>
-                    <span style="color: #94a3b8; font-size: 12px;">New free subtitles pool resets in: <strong style="color: #38bdf8;" class="${PREFIX}countdown-text">${initialRemaining}</strong></span>
+                    ${limitDesc}<br>
+                    <span style="color: #94a3b8; font-size: 12px;">${limitReset}</span>
                 </div>
             </div>
             <div class="${PREFIX}save-footer" style="display: flex; gap: 8px; justify-content: flex-end; padding-top: 8px;">
                 <button type="button" class="${PREFIX}ai-explain-save-btn ${PREFIX}save-footer-btn ${PREFIX}trial-cta-btn" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border: none; font-weight: 600; cursor: pointer; padding: 6px 14px; border-radius: 6px;">
-                    Try 3 days free →
+                    ${t("video_sub_limit_cta")}
                 </button>
             </div>`;
 
         const effectiveLayout =
             layout || translationAnchorLayout || captureSubtitleLayout();
-        const copy = applyAiExplanation(html, effectiveLayout, "Subtitle limit");
+        const copy = applyAiExplanation(html, effectiveLayout, t("video_sub_limit_title"));
 
         const ctaBtn = copy.querySelector(`.${PREFIX}trial-cta-btn`);
         ctaBtn?.addEventListener("click", () => {
@@ -3833,7 +3853,7 @@
         function tick() {
             const rem = resetAt - Date.now();
             if (rem <= 0) {
-                if (countdownEl) countdownEl.textContent = "renewed!";
+                if (countdownEl) countdownEl.textContent = t("video_sub_limit_renewed");
                 return;
             }
             if (countdownEl) countdownEl.textContent = formatRemaining(rem);

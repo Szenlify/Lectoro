@@ -41,7 +41,7 @@ function stripeClient() {
 
 function priceIds() {
     return {
-        [SUBSCRIPTION_PLANS.BASIC]: "price_1UAb4LE5VRQaSjaXGPEs2TDA",
+        [SUBSCRIPTION_PLANS.BASIC]: "price_1UGi5AE5VRQaSjaXvQSeZLy6",
         [SUBSCRIPTION_PLANS.PRO]: "price_1UAb53E5VRQaSjaX2jb8aQ6d",
     };
 }
@@ -216,9 +216,14 @@ async function isTrialEligible(stripe, email, currentSubscriptions = [], userDat
     return true;
 }
 
-function checkoutSessionOptions({ customerId, uid, plan, priceId, trialDays = 0 }) {
+function checkoutSessionOptions({ customerId, uid, plan, priceId, trialDays = 0, lang = "auto" }) {
     const normalizedTrialDays = Math.max(0, Number(trialDays) || 0);
     const successStatus = normalizedTrialDays > 0 ? "trial_success" : "success";
+    const supportedLocales = new Set(["auto", "en", "pl", "de", "es", "fr", "it", "ja", "ko", "nl", "cs", "pt"]);
+    const rawLang = String(lang || "auto").toLowerCase().slice(0, 2);
+    const locale = supportedLocales.has(rawLang)
+        ? (rawLang === "pt" ? "pt-BR" : rawLang)
+        : "auto";
     return {
         mode: "subscription",
         customer: customerId,
@@ -226,7 +231,10 @@ function checkoutSessionOptions({ customerId, uid, plan, priceId, trialDays = 0 
         line_items: [{ price: priceId, quantity: 1 }],
         payment_method_collection: "always",
         allow_promotion_codes: true,
-        locale: "pl",
+        locale,
+        adaptive_pricing: {
+            enabled: true,
+        },
         success_url: `${CHECKOUT_RESULT_URL}?status=${successStatus}&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${CHECKOUT_RESULT_URL}?status=cancel`,
         metadata: {
@@ -377,6 +385,7 @@ exports.createStripeCheckoutSession = onRequest(
                     plan: requestedPlan,
                     priceId: selectedPrice,
                     trialDays,
+                    lang: req.body?.lang || "auto",
                 }),
             );
             return res.status(200).json({ url: session.url, trialDays });

@@ -420,8 +420,10 @@
                     new Error("Wybierz plan BASIC albo PRO."),
                 );
             }
+            const currentLang = typeof SharedI18n !== "undefined" ? SharedI18n.getLang() : "en";
             return billingRequest("createStripeCheckoutSession", {
                 plan: normalizedPlan,
+                lang: currentLang,
             });
         }
 
@@ -467,16 +469,21 @@
             const TOAST_MS = 8000;
             document.getElementById(AI_LIMIT_TOAST_ID)?.remove();
             const toast = document.createElement("div");
+            const i18n = typeof globalThis !== "undefined" ? globalThis.SharedI18n : null;
             const defaultMsg = isElevenLabs
-                ? "Monthly ElevenLabs voice synthesis limit reached."
-                : "Monthly free AI credits reached. Dual subtitles and dictionary (S) remain unlimited!";
+                ? (i18n ? i18n.t("toast_elevenlabs_limit") : "Monthly ElevenLabs voice synthesis limit reached.")
+                : (i18n ? i18n.t("toast_ai_limit") : "Monthly free AI credits reached. Dual subtitles and dictionary (S) remain unlimited!");
+            const toastTitle = isElevenLabs
+                ? (i18n ? i18n.t("toast_elevenlabs_title") : "ElevenLabs Limit Reached")
+                : (i18n ? i18n.t("toast_ai_title") : "Monthly AI Limit Reached");
+            const tryProLabel = i18n ? i18n.t("toast_try_pro") : "Try Pro (3 days free)";
             toast.innerHTML = `
             <div class="${P}ai_limit_orb">✨</div>
             <div class="${P}ai_limit_copy">
-                <strong>${isElevenLabs ? "ElevenLabs Limit Reached" : "Monthly AI Limit Reached"}</strong>
+                <strong>${toastTitle}</strong>
                 <span>${Utils.escapeHtml(String(validation?.message || defaultMsg))}</span>
             </div>
-            <button type="button" class="${P}ai_upgrade_link">Try Pro (3 days free)</button>
+            <button type="button" class="${P}ai_upgrade_link">${tryProLabel}</button>
             <button type="button" class="${P}ai_limit_close" aria-label="Close">×</button>
             <div class="${P}ai_limit_timer"></div>`;
             document.documentElement.appendChild(toast);
