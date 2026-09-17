@@ -2803,7 +2803,7 @@
         aiPaywallActive = true;
         ensureAiExplainKeydownListener();
 
-        const lang = (subtitleTranslationLang || (typeof SharedI18n !== "undefined" ? SharedI18n.getLang() : "en")).toLowerCase().slice(0, 2);
+        const lang = ((typeof SharedI18n !== "undefined" ? SharedI18n.getLang() : null) || subtitleTranslationLang || "en").toLowerCase().slice(0, 2);
         const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, lang, p) : k);
 
         const titleText = t("paywall_ai_title");
@@ -3776,7 +3776,7 @@
     }
 
     function showReadingError(error, layout = translationAnchorLayout) {
-        const lang = (subtitleTranslationLang || (typeof SharedI18n !== "undefined" ? SharedI18n.getLang() : "en")).toLowerCase().slice(0, 2);
+        const lang = ((typeof SharedI18n !== "undefined" ? SharedI18n.getLang() : null) || subtitleTranslationLang || "en").toLowerCase().slice(0, 2);
         const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, lang, p) : k);
         const rateLimited = error?.code === "RATE_LIMITED" || error?.status === 429;
         const message = error?.code === "AI_LIMIT_REACHED"
@@ -3804,7 +3804,7 @@
 
     function showSubtitleLimitOverlay(quota, layout = translationAnchorLayout) {
         clearTimeout(quotaCountdownTimer);
-        const lang = (subtitleTranslationLang || (typeof SharedI18n !== "undefined" ? SharedI18n.getLang() : "en")).toLowerCase().slice(0, 2);
+        const lang = ((typeof SharedI18n !== "undefined" ? SharedI18n.getLang() : null) || subtitleTranslationLang || "en").toLowerCase().slice(0, 2);
         const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, lang, p) : k);
         const resetAt =
             quota?.resetAt || Date.now() + (quota?.resetInMs || 3600000);
