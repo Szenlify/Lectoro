@@ -82,11 +82,14 @@ test("Enter preserves useful usage notes and filters malformed item explanations
     assert.equal(result.items[1].explanation, "");
 });
 
-test("Enter still rejects malformed sentence explanations and empty translations", async () => {
-    for (const overrides of [{ explanation: null }, { explanation: {} }, { translation: " " }]) {
+test("Enter tolerates missing or object sentence explanations and rejects empty translations", async () => {
+    for (const overrides of [{ explanation: null }, { explanation: {} }]) {
         const { service } = explanationService(response(overrides));
-        await assert.rejects(service.explainSentence("I'm gonna leave.", "pl"));
+        const result = await service.explainSentence("I'm gonna leave.", "pl");
+        assert.equal(result.explanation, "");
     }
+    const { service } = explanationService(response({ translation: " " }));
+    await assert.rejects(service.explainSentence("I'm gonna leave.", "pl"));
 });
 
 test("Enter always uses native language, including obsolete stored preferences", async () => {

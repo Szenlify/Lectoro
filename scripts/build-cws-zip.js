@@ -59,7 +59,7 @@ const INCLUDED_ENTRIES = [
     "shared",
     "adapters",
     "video",
-    "dictionaries",
+    "dictionaries/phrase",
     "firebase/firebase-config.js",
     "firebase/firebase-sync.js",
 ];
@@ -74,6 +74,8 @@ for (const entry of INCLUDED_ENTRIES) {
         process.exit(1);
     }
 
+    fs.mkdirSync(path.dirname(destPath), { recursive: true });
+
     const stat = fs.statSync(srcPath);
     if (stat.isDirectory()) {
         fs.cpSync(srcPath, destPath, {
@@ -84,12 +86,12 @@ for (const entry of INCLUDED_ENTRIES) {
                     base !== ".DS_Store" &&
                     !base.endsWith(".test.js") &&
                     !base.endsWith(".ts") &&
+                    !base.endsWith(".md") &&
                     base !== "__MACOSX"
                 );
             },
         });
     } else {
-        fs.mkdirSync(path.dirname(destPath), { recursive: true });
         fs.copyFileSync(srcPath, destPath);
     }
 }

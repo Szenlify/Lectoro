@@ -795,14 +795,11 @@ async function enableVideoFrame(sender) {
   return { ok: true };
 }
 
-// Automatically sync plan and limits when Stripe checkout or portal completes
+// Automatically sync plan and limits when Stripe checkout or portal redirect completes
+// (The redirect URL 'stripeCheckoutResult' is matched within declared host_permissions)
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   const url = changeInfo.url || tab?.url || "";
-  if (
-    url.includes("stripeCheckoutResult") ||
-    url.includes("checkout.stripe.com") ||
-    url.includes("billing.stripe.com")
-  ) {
+  if (url.includes("stripeCheckoutResult")) {
     initializeAiUsage(true).catch(() => {});
   }
 });

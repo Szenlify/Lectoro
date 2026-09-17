@@ -312,7 +312,13 @@
         }
 
         const subtitleUiOpen = overlay?.isSubtitleUiOpen?.() || false;
-        const aiTooltipOpen = overlay?.isAiTooltipActive?.() || false;
+        const aiTooltipOpen = Boolean(
+            overlay?.isAiTooltipActive?.() ||
+            (typeof document !== "undefined" && (
+                (typeof document.body?.hasAttribute === "function" && document.body.hasAttribute("data-lectoro-ai-active")) ||
+                (typeof document.querySelector === "function" && document.querySelector(".lectoro-ai-explain-overlay"))
+            ))
+        );
 
         e.preventDefault();
         e.stopPropagation();
@@ -341,16 +347,20 @@
         // Sterowanie otwartym dymkiem AI (W, A, D, Strzałki, Z, V, Escape)
         if (aiTooltipOpen) {
             if (key === "w" || key === "W") {
-                if (overlay?.replayCurrentAiExplainTts?.()) return;
+                overlay?.replayCurrentAiExplainTts?.();
+                return;
             }
             if (key === "ArrowRight" || key === "d" || key === "D") {
-                if (overlay?.nextAiExplainItem?.({ manual: true })) return;
+                overlay?.nextAiExplainItem?.({ manual: true });
+                return;
             }
             if (key === "ArrowLeft" || key === "a" || key === "A") {
-                if (overlay?.prevAiExplainItem?.({ manual: true })) return;
+                overlay?.prevAiExplainItem?.({ manual: true });
+                return;
             }
             if (["z", "Z", "v", "V"].includes(key)) {
-                if (overlay?.saveCurrentAiExplainItem?.()) return;
+                overlay?.saveCurrentAiExplainItem?.();
+                return;
             }
             if (key === "Escape") {
                 overlay?.closeAiTooltip?.({ resumeVideo: true });

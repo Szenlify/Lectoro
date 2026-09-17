@@ -55,6 +55,7 @@
             (typeof LectoroConstants !== "undefined" &&
                 LectoroConstants.DEFAULT_READING_SETTINGS?.learningLang) ||
             "en";
+        const utter = new SpeechSynthesisUtterance(text);
         utter.lang = lang || defaultLang;
         window.speechSynthesis?.speak(utter);
         return { type: "utter", obj: utter };

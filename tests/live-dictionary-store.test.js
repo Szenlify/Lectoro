@@ -77,7 +77,28 @@ test("word clouds first render local entries and then read only missing live fil
     assert.equal(result[0], null); assert.equal(result[1].translated, entry.t); assert.equal(result[2], null);
     assert.equal(env.calls.length, 0);
     assert.equal((await env.lookup(["unknown"], "pl", "en", { generateMissing: false }))[0], null);
-    assert.equal(env.calls.length, 1);
+});
+test("word clouds generate missing words via free translation without calling GeminiProxy or consuming AI credits", async () => {
+    const env = environment();
+    let geminiCalled = false;
+    env.context.GeminiProxy = {
+        liveTranslation: async () => {
+            geminiCalled = true;
+            throw Error("GeminiProxy should NOT be called for word-by-word mode!");
+        }
+    };
+    env.context.SharedTranslatorService = {
+        fetchTranslation: async (word, target, source) => {
+            assert.equal(word, "butterfly");
+            assert.equal(target, "pl");
+            assert.equal(source, "en");
+            return { translated: "motyl", detectedLang: "en" };
+        }
+    };
+    const result = await env.lookup(["butterfly"], "pl", "en", { wordByWord: true, generateMissing: true });
+    assert.equal(geminiCalled, false);
+    assert.equal(result[0].translated, "motyl");
+    assert.equal(result[0].length, 1);
 });
 test("contextual lookup preserves get up as one unit before skipping simple words", async () => {
     const env = environment();

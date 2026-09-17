@@ -72,7 +72,7 @@
                 await root.SharedTranslatorService.getReadingSettings();
             if (!isCurrent()) return;
             ui.resetSubtitleModeStarting();
-            if (!snapshot.text || !settings.wordCloudMode) {
+            if (!snapshot.text || settings.wordCloudMode === false) {
                 ui.restoreOriginal();
                 if (wasPlaying) ui.resumeVideoAfterSubtitleClose(video);
                 return;

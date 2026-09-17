@@ -51,7 +51,6 @@ whenPopupReady((data) => {
     if (doubleSubtitlesToggle) {
         doubleSubtitlesToggle.checked = data.doubleSubtitles !== undefined ? !!data.doubleSubtitles : true;
     }
-    if (wordCloudModeToggle) wordCloudModeToggle.checked = !!data.wordCloudMode;
 });
 
 select.addEventListener("change", () => {
@@ -64,7 +63,6 @@ learningLangSelect.addEventListener("change", () => {
 
 // ── Subtitle reading modes ───────────────────────────────────────
 const doubleSubtitlesToggle = document.getElementById("doubleSubtitles");
-const wordCloudModeToggle = document.getElementById("wordCloudMode");
 
 if (doubleSubtitlesToggle) {
     doubleSubtitlesToggle.addEventListener("change", () => {
@@ -74,14 +72,6 @@ if (doubleSubtitlesToggle) {
         );
     });
 }
-
-
-wordCloudModeToggle.addEventListener("change", () => {
-    chrome.storage.local.set(
-        { wordCloudMode: wordCloudModeToggle.checked },
-        flashSaved,
-    );
-});
 
 // ── Rate slider ───────────────────────────────────────────────────
 rateRange.addEventListener("input", () => {

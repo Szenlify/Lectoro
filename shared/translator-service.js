@@ -504,11 +504,30 @@
                     AIPrompts.validateLanguage(result, targetLang);
                     requireTextFields(result, [
                         "translation",
-                        "badge",
                     ]);
+                    if (typeof result.badge !== "string" || !result.badge.trim()) {
+                        result.badge = "Zdanie";
+                    }
                     // A useful translation can be complete without an extra explanation.
-                    if (typeof result.explanation !== "string")
+                    if (result.explanation == null) {
+                        result.explanation = "";
+                    } else if (typeof result.explanation === "object") {
+                        result.explanation = typeof result.explanation.text === "string"
+                            ? result.explanation.text
+                            : typeof result.explanation.meaning === "string"
+                                ? result.explanation.meaning
+                                : typeof result.explanation.explanation === "string"
+                                    ? result.explanation.explanation
+                                    : "";
+                    } else if (typeof result.explanation !== "string") {
+                        result.explanation = String(result.explanation || "");
+                    }
+                    if (typeof result.explanation !== "string") {
                         throw new Error("AI returned an invalid explanation.");
+                    }
+                    if (result.items == null) {
+                        result.items = [];
+                    }
                     if (!Array.isArray(result.items))
                         throw new Error(
                             "AI returned invalid explanation items.",
@@ -518,7 +537,7 @@
             const detectedLang = AIPrompts.languageCode(
                 parsed?.source_language,
             );
-            const rawItems = parsed.items;
+            const rawItems = Array.isArray(parsed?.items) ? parsed.items : [];
             const seen = new Set();
             const types = new Set([
                 "idiom",
@@ -534,8 +553,7 @@
                         !item.term.trim() ||
                         !types.has(item.type) ||
                         typeof item.meaning !== "string" ||
-                        !item.meaning.trim() ||
-                        typeof item.explanation !== "string"
+                        !item.meaning.trim()
                     )
                         return false;
                     const term = item.term.trim();
@@ -561,14 +579,17 @@
                     meaning: String(
                         item.meaning || item.translation || "",
                     ).trim(),
-                    explanation: String(item.explanation || "").trim(),
+                    explanation:
+                        typeof item.explanation === "string"
+                            ? item.explanation.trim()
+                            : (item.explanation?.text || ""),
                     badge:
                         typeof item.badge === "string" ? item.badge.trim() : "",
                 }));
 
             return {
                 detectedLang,
-                badge: parsed.badge.trim(),
+                badge: (typeof parsed?.badge === "string" ? parsed.badge : "Zdanie").trim(),
                 translation: parsed?.translation || "",
                 explanation: parsed?.explanation || "",
                 items,
@@ -590,6 +611,7 @@
         return Object.freeze({
             dictionaryTerm,
             translate,
+            fetchTranslation,
             lookupWords,
             createTranslateCache,
             getTargetLang,

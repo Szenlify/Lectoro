@@ -1856,46 +1856,42 @@
         };
 
         const totalItems = aiExplainQueue.length;
-        const hasMultiple = totalItems > 1;
 
-        let headerHtml = "";
-        if (hasMultiple) {
-            const ribbonItemsHtml = aiExplainQueue
-                .map((qItem, idx) => {
-                    const isActive = idx === index;
-                    const isQueued = idx !== index;
-                    const icon = qItem.type === "sentence" ? "💬" : "✨";
-                    const classes = [
-                        `${PREFIX}ai-queue-pill`,
-                        isActive ? "active" : "",
-                        isQueued ? C.UI_CLASSES.AI_PILL_UPCOMING : "",
-                    ]
-                        .filter(Boolean)
-                        .join(" ");
+        const ribbonItemsHtml = aiExplainQueue
+            .map((qItem, idx) => {
+                const isActive = idx === index;
+                const isQueued = idx !== index;
+                const icon = qItem.type === "sentence" ? "💬" : "✨";
+                const classes = [
+                    `${PREFIX}ai-queue-pill`,
+                    isActive ? "active" : "",
+                    isQueued ? C.UI_CLASSES.AI_PILL_UPCOMING : "",
+                ]
+                    .filter(Boolean)
+                    .join(" ");
 
-                    return `<button type="button" class="${classes}" data-index="${idx}" role="tab" aria-selected="${isActive}" title="${QT.escapeAttr(qItem.title)}">
-                        <span class="${PREFIX}pill-icon">${icon}</span>
-                        <span>${QT.escapeHtml(qItem.title)}</span>
-                    </button>`;
-                })
-                .join("");
+                return `<button type="button" class="${classes}" data-index="${idx}" role="tab" aria-selected="${isActive}" title="${QT.escapeAttr(qItem.title)}">
+                    <span class="${PREFIX}pill-icon">${icon}</span>
+                    <span>${QT.escapeHtml(qItem.title)}</span>
+                </button>`;
+            })
+            .join("");
 
-            headerHtml = `
-                <div class="${PREFIX}header">
-                    <div class="${PREFIX}ai-queue-ribbon" role="tablist" aria-label="Breakdown items">
-                        ${ribbonItemsHtml}
-                    </div>
-                    <div class="${PREFIX}ai-nav-group">
-                        <button type="button" class="${PREFIX}ai-nav-btn ${PREFIX}ai-prev-btn" data-action="prev" ${index === 0 ? "disabled" : ""} title="Poprzednie (← / A)">
-                            ◀
-                        </button>
-                        <span class="${PREFIX}ai-step-counter">${index + 1}/${totalItems}</span>
-                        <button type="button" class="${PREFIX}ai-nav-btn ${PREFIX}ai-next-btn" data-action="next" ${index >= totalItems - 1 ? "disabled" : ""} title="Następne (→ / D)">
-                            ▶
-                        </button>
-                    </div>
-                </div>`;
-        }
+        const headerHtml = `
+            <div class="${PREFIX}header">
+                <div class="${PREFIX}ai-queue-ribbon" role="tablist" aria-label="Breakdown items">
+                    ${ribbonItemsHtml}
+                </div>
+                <div class="${PREFIX}ai-nav-group">
+                    <button type="button" class="${PREFIX}ai-nav-btn ${PREFIX}ai-prev-btn" data-action="prev" ${index === 0 ? "disabled" : ""} title="Poprzednie (← / A)">
+                        ◀
+                    </button>
+                    <span class="${PREFIX}ai-step-counter">${index + 1}/${totalItems}</span>
+                    <button type="button" class="${PREFIX}ai-nav-btn ${PREFIX}ai-next-btn" data-action="next" ${index >= totalItems - 1 ? "disabled" : ""} title="Następne (→ / D)">
+                        ▶
+                    </button>
+                </div>
+            </div>`;
 
         const isSentenceStage = item.type === "sentence";
         const explanationLang =
@@ -2014,16 +2010,17 @@
                     utteranceOrAudio.addEventListener("error", finish, {
                         once: true,
                     });
-                } else if (
-                    typeof utteranceOrAudio.addEventListener === "function"
-                ) {
-                    utteranceOrAudio.addEventListener("end", finish, {
-                        once: true,
-                    });
-                    utteranceOrAudio.addEventListener("error", finish, {
-                        once: true,
-                    });
                 } else {
+                    if (
+                        typeof utteranceOrAudio.addEventListener === "function"
+                    ) {
+                        utteranceOrAudio.addEventListener("end", finish, {
+                            once: true,
+                        });
+                        utteranceOrAudio.addEventListener("error", finish, {
+                            once: true,
+                        });
+                    }
                     const prevEnd = utteranceOrAudio.onend;
                     const prevErr = utteranceOrAudio.onerror;
                     utteranceOrAudio.onend = (...args) => {
@@ -2063,6 +2060,7 @@
         }
 
         try {
+            let speechPlayed = false;
             if (item.type === "sentence") {
                 const sentenceLang =
                     aiExplainTargetLang;
@@ -2073,6 +2071,7 @@
                         originalText: item.term,
                         isCancelled,
                     });
+                    speechPlayed = true;
                 }
             } else {
                 if (item.term) {
@@ -2081,6 +2080,7 @@
                         originalText: item.term,
                         isCancelled,
                     });
+                    speechPlayed = true;
                 }
                 if (isCancelled()) return;
 
@@ -2091,6 +2091,8 @@
                     .filter(Boolean)
                     .join(". ");
                 if (explanationSpeech) {
+                    await new Promise((r) => setTimeout(r, 350));
+                    if (isCancelled()) return;
                     await speakUntilFinished(
                         explanationSpeech,
                         detailLang,
@@ -2100,18 +2102,20 @@
                             isCancelled,
                         },
                     );
+                    speechPlayed = true;
                 }
             }
 
             if (isCancelled()) return;
 
-            // Sequential advance: only advance if not manually disabled by user interaction!
+            // Sequential advance: wait comfortably after speech finishes before moving to next item
             if (!aiAutoAdvanceDisabled && aiExplainIndex + 1 < aiExplainQueue.length) {
                 clearTimeout(aiAutoAdvanceTimer);
+                const advanceDelay = speechPlayed ? 2000 : 3500;
                 aiAutoAdvanceTimer = setTimeout(() => {
                     if (isCancelled() || aiAutoAdvanceDisabled) return;
                     showAiExplainItem(aiExplainIndex + 1);
-                }, 500);
+                }, advanceDelay);
             }
         } catch (_) {
             // Speech cancellation or error is handled gracefully
@@ -3103,6 +3107,9 @@
         const pendingOwner = String(modeRevision);
         let translations;
         for (const span of wordSpans) {
+            const wordText = span.dataset?.clean || span.textContent || "";
+            if (!SharedTranslatorService.dictionaryTerm(wordText)) continue;
+            if (learningLang === "en" && SharedUtils.isSimpleWord(wordText)) continue;
             span.dataset.wordCloudLoading = pendingOwner;
             span.classList.add(pendingClass);
             span.setAttribute?.("aria-busy", "true");
@@ -3188,9 +3195,12 @@
             for (let offset = 1; offset < (value?.length || 1); offset++) covered.add(i + offset);
         });
         const missing = wordSpans.map((span, i) => ({ span, i }))
-            .filter(({ span, i }) => !translations[i] && !covered.has(i)
-                && SharedTranslatorService.dictionaryTerm(span.textContent)
-                && !(learningLang === "en" && SharedUtils.isSimpleWord(span.textContent)));
+            .filter(({ span, i }) => {
+                const wordText = span.dataset?.clean || span.textContent || "";
+                return !translations[i] && !covered.has(i)
+                    && SharedTranslatorService.dictionaryTerm(wordText)
+                    && !(learningLang === "en" && SharedUtils.isSimpleWord(wordText));
+            });
         const loadingClass = `${PREFIX}word-cloud-loading`;
         const loadingOwner = String(modeRevision);
         for (const { span } of missing) {

@@ -66,10 +66,10 @@
         const sensesByTerm = new Map();
         for (const [term, value] of Object.entries(pack.entries)) {
             const senses = pack.schemaVersion === 2 ? [{ senseId: term, translations: [value.t],
-                definition: typeof value.d === "string" ? value.d : value.d.s ?? value.d.source,
-                definitionTranslated: typeof value.d === "string" ? "" : value.d.t ?? value.d.target,
-                synonyms: value.s, examples: value.e.map(example => typeof example === "string" ? ({ source: example, target: "" }) : ({source: example.s ?? example.source, target: example.t ?? example.target})) }] : value.map(sense => ({...sense,
-                    examples: (sense.examples || []).map(example => ({source: example.s ?? example.source, target: example.t ?? example.target}))}));
+                definition: typeof value.d === "string" ? value.d : value.d?.s ?? value.d?.source ?? "",
+                definitionTranslated: typeof value.d === "string" ? "" : value.d?.t ?? value.d?.target ?? "",
+                synonyms: value.s || [], examples: (value.e || []).map(example => typeof example === "string" ? ({ source: example, target: "" }) : ({source: example?.s ?? example?.source ?? "", target: example?.t ?? example?.target ?? ""})) }] : value.map(sense => ({...sense,
+                    examples: (sense.examples || []).map(example => ({source: example?.s ?? example?.source ?? "", target: example?.t ?? example?.target ?? ""}))}));
             dictionary[term] = lexicalTranslations(senses.flatMap((sense) => sense.translations)).join(" / ");
             sensesByTerm.set(term, senses);
             if (!sensesByTerm.has(normalize(term)) || term === normalize(term)) sensesByTerm.set(normalize(term), senses);
@@ -231,18 +231,68 @@
         return result;
     }
 
+    const wbwCache = new Map();
     const livePending = new Map();
     let liveRunning = 0;
     const liveQueue = [];
-    async function generateLive(word, source, target, context = null) {
-        const key = JSON.stringify([word, source, target]);
+    async function generateLive(word, source, target, context = null, options = {}) {
+        const isWbw = options?.wordByWord === true;
+        const key = JSON.stringify([word, source, target, isWbw ? "wbw" : "full"]);
         if (livePending.has(key)) return livePending.get(key);
         const task = (async () => {
             if (liveRunning >= 3) await new Promise(resolve => liveQueue.push(resolve));
             else liveRunning++;
             try {
+                if (isWbw) {
+                    const cacheKey = `${source}:${target}:${word}`;
+                    if (wbwCache.has(cacheKey)) return wbwCache.get(cacheKey);
+                    const saved = await root.DictionaryStore?.getLive?.(source, target, word, { localOnly: true });
+                    if (saved) {
+                        wbwCache.set(cacheKey, saved);
+                        return saved;
+                    }
+                    // Free Word-by-Word translation: 0 AI Credits, completely free for every user
+                    let translatedText = null;
+                    if (root.SharedTranslatorService?.fetchTranslation) {
+                        try {
+                            const res = await root.SharedTranslatorService.fetchTranslation(word, target, source);
+                            translatedText = res?.translated;
+                        } catch (_) {}
+                    }
+                    if (!translatedText && root.QT?.translate) {
+                        try {
+                            const res = await root.QT.translate(word, target, source);
+                            translatedText = typeof res === "string" ? res : res?.translated;
+                        } catch (_) {}
+                    }
+                    if (!translatedText) {
+                        try {
+                            const endpoints = root.LectoroConstants?.ENDPOINTS || {};
+                            const baseUrl = endpoints.GOOGLE_TRANSLATE || "https://translate.googleapis.com/translate_a/single";
+                            const url = `${baseUrl}?client=gtx&sl=${encodeURIComponent(source)}&tl=${encodeURIComponent(target)}&dt=t&q=${encodeURIComponent(word)}`;
+                            const response = await (root.fetch || fetch)(url);
+                            if (response.ok) {
+                                const data = await response.json();
+                                if (Array.isArray(data?.[0])) {
+                                    translatedText = data[0].map(part => typeof part?.[0] === "string" ? part[0] : "").join("");
+                                }
+                            }
+                        } catch (_) {}
+                    }
+                    if (translatedText && typeof translatedText === "string" && translatedText.trim()) {
+                        const entry = { t: translatedText.trim(), d: "", s: [], e: [] };
+                        wbwCache.set(cacheKey, entry);
+                        if (wbwCache.size > 1000) {
+                            wbwCache.delete(wbwCache.keys().next().value);
+                        }
+                        return entry;
+                    }
+                    return null;
+                }
+
                 const saved = await root.DictionaryStore?.getLive?.(source, target, word, { localOnly: true });
                 if (saved) return saved;
+                if (!root.GeminiProxy?.liveTranslation) return null;
                 const result = await root.GeminiProxy.liveTranslation("word", word, source, target, undefined, context);
                 const entry = result?.[word];
                 if (!entry) throw new Error("Missing generated entry.");
@@ -337,8 +387,12 @@
             const word = raw.normalize("NFKC").trim().toLowerCase().replace(/^[^\p{L}\p{M}]+|[^\p{L}\p{M}\p{N}]+$/gu, "");
             if (!word || word.length > 120 || !/^[\p{L}\p{M}][\p{L}\p{M}\p{N}'’ -]*$/u.test(word)) return;
             let entry = await root.DictionaryStore?.getLive?.(sourceLang, targetLang, word, { localOnly: options.localOnly === true });
-            if (!entry && !options.localOnly && options.generateMissing !== false && root.GeminiProxy?.liveTranslation) {
-                entry = await generateLive(word, sourceLang, targetLang, options.context);
+            if (!entry && !options.localOnly && options.generateMissing !== false) {
+                if (options.wordByWord) {
+                    entry = await generateLive(word, sourceLang, targetLang, options.context, { wordByWord: true });
+                } else if (root.GeminiProxy?.liveTranslation) {
+                    entry = await generateLive(word, sourceLang, targetLang, options.context);
+                }
             }
             if (!entry) return;
             const dictionary = compilePack({ schemaVersion: 2, sourceLanguage: sourceLang, entries: { [word]: entry } });

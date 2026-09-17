@@ -383,6 +383,27 @@ test("word loading pulses stop on success and failure, including words still in 
     }
 });
 
+test("simple words do not receive word-cloud-loading blue pulse animation", async () => {
+    const state = app({ wordCloudMode: true, subtitleTTS: false });
+    const pending = deferred(); let started = false;
+    const words = ["the", "apples", "is", "house", "you"];
+    const spans = words.map(element);
+    state.context.activeWordSpans = spans;
+    state.context.SharedTranslatorService.lookupWords = async (w, target, source, options) => {
+        started = true; return pending.promise;
+    };
+    const running = state.start();
+    while (!started) await tick();
+    const loading = `${C.PREFIX}word-cloud-loading`;
+    assert.equal(spans[0].classList.contains(loading), false, "'the' should not pulse");
+    assert.equal(spans[1].classList.contains(loading), true, "'apples' should pulse");
+    assert.equal(spans[2].classList.contains(loading), false, "'is' should not pulse");
+    assert.equal(spans[3].classList.contains(loading), true, "'house' should pulse");
+    assert.equal(spans[4].classList.contains(loading), false, "'you' should not pulse");
+    pending.resolve(words.map(() => null));
+    await running;
+});
+
 test("closing S removes pulses immediately; an old result cannot clear a newer pulse", async () => {
     const state = app({ wordCloudMode: true, subtitleTTS: false });
     const pending = deferred(); let started = false;
