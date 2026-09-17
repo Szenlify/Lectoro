@@ -368,6 +368,61 @@
         return task;
     }
 
+    const subtitlePending = new Map();
+    function segmentTranslations(value, words) {
+        if (!Array.isArray(value?.segments) || !value.segments.length) return null;
+        const result = words.map(() => null);
+        const occupied = new Set();
+        for (const segment of value.segments) {
+            if (!Number.isInteger(segment?.start) || !Number.isInteger(segment.length) || segment.start < 0 ||
+                segment.length < 1 || segment.start + segment.length > words.length ||
+                typeof segment.t !== "string" || !segment.t.trim() || segment.t.length > 300) return null;
+            for (let i = segment.start; i < segment.start + segment.length; i++) {
+                if (occupied.has(i)) return null;
+                occupied.add(i);
+            }
+            result[segment.start] = { translated: segment.t.trim(), length: segment.length };
+        }
+        return result;
+    }
+
+    async function translateSubtitleWithAi(words, source, target, context) {
+        const key = JSON.stringify([source, target, context, words]);
+        if (subtitlePending.has(key)) return subtitlePending.get(key);
+        const task = (async () => {
+            let timer;
+            let expired = false;
+            try {
+                // Bound the entire attempt, including authentication and local cache access.
+                return await Promise.race([
+                    (async () => {
+                        const cached = await root.DictionaryStore?.getAnalysis?.(source, target, context, words);
+                        const saved = segmentTranslations(cached, words);
+                        if (saved) return saved;
+                        if (!root.GeminiProxy?.liveTranslation) return null;
+                        if (root.FirebaseSync && !await root.FirebaseSync.getUser()) return null;
+                        if (expired) return null;
+                        const value = await root.GeminiProxy.liveTranslation(
+                            "segments", context, source, target, words, undefined, { timeoutMs: 3500 },
+                        );
+                        const translated = segmentTranslations(value, words);
+                        if (translated) {
+                            // Save valid late answers for the next click, without replacing visible clouds.
+                            void root.DictionaryStore?.putAnalysis?.(source, target, context, words, value)?.catch(() => {});
+                        }
+                        return translated;
+                    })(),
+                    new Promise(resolve => { timer = setTimeout(() => { expired = true; resolve(null); }, 4000); }),
+                ]);
+            } catch (_) {
+                return null;
+            } finally { clearTimeout(timer); }
+        })();
+        subtitlePending.set(key, task);
+        try { return await task; }
+        finally { if (subtitlePending.get(key) === task) subtitlePending.delete(key); }
+    }
+
     async function lookupWords(words, targetLang, sourceLang = "en", options = {}) {
         if (!Array.isArray(words) || words.length > 500 || words.some((w) => typeof w !== "string" || w.length > 200)) {
             throw new Error("Invalid dictionary lookup.");
@@ -386,6 +441,10 @@
         if (options.wordByWord && options.contextual) {
             if (!words.length) return [];
             const tokens = words.map(word => word.normalize("NFKC").trim());
+            if (options.preferAi === true && !options.localOnly) {
+                const translated = await translateSubtitleWithAi(tokens, sourceLang, targetLang, options.context || tokens.join(" "));
+                if (translated) return translated;
+            }
             const normalizePhrase = (value) => String(value || "")
                 .normalize("NFKC")
                 .toLowerCase()

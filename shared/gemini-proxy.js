@@ -638,11 +638,13 @@
         }
 
         const livePending = new Map();
-        function liveTranslation(kind, text, sourceLang, targetLang, words, context) {
+        function liveTranslation(kind, text, sourceLang, targetLang, words, context, options = {}) {
             if (kind === "word") text = text.normalize("NFKC").trim().toLowerCase();
-            const key = JSON.stringify([kind, text, sourceLang, targetLang, words]);
+            const timeoutMs = Math.min(45000, Math.max(100, Number(options.timeoutMs) || 45000));
+            const key = JSON.stringify([kind, text, sourceLang, targetLang, words, timeoutMs]);
             if (livePending.has(key)) return livePending.get(key);
             const pending = (async () => {
+                const deadline = Date.now() + timeoutMs;
                 const token = await getToken();
                 if (!token) {
                     if (kind === "word" && typeof globalThis !== "undefined" && globalThis.SharedTranslatorService?.fetchTranslation) {
@@ -656,7 +658,7 @@
                     throw Object.assign(new Error("Sign in to generate translations."), { code: "AUTH_REQUIRED" });
                 }
                 // Let the server check shared cache BEFORE quota, even when local credits are exhausted.
-                const deadline = Date.now() + 45000;
+                if (Date.now() >= deadline) throw Object.assign(new Error("Translation timed out."), { code: "TRANSLATION_TIMEOUT" });
                 do {
                     const controller = new AbortController();
                     const timer = setTimeout(() => controller.abort(), Math.max(1, deadline - Date.now()));

@@ -3240,13 +3240,12 @@
             span.setAttribute?.("aria-busy", "true");
         }
         try {
-            // contextual=true may read already-generated dictionaries/phrase entries,
-            // but the backend no longer generates phrase analysis for Word-by-word mode.
+            // One bounded contextual AI request; existing phrase/word lookup is the silent fallback.
             translations = await SharedTranslatorService.lookupWords(
                 wordSpans.map((span) => span.textContent.trim()),
                 targetLang,
                 learningLang,
-                { wordByWord: true, contextual: true, context: fullText, generateMissing: false },
+                { wordByWord: true, contextual: true, preferAi: true, context: fullText, generateMissing: false },
             );
         } catch (error) {
             // Degrade to known single-word cache entries instead of failing the whole subtitle.

@@ -337,7 +337,7 @@
             return translation ? { t: translation } : null;
         }
 
-        const analysisKey = (source, target, context, words) => `phrase-analysis-v2:${JSON.stringify([source, target, context, words])}`;
+        const analysisKey = (source, target, context, words) => `phrase-analysis-v3:${JSON.stringify([source, target, context, words])}`;
         async function getAnalysis(source, target, context, words) {
             const key = analysisKey(source, target, context, words);
             if (liveMemory.has(key)) return liveMemory.get(key);

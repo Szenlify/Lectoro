@@ -9,8 +9,19 @@ Foldery `dictionaries/translations` oraz `dictionaries/phrase` w R2 zostały ca�
 Tłumaczenia zdań są wykonywane przez AI w locie bez zapisywania w R2, a powszechne frazy wielowyrazowe dla trybu Word-by-word znajdują się w statycznych plikach JSON w rozszerzeniu:
 `dictionaries/phrase/<source>-<target>.json` (np. `dictionaries/phrase/en-pl.json`).
 
-**Word-by-word (`kind: segments` / lokalne dopasowywanie fraz) nie generuje AI.** Ten proces jest read-only:
-sprawdza lokalny słownik fraz `dictionaries/phrase/<source>-<target>.json` dla okien 4/3/2 słów w pamięci podręcznej O(1), wybiera najdłuższe niezachodzące dopasowania i zwraca je do UI. Pozostałe pojedyncze słowa pochodzą z lokalnego cache lub `dictionaries/live/` w R2.
+**Po kliknięciu S najpierw próbujemy Gemini (`kind: segments`).** Jedno zapytanie
+analizuje cały napis i zwraca krótkie tłumaczenia słów oraz spójnych zwrotów,
+z indeksami tokenów. Poprawne wyniki są zapamiętywane lokalnie dla dokładnego
+tekstu, tokenów i pary języków; równoczesne kliknięcia współdzielą zapytanie.
+Próba ma budżet 4 sekund (sieć 3,5 s). Brak logowania, limit, błąd lub timeout
+powoduje ciche przejście do dotychczasowego słownika fraz i słów. Brakujące
+słowa nadal tłumaczy mechanizm awaryjny bez dodatkowych wywołań Gemini.
+Wynik nie zmienia się nagle po zakończeniu fallbacku. Zamknięcie trybu lub zmiana
+języka blokuje wyświetlenie spóźnionych odpowiedzi.
+
+Nowa analiza Gemini zużywa jedno użycie AI zgodnie z planem; błędy serwera
+zwracają użycie. Wyniki kontekstowe nie są zapisywane w ogólnym słowniku R2.
+Lokalny cache i dotychczasowy fallback nie zużywają AI.
 
 ### Odporność na błędy
 

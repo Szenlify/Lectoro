@@ -437,3 +437,26 @@ test("prepare maps language codes to full names and enforces source/target langu
 
 
 
+
+test("subtitle segments use a compact contextual schema and reject invalid spans", () => {
+    const job = prepare({ kind: "segments", text: "Get up now", words: ["Get", "up", "now"], sourceLang: "en", targetLang: "pl" }, "u");
+    assert.equal(job.key, null);
+    assert.deepEqual(job.schema.required, ["segments"]);
+    assert.match(job.prompt, /phrasal verbs/);
+    const value = { segments: [{ start: 0, length: 2, t: "wstań" }, { start: 2, length: 1, t: "teraz" }] };
+    assert.deepEqual(validateResult(job, value), value);
+    for (const segments of [
+        [{ start: -1, length: 1, t: "bad" }], [{ start: 2, length: 2, t: "bad" }],
+        [{ start: 0, length: 2, t: "wstań" }, { start: 1, length: 1, t: "bad" }],
+        [{ start: 0, length: 1, t: "" }], [{ start: 0.5, length: 1, t: "bad" }],
+    ]) assert.throws(() => validateResult(job, { segments }));
+    assert.throws(() => prepare({ kind: "segments", text: "Hello", sourceLang: "en", targetLang: "pl" }, "u"));
+});
+
+test("subtitle Gemini request charges once and never writes scene-specific meanings to R2", async () => {
+    const { deps, count } = fixture();
+    deps.generate = async () => { count.generated++; return response({ segments: [{ start: 0, length: 2, t: "wstań" }] }); };
+    const result = await handleLiveTranslation({ kind: "segments", text: "Get up", words: ["Get", "up"], sourceLang: "en", targetLang: "pl" }, deps);
+    assert.equal(result.result.segments[0].t, "wstań");
+    assert.equal(count.generated, 1); assert.equal(count.reserved, 1); assert.equal(count.writes, 0);
+});

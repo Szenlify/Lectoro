@@ -226,3 +226,45 @@ test("unsupported and same-language lookups never touch the network", async () =
     assert.equal((await env.lookup(["house"], "xx", "en"))[0], null);
     assert.equal((await env.lookup(["house"], "en", "en"))[0], "house"); assert.equal(env.calls.length, 0);
 });
+
+test("S prefers one contextual Gemini request and reuses the exact subtitle cache", async () => {
+    const env = environment();
+    env.store.setPhraseDictionary("en", "pl", { "get up": "stare" });
+    let calls = 0;
+    env.context.GeminiProxy = { liveTranslation: async (kind, text, source, target, words, context, options) => {
+        calls++;
+        assert.equal(kind, "segments"); assert.equal(text, "Get up now");
+        assert.equal(options.timeoutMs, 3500);
+        return { segments: [{ start: 0, length: 2, t: "wstań" }, { start: 2, length: 1, t: "teraz" }] };
+    } };
+    const options = { wordByWord: true, contextual: true, preferAi: true, context: "Get up now" };
+    const results = await Promise.all([env.lookup(["Get", "up", "now"], "pl", "en", options), env.lookup(["Get", "up", "now"], "pl", "en", options)]);
+    assert.equal(calls, 1);
+    assert.equal(results[0][0].translated, "wstań"); assert.equal(results[0][0].length, 2);
+    assert.equal(results[0][1], null);
+    await env.lookup(["Get", "up", "now"], "pl", "en", options);
+    assert.equal(calls, 1);
+    assert.equal(env.calls.length, 0, "no fallback lookups after successful AI");
+});
+
+for (const failure of ["error", "invalid", "timeout", "guest"]) {
+    test(`S silently uses existing phrase dictionary on Gemini ${failure}`, async () => {
+        const env = environment();
+        env.store.setPhraseDictionary("en", "pl", { "get up": "wstań" });
+        let calls = 0;
+        env.context.GeminiProxy = { liveTranslation: async () => {
+            calls++;
+            if (failure === "timeout") return new Promise(() => {});
+            if (failure === "invalid") return { segments: [{ start: 99, length: 1, t: "bad" }] };
+            throw new Error("Unavailable");
+        } };
+        if (failure === "guest") env.context.FirebaseSync = { getUser: async () => null };
+        // Exercise the actual deadline without a four-second test wait.
+        env.context.setTimeout = fn => setTimeout(fn, 10);
+        const result = await env.lookup(["Get", "up"], "pl", "en", {
+            wordByWord: true, contextual: true, preferAi: true, context: "Get up",
+        });
+        assert.equal(result[0].translated, "wstań"); assert.equal(result[0].length, 2);
+        assert.equal(calls, failure === "guest" ? 0 : 1);
+    });
+}

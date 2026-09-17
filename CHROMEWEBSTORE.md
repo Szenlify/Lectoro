@@ -27,7 +27,7 @@ Master new languages naturally while watching your favorite videos and reading a
 
 **Key Features:**
 - **Dual Bilingual Subtitles:** Watch YouTube and Netflix with synchronized dual-language subtitles. Consecutive short fragments are paired together for effortless reading.
-- **Word-by-Word Translation Clouds:** Hover or tap shortcut keys above unfamiliar words to see instant translations without pausing your video or breaking reading flow.
+- **Word-by-Word Translation Clouds:** Press S for contextual word and phrase translations above subtitles, with automatic fallback when the primary service is unavailable. Repeated subtitles load from saved results.
 - **AI Context Explanations:** Receive in-depth breakdowns of complex sentences, idioms, and grammar structures directly in the video player or reading pane.
 - **Natural Speech Pronunciation:** Listen to crystal-clear speech pronunciation tuned to your learning language.
 - **Spaced Repetition (SRS) Flashcards:** Save words and context sentences with a single shortcut or click. Daily review reminders help you retain vocabulary in long-term memory.
@@ -94,6 +94,7 @@ Every permission declared in `manifest.json` adheres to the Principle of Least P
 ## Version History
 
 - **1.0.0 (Current):**
+  - Contextual word and phrase translations on S, with fast automatic fallback and reusable results.
   - Initial Manifest V3 release for Chrome Web Store.
   - Paired consecutive subtitle fragments on YouTube and Netflix with length validation in both languages.
   - Multi-platform caption timing alignment and official format parsing.

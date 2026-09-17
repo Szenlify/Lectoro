@@ -68,3 +68,21 @@ test("server error codes survive and a generic 503 is not mislabeled as quota ex
         await assert.rejects(run(), { code: code || "AI_REQUEST_FAILED", status: 503 });
     }
 });
+
+test("subtitle requests use their short deadline and include the original token boundaries", async () => {
+    let duration, sent;
+    const context = vm.createContext({
+        livePending: new Map(), getToken: async () => "token", setCachedUsage: async () => {},
+        PROXY_URL: "https://example.test/proxy", AbortController,
+        setTimeout: (fn, ms) => { duration = ms; return setTimeout(fn, ms); }, clearTimeout,
+        fetch: async (_, options) => {
+            sent = JSON.parse(options.body);
+            return { ok: true, json: async () => ({ result: { segments: [{ start: 0, length: 2, t: "wstań" }] } }) };
+        },
+    });
+    loadFunction(context, "shared/gemini-proxy.js", "liveTranslation");
+    const result = await context.liveTranslation("segments", "Get up", "en", "pl", ["Get", "up"], undefined, { timeoutMs: 3500 });
+    assert.equal(sent.kind, "segments"); assert.deepEqual(sent.words, ["Get", "up"]);
+    assert.ok(duration > 0 && duration <= 3500);
+    assert.equal(result.segments[0].t, "wstań");
+});
