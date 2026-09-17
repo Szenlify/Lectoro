@@ -2706,8 +2706,8 @@
                             "formatted": "29,99 zł"
                     },
                     "pro": {
-                            "amount": 89.99,
-                            "formatted": "89,99 zł"
+                            "amount": 79.99,
+                            "formatted": "79,99 zł"
                     }
             }
     },
@@ -2738,8 +2738,8 @@
                             "formatted": "0 €"
                     },
                     "basic": {
-                            "amount": 7.99,
-                            "formatted": "7,99 €"
+                            "amount": 6.99,
+                            "formatted": "6,99 €"
                     },
                     "pro": {
                             "amount": 19.99,
@@ -2756,8 +2756,26 @@
                             "formatted": "0 €"
                     },
                     "basic": {
-                            "amount": 7.99,
-                            "formatted": "7,99 €"
+                            "amount": 6.99,
+                            "formatted": "6,99 €"
+                    },
+                    "pro": {
+                            "amount": 19.99,
+                            "formatted": "19,99 €"
+                    }
+            }
+    },
+    "nl": {
+            "currency": "EUR",
+            "symbol": "€",
+            "plans": {
+                    "free": {
+                            "amount": 0,
+                            "formatted": "0 €"
+                    },
+                    "basic": {
+                            "amount": 6.99,
+                            "formatted": "6,99 €"
                     },
                     "pro": {
                             "amount": 19.99,
@@ -2774,8 +2792,8 @@
                             "formatted": "0 €"
                     },
                     "basic": {
-                            "amount": 7.99,
-                            "formatted": "7,99 €"
+                            "amount": 6.99,
+                            "formatted": "6,99 €"
                     },
                     "pro": {
                             "amount": 19.99,
@@ -2792,8 +2810,8 @@
                             "formatted": "0 €"
                     },
                     "basic": {
-                            "amount": 7.99,
-                            "formatted": "7,99 €"
+                            "amount": 6.99,
+                            "formatted": "6,99 €"
                     },
                     "pro": {
                             "amount": 19.99,
@@ -2846,8 +2864,8 @@
                             "formatted": "0 €"
                     },
                     "basic": {
-                            "amount": 7.99,
-                            "formatted": "7,99 €"
+                            "amount": 6.99,
+                            "formatted": "6,99 €"
                     },
                     "pro": {
                             "amount": 19.99,

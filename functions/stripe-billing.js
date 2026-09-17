@@ -41,8 +41,8 @@ function stripeClient() {
 
 function priceIds() {
     return {
-        [SUBSCRIPTION_PLANS.BASIC]: "price_1UGi5AE5VRQaSjaXvQSeZLy6",
-        [SUBSCRIPTION_PLANS.PRO]: "price_1UAb53E5VRQaSjaX2jb8aQ6d",
+        [SUBSCRIPTION_PLANS.BASIC]: "price_1UGiNEE5VRQaSjaXajWxr0pe",
+        [SUBSCRIPTION_PLANS.PRO]: "price_1UGiU3E5VRQaSjaXvue7iu7N",
     };
 }
 
