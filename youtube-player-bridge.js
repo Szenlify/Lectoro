@@ -21,7 +21,6 @@
   let currentVideoId = "";
   let interceptedPlayerInstance = null;
   let cachedPotToken = "";
-  let cachedPotVideoId = "";
 
   // ── Intercept YouTube Player instance via Function.prototype.bind (LR parity) ──
   const originalBind = Function.prototype.bind;
@@ -43,10 +42,8 @@
         if (query) {
           const params = new URLSearchParams(query);
           const pot = params.get("pot");
-          const v = params.get("v");
           if (pot) {
             cachedPotToken = pot;
-            if (v) cachedPotVideoId = v;
           }
         }
       }

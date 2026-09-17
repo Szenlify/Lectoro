@@ -35,7 +35,6 @@ whenPopupReady((data) => {
         volumeRange.value = data.ttsVolume;
         volumeValue.textContent = Math.round(data.ttsVolume * 100) + "%";
     }
-    const defaultSubPos = LectoroConstants.DEFAULT_SUBTITLE_SETTINGS.POSITION;
     const defaultSubBg = LectoroConstants.DEFAULT_SUBTITLE_SETTINGS.BG_OPACITY;
 
 

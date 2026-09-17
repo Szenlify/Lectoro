@@ -33,8 +33,6 @@
     // Strips leading/trailing punctuation from a subtitle token before translation.
     const EDGE_PUNCTUATION_RE =
         /^[.,!?;:"\u201C\u201D\u2018\u2019'()\[\]{}—–\-_/\\<>]+|[.,!?;:"\u201C\u201D\u2018\u2019'()\[\]{}—–\-_/\\<>]+$/gu;
-    const ANY_PUNCTUATION_RE =
-        /[.,!?;:"\u201C\u201D\u2018\u2019'()\[\]{}—–\-_/\\<>]/gu;
 
     // ── Universal Custom Subtitle Renderer State ─────────────────
     let customSubLayerEl = null;
@@ -820,7 +818,7 @@
     }
 
     function renderCustomSubtitles(lines = [], options = {}) {
-        const { layer, box } = ensureCustomSubtitlesLayer();
+        const { box } = ensureCustomSubtitlesLayer();
         const registry = getPlayerRegistry();
         const video = registry?.getVideo();
         if (
@@ -1578,8 +1576,6 @@
         }
     }
     QT.addDismissHandler(closeAiTooltip);
-
-    const normalizeLanguageCode = SharedUtils.normalizeLanguageCode;
 
     function clearSubtitleVideoHighlights() {
         try {

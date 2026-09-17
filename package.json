@@ -5,7 +5,6 @@
   "scripts": {
     "test": "node --test tests/*.test.js functions/*.test.js",
     "check:syntax": "node scripts/check-syntax.js",
-    "build": "node scripts/build-cws-zip.js",
-    "audit": "node scratch/scan_all_unused.js"
+    "build": "node scripts/build-cws-zip.js"
   }
 }

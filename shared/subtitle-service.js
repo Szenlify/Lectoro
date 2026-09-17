@@ -873,7 +873,6 @@
             for (const event of data.events) {
                 if (!event || !Array.isArray(event.segs)) continue;
                 const eventStart = Number(event.tStartMs) || 0;
-                const eventDur = Number(event.dDurationMs) || 0;
 
                 for (const seg of event.segs) {
                     if (!seg || typeof seg.utf8 !== "string") continue;

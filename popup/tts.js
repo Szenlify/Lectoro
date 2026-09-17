@@ -5,7 +5,6 @@
 (() => {
     "use strict";
 
-    const { cleanTextForTTS } = SharedUtils || { cleanTextForTTS: (t) => t };
     const SPEAK_SVG = LectoroConstants.SVG_ICONS.SPEAKER;
 
     let popupSpeakSeq = 0;

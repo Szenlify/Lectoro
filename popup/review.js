@@ -4,7 +4,6 @@
 const {
     update: srUpdate,
     previewLabel,
-    formatInterval,
     ensure: ensureSR,
 } = SRS; // shared/srs.js
 

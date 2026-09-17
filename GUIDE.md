@@ -52,7 +52,7 @@
 | `shared/subtitle-service.js` → adaptery / nakładka | Dane napisów, kontekst sąsiednich kwestii, łączenie klocków w pełne zdania (`reconstructFullSentenceCues`) i algorytm dopasowania ścieżki podrzędnej do nadrzędnej z synchronizacją do przodu (`alignSlaveTrackToMaster`) łączący klocki w jedną linię. |
 | `video/subtitle-overlay.js` → `QT`, translator, subtitle service | Wyświetlanie napisów pojedynczych i dwujęzycznych (`doubleSubtitles`) bez użycia AI/Google Translate, wyjaśnienia Enter, kolejka odczytu i zapis fiszek; dynamiczne języki AI (`aiExplainSourceLang`, `aiExplainTargetLang`) z ustawień użytkownika. |
 | `video/reading-modes.js` → translator, nakładka | Tryb czytania (chmurki słów) pod S; reaguje na zmianę języków i ustawień (`doubleSubtitles`, `wordCloudMode`). |
-| `video/video-hotkeys.js` → nakładka / odtwarzacz | Skróty klawiaturowe wideo; `video/subtitle-overlay.js` rejestruje także osobny listener skrótów Enter. |
+| `video/universal-video-controller.js` → nakładka / odtwarzacz | Skróty klawiaturowe wideo; `video/subtitle-overlay.js` rejestruje także osobny listener skrótów Enter. |
 | `shared/subtitle-translation-service.js` → worker | Wspólny przepływ tłumaczenia napisów. |
 
 Przepływ Enter: `video/subtitle-overlay.js` → `core.js` (`QT.geminiExplainSentence`) → `shared/translator-service.js` → `shared/ai-prompts.js` + `shared/gemini-proxy.js` → backend → walidacja → nakładka / TTS / fiszka.

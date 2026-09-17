@@ -397,14 +397,11 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
     const lines = [];
 
     const defaultLearningLang = (await SharedTranslatorService.getLearningLang()) || LectoroConstants.DEFAULT_READING_SETTINGS.learningLang;
-    const defaultTargetLang = (await SharedTranslatorService.getTargetLang()) || LectoroConstants.DEFAULT_READING_SETTINGS.targetLang;
 
     for (let i = 0; i < words.length; i++) {
       const w = words[i];
       setBtnText(`⏳ Downloading (${i + 1}/${words.length})…`);
 
-      const srcLangTag = escapeHtml((w.srcLang || defaultLearningLang).toUpperCase());
-      const tgtLangTag = escapeHtml((w.tgtLang || defaultTargetLang).toUpperCase());
 
       const sentenceSource = (w.aiSentence || w.sentence || "").trim();
       const cleanOriginal = (w.original || "").trim();

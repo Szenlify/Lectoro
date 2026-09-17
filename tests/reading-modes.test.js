@@ -520,7 +520,7 @@ test("holding S keeps the session open; a second press closes it and resumes pla
     state.context.document.addEventListener = (type, handler) => {
         if (type === "keydown") keydown = handler;
     };
-    load(state.context, "video/video-hotkeys.js");
+    load(state.context, "video/universal-video-controller.js");
     const event = (repeat) => ({
         key: "s",
         repeat,
