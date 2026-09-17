@@ -114,7 +114,7 @@ test("renderer takes Slave exclusively from current cue and clears it on repeate
     Object.defineProperty(box, "innerHTML", { set() { box.children = []; } });
     const context = vm.createContext({
         PREFIX: "__qt_", SUB_WORD_CLASS: "word", activeUnifiedCue: null,
-        activeLines: [], activeText: "", activeWordSpans: [], recentSubtitlesHistory: [],
+        activeLines: [], activeSubtitleInput: { lines: [], options: {} }, activeText: "", activeWordSpans: [], recentSubtitlesHistory: [],
         aiTooltipActive: false, isSubHovering: false, subClickLocked: false,
         ensureCustomSubtitlesLayer: () => ({ layer: node(), box }),
         getPlayerRegistry: () => ({ getVideo: () => null }), cleanCardText: text => text.trim(),
@@ -144,14 +144,21 @@ test("renderer takes Slave exclusively from current cue and clears it on repeate
     assert.equal(box.children.length, 2);
     assert.equal(box.children[0].textContent, "First speaker Second speaker");
     assert.equal(box.children.at(-1).textContent, "Pierwszy Drugi");
+    for (const platform of ["netflix", "youtube"]) {
+        context.getPlatformName = () => platform;
+        context.isDoubleSubtitlesActive = () => true;
+        render(["First line", "Second line"], { cue: { translation: "Tłumaczenie" } });
+        assert.equal(box.children[0].textContent, "First line Second line");
+        context.isDoubleSubtitlesActive = () => false;
+        // Settings changes must restore original breaks even while playback is paused.
+        render(context.activeSubtitleInput.lines, context.activeSubtitleInput.options);
+        assert.deepEqual(box.children.map(el => el.textContent), ["First line", "Second line"]);
+        context.isDoubleSubtitlesActive = () => true;
+        render(context.activeSubtitleInput.lines, context.activeSubtitleInput.options);
+        assert.equal(box.children[0].textContent, "First line Second line");
+        assert.equal(box.children[1].textContent, "Tłumaczenie");
+    }
     context.isDoubleSubtitlesActive = () => false;
-    render(["First line", "Second line", "Third line"]);
-    assert.equal(box.children.length, 1);
-    assert.equal(box.children[0].textContent, "First line Second line Third line");
-    context.getPlatformName = () => "youtube";
-    render(["First line", "Second line"]);
-    assert.equal(box.children.length, 1);
-    assert.equal(box.children[0].textContent, "First line Second line");
     for (const platform of ["ted", "videojs", "generic"]) {
         context.getPlatformName = () => platform;
         render(["First line", "Second line"]);

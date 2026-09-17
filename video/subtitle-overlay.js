@@ -49,6 +49,7 @@
     let aiSubTranslationText = "";
     let subtitleTranslationLang = C.DEFAULT_READING_SETTINGS.targetLang;
     let activeLines = [];
+    let activeSubtitleInput = { lines: [], options: {} };
     let activeText = "";
     let activeWordSpans = [];
     let trackedVideo = null;
@@ -832,6 +833,7 @@
             lines = [];
         }
 
+        activeSubtitleInput = { lines, options };
         const rawCleanLines = (Array.isArray(lines) ? lines : [lines])
             .map((l) => (typeof l === "string" ? cleanCardText(l) : ""))
             .filter(Boolean);
@@ -857,7 +859,7 @@
         box.classList.toggle(`${PREFIX}subtitles-dual`, doubleActive);
         box.classList.toggle(`${PREFIX}dual-subtitles`, doubleActive);
         const platform = getPlatformName();
-        const singleRow = platform === "youtube" || platform === "netflix";
+        const singleRow = doubleActive && (platform === "youtube" || platform === "netflix");
         let displayLines = rawCleanLines;
         if (singleRow) {
             // One text block per language; long text wraps to the player width.
@@ -1047,12 +1049,12 @@
         ) {
             currentDoubleSubtitles = changes[doubleSubKey].newValue;
             dualSubtitleToast?.dismiss({ immediate: true });
-            if (activeLines.length) renderCustomSubtitles(activeLines);
+            if (activeLines.length) renderCustomSubtitles(activeSubtitleInput.lines, activeSubtitleInput.options);
             shouldSync = true;
         }
         if (changes.targetLang) {
             dualSubtitleToast?.dismiss({ immediate: true });
-            if (activeLines.length) renderCustomSubtitles(activeLines);
+            if (activeLines.length) renderCustomSubtitles(activeSubtitleInput.lines, activeSubtitleInput.options);
         }
         if (shouldSync) {
             syncCustomSubtitlePosition();
