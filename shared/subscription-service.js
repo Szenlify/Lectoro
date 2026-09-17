@@ -467,14 +467,16 @@
             const TOAST_MS = 8000;
             document.getElementById(AI_LIMIT_TOAST_ID)?.remove();
             const toast = document.createElement("div");
-            toast.id = AI_LIMIT_TOAST_ID;
+            const defaultMsg = isElevenLabs
+                ? "Monthly ElevenLabs voice synthesis limit reached."
+                : "Monthly free AI credits reached. Dual subtitles and dictionary (S) remain unlimited!";
             toast.innerHTML = `
-            <div class="${P}ai_limit_orb">✦</div>
+            <div class="${P}ai_limit_orb">✨</div>
             <div class="${P}ai_limit_copy">
-                <strong>${isElevenLabs ? "ElevenLabs limit reached" : "Plan limit reached"}</strong>
-                <span>${Utils.escapeHtml(String(validation?.message || "Upgrade your plan to continue."))}</span>
+                <strong>${isElevenLabs ? "ElevenLabs Limit Reached" : "Monthly AI Limit Reached"}</strong>
+                <span>${Utils.escapeHtml(String(validation?.message || defaultMsg))}</span>
             </div>
-            <button type="button" class="${P}ai_upgrade_link">View plans</button>
+            <button type="button" class="${P}ai_upgrade_link">Try Pro (3 days free)</button>
             <button type="button" class="${P}ai_limit_close" aria-label="Close">×</button>
             <div class="${P}ai_limit_timer"></div>`;
             document.documentElement.appendChild(toast);

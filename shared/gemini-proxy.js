@@ -644,7 +644,17 @@
             if (livePending.has(key)) return livePending.get(key);
             const pending = (async () => {
                 const token = await getToken();
-                if (!token) throw Object.assign(new Error("Sign in to generate translations."), { code: "AUTH_REQUIRED" });
+                if (!token) {
+                    if (kind === "word" && typeof globalThis !== "undefined" && globalThis.SharedTranslatorService?.fetchTranslation) {
+                        try {
+                            const quick = await globalThis.SharedTranslatorService.fetchTranslation(text, targetLang, sourceLang);
+                            if (quick?.translated) {
+                                return { [text]: { t: quick.translated.trim(), d: "", s: [], e: [] } };
+                            }
+                        } catch (_) {}
+                    }
+                    throw Object.assign(new Error("Sign in to generate translations."), { code: "AUTH_REQUIRED" });
+                }
                 // Let the server check shared cache BEFORE quota, even when local credits are exhausted.
                 const deadline = Date.now() + 45000;
                 do {

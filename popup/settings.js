@@ -334,13 +334,16 @@ async function refreshAiUsageUI() {
 
     const usageSection = document.getElementById("aiUsageSection");
     const plansSection = document.getElementById("aiPlansSection");
+    const planBadge = document.getElementById("aiPlanBadge");
+    const upgradeBtn = document.getElementById("usageUpgradeBtn");
+
     const user =
         typeof FirebaseSync !== "undefined"
             ? await FirebaseSync.getUser().catch(() => null)
             : null;
     const signedIn = !!user;
 
-    if (usageSection) usageSection.hidden = !signedIn;
+    if (usageSection) usageSection.hidden = false;
     if (plansSection) plansSection.hidden = false;
 
     const subscription = await SubscriptionService.effectiveProfile(false);
@@ -350,25 +353,35 @@ async function refreshAiUsageUI() {
         renderSubscriptionPlans(subscription, signedIn);
     }
 
-    if (!signedIn) {
-        renderElevenLabsUsage(subscription);
-        await GeminiProxy.applyLocalLimitToUI();
-        return;
-    }
-
-    let usage = await GeminiProxy.refreshUsage(false).catch(() =>
-        GeminiProxy.getCachedUsage(),
-    );
-
-    if (
-        usage &&
-        SubscriptionConfig.normalizePlan(usage.plan) !==
-        SubscriptionConfig.normalizePlan(subscription.plan)
-    ) {
-        usage = await GeminiProxy.refreshUsage(true).catch(() => usage);
-    }
-
     renderElevenLabsUsage(subscription);
+
+    let usage = null;
+    if (signedIn) {
+        usage = await GeminiProxy.refreshUsage(false).catch(() =>
+            GeminiProxy.getCachedUsage(),
+        );
+
+        if (
+            usage &&
+            SubscriptionConfig.normalizePlan(usage.plan) !==
+            SubscriptionConfig.normalizePlan(subscription.plan)
+        ) {
+            usage = await GeminiProxy.refreshUsage(true).catch(() => usage);
+        }
+    } else {
+        usage = await GeminiProxy.getCachedUsage().catch(() => null);
+        if (!usage) {
+            const freeLimit = SubscriptionConfig.getPlanLimits("free")?.ai?.usesPerMonth || 15;
+            usage = {
+                plan: "free",
+                used: 0,
+                limit: freeLimit,
+                remaining: freeLimit,
+            };
+        }
+    }
+
+    const usageCardContainer = document.getElementById("aiUsageCard");
     const card = document.getElementById("aiUsageMeter");
     const title = document.getElementById("aiUsageTitle");
     const value = document.getElementById("aiUsageValue");
@@ -376,20 +389,45 @@ async function refreshAiUsageUI() {
     const fill = document.getElementById("aiUsageFill");
     const limitReached = !!(usage?.limit > 0 && usage.used >= usage.limit);
 
+    usageCardContainer?.classList.remove("is-warning", "is-empty");
     card?.classList.remove("is-warning", "is-empty");
     fill?.classList.remove("is-loading");
+
+    const currentPlan = SubscriptionConfig.normalizePlan(
+        subscription?.plan || usage?.plan,
+    );
+    const isPaidPlan = currentPlan !== "free";
+
+    if (planBadge) {
+        if (isPaidPlan) {
+            planBadge.textContent = `${currentPlan.toUpperCase()} PLAN`;
+            planBadge.className = "ai-plan-badge is-pro";
+        } else if (signedIn) {
+            planBadge.textContent = "FREE PLAN";
+            planBadge.className = "ai-plan-badge";
+        } else {
+            planBadge.textContent = "GUEST MODE (FREE)";
+            planBadge.className = "ai-plan-badge is-guest";
+        }
+    }
+
+    if (upgradeBtn) {
+        if (isPaidPlan) {
+            upgradeBtn.textContent = "Manage plan →";
+            upgradeBtn.dataset.billingAction = "portal";
+        } else {
+            upgradeBtn.textContent = "Unlock Pro (3-day trial $0) →";
+            delete upgradeBtn.dataset.billingAction;
+        }
+    }
+
     if (usage) {
         const used = Math.max(0, Number(usage.used || 0));
-        const limit = Math.max(0, Number(usage.limit || 0));
+        const limit = Math.max(0, Number(usage.limit || 0)) || 15;
         const left = Math.max(0, limit - used);
         const percentage = limit
             ? Math.min(100, Math.round((used / limit) * 100))
             : 0;
-
-        const currentPlan = SubscriptionConfig.normalizePlan(
-            subscription?.plan || usage?.plan,
-        );
-        const isPaidPlan = currentPlan !== "free";
 
         if (renewalDate) {
             if (isPaidPlan) {
@@ -411,26 +449,32 @@ async function refreshAiUsageUI() {
             track.setAttribute("aria-valuenow", String(percentage));
             track.setAttribute(
                 "aria-valuetext",
-                `${used} of ${limit} credits used`,
+                `${used} of ${limit} AI credits used`,
             );
         }
 
         if (limitReached) {
+            usageCardContainer?.classList.add("is-empty");
             card?.classList.add("is-empty");
-            if (title) title.textContent = "Credits used up";
+            if (title) title.textContent = "AI credit limit reached";
             if (isPaidPlan) {
-                info.textContent = "Limit renews:";
+                info.textContent = "Limit renewal:";
             } else {
-                info.textContent = "Free plan limit does not renew";
+                info.textContent = "Free limit renews monthly";
             }
         } else {
-            if (percentage >= 80) card?.classList.add("is-warning");
+            if (percentage >= 80) {
+                usageCardContainer?.classList.add("is-warning");
+                card?.classList.add("is-warning");
+            }
             if (title)
-                title.textContent = `${left.toLocaleString("en-US")} credits remaining`;
+                title.textContent = `${left} credits remaining this month`;
             if (isPaidPlan) {
-                info.textContent = "Limit renews:";
+                info.textContent = "Limit renewal:";
+            } else if (signedIn) {
+                info.textContent = "Credits renew monthly";
             } else {
-                info.textContent = "One-time starter pack (Free plan)";
+                info.textContent = "Sign in to sync saved words";
             }
         }
     } else {
@@ -489,6 +533,16 @@ function showAiPlans() {
 document
     .getElementById("usageUpgradeButton")
     ?.addEventListener("click", showAiPlans);
+
+document
+    .getElementById("usageUpgradeBtn")
+    ?.addEventListener("click", (e) => {
+        if (e.currentTarget?.dataset?.billingAction === "portal") {
+            SubscriptionService.openBillingPortal().catch(() => showAiPlans());
+        } else {
+            showAiPlans();
+        }
+    });
 
 document
     .getElementById("subscriptionPlansGrid")

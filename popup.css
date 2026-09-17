@@ -2993,9 +2993,96 @@ html[data-lectoro-ai-limit-reached] #exportQuiz {
 .ai-usage-card {
     position: relative;
     overflow: hidden;
-    padding: 12px !important;
-    border-color: rgba(129, 140, 248, 0.14);
+    padding: 14px !important;
+    border-color: rgba(129, 140, 248, 0.18);
     background: var(--glass);
+}
+
+.ai-usage-top-status {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.ai-plan-badge-row {
+    display: flex;
+    align-items: center;
+    margin: 12px 0 6px;
+}
+
+.ai-plan-badge {
+    font-size: 10px;
+    font-weight: 750;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 99px;
+    background: rgba(99, 102, 241, 0.14);
+    border: 1px solid rgba(129, 140, 248, 0.28);
+    color: #a5b4fc;
+    line-height: 1.2;
+}
+
+.ai-plan-badge.is-pro {
+    background: linear-gradient(135deg, rgba(234, 179, 8, 0.18), rgba(249, 115, 22, 0.18));
+    border-color: rgba(234, 179, 8, 0.4);
+    color: #fde047;
+}
+
+.ai-plan-badge.is-guest {
+    background: rgba(148, 163, 184, 0.12);
+    border-color: rgba(148, 163, 184, 0.25);
+    color: #cbd5e1;
+}
+
+.ai-usage-upgrade-btn {
+    font-size: 10.5px;
+    font-weight: 650;
+    padding: 4px 10px;
+    border-radius: 7px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #ffffff;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.ai-usage-upgrade-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.45);
+}
+
+.ai-free-perks-strip {
+    margin: 10px 0 10px;
+    padding: 7px 10px;
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.18);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.ai-free-perk-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10.5px;
+    color: #cbd5e1;
+}
+
+.ai-free-perk-item i {
+    font-style: normal;
+    color: #34d399;
+    font-weight: 800;
+    font-size: 11px;
+}
+
+.ai-free-perk-item b {
+    color: #a7f3d0;
+    font-weight: 600;
 }
 
 .ai-usage-head,

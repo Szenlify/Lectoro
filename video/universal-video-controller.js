@@ -346,8 +346,8 @@
 
         // Sterowanie otwartym dymkiem AI (W, A, D, Strzałki, Z, V, Escape)
         if (aiTooltipOpen) {
-            if (key === "w" || key === "W") {
-                overlay?.replayCurrentAiExplainTts?.();
+            if (["w", "W", "ArrowUp"].includes(key)) {
+                overlay?.closeAiTooltip?.({ resumeVideo: true });
                 return;
             }
             if (key === "ArrowRight" || key === "d" || key === "D") {

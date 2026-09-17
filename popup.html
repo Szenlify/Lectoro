@@ -80,21 +80,25 @@
 
 
 
-            <!-- Compact subscription usage overview -->
-            <div class="setting-group" id="aiUsageSection" hidden>
+            <!-- Transparent subscription & AI credit usage overview -->
+            <div class="setting-group" id="aiUsageSection">
                 <div class="glass-card ai-usage-card" id="aiUsageCard">
+                    <div class="ai-usage-top-status">
+                        <button type="button" class="ai-usage-upgrade-btn" id="usageUpgradeBtn">Unlock Pro (3-day trial $0) →</button>
+                    </div>
+
                     <div class="usage-meter" id="aiUsageMeter">
                         <div class="ai-usage-head">
                             <div class="usage-meter-name">
-                                <span class="usage-meter-icon usage-meter-icon-ai" aria-hidden="true">AI</span>
+                                <span class="usage-meter-icon usage-meter-icon-ai" aria-hidden="true">✦</span>
                                 <div>
-                                    <div class="ai-usage-title">AI Credits</div>
-                                    <div class="usage-meter-note" id="aiUsageTitle">Checking usage...</div>
+                                    <div class="ai-usage-title">AI Explanations (Enter)</div>
+                                    <div class="usage-meter-note" id="aiUsageTitle">Checking limit...</div>
                                 </div>
                             </div>
-                            <div class="ai-usage-value" id="aiUsageValue">—</div>
+                            <div class="ai-usage-value" id="aiUsageValue">— / —</div>
                         </div>
-                        <div class="ai-usage-track" role="progressbar" aria-label="AI Credits Usage" aria-valuemin="0"
+                        <div class="ai-usage-track" role="progressbar" aria-label="AI Credits" aria-valuemin="0"
                             aria-valuemax="100" aria-valuenow="0" id="aiUsageTrack">
                             <div class="ai-usage-fill is-loading" id="aiUsageFill"></div>
                         </div>
@@ -105,7 +109,7 @@
                             <div class="usage-meter-name">
                                 <span class="usage-meter-icon usage-meter-icon-voice" aria-hidden="true">E</span>
                                 <div>
-                                    <div class="ai-usage-title">ElevenLabs</div>
+                                    <div class="ai-usage-title">ElevenLabs Natural Voices</div>
                                     <div class="usage-meter-note" id="elevenLabsUsageTitle">Checking usage...
                                     </div>
                                 </div>
@@ -118,9 +122,14 @@
                         </div>
                     </div>
 
+                    <div class="ai-free-perks-strip">
+                        <div class="ai-free-perk-item"><i aria-hidden="true">✓</i> <span>Dual subtitles: <b>Unlimited</b></span></div>
+                        <div class="ai-free-perk-item"><i aria-hidden="true">✓</i> <span>Dictionary & words (S): <b>Unlimited</b></span></div>
+                    </div>
+
                     <div class="ai-usage-footer">
                         <div class="usage-reset-copy">
-                            <span id="aiUsageInfo">Limits renew monthly</span>
+                            <span id="aiUsageInfo">AI credits renew monthly</span>
                             <span class="usage-reset-date" id="aiUsageRenewalDate"></span>
                         </div>
                     </div>

@@ -66,6 +66,8 @@
     let subCloseTimer = null;
 
     let aiTooltipActive = false;
+    let aiPaywallActive = false;
+    let aiExplainCreditBadge = "";
     let aiExplainKeydownHandler = null;
     let aiExplainQueue = [];
     let aiExplainIndex = 0;
@@ -1168,8 +1170,16 @@
                     contextWords: contextSpans.map((span) => span.textContent.trim()), wordIndex,
                 } : {}),
             });
-            const translated = dictionary?.translated || dictionary?.primaryTranslation;
+            let translated = dictionary?.translated || dictionary?.primaryTranslation;
             if (!isSubHovering || lastHoveredSubWord !== wordSpan) return;
+            if (!translated) {
+                try {
+                    const fallback = await SharedTranslatorService.translate(text, targetLang, srcLang);
+                    if (fallback?.translated) {
+                        translated = fallback.translated;
+                    }
+                } catch (_) {}
+            }
             if (!translated) {
                 QT.showTooltip(`<div class="${PREFIX}body">No dictionary entry yet.</div>`, rect, placement);
                 return;
@@ -1186,8 +1196,26 @@
             if (speak) QT.speak(text, srcLang);
         } catch (err) {
             if (isSubHovering && (speak || lastHoveredSubWord === wordSpan)) {
+                try {
+                    const { targetLang, learningLang: srcLang } = await SharedTranslatorService.getReadingSettings();
+                    const fallback = await SharedTranslatorService.translate(text, targetLang, srcLang);
+                    if (fallback?.translated && isSubHovering && lastHoveredSubWord === wordSpan) {
+                        const html = QT.buildTooltipHtml({
+                            srcLang,
+                            targetLang,
+                            original: text,
+                            translated: fallback.translated,
+                            dictionary: null,
+                        });
+                        QT.showTooltip(html, rect, placement);
+                        QT.attachTooltipHandlers();
+                        if (speak) QT.speak(text, srcLang);
+                        return;
+                    }
+                } catch (_) {}
+                const errText = err?.message && !/sign in/i.test(err.message) ? err.message : "Translation unavailable.";
                 QT.showTooltip(
-                    `<div class="${PREFIX}error">⚠ ${QT.escapeHtml(err.message)}</div>`,
+                    `<div class="${PREFIX}error">⚠ ${QT.escapeHtml(errText)}</div>`,
                     rect,
                     placement,
                 );
@@ -1544,8 +1572,9 @@
             );
             aiExplainKeydownHandler = null;
         }
-        if (!aiTooltipActive) return;
+        if (!aiTooltipActive && !aiPaywallActive) return;
         aiTooltipActive = false;
+        aiPaywallActive = false;
         try {
             document.body?.removeAttribute("data-lectoro-ai-active");
         } catch (_) { }
@@ -1877,17 +1906,23 @@
             })
             .join("");
 
+        const isPro = aiExplainCreditBadge.includes("PRO");
+        const creditPillHtml = aiExplainCreditBadge
+            ? `<span class="${PREFIX}ai-credit-pill ${isPro ? "is-pro" : ""}" title="AI Credits">${QT.escapeHtml(aiExplainCreditBadge)}</span>`
+            : "";
+
         const headerHtml = `
             <div class="${PREFIX}header">
                 <div class="${PREFIX}ai-queue-ribbon" role="tablist" aria-label="Breakdown items">
                     ${ribbonItemsHtml}
                 </div>
+                ${creditPillHtml}
                 <div class="${PREFIX}ai-nav-group">
-                    <button type="button" class="${PREFIX}ai-nav-btn ${PREFIX}ai-prev-btn" data-action="prev" ${index === 0 ? "disabled" : ""} title="Poprzednie (← / A)">
+                    <button type="button" class="${PREFIX}ai-nav-btn ${PREFIX}ai-prev-btn" data-action="prev" ${index === 0 ? "disabled" : ""} title="Previous (← / A)">
                         ◀
                     </button>
                     <span class="${PREFIX}ai-step-counter">${index + 1}/${totalItems}</span>
-                    <button type="button" class="${PREFIX}ai-nav-btn ${PREFIX}ai-next-btn" data-action="next" ${index >= totalItems - 1 ? "disabled" : ""} title="Następne (→ / D)">
+                    <button type="button" class="${PREFIX}ai-nav-btn ${PREFIX}ai-next-btn" data-action="next" ${index >= totalItems - 1 ? "disabled" : ""} title="Next (→ / D)">
                         ▶
                     </button>
                 </div>
@@ -1924,7 +1959,7 @@
                             ${QT.escapeHtml(item.meaning || "")}
                         </div>
                         <span class="${PREFIX}word-actions">
-                            <button class="${PREFIX}speak" data-text="${QT.escapeAttr(speechText)}" data-lang="${QT.escapeAttr(speakLang)}" data-source-lang="${QT.escapeAttr(aiExplainSourceLang)}" data-original-text="${QT.escapeAttr(item.term)}" title="Odtwórz wymowę" aria-label="Odtwórz wymowę">${SVG.SPEAKER}</button>
+                            <button class="${PREFIX}speak" data-text="${QT.escapeAttr(speechText)}" data-lang="${QT.escapeAttr(speakLang)}" data-source-lang="${QT.escapeAttr(aiExplainSourceLang)}" data-original-text="${QT.escapeAttr(item.term)}" title="Play pronunciation" aria-label="Play pronunciation">${SVG.SPEAKER}</button>
                         </span>
                     </div>`
                 : `
@@ -1933,7 +1968,7 @@
                         <div class="${PREFIX}ai-term-title-wrap">
                             ${!isSentenceStage ? `<span class="${PREFIX}ai-term">${QT.escapeHtml(item.term)}</span>` : ""}
                             <span class="${PREFIX}word-actions">
-                                <button class="${PREFIX}speak" data-text="${QT.escapeAttr(speechText)}" data-lang="${QT.escapeAttr(speakLang)}" data-source-lang="${QT.escapeAttr(aiExplainSourceLang)}" data-original-text="${QT.escapeAttr(item.term)}" title="Odtwórz wymowę" aria-label="Odtwórz wymowę">${SVG.SPEAKER}</button>
+                                <button class="${PREFIX}speak" data-text="${QT.escapeAttr(speechText)}" data-lang="${QT.escapeAttr(speakLang)}" data-source-lang="${QT.escapeAttr(aiExplainSourceLang)}" data-original-text="${QT.escapeAttr(item.term)}" title="Play pronunciation" aria-label="Play pronunciation">${SVG.SPEAKER}</button>
                             </span>
                         </div>
                     </div>
@@ -2055,7 +2090,7 @@
             speakBtn.classList.add("speaking");
             speakBtn.setAttribute(
                 "aria-label",
-                "Odtwarzanie tłumaczenia",
+                "Playing translation",
             );
         }
 
@@ -2124,7 +2159,7 @@
                 speakBtn.classList.remove("speaking");
                 speakBtn.setAttribute(
                     "aria-label",
-                    "Odtwórz wymowę",
+                    "Play pronunciation",
                 );
             }
         }
@@ -2138,31 +2173,23 @@
                 ev.target?.isContentEditable;
             if (isTyping) return;
 
-            if (ev.key === "w" || ev.key === "W") {
-                if (aiTooltipActive) {
+            if (ev.key === "w" || ev.key === "W" || ev.key === "Escape" || ev.key === "ArrowUp") {
+                if (aiTooltipActive || aiPaywallActive) {
                     ev.preventDefault();
                     ev.stopPropagation();
                     ev.stopImmediatePropagation();
-                    replayCurrentAiExplainTts();
+                    closeAiTooltip({ resumeVideo: true });
                 }
                 return;
             }
 
             if (ev.key === "z" || ev.key === "Z") {
-                if (aiTooltipActive) {
+                if (aiTooltipActive && !aiPaywallActive) {
                     ev.preventDefault();
                     ev.stopPropagation();
                     ev.stopImmediatePropagation();
                     saveCurrentAiExplainItem();
                 }
-                return;
-            }
-
-            if (ev.key === "Escape") {
-                ev.preventDefault();
-                ev.stopPropagation();
-                ev.stopImmediatePropagation();
-                closeAiTooltip({ resumeVideo: true });
                 return;
             }
 
@@ -2636,14 +2663,14 @@
 
         const BADGE_MAP = {
             pl: {
-                sentence: "Zdanie",
+                sentence: "Sentence",
                 idiom: "Idiom",
-                phrasal_verb: "Czasownik złożony",
+                phrasal_verb: "Phrasal Verb",
                 slang: "Slang",
-                vocabulary: "Słówko",
-                word: "Słówko",
-                expression: "Wyrażenie",
-                collocation: "Kolokacja",
+                vocabulary: "Word",
+                word: "Word",
+                expression: "Expression",
+                collocation: "Collocation",
             },
             en: {
                 sentence: "Sentence",
@@ -2765,6 +2792,73 @@
         );
     }
 
+    function showAiPaywallOverlay(layout = aiExplainLayout, validation = null) {
+        clearTimeout(aiAutoAdvanceTimer);
+        aiAutoAdvanceTimer = null;
+        aiAutoAdvanceDisabled = true;
+        aiExplainSpeechToken++;
+        SharedTtsService.cancel();
+
+        aiTooltipActive = true;
+        aiPaywallActive = true;
+        ensureAiExplainKeydownListener();
+
+        const html = `
+            <div class="${PREFIX}header ${PREFIX}paywall-header">
+                <div class="${PREFIX}paywall-badge-title">
+                    <span class="${PREFIX}paywall-icon">✨</span>
+                    <span>Free AI monthly limit reached</span>
+                </div>
+                <button type="button" class="${PREFIX}paywall-close-btn" aria-label="Close (W)" title="Close and resume (W)">✕</button>
+            </div>
+            <div class="${PREFIX}body ${PREFIX}paywall-body">
+                <div class="${PREFIX}paywall-card">
+                    <div class="${PREFIX}paywall-status-banner">
+                        <span class="${PREFIX}paywall-check">✓</span>
+                        <div class="${PREFIX}paywall-status-text">
+                            <strong>Dual subtitles and dictionary (S) remain unlimited!</strong>
+                            <span>You can continue watching with bilingual subtitles anytime.</span>
+                        </div>
+                    </div>
+                    <div class="${PREFIX}paywall-offer-title">Unlock Lectoro PRO to learn without limits:</div>
+                    <ul class="${PREFIX}paywall-perks-list">
+                        <li><span class="${PREFIX}paywall-spark">✦</span> <strong>Unlimited AI explanations (Enter)</strong> (idioms, grammar)</li>
+                        <li><span class="${PREFIX}paywall-spark">✦</span> <strong>Cloud sync</strong> across all your devices</li>
+                        <li><span class="${PREFIX}paywall-spark">✦</span> <strong>Unlimited SRS flashcards</strong>, AI quizzes and Anki export</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="${PREFIX}save-footer ${PREFIX}paywall-footer">
+                <button type="button" class="${PREFIX}paywall-btn-ghost ${PREFIX}paywall-resume-btn" title="Resume playback">
+                    Continue watching (W)
+                </button>
+                <button type="button" class="${PREFIX}paywall-btn-primary ${PREFIX}paywall-upgrade-btn">
+                    Try Pro free for 3 days →
+                </button>
+            </div>`;
+
+        const effectiveLayout =
+            layout || aiExplainLayout || translationAnchorLayout || captureSubtitleLayout();
+        const copy = applyAiExplanation(html, effectiveLayout, "Lectoro AI Limit");
+
+        copy.querySelector(`.${PREFIX}paywall-close-btn`)?.addEventListener("click", () => {
+            closeAiTooltip({ resumeVideo: true });
+        });
+
+        copy.querySelector(`.${PREFIX}paywall-resume-btn`)?.addEventListener("click", () => {
+            closeAiTooltip({ resumeVideo: true });
+        });
+
+        copy.querySelector(`.${PREFIX}paywall-upgrade-btn`)?.addEventListener("click", () => {
+            closeAiTooltip({ resumeVideo: false });
+            if (typeof SubscriptionService !== "undefined") {
+                SubscriptionService.startCheckout("basic").catch(() => {
+                    SubscriptionService.openPlans();
+                });
+            }
+        });
+    }
+
     async function handleAIExplain(video) {
         const registry = getPlayerRegistry();
         const text = activeText || registry?.getCurrentText();
@@ -2796,6 +2890,23 @@
             height: 50,
         };
         aiExplainLayout = layout || { rect };
+
+        try {
+            const cachedUsage = (await GeminiProxy?.getCachedUsage?.()) || null;
+            if (cachedUsage && cachedUsage.limit > 0) {
+                const plan = String(cachedUsage.plan || "free").toLowerCase();
+                if (plan !== "free") {
+                    aiExplainCreditBadge = "✦ PRO AI";
+                } else {
+                    const rem = Math.max(0, (cachedUsage.limit || 15) - (cachedUsage.used || 0));
+                    aiExplainCreditBadge = `✦ AI ${rem}/${cachedUsage.limit || 15}`;
+                }
+            } else {
+                aiExplainCreditBadge = "✦ AI Free";
+            }
+        } catch (_) {
+            aiExplainCreditBadge = "";
+        }
 
         showAiShimmer(aiExplainLayout);
         try {
@@ -2877,9 +2988,10 @@
             aiExplainIndex = 0;
             showAiExplainItem(0);
         } catch (err) {
+            console.error("[Lectoro] Gemini AI explain error:", err);
             if (isCurrent()) {
-                if (GeminiProxy.isLimitError(err)) {
-                    closeAiTooltip();
+                if (GeminiProxy?.isLimitError?.(err)) {
+                    showAiPaywallOverlay(aiExplainLayout, err?.validation);
                 } else {
                     applyAiExplanation(
                         `<div class="${PREFIX}error">⚠ ${QT.escapeHtml(err.message)}</div>`,
@@ -3656,7 +3768,7 @@
         const message = error?.code === "AI_LIMIT_REACHED"
             ? "Your monthly AI limit has been reached. Saved translations remain available."
             : error?.code === "AUTH_REQUIRED"
-                ? "Sign in to generate missing translations."
+                ? "Translation unavailable. Please try again."
             : rateLimited
             ? "Translation service is busy. Please try again shortly."
             : error?.runtimeError
@@ -3692,23 +3804,23 @@
 
         const html = `
             <div class="${PREFIX}header">
-                <span>🔒 Limit darmowych napisów</span>
+                <span>🔒 Free Subtitle Limit</span>
             </div>
             <div class="${PREFIX}body">
                 <div style="padding: 8px 4px; font-size: 13px; line-height: 1.5; color: #f1f5f9;">
-                    Wykorzystano darmowy limit <strong>${QT.escapeHtml(Number(quota.limit).toLocaleString("pl-PL"))} znaków / godzinę</strong>.<br>
-                    <span style="color: #94a3b8; font-size: 12px;">Nowa pula darmowych napisów za: <strong style="color: #38bdf8;" class="${PREFIX}countdown-text">${initialRemaining}</strong></span>
+                    Free limit of <strong>${QT.escapeHtml(Number(quota.limit).toLocaleString("en-US"))} characters / hour</strong> reached.<br>
+                    <span style="color: #94a3b8; font-size: 12px;">New free subtitles pool resets in: <strong style="color: #38bdf8;" class="${PREFIX}countdown-text">${initialRemaining}</strong></span>
                 </div>
             </div>
             <div class="${PREFIX}save-footer" style="display: flex; gap: 8px; justify-content: flex-end; padding-top: 8px;">
                 <button type="button" class="${PREFIX}ai-explain-save-btn ${PREFIX}save-footer-btn ${PREFIX}trial-cta-btn" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border: none; font-weight: 600; cursor: pointer; padding: 6px 14px; border-radius: 6px;">
-                    Wypróbuj 3 dni za darmo →
+                    Try 3 days free →
                 </button>
             </div>`;
 
         const effectiveLayout =
             layout || translationAnchorLayout || captureSubtitleLayout();
-        const copy = applyAiExplanation(html, effectiveLayout, "Limit napisów");
+        const copy = applyAiExplanation(html, effectiveLayout, "Subtitle limit");
 
         const ctaBtn = copy.querySelector(`.${PREFIX}trial-cta-btn`);
         ctaBtn?.addEventListener("click", () => {
@@ -3721,7 +3833,7 @@
         function tick() {
             const rem = resetAt - Date.now();
             if (rem <= 0) {
-                if (countdownEl) countdownEl.textContent = "odnowiono!";
+                if (countdownEl) countdownEl.textContent = "renewed!";
                 return;
             }
             if (countdownEl) countdownEl.textContent = formatRemaining(rem);
@@ -4059,8 +4171,8 @@
         closeSubTooltip,
         handleAIExplain,
         closeAiTooltip,
-        saveCurrentAiExplainItem,
-        isAiTooltipActive: () => aiTooltipActive,
+        isAiTooltipActive: () => aiTooltipActive || aiPaywallActive,
+        showAiPaywallOverlay,
         navigateAiExplain,
         nextAiExplainItem,
         prevAiExplainItem,
@@ -4070,7 +4182,7 @@
             eTranslateActive ||
             wordCloudActive ||
             subtitleModeStarting ||
-            (!aiTooltipActive && (translationOverlay?.isConnected ?? false)),
+            ((!aiTooltipActive && !aiPaywallActive) && (translationOverlay?.isConnected ?? false)),
         showWordClouds,
         removeWordClouds,
         doSentenceTranslation,

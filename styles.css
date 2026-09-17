@@ -355,8 +355,8 @@
 /* ── Save Footer (3-button row) ── */
 #__qt_tooltip .__qt_save-footer {
   display: flex;
-  gap: 6px;
-  padding: 6px 10px 8px;
+  gap: 5px;
+  padding: 4px 8px 6px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   justify-content: flex-end !important;
 }
@@ -364,13 +364,13 @@
 #__qt_tooltip .__qt_save-footer-btn {
   display: inline-flex !important;
   align-items: center;
-  gap: 5px;
-  padding: 5px 10px;
+  gap: 4px;
+  padding: 3px 8px;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
+  border-radius: 6px;
   background: rgba(255, 255, 255, 0.06);
   color: rgba(255, 255, 255, 0.7);
-  font-size: 11px;
+  font-size: 10px;
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   cursor: pointer;
@@ -399,8 +399,8 @@
 }
 
 #__qt_tooltip .__qt_save-footer-btn svg {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   flex-shrink: 0;
 }
 
@@ -2061,6 +2061,38 @@ body[data-lectoro-sub-translate-active="true"]
   margin-top: 0 !important;
 }
 
+#__qt_sentence_translation .__qt_header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  padding: 8px 12px 4px !important;
+}
+
+#__qt_sentence_translation .__qt_ai-credit-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  padding: 1.5px 8px !important;
+  border-radius: 999px !important;
+  font-size: 9.5px !important;
+  font-weight: 700 !important;
+  color: #c7d2fe !important;
+  background: rgba(99, 102, 241, 0.18) !important;
+  border: 1px solid rgba(129, 140, 248, 0.35) !important;
+  letter-spacing: 0.2px !important;
+  user-select: none !important;
+  line-height: 1.3 !important;
+  flex-shrink: 0 !important;
+}
+
+#__qt_sentence_translation .__qt_ai-credit-pill.is-pro {
+  color: #fef08a !important;
+  background: rgba(234, 179, 8, 0.16) !important;
+  border: 1px solid rgba(234, 179, 8, 0.38) !important;
+}
+
 /* Przyciski nawigacji krokowego przejścia */
 #__qt_sentence_translation .__qt_ai-nav-group {
   display: inline-flex !important;
@@ -2068,6 +2100,7 @@ body[data-lectoro-sub-translate-active="true"]
   justify-content: flex-end !important;
   gap: 3px !important;
   margin-left: auto !important;
+  flex-shrink: 0 !important;
 }
 
 #__qt_sentence_translation .__qt_ai-nav-btn {
@@ -2103,6 +2136,187 @@ body[data-lectoro-sub-translate-active="true"]
   color: rgba(255, 255, 255, 0.4) !important;
   padding: 0 4px !important;
   letter-spacing: 0.5px !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   In-Video Non-invasive Paywall Modal / Card
+   ═══════════════════════════════════════════════════════════════ */
+#__qt_sentence_translation .__qt_paywall-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 8px 12px 6px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+#__qt_sentence_translation .__qt_paywall-badge-title {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: #f8fafc !important;
+  letter-spacing: 0.1px !important;
+}
+
+#__qt_sentence_translation .__qt_paywall-icon {
+  font-size: 13px !important;
+  color: #c084fc !important;
+}
+
+#__qt_sentence_translation .__qt_paywall-close-btn {
+  background: transparent !important;
+  border: none !important;
+  color: rgba(255, 255, 255, 0.45) !important;
+  font-size: 14px !important;
+  cursor: pointer !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  line-height: 1 !important;
+  transition: all 0.15s ease !important;
+}
+
+#__qt_sentence_translation .__qt_paywall-close-btn:hover {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+#__qt_sentence_translation .__qt_paywall-body {
+  padding: 10px 14px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 9px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  text-align: left !important;
+}
+
+#__qt_sentence_translation .__qt_paywall-card {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  width: 100% !important;
+}
+
+#__qt_sentence_translation .__qt_paywall-status-banner {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 8px !important;
+  padding: 7px 10px !important;
+  background: rgba(16, 185, 129, 0.12) !important;
+  border: 1px solid rgba(16, 185, 129, 0.25) !important;
+  border-radius: 8px !important;
+}
+
+#__qt_sentence_translation .__qt_paywall-check {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 15px !important;
+  height: 15px !important;
+  border-radius: 50% !important;
+  background: #10b981 !important;
+  color: #ffffff !important;
+  font-size: 9px !important;
+  font-weight: 800 !important;
+  flex-shrink: 0 !important;
+  margin-top: 1px !important;
+}
+
+#__qt_sentence_translation .__qt_paywall-status-text {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+}
+
+#__qt_sentence_translation .__qt_paywall-status-text strong {
+  font-size: 11px !important;
+  color: #a7f3d0 !important;
+  font-weight: 700 !important;
+}
+
+#__qt_sentence_translation .__qt_paywall-status-text span {
+  font-size: 10px !important;
+  color: rgba(255, 255, 255, 0.72) !important;
+  line-height: 1.3 !important;
+}
+
+#__qt_sentence_translation .__qt_paywall-offer-title {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #e2e8f0 !important;
+  margin-top: 2px !important;
+}
+
+#__qt_sentence_translation .__qt_paywall-perks-list {
+  list-style: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 5px !important;
+}
+
+#__qt_sentence_translation .__qt_paywall-perks-list li {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  font-size: 11px !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+#__qt_sentence_translation .__qt_paywall-spark {
+  color: #c084fc !important;
+  font-size: 11px !important;
+  flex-shrink: 0 !important;
+}
+
+#__qt_sentence_translation .__qt_paywall-footer {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  padding: 8px 14px 10px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+#__qt_sentence_translation .__qt_paywall-btn-ghost {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  padding: 5px 12px !important;
+  border-radius: 7px !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+#__qt_sentence_translation .__qt_paywall-btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+#__qt_sentence_translation .__qt_paywall-btn-primary {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+  border: 1px solid rgba(168, 85, 247, 0.4) !important;
+  color: #ffffff !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  padding: 5px 14px !important;
+  border-radius: 7px !important;
+  cursor: pointer !important;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35) !important;
+  transition: all 0.15s ease !important;
+}
+
+#__qt_sentence_translation .__qt_paywall-btn-primary:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.5) !important;
 }
 
 #__qt_sentence_translation[data-state="ai-loading"],
@@ -2327,8 +2541,8 @@ body[data-lectoro-sub-translate-active="true"]
 
 #__qt_sentence_translation .__qt_save-footer {
   display: flex !important;
-  gap: 8px !important;
-  padding: 10px 16px 12px !important;
+  gap: 6px !important;
+  padding: 6px 14px 8px !important;
   border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
   justify-content: flex-end !important;
   width: 100% !important;
@@ -2338,13 +2552,13 @@ body[data-lectoro-sub-translate-active="true"]
 #__qt_sentence_translation .__qt_save-footer-btn {
   display: inline-flex !important;
   align-items: center !important;
-  gap: 5px !important;
-  padding: 5px 10px !important;
+  gap: 4px !important;
+  padding: 3px 8px !important;
   border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  border-radius: 9px !important;
+  border-radius: 6px !important;
   background: rgba(255, 255, 255, 0.06) !important;
   color: rgba(255, 255, 255, 0.7) !important;
-  font-size: 11px !important;
+  font-size: 10px !important;
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
   cursor: pointer !important;
@@ -2376,8 +2590,8 @@ body[data-lectoro-sub-translate-active="true"]
 }
 
 #__qt_sentence_translation .__qt_save-footer-btn svg {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   flex: 0 0 auto;
 }
 
@@ -2395,13 +2609,13 @@ body[data-lectoro-sub-translate-active="true"]
 
 .__qt_save-footer-btn .__qt_key-hint,
 .__qt_save-footer-btn kbd {
-  margin-left: 3px !important;
-  padding: 1px 4px !important;
-  font-size: 9px !important;
+  margin-left: 2px !important;
+  padding: 1px 3px !important;
+  font-size: 8.5px !important;
   line-height: 1 !important;
   font-weight: 600 !important;
   border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  border-radius: 4px !important;
+  border-radius: 3px !important;
   background: rgba(255, 255, 255, 0.08) !important;
   color: rgba(255, 255, 255, 0.6) !important;
   font-family: inherit !important;

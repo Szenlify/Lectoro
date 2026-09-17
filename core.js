@@ -773,13 +773,17 @@
                 <div class="${P}example-translation"><p lang="${escapeAttr(targetLang)}" dir="auto">${escapeHtml(target)}</p>${speakButtonHtml(target, targetLang, definition ? "Play definition translation" : "Play translation")}</div>
             </details>`;
         }
-        const definition = typeof sense.definition === "string"
-            ? textRows(sense.definition, sense.definitionTranslated, "", true) : "";
+        const defText = typeof sense.definition === "string" ? sense.definition.trim() : "";
+        const defTrans = typeof sense.definitionTranslated === "string" ? sense.definitionTranslated.trim() : "";
+        const definition = defText ? textRows(defText, defTrans, "", true) : "";
+        const synonymsList = Array.isArray(sense.synonyms)
+            ? sense.synonyms.filter((s) => typeof s === "string" && s.trim())
+            : [];
         const synonyms =
-            Array.isArray(sense.synonyms) && sense.synonyms.length
-                ? `<p class="${P}dictionary-synonyms" lang="${escapeAttr(srcLang)}" dir="auto"><span class="${P}dictionary-caption">Synonyms</span> ${sense.synonyms
+            synonymsList.length
+                ? `<p class="${P}dictionary-synonyms" lang="${escapeAttr(srcLang)}" dir="auto"><span class="${P}dictionary-caption">Synonyms</span> ${synonymsList
                       .slice(0, 2)
-                      .map((s) => escapeHtml(s))
+                      .map((s) => escapeHtml(s.trim()))
                       .join(", ")}</p>`
                 : "";
         const examples = [sense]
@@ -790,10 +794,11 @@
                 if (
                     !example ||
                     typeof example.source !== "string" ||
-                    typeof example.target !== "string"
+                    typeof example.target !== "string" ||
+                    !example.source.trim()
                 )
                     return false;
-                const key = example.source + "\0" + example.target;
+                const key = example.source.trim() + "\0" + example.target.trim();
                 if (seen.has(key)) return false;
                 seen.add(key);
                 return true;

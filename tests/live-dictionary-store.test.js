@@ -100,6 +100,52 @@ test("word clouds generate missing words via free translation without calling Ge
     assert.equal(result[0].translated, "motyl");
     assert.equal(result[0].length, 1);
 });
+test("missing hover word without sign-in generates quickly via fetchTranslation without requiring login or throwing AUTH_REQUIRED", async () => {
+    const env = environment();
+    env.context.FirebaseSync = {
+        getUser: async () => null,
+    };
+    let geminiCalled = false;
+    env.context.GeminiProxy = {
+        liveTranslation: async () => {
+            geminiCalled = true;
+            throw Object.assign(new Error("Sign in to generate translations."), { code: "AUTH_REQUIRED" });
+        }
+    };
+    env.context.SharedTranslatorService = {
+        fetchTranslation: async (word, target, source) => {
+            assert.equal(word, "sunshine");
+            assert.equal(target, "pl");
+            assert.equal(source, "en");
+            return { translated: "blask słońca", detectedLang: "en" };
+        }
+    };
+    const [details] = await env.lookup(["sunshine"], "pl", "en", { details: true, generateMissing: true });
+    assert.equal(geminiCalled, false);
+    assert.equal(details.primaryTranslation, "blask słońca");
+    assert.equal(details.translated, "blask słońca");
+});
+test("missing hover word with AI failure falls back quickly to fetchTranslation", async () => {
+    const env = environment();
+    env.context.FirebaseSync = {
+        getUser: async () => ({ uid: "test-user" }),
+    };
+    let geminiCalls = 0;
+    env.context.GeminiProxy = {
+        liveTranslation: async () => {
+            geminiCalls++;
+            throw Object.assign(new Error("Service timeout"), { code: "TIMEOUT" });
+        }
+    };
+    env.context.SharedTranslatorService = {
+        fetchTranslation: async (word, target, source) => {
+            return { translated: "blask", detectedLang: "en" };
+        }
+    };
+    const [details] = await env.lookup(["sunshine"], "pl", "en", { details: true, generateMissing: true });
+    assert.equal(geminiCalls, 1);
+    assert.equal(details.primaryTranslation, "blask");
+});
 test("contextual lookup preserves get up as one unit before skipping simple words", async () => {
     const env = environment();
     env.store.setPhraseDictionary("en", "pl", { "get up": "wstań" });

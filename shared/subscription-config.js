@@ -24,7 +24,7 @@
             displayName: "FREE",
             trialDays: 0,
             priceMonthly: Object.freeze({ amount: 0, currency: "USD" }),
-            ai: Object.freeze({ usesPerMonth: 10 }),
+            ai: Object.freeze({ usesPerMonth: 15 }),
             srs: Object.freeze({ maxSavedCards: 25 }),
             elevenLabs: Object.freeze({
                 enabled: false,

@@ -90,6 +90,33 @@ test('hover renders definition and escaped source examples without example trans
   assert.equal(context.buildDictionaryDetailsHtml(null,'en','pl'),'');
 });
 
+test('buildDictionaryDetailsHtml does not render Overview when definition is empty', () => {
+  const context = vm.createContext({
+    PREFIX: '__qt_',
+    SVG: C.SVG_ICONS,
+    escapeHtml: U.escapeHtml,
+    escapeAttr: U.escapeAttr,
+    speakButtonHtml: (text, lang) => `<button class="__qt_speak" data-lang="${lang}">TTS</button>`,
+  });
+  loadFunction(context, 'core.js', 'buildDictionaryDetailsHtml');
+  const emptyDefResult = {
+    translated: 'w tym',
+    primaryTranslation: 'w tym',
+    senses: [{
+      senseId: 'including',
+      translations: ['w tym'],
+      definition: '',
+      definitionTranslated: '',
+      synonyms: [],
+      examples: [],
+    }],
+    selection: 'dictionary',
+  };
+  const html = context.buildDictionaryDetailsHtml(emptyDefResult, 'en', 'pl');
+  assert.equal(html, '');
+  assert.ok(!html.includes('Overview'));
+});
+
 test('example save translates the sentence once, prevents double clicks and allows retry', async () => {
   const saved = [];
   let calls = 0, fail = true;

@@ -468,7 +468,7 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
 
       // 1. Translation row (Centered hero title)
       extraParts.push(
-        `<div style="margin-bottom: 18px; text-align: center;"><div style="font-size: 11px; text-transform: uppercase; color: #38bdf8; font-weight: 700; letter-spacing: 0.12em; margin-bottom: 4px;">TŁUMACZENIE</div><div style="font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em; text-shadow: 0 2px 12px rgba(56, 189, 248, 0.25);">${escapeHtml(cleanTranslated)}</div></div>`
+        `<div style="margin-bottom: 18px; text-align: center;"><div style="font-size: 11px; text-transform: uppercase; color: #38bdf8; font-weight: 700; letter-spacing: 0.12em; margin-bottom: 4px;">TRANSLATION</div><div style="font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em; text-shadow: 0 2px 12px rgba(56, 189, 248, 0.25);">${escapeHtml(cleanTranslated)}</div></div>`
       );
 
       // 2. Original context sentence translation (Centered)
@@ -487,7 +487,7 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
         const aiSent = escapeHtml(w.aiSentence || "");
         const aiSentTr = escapeHtml(w.aiSentenceTranslated || "");
         extraParts.push(
-          `<div style="margin: 0 auto 16px; max-width: 480px; padding: 12px 16px; background: rgba(168, 85, 247, 0.08); border: 1px solid rgba(168, 85, 247, 0.22); border-radius: 14px; text-align: center;"><div style="font-size: 11px; font-weight: 700; color: #c084fc; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px;">✨ Przykład AI</div>${aiSent ? `<div style="font-size: 14px; color: #f1f5f9; font-weight: 500; line-height: 1.5;">${aiSent}</div>` : ""}${aiSentTr ? `<div style="font-size: 13px; color: #cbd5e1; font-style: italic; margin-top: 4px;">${aiSentTr}</div>` : ""}</div>`
+          `<div style="margin: 0 auto 16px; max-width: 480px; padding: 12px 16px; background: rgba(168, 85, 247, 0.08); border: 1px solid rgba(168, 85, 247, 0.22); border-radius: 14px; text-align: center;"><div style="font-size: 11px; font-weight: 700; color: #c084fc; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px;">✨ AI Example</div>${aiSent ? `<div style="font-size: 14px; color: #f1f5f9; font-weight: 500; line-height: 1.5;">${aiSent}</div>` : ""}${aiSentTr ? `<div style="font-size: 13px; color: #cbd5e1; font-style: italic; margin-top: 4px;">${aiSentTr}</div>` : ""}</div>`
         );
       }
 

@@ -292,11 +292,72 @@
 
                 const saved = await root.DictionaryStore?.getLive?.(source, target, word, { localOnly: true });
                 if (saved) return saved;
-                if (!root.GeminiProxy?.liveTranslation) return null;
-                const result = await root.GeminiProxy.liveTranslation("word", word, source, target, undefined, context);
-                const entry = result?.[word];
-                if (!entry) throw new Error("Missing generated entry.");
-                await root.DictionaryStore.putLive(source, target, word, entry);
+
+                let entry = null;
+                let fromAi = false;
+
+                // If user is signed in, attempt rich AI translation via GeminiProxy
+                const hasAuth = typeof root.FirebaseSync !== "undefined";
+                const user = hasAuth ? await root.FirebaseSync.getUser().catch(() => null) : null;
+                const canTryAi = hasAuth ? !!user : true;
+
+                if (canTryAi && root.GeminiProxy?.liveTranslation) {
+                    try {
+                        const result = await root.GeminiProxy.liveTranslation("word", word, source, target, undefined, context);
+                        if (result?.[word]) {
+                            entry = result[word];
+                            fromAi = true;
+                        }
+                    } catch (aiErr) {
+                        console.warn("[LocalDictionary] AI live translation skipped/failed:", aiErr?.message);
+                    }
+                }
+
+                // If not generated via AI (guest, not signed in, or AI failed), generate quickly!
+                if (!entry) {
+                    const cacheKey = `${source}:${target}:${word}`;
+                    if (wbwCache.has(cacheKey)) return wbwCache.get(cacheKey);
+
+                    let quickText = null;
+                    if (root.SharedTranslatorService?.fetchTranslation) {
+                        try {
+                            const res = await root.SharedTranslatorService.fetchTranslation(word, target, source);
+                            quickText = res?.translated;
+                        } catch (_) {}
+                    }
+                    if (!quickText && root.QT?.translate) {
+                        try {
+                            const res = await root.QT.translate(word, target, source);
+                            quickText = typeof res === "string" ? res : res?.translated;
+                        } catch (_) {}
+                    }
+                    if (!quickText) {
+                        try {
+                            const endpoints = root.LectoroConstants?.ENDPOINTS || {};
+                            const baseUrl = endpoints.GOOGLE_TRANSLATE || "https://translate.googleapis.com/translate_a/single";
+                            const url = `${baseUrl}?client=gtx&sl=${encodeURIComponent(source)}&tl=${encodeURIComponent(target)}&dt=t&q=${encodeURIComponent(word)}`;
+                            const response = await (root.fetch || fetch)(url);
+                            if (response.ok) {
+                                const data = await response.json();
+                                if (Array.isArray(data?.[0])) {
+                                    quickText = data[0].map(part => typeof part?.[0] === "string" ? part[0] : "").join("");
+                                }
+                            }
+                        } catch (_) {}
+                    }
+                    if (quickText && typeof quickText === "string" && quickText.trim()) {
+                        entry = { t: quickText.trim(), d: "", s: [], e: [] };
+                        wbwCache.set(cacheKey, entry);
+                        if (wbwCache.size > 1000) {
+                            wbwCache.delete(wbwCache.keys().next().value);
+                        }
+                    }
+                }
+
+                if (!entry) return null;
+                if (fromAi) {
+                    await root.DictionaryStore?.putLive?.(source, target, word, entry);
+                }
                 return entry;
             } finally {
                 if (liveQueue.length) liveQueue.shift()();
@@ -390,7 +451,7 @@
             if (!entry && !options.localOnly && options.generateMissing !== false) {
                 if (options.wordByWord) {
                     entry = await generateLive(word, sourceLang, targetLang, options.context, { wordByWord: true });
-                } else if (root.GeminiProxy?.liveTranslation) {
+                } else {
                     entry = await generateLive(word, sourceLang, targetLang, options.context);
                 }
             }

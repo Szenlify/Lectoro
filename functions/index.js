@@ -177,27 +177,27 @@ function elevenLabsClientError(details) {
         return {
             httpStatus: 503,
             code: "ELEVENLABS_PROVIDER_DISABLED",
-            error: "Głosy ElevenLabs są chwilowo niedostępne. Administrator usługi musi aktywować konto API.",
+            error: "ElevenLabs voices are temporarily unavailable. Service administrator must activate the API account.",
         };
     }
     if (status === "quota_exceeded" || status === "insufficient_credits") {
         return {
             httpStatus: 503,
             code: "ELEVENLABS_PROVIDER_QUOTA",
-            error: "Limit konta API ElevenLabs został wyczerpany.",
+            error: "ElevenLabs API account limit reached.",
         };
     }
     if (status === "voice_not_found") {
         return {
             httpStatus: 409,
             code: "ELEVENLABS_VOICE_UNAVAILABLE",
-            error: "Ten głos ElevenLabs nie jest już dostępny. Wybierz inny głos.",
+            error: "This ElevenLabs voice is no longer available. Please select another voice.",
         };
     }
     return {
         httpStatus: 502,
         code: "ELEVENLABS_SYNTHESIS_FAILED",
-        error: "Synteza ElevenLabs nie powiodła się.",
+        error: "ElevenLabs synthesis failed.",
     };
 }
 
@@ -262,20 +262,20 @@ exports.geminiProxy = onRequest(
 
         const authHeader = req.headers.authorization || "";
         const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
-        if (!idToken) return res.status(401).json({ error: "Brak tokenu autoryzacji. Zaloguj się." });
+        if (!idToken) return res.status(401).json({ error: "Authorization token missing. Please sign in." });
 
         let decodedToken;
         try {
             decodedToken = await getAdmin().auth().verifyIdToken(idToken);
         } catch (error) {
             console.error("[geminiProxy] Invalid token:", error.message);
-            return res.status(401).json({ error: "Nieprawidłowy token. Zaloguj się ponownie." });
+            return res.status(401).json({ error: "Invalid token. Please sign in again." });
         }
 
         const uid = decodedToken.uid;
         if (isUserRateLimited(uid)) {
             return res.status(429).json({
-                error: "Zbyt wiele zapytań w krótkim czasie. Odczekaj chwilę.",
+                error: "Too many requests. Please wait a moment.",
                 code: "RATE_LIMIT_EXCEEDED",
             });
         }
@@ -289,7 +289,7 @@ exports.geminiProxy = onRequest(
             if (snapshot.exists) userData = snapshot.data() || {};
         } catch (error) {
             console.error("[geminiProxy] Firestore read error:", error);
-            return res.status(503).json({ error: "Nie udało się sprawdzić planu użytkownika." });
+            return res.status(503).json({ error: "Failed to verify user subscription plan." });
         }
 
         // The Firestore user record is updated immediately in real time by the
@@ -333,16 +333,21 @@ exports.geminiProxy = onRequest(
                     },
                     write: (key, value) => putTranslationJson(getR2Config(), key, value, { etag: etags.get(key) }),
                     generate: payload => fetchGeminiWithRetry(getGeminiApiKey(), payload, 0, req.body.kind === "sentence" ? 25000 : 12000),
-                    rollback: () => rollbackAiReservation(db, userRef, month),
+                    rollback: () => req.body?.kind === "word" ? Promise.resolve() : rollbackAiReservation(db, userRef, month),
                     reserve: () => db.runTransaction(async tx => {
                         const snap = await tx.get(userRef);
                         const data = snap.data() || {};
                         const used = usageForMonth(data.aiCallsThisMonth, data.aiCallsResetDate, month);
-                        const validation = checkAiLimit({ plan, used });
-                        if (!validation.allowed) throw Object.assign(new Error(validation.message), { status: 429, code: validation.code,
-                            usage: { plan, used, limit: aiLimit, remaining: 0 } });
-                        tx.set(userRef, { aiCallsThisMonth: used + 1, aiCallsResetDate: month }, { merge: true });
-                        return { plan, used: used + 1, limit: aiLimit, remaining: Math.max(0, aiLimit - used - 1) };
+                        const isWordLookup = req.body?.kind === "word";
+                        if (!isWordLookup) {
+                            const validation = checkAiLimit({ plan, used });
+                            if (!validation.allowed) throw Object.assign(new Error(validation.message), { status: 429, code: validation.code,
+                                usage: { plan, used, limit: aiLimit, remaining: 0 } });
+                            tx.set(userRef, { aiCallsThisMonth: used + 1, aiCallsResetDate: month }, { merge: true });
+                            return { plan, used: used + 1, limit: aiLimit, remaining: Math.max(0, aiLimit - used - 1) };
+                        }
+                        // Word lookups enrich the shared R2 dictionary and are unlimited for all plans (Free & Pro)
+                        return { plan, used, limit: aiLimit, remaining: Math.max(0, aiLimit - used) };
                     }),
                 });
                 return res.status(200).json(result);
@@ -374,20 +379,20 @@ exports.geminiProxy = onRequest(
         if (req.body?.action === "uploadCardImage") {
             const { wordId, imageBase64, contentType = "image/webp" } = req.body || {};
             if (!imageBase64 || typeof imageBase64 !== "string") {
-                return res.status(400).json({ error: "Brak danych obrazu." });
+                return res.status(400).json({ error: "Missing image data." });
             }
             const base64Data = imageBase64.includes(",")
                 ? imageBase64.split(",")[1]
                 : imageBase64;
             const buffer = Buffer.from(base64Data, "base64");
             if (buffer.length > 5 * 1024 * 1024) {
-                return res.status(413).json({ error: "Obraz jest zbyt duży (max 5MB)." });
+                return res.status(413).json({ error: "Image is too large (max 5MB)." });
             }
             const r2Config = getR2Config();
             const result = await saveCardImage(r2Config, uid, wordId, buffer, contentType);
             if (!result) {
                 return res.status(503).json({
-                    error: "Magazyn Cloudflare R2 nie jest skonfigurowany.",
+                    error: "Cloudflare R2 storage is not configured.",
                 });
             }
             return res.status(200).json({
@@ -457,19 +462,19 @@ exports.geminiProxy = onRequest(
                 console.warn("[geminiProxy] deleteUserAccount Firebase Auth deleteUser warning:", authErr.message);
             }
 
-            return res.status(200).json({ ok: true, message: "Konto i dane zostały bezpowrotnie usunięte." });
+            return res.status(200).json({ ok: true, message: "Account and data permanently deleted." });
         }
 
         if (req.body?.action === "elevenLabsVoices") {
             if (!isReviewContext(req.body?.context)) {
                 return res.status(403).json({
-                    error: "Głosy ElevenLabs są dostępne wyłącznie w powtórkach.",
+                    error: "ElevenLabs voices are only available in review mode.",
                     code: "ELEVENLABS_REVIEW_ONLY",
                 });
             }
             if (!getPlanLimits(plan).elevenLabs.enabled) {
                 return res.status(403).json({
-                    error: "ElevenLabs nie jest dostępny w planie FREE.",
+                    error: "ElevenLabs is not included in the FREE plan.",
                     code: "ELEVENLABS_NOT_INCLUDED",
                 });
             }
@@ -480,7 +485,7 @@ exports.geminiProxy = onRequest(
                 const details = await voicesResponse.json().catch(() => ({}));
                 if (!voicesResponse.ok) {
                     console.error("[subscriptionProxy] ElevenLabs voices error:", details);
-                    return res.status(502).json({ error: "Nie udało się pobrać głosów ElevenLabs." });
+                    return res.status(502).json({ error: "Failed to fetch ElevenLabs voices." });
                 }
 
                 const allowedOrder = ALLOWED_VOICE_KEYS || ["liam", "matilda"];
@@ -508,21 +513,21 @@ exports.geminiProxy = onRequest(
                 });
             } catch (error) {
                 console.error("[subscriptionProxy] ElevenLabs voices fetch error:", error);
-                return res.status(502).json({ error: "Błąd połączenia z ElevenLabs." });
+                return res.status(502).json({ error: "ElevenLabs connection error." });
             }
         }
 
         if (req.body?.action === "synthesizeElevenLabs") {
             if (!isReviewContext(req.body?.context)) {
                 return res.status(403).json({
-                    error: "ElevenLabs jest dostępny wyłącznie w powtórkach.",
+                    error: "ElevenLabs is only available in review mode.",
                     code: "ELEVENLABS_REVIEW_ONLY",
                 });
             }
             const text = typeof req.body.text === "string" ? req.body.text : "";
             const voiceId = typeof req.body.voiceId === "string" ? req.body.voiceId : "";
             if (!/^[a-zA-Z0-9_-]{10,64}$/.test(voiceId)) {
-                return res.status(400).json({ error: "Nieprawidłowy identyfikator głosu ElevenLabs." });
+                return res.status(400).json({ error: "Invalid ElevenLabs voice identifier." });
             }
 
             // 1. Central R2 Cache Check: if already synthesized, serve for free without deducting quota!
@@ -654,7 +659,7 @@ exports.geminiProxy = onRequest(
                         reservation.validation.requested,
                     );
                 }
-                return res.status(503).json({ error: "Nie udało się wykonać syntezy ElevenLabs." });
+                return res.status(503).json({ error: "Failed to execute ElevenLabs synthesis." });
             }
         }
 
@@ -663,10 +668,10 @@ exports.geminiProxy = onRequest(
             return res.status(400).json({ error: "Unsupported response format." });
         }
         if (!prompt || typeof prompt !== "string") {
-            return res.status(400).json({ error: "Brak pola 'prompt' w ciele żądania." });
+            return res.status(400).json({ error: "Missing 'prompt' field in request body." });
         }
         if (prompt.length > 32000) {
-            return res.status(400).json({ error: "Prompt zbyt długi (max 32 000 znaków)." });
+            return res.status(400).json({ error: "Prompt too long (max 32,000 characters)." });
         }
 
         // Reserve atomically before calling Gemini so parallel requests cannot
@@ -688,7 +693,7 @@ exports.geminiProxy = onRequest(
             });
         } catch (error) {
             console.error("[geminiProxy] AI reservation error:", error);
-            return res.status(503).json({ error: "Nie udało się sprawdzić limitu AI." });
+            return res.status(503).json({ error: "Failed to check AI limit." });
         }
 
         if (!aiReservation.allowed) {
@@ -705,7 +710,7 @@ exports.geminiProxy = onRequest(
         if (!geminiKey) {
             console.error("[geminiProxy] LECTORO_GEMINI_API_KEY is not configured");
             await rollbackAiReservation(db, userRef, month);
-            return res.status(500).json({ error: "Błąd konfiguracji serwera." });
+            return res.status(500).json({ error: "Server configuration error." });
         }
 
         let text;
@@ -721,7 +726,7 @@ exports.geminiProxy = onRequest(
             console.error("[geminiProxy] Gemini fetch error:", error);
             await rollbackAiReservation(db, userRef, month);
             return res.status(502).json({
-                error: error.message || "Błąd połączenia z Gemini API.",
+                error: error.message || "Failed to connect to Gemini API.",
                 code: [429, 503].includes(error.status) ? "RATE_LIMITED" : "AI_REQUEST_FAILED",
             });
         }

@@ -33,7 +33,7 @@ test("central configuration matches the three product plans", () => {
                 trialDays: 0,
                 price: 0,
                 currency: "USD",
-                ai: 10,
+                ai: 15,
                 srs: 25,
                 ttsEnabled: false,
                 ttsRequest: 0,
