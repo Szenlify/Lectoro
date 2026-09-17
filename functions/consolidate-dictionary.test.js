@@ -151,3 +151,55 @@ test("consolidatePair skips invalid entries without languageValidation", async (
         fs.rmSync(emptyTmpDir, { recursive: true, force: true });
     }
 });
+
+for (const failure of ["pack", "list", "live", "corrupt-pack", "corrupt-live"]) {
+    test(`consolidatePair refuses to upload after ${failure} failure`, async () => {
+        const r2Files = new Map([
+            ["dictionaries/packs/en-pl.json", JSON.stringify({ entries: { old: { t: "stare" } } })],
+            ["dictionaries/live/en-pl/word.json", JSON.stringify({ house: { t: "dom", languageValidation: 1 } })],
+        ]);
+        if (failure === "corrupt-pack") r2Files.set("dictionaries/packs/en-pl.json", '{"entries":[]}');
+        if (failure === "corrupt-live") r2Files.set("dictionaries/live/en-pl/word.json", 'broken');
+        const s3Client = createMockS3({ r2Files });
+        const send = s3Client.send.bind(s3Client);
+        s3Client.send = async command => {
+            if ((failure === "pack" && command.input.Key === "dictionaries/packs/en-pl.json") ||
+                (failure === "list" && command.constructor.name === "ListObjectsV2Command") ||
+                (failure === "live" && command.input.Key?.includes("/live/"))) {
+                throw new Error("Unauthorized");
+            }
+            return send(command);
+        };
+        await assert.rejects(consolidatePair({ bucketName: "test" }, "en-pl", {
+            s3Client, localFallbackDir: "/nonexistent-test-directory",
+        }));
+        assert.equal(s3Client.uploaded.size, 0);
+    });
+}
+
+test("existing word corrections are uploaded, then unchanged runs are idempotent", async () => {
+    const s3Client = createMockS3({ r2Files: new Map([
+        ["dictionaries/packs/en-pl.json", JSON.stringify({ entries: { house: { t: "błąd", languageValidation: 1 } } })],
+        ["dictionaries/live/en-pl/word.json", JSON.stringify({ house: { t: "dom", languageValidation: 1 } })],
+    ]) });
+    const options = { s3Client, localFallbackDir: "/nonexistent-test-directory" };
+    const result = await consolidatePair({ bucketName: "test" }, "en-pl", options);
+    assert.equal(result.newWordsAdded, 0);
+    assert.equal(result.updatedWords, 1);
+    assert.equal(result.uploaded, true);
+    assert.equal(JSON.parse(s3Client.uploaded.get(result.packKey)).entries.house.t, "dom");
+    assert.equal((await consolidatePair({ bucketName: "test" }, "en-pl", options)).uploaded, false);
+});
+
+test("consolidateAll reports failures instead of returning success", async () => {
+    const { consolidateAll, SUPPORTED_TARGETS } = require("./consolidate-dictionary");
+    let attempts = 0;
+    await assert.rejects(consolidateAll({}, {
+        s3Client: { async send() { attempts++; throw new Error("Unauthorized"); } },
+    }), error => {
+        assert.equal(error.results.length, SUPPORTED_TARGETS.length);
+        assert.ok(error.results.every(result => result.error.includes("Unauthorized")));
+        return true;
+    });
+    assert.equal(attempts, SUPPORTED_TARGETS.length);
+});

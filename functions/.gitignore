@@ -7,3 +7,8 @@
 
 # Node modules
 node_modules/
+
+# Generated discovery manifest; deployment reads index.js directly.
+functions.yaml
+firebase-debug.log
+firebase-debug.*.log

@@ -131,3 +131,32 @@ bounded polling flow. Verified IndexedDB entries are promoted into the bounded
 in-memory cache to avoid reading IndexedDB again on each hover.
 This validation applies to live dictionary words; sentence translations and
 the standalone Python pack generator do not use this review step.
+
+## Nightly R2 pack consolidation
+
+`consolidateDictionaryDaily` runs at 03:00 Europe/Warsaw in europe-west1.
+It merges validated entries from `dictionaries/live/en-<target>/` into
+`dictionaries/packs/en-<target>.json`, including corrections to existing words.
+Live objects are retained. Unmarked legacy entries remain excluded.
+
+Both `geminiProxy` and the scheduled function require `R2_ACCESS_KEY_ID` in
+`functions/.env.extension-eng`, alongside the R2 account, bucket and public URL.
+`R2_SECRET_ACCESS_KEY` remains in Secret Manager. The access key ID and secret
+must belong to the same R2 credentials. There is no hardcoded access key fallback.
+Preserve the project environment file when deploying; it is intentionally ignored
+by Git. The CLI can load it with Node's `--env-file=functions/.env.extension-eng`
+option; supply the secret separately through the environment.
+
+Deploy from `functions/` with:
+
+```sh
+firebase deploy --only functions:consolidateDictionaryDaily,functions:geminiProxy --project extension-eng
+```
+
+Do not commit a generated `functions.yaml`: Firebase prioritizes it over source
+code discovery, which can silently deploy outdated schedule/resource settings.
+R2 read/list failures prevent publishing an incomplete pack and fail the run.
+Other language pairs are still attempted; any failed pair makes the overall job
+fail. Cloud Scheduler retries failures up to three times with 60–300s backoff.
+Check the final per-pair results in Cloud Logging, including `uploaded`,
+`newWordsAdded`, `updatedWords`, and `liveFilesExamined`.

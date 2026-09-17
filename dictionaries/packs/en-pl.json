@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "source": "en",
   "target": "pl",
-  "updatedAt": 1789502417310,
+  "updatedAt": 1789668694036,
   "entries": {
     "time": {
       "t": "czas",
@@ -28479,24 +28479,27 @@
       "languageValidation": 1
     },
     "read": {
-      "t": "czytać / przeczytał",
+      "t": "czytać",
       "d": {
-        "s": "To understand written words; also the past form of the same verb, pronounced differently.",
-        "t": "Odczytywać napisane słowa; także forma przeszła tego samego czasownika, wymawiana inaczej."
+        "s": "To look at and understand written or printed words or symbols.",
+        "t": "Czytać."
       },
-      "s": [],
+      "s": [
+        "peruse",
+        "scan"
+      ],
       "e": [
         {
-          "s": "I read every evening.",
-          "t": "Czytam każdego wieczoru."
+          "s": "I like to read a book before bed.",
+          "t": "Lubię czytać książkę przed snem."
         },
         {
-          "s": "Can you read this message?",
-          "t": "Czy możesz przeczytać tę wiadomość?"
+          "s": "Can you read this handwriting?",
+          "t": "Czy potrafisz odczytać to pismo odręczne?"
         },
         {
-          "s": "She read the book yesterday.",
-          "t": "Przeczytała tę książkę wczoraj."
+          "s": "We read the news every morning.",
+          "t": "Codziennie rano czytamy wiadomości."
         }
       ],
       "languageValidation": 1
@@ -29514,24 +29517,24 @@
       "languageValidation": 1
     },
     "glass": {
-      "t": "szkło / szklanka",
+      "t": "szkło",
       "d": {
-        "s": "A hard transparent material, or a drinking container made from it.",
-        "t": "Twardy przezroczysty materiał lub wykonane z niego naczynie do picia."
+        "s": "A hard, brittle, transparent substance, typically made of silica, used for windows and containers.",
+        "t": "Twarda, krucha, przezroczysta substancja, zazwyczaj wykonana z krzemionki, używana do okien i pojemników."
       },
       "s": [],
       "e": [
         {
-          "s": "The window is made of glass.",
-          "t": "Okno jest zrobione ze szkła."
+          "s": "The window pane was made of thick glass.",
+          "t": "Szyba okienna była wykonana z grubego szkła."
         },
         {
-          "s": "Please bring me a glass of water.",
-          "t": "Proszę, przynieś mi szklankę wody."
+          "s": "She drank the water from a tall glass.",
+          "t": "Wypił wodę z wysokiej szklanki."
         },
         {
-          "s": "Be careful with the broken glass.",
-          "t": "Uważaj na potłuczone szkło."
+          "s": "Be careful not to cut yourself on the broken glass.",
+          "t": "Uważaj, żeby się nie skaleczyć o potłuczone szkło."
         }
       ],
       "languageValidation": 1
@@ -29977,24 +29980,27 @@
       "languageValidation": 1
     },
     "job": {
-      "t": "praca / zadanie",
+      "t": "praca",
       "d": {
-        "s": "Paid work or a particular task.",
-        "t": "Płatna praca lub konkretne zadanie do wykonania."
+        "s": "A paid position of regular employment.",
+        "t": "Płatne stanowisko regularnego zatrudnienia."
       },
-      "s": [],
+      "s": [
+        "work",
+        "employment"
+      ],
       "e": [
         {
-          "s": "I am looking for a job.",
-          "t": "Szukam pracy."
+          "s": "She found a new job as a teacher.",
+          "t": "Znalazła nową pracę jako nauczycielka."
         },
         {
-          "s": "You did a good job.",
-          "t": "Dobrze wykonałeś zadanie."
+          "s": "He is looking for a part-time job.",
+          "t": "Szuka pracy na część etatu."
         },
         {
-          "s": "Her new job starts on Monday.",
-          "t": "Jej nowa praca zaczyna się w poniedziałek."
+          "s": "My job is to manage the team.",
+          "t": "Moją pracą jest zarządzanie zespołem."
         }
       ],
       "languageValidation": 1
@@ -31018,24 +31024,27 @@
       "languageValidation": 1
     },
     "key": {
-      "t": "klucz / klawisz / kluczowy",
+      "t": "klucz / klawisz",
       "d": {
-        "s": "An object for opening a lock, a button on a keyboard, or something essential.",
-        "t": "Przedmiot do otwierania zamka, przycisk klawiatury lub coś zasadniczego."
+        "s": "A crucial element or factor.",
+        "t": "Kluczowy element lub czynnik."
       },
-      "s": [],
+      "s": [
+        "crucial",
+        "vital"
+      ],
       "e": [
         {
-          "s": "I lost my house key.",
-          "t": "Zgubiłem klucz do domu."
+          "s": "The key to success is hard work.",
+          "t": "Kluczem do sukcesu jest ciężka praca."
         },
         {
-          "s": "Press the Enter key.",
-          "t": "Naciśnij klawisz Enter."
+          "s": "He finally found the key to the mystery.",
+          "t": "W końcu znalazł klucz do zagadki."
         },
         {
-          "s": "Trust is a key part of friendship.",
-          "t": "Zaufanie jest kluczowym elementem przyjaźni."
+          "s": "This is the key that opens the door.",
+          "t": "To jest klucz, który otwiera drzwi."
         }
       ],
       "languageValidation": 1
@@ -31618,22 +31627,22 @@
     "week": {
       "t": "tydzień",
       "d": {
-        "s": "A period of seven days.",
-        "t": "Okres siedmiu dni."
+        "s": "a period of seven days.",
+        "t": "okres siedmiu dni."
       },
       "s": [],
       "e": [
         {
-          "s": "I will be away for a week.",
-          "t": "Nie będzie mnie przez tydzień."
+          "s": "I will see you next week.",
+          "t": "Do zobaczenia w przyszłym tygodniu."
         },
         {
-          "s": "We meet once a week.",
-          "t": "Spotykamy się raz w tygodniu."
+          "s": "The project took a whole week to complete.",
+          "t": "Ukończenie projektu zajęło cały tydzień."
         },
         {
-          "s": "Have a good week.",
-          "t": "Miłego tygodnia."
+          "s": "She works five days a week.",
+          "t": "Ona pracuje pięć dni w tygodniu."
         }
       ],
       "languageValidation": 1
@@ -33329,25 +33338,25 @@
     "content": {
       "t": "treść / zawartość",
       "d": {
-        "s": "Information, media, or material presented in a website, post, video, book, or other format.",
-        "t": "Informacje, media lub materiały przedstawione na stronie, w poście, filmie, książce lub innym formacie."
+        "s": "The subjects or topics dealt with in a speech, literary work, or other work of communication.",
+        "t": "Treść, zawartość, materiał"
       },
       "s": [
-        "material",
-        "media"
+        "subject matter",
+        "substance"
       ],
       "e": [
         {
-          "s": "She creates educational content.",
-          "t": "Tworzy treści edukacyjne."
+          "s": "The content of the book was fascinating.",
+          "t": "Treść książki była fascynująca."
         },
         {
-          "s": "The website has useful content.",
-          "t": "Strona zawiera przydatne treści."
+          "s": "He was responsible for the website content.",
+          "t": "Był odpowiedzialny za zawartość strony internetowej."
         },
         {
-          "s": "This content is not available offline.",
-          "t": "Ta treść nie jest dostępna offline."
+          "s": "The lecture covered a lot of content.",
+          "t": "Wykład obejmował wiele treści."
         }
       ],
       "languageValidation": 1
@@ -34601,27 +34610,27 @@
       "languageValidation": 1
     },
     "focus": {
-      "t": "skupienie / skupiać się",
+      "t": "skupienie / ostrość / centrum uwagi",
       "d": {
-        "s": "To direct attention or effort toward a particular task, subject, or goal.",
-        "t": "Kierować uwagę lub wysiłek na określone zadanie, temat albo cel."
+        "s": "the center of interest or activity",
+        "t": "centrum zainteresowania lub aktywności"
       },
       "s": [
-        "concentrate",
-        "attention"
+        "center",
+        "heart"
       ],
       "e": [
         {
-          "s": "I need to focus on this task.",
-          "t": "Muszę skupić się na tym zadaniu."
+          "s": "The main focus of the discussion was the budget.",
+          "t": "Głównym punktem dyskusji był budżet."
         },
         {
-          "s": "The course focuses on practical skills.",
-          "t": "Kurs koncentruje się na praktycznych umiejętnościach."
+          "s": "She needs to improve her focus in class.",
+          "t": "Ona musi poprawić swoje skupienie na lekcjach."
         },
         {
-          "s": "Turn off notifications to improve your focus.",
-          "t": "Wyłącz powiadomienia, aby poprawić skupienie."
+          "s": "The camera lens needs to be brought into focus.",
+          "t": "Obiektyw aparatu musi zostać wyostrzony."
         }
       ],
       "languageValidation": 1
@@ -34991,53 +35000,53 @@
       "languageValidation": 1
     },
     "photo": {
-      "t": "zdjęcie / fotografia",
+      "t": "zdjęcie",
       "d": {
-        "s": "An image made with a camera or digital device.",
-        "t": "Obraz wykonany aparatem lub urządzeniem cyfrowym."
+        "s": "A photograph.",
+        "t": "Fotografia."
       },
       "s": [
-        "photograph",
-        "picture"
+        "picture",
+        "image"
       ],
       "e": [
         {
-          "s": "I took a photo of the sunset.",
-          "t": "Zrobiłem zdjęcie zachodu słońca."
+          "s": "She took a photo of the sunset.",
+          "t": "Ona zrobiła zdjęcie zachodu słońca."
         },
         {
-          "s": "Send me the photo when you can.",
-          "t": "Wyślij mi zdjęcie, kiedy będziesz mógł."
+          "s": "Can you send me that photo?",
+          "t": "Czy możesz mi wysłać to zdjęcie?"
         },
         {
-          "s": "Her profile photo looks professional.",
-          "t": "Jej zdjęcie profilowe wygląda profesjonalnie."
+          "s": "The photo was blurry.",
+          "t": "Zdjęcie było niewyraźne."
         }
       ],
       "languageValidation": 1
     },
     "camera": {
-      "t": "aparat / kamera",
+      "t": "aparat fotograficzny / kamera",
       "d": {
-        "s": "A device used to take photographs or record video.",
-        "t": "Urządzenie służące do robienia zdjęć lub nagrywania wideo."
+        "s": "A device for recording still or moving images.",
+        "t": "Aparat fotograficzny lub kamera filmowa."
       },
       "s": [
         "photographic device",
-        "video camera"
+        "cam"
       ],
       "e": [
         {
-          "s": "This camera takes sharp photos.",
-          "t": "Ten aparat robi ostre zdjęcia."
+          "s": "She bought a new digital camera.",
+          "t": "Kupiła nowy aparat cyfrowy."
         },
         {
-          "s": "Turn on your camera for the call.",
-          "t": "Włącz kamerę podczas rozmowy."
+          "s": "The police reviewed the security camera footage.",
+          "t": "Policja przejrzała nagranie z kamery bezpieczeństwa."
         },
         {
-          "s": "He bought a small travel camera.",
-          "t": "Kupił mały aparat podróżny."
+          "s": "He used his phone's camera to take a picture.",
+          "t": "Użył aparatu w swoim telefonie, żeby zrobić zdjęcie."
         }
       ],
       "languageValidation": 1
@@ -35142,6 +35151,3799 @@
         {
           "s": "Streaming quality depends on your connection.",
           "t": "Jakość streamingu zależy od twojego połączenia."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "fun": {
+      "t": "zabawa / rozrywka",
+      "d": {
+        "s": "Enjoyment, amusement, or lighthearted pleasure.",
+        "t": "Zabawa, rozrywka lub beztroska przyjemność."
+      },
+      "s": [
+        "enjoyment",
+        "amusement"
+      ],
+      "e": [
+        {
+          "s": "We had a lot of fun at the party.",
+          "t": "Dobrze się bawiliśmy na imprezie."
+        },
+        {
+          "s": "It's all just for fun.",
+          "t": "To wszystko dla zabawy."
+        },
+        {
+          "s": "Children need time for play and fun.",
+          "t": "Dzieci potrzebują czasu na zabawę i rozrywkę."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "reimagine": {
+      "t": "przedstawić sobie na nowo",
+      "d": {
+        "s": "to imagine something again or in a new way",
+        "t": "wyobrazić sobie coś na nowo lub w nowy sposób"
+      },
+      "s": [
+        "rethink",
+        "reconceptualize"
+      ],
+      "e": [
+        {
+          "s": "We need to reimagine our approach to education.",
+          "t": "Musimy na nowo wyobrazić sobie nasze podejście do edukacji."
+        },
+        {
+          "s": "The artist reimagine traditional myths in her work.",
+          "t": "Artystka na nowo wyobraża sobie tradycyjne mity w swojej twórczości."
+        },
+        {
+          "s": "Let's reimagine what a city can be.",
+          "t": "Wyobraźmy sobie na nowo, czym może być miasto."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "capturing": {
+      "t": "przechwytywanie / łapanie / zdobywanie",
+      "d": {
+        "s": "the act of catching or taking someone or something, or of getting control of something by force",
+        "t": "łapanie lub zdobywanie kogoś lub czegoś, lub przejmowanie nad czymś kontroli siłą"
+      },
+      "s": [
+        "catching",
+        "seizing"
+      ],
+      "e": [
+        {
+          "s": "The police are capturing the suspect.",
+          "t": "Policja łapie podejrzanego."
+        },
+        {
+          "s": "The capturing of the city was a major victory.",
+          "t": "Zdobycie miasta było wielkim zwycięstwem."
+        },
+        {
+          "s": "The software is capturing all the data.",
+          "t": "Oprogramowanie przechwytuje wszystkie dane."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "traffic": {
+      "t": "ruch / handel",
+      "d": {
+        "s": "The movement of vehicles, people, or goods along a route or through an area.",
+        "t": "Ruch (pojazdów, ludzi, towarów); handel (nielegalny)."
+      },
+      "s": [
+        "transport",
+        "commerce"
+      ],
+      "e": [
+        {
+          "s": "Heavy traffic slowed our journey.",
+          "t": "Duży ruch spowolnił naszą podróż."
+        },
+        {
+          "s": "The police are controlling the traffic.",
+          "t": "Policja kontroluje ruch."
+        },
+        {
+          "s": "They were arrested for drug traffic.",
+          "t": "Zostali aresztowani za handel narkotykami."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "wide": {
+      "t": "szeroki / duży",
+      "d": {
+        "s": "Having a large distance between the sides; broad.",
+        "t": "Szeroki, rozległy."
+      },
+      "s": [
+        "broad",
+        "expansive"
+      ],
+      "e": [
+        {
+          "s": "The river was very wide.",
+          "t": "Rzeka była bardzo szeroka."
+        },
+        {
+          "s": "She has a wide range of interests.",
+          "t": "Ona ma szeroki zakres zainteresowań."
+        },
+        {
+          "s": "Keep the door wide open.",
+          "t": "Trzymaj drzwi szeroko otwarte."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "mom's": {
+      "t": "mamy",
+      "d": {
+        "s": "Belonging to or associated with one's mother.",
+        "t": "Należący do matki lub związany z matką."
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "This is my mom's car.",
+          "t": "To jest samochód mojej mamy."
+        },
+        {
+          "s": "I borrowed my mom's sweater.",
+          "t": "Pożyczyłem sweter mojej mamy."
+        },
+        {
+          "s": "My mom's cooking is the best.",
+          "t": "Gotowanie mojej mamy jest najlepsze."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "wish": {
+      "t": "życzyć sobie / pragnąć",
+      "d": {
+        "s": "To feel or express a strong desire for something, especially something that is unlikely to happen or to be achieved.",
+        "t": "Życzyć sobie / pragnąć"
+      },
+      "s": [
+        "desire",
+        "want"
+      ],
+      "e": [
+        {
+          "s": "I wish I had more time.",
+          "t": "Życzę sobie, żeby mieć więcej czasu."
+        },
+        {
+          "s": "She wished him luck on his exam.",
+          "t": "Życzyła mu szczęścia na egzaminie."
+        },
+        {
+          "s": "He made a wish before blowing out the candles.",
+          "t": "Złożył życzenie przed zdmuchnięciem świeczek."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "control": {
+      "t": "kontrola / sterowanie / panowanie",
+      "d": {
+        "s": "the power to influence or direct people's behavior or the course of events",
+        "t": "władza nad kimś lub czymś, kierowanie czymś, panowanie nad czymś"
+      },
+      "s": [
+        "management",
+        "direction"
+      ],
+      "e": [
+        {
+          "s": "The teacher maintained strict control over the class.",
+          "t": "Nauczyciel utrzymywał ścisłą kontrolę nad klasą."
+        },
+        {
+          "s": "She has no control over her emotions.",
+          "t": "Ona nie panuje nad swoimi emocjami."
+        },
+        {
+          "s": "The pilot regained control of the aircraft.",
+          "t": "Pilot odzyskał sterowanie samolotem."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "feel": {
+      "t": "czuć / odczuwać",
+      "d": {
+        "s": "experience an emotion or sensation",
+        "t": "odczuwać emocję lub wrażenie"
+      },
+      "s": [
+        "sense",
+        "experience"
+      ],
+      "e": [
+        {
+          "s": "I feel happy today.",
+          "t": "Czuję się dzisiaj szczęśliwy."
+        },
+        {
+          "s": "She could feel the warmth of the sun.",
+          "t": "Czuła ciepło słońca."
+        },
+        {
+          "s": "He feels a sense of unease.",
+          "t": "On odczuwa niepokój."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "having": {
+      "t": "mając",
+      "d": {
+        "s": "Possessing or holding something.",
+        "t": "Posiadanie lub trzymanie czegoś."
+      },
+      "s": [
+        "possessing",
+        "holding"
+      ],
+      "e": [
+        {
+          "s": "She is having a new car.",
+          "t": "Ona ma nowy samochód."
+        },
+        {
+          "s": "He is having trouble with his computer.",
+          "t": "On ma kłopoty ze swoim komputerem."
+        },
+        {
+          "s": "They are having a party next week.",
+          "t": "Oni mają przyjęcie w przyszłym tygodniu."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "children": {
+      "t": "dzieci",
+      "d": {
+        "s": "A young human being below the age of puberty or below the legal age of majority.",
+        "t": "Młody człowiek poniżej wieku dojrzewania lub poniżej wieku uznawanego za pełnoletni."
+      },
+      "s": [
+        "kids",
+        "offspring"
+      ],
+      "e": [
+        {
+          "s": "The children played happily in the park.",
+          "t": "Dzieci bawiły się wesoło w parku."
+        },
+        {
+          "s": "She is responsible for the care of two young children.",
+          "t": "Ona jest odpowiedzialna za opiekę nad dwójką małych dzieci."
+        },
+        {
+          "s": "Many children dream of becoming astronauts.",
+          "t": "Wiele dzieci marzy o zostaniu astronautami."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "impossible": {
+      "t": "niemożliwy",
+      "d": {
+        "s": "Not able to occur, exist, or be done.",
+        "t": "Niemożliwy do zaistnienia, wykonania lub wystąpienia."
+      },
+      "s": [
+        "unfeasible",
+        "unachievable"
+      ],
+      "e": [
+        {
+          "s": "It is impossible to finish the project on time.",
+          "t": "Jest niemożliwe ukończenie projektu na czas."
+        },
+        {
+          "s": "The task seemed impossible for the small team.",
+          "t": "Zadanie wydawało się niemożliwe dla małego zespołu."
+        },
+        {
+          "s": "He found it impossible to concentrate.",
+          "t": "Uznał, że niemożliwe jest skupienie się."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "mothers": {
+      "t": "matki",
+      "d": {
+        "s": "A mother is a female parent of a child. This word is the plural form.",
+        "t": "Matka to kobieta będąca rodzicem dziecka. To słowo jest liczbą mnogą."
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "The mothers gathered for a PTA meeting.",
+          "t": "Matki zebrały się na zebraniu rady rodziców."
+        },
+        {
+          "s": "She is one of the most loving mothers I know.",
+          "t": "Ona jest jedną z najbardziej kochających matek, jakie znam."
+        },
+        {
+          "s": "The rights of mothers are often overlooked.",
+          "t": "Prawa matek są często pomijane."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "correct": {
+      "t": "poprawny / prawidłowy",
+      "d": {
+        "s": "Free from error; in accordance with fact or truth.",
+        "t": "Poprawny; zgodny z faktem lub prawdą."
+      },
+      "s": [
+        "right",
+        "accurate"
+      ],
+      "e": [
+        {
+          "s": "If you get two or three correct, you probably understand that.",
+          "t": "Jeśli uzyskasz dwa lub trzy poprawne, prawdopodobnie to rozumiesz."
+        },
+        {
+          "s": "Please correct any mistakes in the text.",
+          "t": "Proszę poprawić wszelkie błędy w tekście."
+        },
+        {
+          "s": "He gave the correct answer.",
+          "t": "On podał poprawną odpowiedź."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "smartest": {
+      "t": "najmądrzejszy / najinteligentniejszy / najsprytniejszy",
+      "d": {
+        "s": "Having or showing a quick-witted intelligence; clever.",
+        "t": "Najmądrzejszy. Najinteligentniejszy. Sprytny."
+      },
+      "s": [
+        "cleverest",
+        "brightest"
+      ],
+      "e": [
+        {
+          "s": "She is the smartest student in the class.",
+          "t": "Ona jest najmądrzejszą uczennicą w klasie."
+        },
+        {
+          "s": "That was the smartest move he could have made.",
+          "t": "To był najmądrzejszy ruch, jaki mógł wykonać."
+        },
+        {
+          "s": "He's the smartest person I know.",
+          "t": "On jest najinteligentniejszą osobą, jaką znam."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "inspect": {
+      "t": "badać / sprawdzać",
+      "d": {
+        "s": "To examine something closely and carefully, especially to discover something or to check that it is correct or safe.",
+        "t": "Badać (coś) dokładnie i starannie, zwłaszcza w celu odkrycia czegoś lub sprawdzenia, czy jest poprawne lub bezpieczne."
+      },
+      "s": [
+        "examine",
+        "scrutinize"
+      ],
+      "e": [
+        {
+          "s": "The police will inspect the vehicle for any signs of damage.",
+          "t": "Policja zbada pojazd pod kątem wszelkich śladów uszkodzeń."
+        },
+        {
+          "s": "She decided to inspect the goods before signing the receipt.",
+          "t": "Postanowiła sprawdzić towar przed podpisaniem paragonu."
+        },
+        {
+          "s": "The inspector will inspect the building to ensure it meets safety standards.",
+          "t": "Inspektor zbada budynek, aby upewnić się, że spełnia normy bezpieczeństwa."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "controversial": {
+      "t": "kontrowersyjny",
+      "d": {
+        "s": "giving rise to public disagreement",
+        "t": "budzący kontrowersje / sporny"
+      },
+      "s": [
+        "debatable",
+        "disputed"
+      ],
+      "e": [
+        {
+          "s": "The politician's remarks were highly controversial.",
+          "t": "Uwagi polityka były bardzo kontrowersyjne."
+        },
+        {
+          "s": "It was a controversial decision that divided the nation.",
+          "t": "Była to kontrowersyjna decyzja, która podzieliła naród."
+        },
+        {
+          "s": "The film's ending was controversial among critics.",
+          "t": "Zakończenie filmu było kontrowersyjne wśród krytyków."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "honking": {
+      "t": "klakson / trąbienie",
+      "d": {
+        "s": "The sound of a horn, especially a car horn, being sounded loudly.",
+        "t": "Dźwięk klaksonu, zwłaszcza samochodowego, wydawany głośno."
+      },
+      "s": [
+        "blaring",
+        "tooting"
+      ],
+      "e": [
+        {
+          "s": "The honking of car horns filled the street.",
+          "t": "Klaksony samochodowe wypełniły ulicę."
+        },
+        {
+          "s": "He gave a loud honking as he passed.",
+          "t": "Głośno zatrąbił, gdy przejeżdżał."
+        },
+        {
+          "s": "The geese were honking loudly in the sky.",
+          "t": "Gęsi głośno gęgały na niebie."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "fix": {
+      "t": "naprawić / ustalić / załatwić",
+      "d": {
+        "s": "To repair or correct something that is broken, not working, or unsatisfactory.",
+        "t": "Naprawić lub poprawić coś, co jest zepsute, niedziałające lub niezadowalające."
+      },
+      "s": [
+        "mend",
+        "repair"
+      ],
+      "e": [
+        {
+          "s": "I need to fix my car.",
+          "t": "Muszę naprawić mój samochód."
+        },
+        {
+          "s": "Can you fix the leaky faucet?",
+          "t": "Czy możesz naprawić cieknący kran?"
+        },
+        {
+          "s": "We need to fix a date for the meeting.",
+          "t": "Musimy ustalić datę spotkania."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "accessory": {
+      "t": "akcesorium / dodatek",
+      "d": {
+        "s": "A thing which can be added to something else in order to make it more useful, versatile, or attractive.",
+        "t": "Dodatek, akcesorium, dodatek do czegoś."
+      },
+      "s": [
+        "addition",
+        "attachment"
+      ],
+      "e": [
+        {
+          "s": "The car comes with a range of optional accessories.",
+          "t": "Samochód jest wyposażony w szereg opcjonalnych akcesoriów."
+        },
+        {
+          "s": "She wore a hat and other accessories.",
+          "t": "Nosiła kapelusz i inne dodatki."
+        },
+        {
+          "s": "This software includes a useful accessory for editing images.",
+          "t": "To oprogramowanie zawiera przydatny dodatek do edycji obrazów."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "controls": {
+      "t": "sterowanie / kontrolki",
+      "d": {
+        "s": "devices or systems used to operate or manage something",
+        "t": "urządzenia lub systemy używane do obsługi lub zarządzania czymś"
+      },
+      "s": [
+        "management",
+        "regulation"
+      ],
+      "e": [
+        {
+          "s": "The pilot used the controls to steer the aircraft.",
+          "t": "Pilot użył sterowania, aby skierować samolot."
+        },
+        {
+          "s": "The dashboard has various controls for the car's systems.",
+          "t": "Deska rozdzielcza ma różne kontrolki systemów samochodu."
+        },
+        {
+          "s": "She has good controls over her emotions.",
+          "t": "Ona ma dobrą kontrolę nad swoimi emocjami."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "cars": {
+      "t": "samochody",
+      "d": {
+        "s": "A road vehicle, typically with four wheels, powered by an internal combustion engine or electric motor and able to carry a small number of people.",
+        "t": "Samochód drogowy, zazwyczaj czterokołowy, napędzany silnikiem spalinowym lub elektrycznym, zdolny do przewozu niewielkiej liczby osób."
+      },
+      "s": [
+        "automobiles",
+        "vehicles"
+      ],
+      "e": [
+        {
+          "s": "Many cars were parked along the street.",
+          "t": "Wiele samochodów zaparkowano wzdłuż ulicy."
+        },
+        {
+          "s": "He learned to drive in his father's old car.",
+          "t": "Nauczył się jeździć starym samochodem ojca."
+        },
+        {
+          "s": "The traffic jam consisted of hundreds of cars.",
+          "t": "Korek uliczny składał się z setek samochodów."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "dreams": {
+      "t": "sny",
+      "d": {
+        "s": "visions that a person has when they are asleep",
+        "t": "wizje, które osoba ma podczas snu"
+      },
+      "s": [
+        "fantasies",
+        "aspirations"
+      ],
+      "e": [
+        {
+          "s": "She had vivid dreams about flying.",
+          "t": "Miała żywe sny o lataniu."
+        },
+        {
+          "s": "He pursued his dreams of becoming a musician.",
+          "t": "Realizował swoje marzenia o zostaniu muzykiem."
+        },
+        {
+          "s": "I can't remember my dreams.",
+          "t": "Nie pamiętam swoich snów."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "mornin": {
+      "t": "ranek",
+      "d": {
+        "s": "A contraction of 'morning', referring to the early part of the day.",
+        "t": "Skrót od 'morning', odnoszący się do wczesnej części dnia."
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "Good mornin', sunshine!",
+          "t": "Dzień dobry, słoneczko!"
+        },
+        {
+          "s": "I'll see you in the mornin'.",
+          "t": "Do zobaczenia rano."
+        },
+        {
+          "s": "She woke up early one mornin'.",
+          "t": "Obudziła się pewnego ranka wcześnie."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "humanity": {
+      "t": "ludzkość",
+      "d": {
+        "s": "The human race; human beings collectively.",
+        "t": "Rasa ludzka; istoty ludzkie zbiorowo."
+      },
+      "s": [
+        "mankind",
+        "humankind"
+      ],
+      "e": [
+        {
+          "s": "The future of humanity depends on our actions.",
+          "t": "Przyszłość ludzkości zależy od naszych działań."
+        },
+        {
+          "s": "He showed great humanity towards the refugees.",
+          "t": "Okazał wielkie człowieczeństwo wobec uchodźców."
+        },
+        {
+          "s": "The story explores the dark side of humanity.",
+          "t": "Historia zgłębia mroczną stronę ludzkości."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "exactly": {
+      "t": "dokładnie / precyzyjnie",
+      "d": {
+        "s": "In precise accordance with the facts or with what is required.",
+        "t": "Dokładnie, precyzyjnie, w punkt."
+      },
+      "s": [
+        "precisely",
+        "accurately"
+      ],
+      "e": [
+        {
+          "s": "It does exactly what you want it to do.",
+          "t": "Robi dokładnie to, czego od niego oczekujesz."
+        },
+        {
+          "s": "That's exactly the problem.",
+          "t": "To jest właśnie problem."
+        },
+        {
+          "s": "He is exactly like his father.",
+          "t": "Jest dokładnie taki sam jak jego ojciec."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "folds": {
+      "t": "zaginać / składać",
+      "d": {
+        "s": "To bend something over on itself so that one part covers another.",
+        "t": "Zginać (coś na sobie) tak, aby jedna część zakrywała drugą."
+      },
+      "s": [
+        "bends",
+        "creases"
+      ],
+      "e": [
+        {
+          "s": "The paper folds easily.",
+          "t": "Papier łatwo się zgina."
+        },
+        {
+          "s": "He folds the laundry neatly.",
+          "t": "On starannie składa pranie."
+        },
+        {
+          "s": "The map folds into a small square.",
+          "t": "Mapa składa się do małego kwadratu."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "seeing": {
+      "t": "widzenie",
+      "d": {
+        "s": "the action or process of perceiving with the eyes; sight.",
+        "t": "wzrok; widzenie"
+      },
+      "s": [
+        "sight",
+        "perception"
+      ],
+      "e": [
+        {
+          "s": "Seeing the world from a new perspective can be enlightening.",
+          "t": "Widzenie świata z nowej perspektywy może być oświecające."
+        },
+        {
+          "s": "He has trouble seeing without his glasses.",
+          "t": "On ma trudności z widzeniem bez okularów."
+        },
+        {
+          "s": "The seeing of the crime was reported to the police.",
+          "t": "Zobaczenie przestępstwa zostało zgłoszone policji."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "photography": {
+      "t": "fotografia",
+      "d": {
+        "s": "The art, application, and practice of creating durable images by recording light, either electronically by means of an image sensor, or chemically by means of a light-sensitive material such as photographic film.",
+        "t": "Fotografia, sztuka tworzenia trwałych obrazów poprzez zapis światła, elektronicznie za pomocą czujnika obrazu lub chemicznie za pomocą materiału światłoczułego, takiego jak błona fotograficzna."
+      },
+      "s": [
+        "picture-taking",
+        "filming"
+      ],
+      "e": [
+        {
+          "s": "She has always been interested in photography.",
+          "t": "Zawsze interesowała się fotografią."
+        },
+        {
+          "s": "He learned photography in college.",
+          "t": "Uczył się fotografii na studiach."
+        },
+        {
+          "s": "Computational photography is a new field.",
+          "t": "Fotografia obliczeniowa to nowa dziedzina."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "kill": {
+      "t": "zabić / unicestwić",
+      "d": {
+        "s": "To cause the death of a person or animal.",
+        "t": "Zabić, uśmiercić."
+      },
+      "s": [
+        "slay",
+        "murder"
+      ],
+      "e": [
+        {
+          "s": "The hunter was accused of trying to kill the endangered species.",
+          "t": "Łowca został oskarżony o próbę zabicia zagrożonego gatunku."
+        },
+        {
+          "s": "He accidentally killed a pedestrian while driving drunk.",
+          "t": "Zabił pieszego, prowadząc pod wpływem alkoholu."
+        },
+        {
+          "s": "The poison will kill you slowly.",
+          "t": "Trucizna zabije cię powoli."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "rotate": {
+      "t": "obracać",
+      "d": {
+        "s": "turn or move in a circular direction",
+        "t": "obracać się lub poruszać w kierunku kołowym"
+      },
+      "s": [
+        "turn",
+        "spin"
+      ],
+      "e": [
+        {
+          "s": "You can rotate the image to see it from different angles.",
+          "t": "Możesz obrócić obraz, aby zobaczyć go pod różnymi kątami."
+        },
+        {
+          "s": "The Earth rotates on its axis.",
+          "t": "Ziemia obraca się wokół własnej osi."
+        },
+        {
+          "s": "Please rotate the wheel to the left.",
+          "t": "Proszę obrócić koło w lewo."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "isn't": {
+      "t": "nie jest",
+      "d": {
+        "s": "is not",
+        "t": "nie jest"
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "The weather isn't good today.",
+          "t": "Pogoda nie jest dzisiaj dobra."
+        },
+        {
+          "s": "He isn't here right now.",
+          "t": "On nie jest teraz tutaj."
+        },
+        {
+          "s": "This isn't what I expected.",
+          "t": "To nie jest to, czego się spodziewałem."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "close": {
+      "t": "blisko / bliski",
+      "d": {
+        "s": "near in space or time",
+        "t": "bliski w przestrzeni lub czasie"
+      },
+      "s": [
+        "near",
+        "nearby"
+      ],
+      "e": [
+        {
+          "s": "The store is close to my house.",
+          "t": "Sklep jest blisko mojego domu."
+        },
+        {
+          "s": "We are close to finishing the project.",
+          "t": "Jesteśmy blisko zakończenia projektu."
+        },
+        {
+          "s": "He felt close to his family.",
+          "t": "Czuł się blisko swojej rodziny."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "subjective": {
+      "t": "subiektywny",
+      "d": {
+        "s": "Based on or influenced by personal feelings, tastes, or opinions.",
+        "t": "Subiektywny, oparty na osobistych uczuciach, gustach lub opiniach."
+      },
+      "s": [
+        "personal",
+        "individual"
+      ],
+      "e": [
+        {
+          "s": "His interpretation of the painting was highly subjective.",
+          "t": "Jego interpretacja obrazu była wysoce subiektywna."
+        },
+        {
+          "s": "Beauty is subjective and varies from person to person.",
+          "t": "Piękno jest subiektywne i różni się w zależności od osoby."
+        },
+        {
+          "s": "The test results were considered subjective rather than objective.",
+          "t": "Wyniki testu uznano za subiektywne, a nie obiektywne."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "nanoextured": {
+      "t": "nanostrukturalny",
+      "d": {
+        "s": "Having a surface with a texture on the nanometer scale.",
+        "t": "Mający powierzchnię o fakturze w skali nanometrów."
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "The nanoextured surface improved adhesion.",
+          "t": "Nanostrukturalna powierzchnia poprawiła przyczepność."
+        },
+        {
+          "s": "Researchers studied the properties of nanoextured materials.",
+          "t": "Naukowcy badali właściwości nanostrukturalnych materiałów."
+        },
+        {
+          "s": "The device featured a nanoextured coating.",
+          "t": "Urządzenie miało nanostrukturalną powłokę."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "texture": {
+      "t": "faktura / tekstura",
+      "d": {
+        "s": "The feel, appearance, or consistency of a surface or a substance.",
+        "t": "Wygląd, faktura lub konsystencja powierzchni lub substancji."
+      },
+      "s": [
+        "feel",
+        "consistency"
+      ],
+      "e": [
+        {
+          "s": "The texture of the bread was rough.",
+          "t": "Faktura chleba była szorstka."
+        },
+        {
+          "s": "I like the smooth texture of silk.",
+          "t": "Lubię gładką fakturę jedwabiu."
+        },
+        {
+          "s": "The artist captured the texture of the stone.",
+          "t": "Artysta uchwycił teksturę kamienia."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "paper": {
+      "t": "papier",
+      "d": {
+        "s": "A material manufactured in thin sheets from the pulp of wood or other fibrous substances, used for writing, drawing, or printing on, or as wrapping material.",
+        "t": "Materiał wytwarzany w cienkich arkuszach z pulpy drzewnej lub innych substancji włóknistych, używany do pisania, rysowania lub drukowania, lub jako materiał opakowaniowy."
+      },
+      "s": [
+        "document",
+        "sheet"
+      ],
+      "e": [
+        {
+          "s": "Please write your name on this paper.",
+          "t": "Proszę napisać swoje imię na tym papierze."
+        },
+        {
+          "s": "He handed me a piece of paper.",
+          "t": "Podał mi kawałek papieru."
+        },
+        {
+          "s": "The report was printed on high-quality paper.",
+          "t": "Raport został wydrukowany na papierze wysokiej jakości."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "foldable": {
+      "t": "składany",
+      "d": {
+        "s": "Capable of being folded, especially in half.",
+        "t": "Składany, zdolny do złożenia."
+      },
+      "s": [
+        "collapsible"
+      ],
+      "e": [
+        {
+          "s": "This is a foldable chair, easy to store.",
+          "t": "To jest składane krzesło, łatwe do przechowywania."
+        },
+        {
+          "s": "The new phone has a foldable screen.",
+          "t": "Nowy telefon ma składany ekran."
+        },
+        {
+          "s": "A foldable bicycle is convenient for commuters.",
+          "t": "Składany rower jest wygodny dla osób dojeżdżających do pracy."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "mechanism": {
+      "t": "mechanizm",
+      "d": {
+        "s": "A system of parts working together, or a process that produces a particular result.",
+        "t": "Mechanizm, sposób działania, układ"
+      },
+      "s": [
+        "device",
+        "apparatus"
+      ],
+      "e": [
+        {
+          "s": "The folding mechanism is just so nice.",
+          "t": "Mechanizm składania jest po prostu taki miły."
+        },
+        {
+          "s": "He explained the mechanism of the clock.",
+          "t": "Wyjaśnił mechanizm działania zegara."
+        },
+        {
+          "s": "The company has a complex reward mechanism.",
+          "t": "Firma posiada złożony mechanizm nagradzania."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "surprising": {
+      "t": "zaskakujący",
+      "d": {
+        "s": "causing surprise or astonishment",
+        "t": "niespodziewany, zdumiewający"
+      },
+      "s": [
+        "astonishing",
+        "unexpected"
+      ],
+      "e": [
+        {
+          "s": "It was a surprising result.",
+          "t": "To był zaskakujący wynik."
+        },
+        {
+          "s": "She gave him a surprising look.",
+          "t": "Spojrzała na niego w zaskakujący sposób."
+        },
+        {
+          "s": "The news was surprising to everyone.",
+          "t": "Wiadomość była zaskoczeniem dla wszystkich."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "mine": {
+      "t": "mój / moja / moje",
+      "d": {
+        "s": "Used to express that something belongs to oneself.",
+        "t": "mój / moja / moje (własny)"
+      },
+      "s": [
+        "my"
+      ],
+      "e": [
+        {
+          "s": "This book is mine.",
+          "t": "Ta książka jest moja."
+        },
+        {
+          "s": "Is that your car or mine?",
+          "t": "Czy to twój samochód, czy mój?"
+        },
+        {
+          "s": "All you need to see Is your heart and mine.",
+          "t": "Wszystko, co musisz zobaczyć, to twoje serce i moje."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "satisfying": {
+      "t": "zadowalający",
+      "d": {
+        "s": "Causing pleasure or contentment.",
+        "t": "Dający satysfakcję, zadowalający."
+      },
+      "s": [
+        "fulfilling",
+        "gratifying"
+      ],
+      "e": [
+        {
+          "s": "The meal was very satisfying.",
+          "t": "Posiłek był bardzo zadowalający."
+        },
+        {
+          "s": "It was a satisfying end to the day.",
+          "t": "To było satysfakcjonujące zakończenie dnia."
+        },
+        {
+          "s": "He found the work deeply satisfying.",
+          "t": "Uważał tę pracę za głęboko satysfakcjonującą."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "opinion": {
+      "t": "opinia",
+      "d": {
+        "s": "A view or judgment formed about something, not necessarily based on fact or knowledge.",
+        "t": "Widok lub osąd na temat czegoś, niekoniecznie oparty na faktach lub wiedzy."
+      },
+      "s": [
+        "view",
+        "belief"
+      ],
+      "e": [
+        {
+          "s": "In my opinion, this is the best course of action.",
+          "t": "Moim zdaniem, to najlepsze rozwiązanie."
+        },
+        {
+          "s": "She has a strong opinion on the matter.",
+          "t": "Ona ma silne zdanie na ten temat."
+        },
+        {
+          "s": "What is your opinion of the new policy?",
+          "t": "Jaka jest twoja opinia na temat nowej polityki?"
+        }
+      ],
+      "languageValidation": 1
+    },
+    "mini": {
+      "t": "mini",
+      "d": {
+        "s": "A smaller version of something, especially a skirt or dress that ends well above the knee.",
+        "t": "Miniaturowa wersja czegoś, zwłaszcza spódnica lub sukienka, która kończy się znacznie powyżej kolana."
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "She wore a stylish mini skirt to the party.",
+          "t": "Na imprezę założyła stylową mini spódniczkę."
+        },
+        {
+          "s": "This is a mini version of the original game.",
+          "t": "To jest mini wersja oryginalnej gry."
+        },
+        {
+          "s": "He bought a mini cooper for his daughter.",
+          "t": "Kupił Mini Cooper dla swojej córki."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "finish": {
+      "t": "wykończenie / skończyć",
+      "d": {
+        "s": "The appearance or texture of the surface of something.",
+        "t": "Wygląd lub faktura powierzchni czegoś."
+      },
+      "s": [
+        "completion",
+        "end"
+      ],
+      "e": [
+        {
+          "s": "The car has a high-gloss finish.",
+          "t": "Samochód ma wykończenie na wysoki połysk."
+        },
+        {
+          "s": "I like the matte finish on this phone.",
+          "t": "Podoba mi się matowe wykończenie tego telefonu."
+        },
+        {
+          "s": "We need to finish the project by Friday.",
+          "t": "Musimy skończyć projekt do piątku."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "sleeper": {
+      "t": "śpiący / niespodziewany hit",
+      "d": {
+        "s": "a person who is sleeping",
+        "t": "śpiąca osoba"
+      },
+      "s": [
+        "napper",
+        "dormant"
+      ],
+      "e": [
+        {
+          "s": "The sleeper was undisturbed by the noise.",
+          "t": "Śpiący nie został zakłócony przez hałas."
+        },
+        {
+          "s": "He was a sleeper in the team, but became a star.",
+          "t": "Był niespodzianką w drużynie, ale został gwiazdą."
+        },
+        {
+          "s": "The sleeper train arrived early in the morning.",
+          "t": "Nocny pociąg przyjechał wcześnie rano."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "sorry": {
+      "t": "przykro mi / przepraszam",
+      "d": {
+        "s": "Used to express regret, sympathy, or apology.",
+        "t": "Przykro mi / Przepraszam"
+      },
+      "s": [
+        "apologetic",
+        "regretful"
+      ],
+      "e": [
+        {
+          "s": "I'm so sorry for your loss.",
+          "t": "Bardzo mi przykro z powodu twojej straty."
+        },
+        {
+          "s": "Sorry, I didn't mean to interrupt.",
+          "t": "Przepraszam, nie chciałem przeszkadzać."
+        },
+        {
+          "s": "Sorry, can you repeat that?",
+          "t": "Przepraszam, czy możesz powtórzyć?"
+        }
+      ],
+      "languageValidation": 1
+    },
+    "diving": {
+      "t": "nurkowanie",
+      "d": {
+        "s": "The action or sport of swimming underwater, typically with breathing apparatus.",
+        "t": "Nurkowanie"
+      },
+      "s": [
+        "submerging",
+        "plunging"
+      ],
+      "e": [
+        {
+          "s": "He enjoys scuba diving in the Caribbean.",
+          "t": "On lubi nurkowanie z akwalungiem na Karaibach."
+        },
+        {
+          "s": "The Olympic sport includes synchronized diving.",
+          "t": "Sport olimpijski obejmuje nurkowanie synchroniczne."
+        },
+        {
+          "s": "She took up free diving last year.",
+          "t": "Ona zaczęła nurkowanie na wstrzymanym oddechu w zeszłym roku."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "b2": {
+      "t": "B2",
+      "d": {
+        "s": "A level of language proficiency, typically used in the Common European Framework of Reference for Languages (CEFR), indicating an upper intermediate ability to understand and use the language.",
+        "t": "Poziom biegłości językowej, zazwyczaj używany w Europejskim Systemie Opisu Kształcenia Językowego (CEFR), wskazujący na wyższy średnio zaawansowany poziom rozumienia i używania języka."
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "She passed her B2 exam with flying colors.",
+          "t": "Zdała egzamin B2 z wyróżnieniem."
+        },
+        {
+          "s": "To be admitted, you need at least a B2 level of English.",
+          "t": "Aby zostać przyjętym, potrzebujesz co najmniej poziomu B2 z języka angielskiego."
+        },
+        {
+          "s": "His fluency suggests he's at a B2 level or higher.",
+          "t": "Jego płynność sugeruje, że jest na poziomie B2 lub wyższym."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "loves": {
+      "t": "kocha / uwielbia",
+      "d": {
+        "s": "feels or expresses great affection or liking for someone or something.",
+        "t": "czuje lub wyraża wielkie uczucie lub sympatię do kogoś lub czegoś."
+      },
+      "s": [
+        "adores",
+        "cherishes"
+      ],
+      "e": [
+        {
+          "s": "She loves her new puppy.",
+          "t": "Ona kocha swojego nowego szczeniaka."
+        },
+        {
+          "s": "He loves to read in his free time.",
+          "t": "On uwielbia czytać w wolnym czasie."
+        },
+        {
+          "s": "They love spending time together.",
+          "t": "Oni kochają spędzać czas razem."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "honk": {
+      "t": "gęganie / trąbić",
+      "d": {
+        "s": "The sound a goose or duck makes.",
+        "t": "Dźwięk wydawany przez gęś lub kaczkę."
+      },
+      "s": [
+        "honking"
+      ],
+      "e": [
+        {
+          "s": "The goose let out a loud honk.",
+          "t": "Gęś wydała głośne gęganie."
+        },
+        {
+          "s": "The car horn began to honk.",
+          "t": "Róg samochodu zaczął trąbić."
+        },
+        {
+          "s": "I heard the honk of a distant car.",
+          "t": "Słyszałem trąbienie odległego samochodu."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "example": {
+      "t": "przykład",
+      "d": {
+        "s": "A thing that is representative of its kind or illustrates a general rule.",
+        "t": "Coś, co jest reprezentatywne dla swojego rodzaju lub ilustruje ogólną zasadę."
+      },
+      "s": [
+        "instance",
+        "sample"
+      ],
+      "e": [
+        {
+          "s": "For example, take a photo and you have a.",
+          "t": "Na przykład zrób zdjęcie i masz."
+        },
+        {
+          "s": "This is a good example of his work.",
+          "t": "To jest dobry przykład jego pracy."
+        },
+        {
+          "s": "Could you give me an example?",
+          "t": "Czy mógłbyś podać mi przykład?"
+        }
+      ],
+      "languageValidation": 1
+    },
+    "sense": {
+      "t": "sens / rozumienie",
+      "d": {
+        "s": "the ability to understand, think, and make judgments in a way that is reasonable and wise",
+        "t": "zdolność do rozumienia, myślenia i rozsądnego osądzania"
+      },
+      "s": [
+        "meaning",
+        "reason"
+      ],
+      "e": [
+        {
+          "s": "It makes a lot of sense to me.",
+          "t": "To ma dla mnie dużo sensu."
+        },
+        {
+          "s": "He has no sense of direction.",
+          "t": "On nie ma wyczucia kierunku."
+        },
+        {
+          "s": "Use your common sense.",
+          "t": "Użyj swojego zdrowego rozsądku."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "smart": {
+      "t": "sprytny / inteligentny / elegancki",
+      "d": {
+        "s": "Clever or well-suited to the purpose; showing intelligence or good judgment.",
+        "t": "Sprytny lub dobrze dopasowany do celu; wykazujący inteligencję lub dobre osąd."
+      },
+      "s": [
+        "clever",
+        "intelligent"
+      ],
+      "e": [
+        {
+          "s": "She's a very smart young woman.",
+          "t": "Ona jest bardzo inteligentną młodą kobietą."
+        },
+        {
+          "s": "That was a smart move.",
+          "t": "To był sprytny ruch."
+        },
+        {
+          "s": "He looked smart in his new suit.",
+          "t": "Wyglądał elegancko w swoim nowym garniturze."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "reached": {
+      "t": "osiągnął",
+      "d": {
+        "s": "Arrived at or achieved a point or stage.",
+        "t": "Dotarł do lub osiągnął punkt lub etap."
+      },
+      "s": [
+        "got",
+        "attained"
+      ],
+      "e": [
+        {
+          "s": "She finally reached the summit.",
+          "t": "Ona w końcu dotarła na szczyt."
+        },
+        {
+          "s": "The temperature reached freezing point.",
+          "t": "Temperatura osiągnęła punkt zamarzania."
+        },
+        {
+          "s": "He reached his goal.",
+          "t": "On osiągnął swój cel."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "century": {
+      "t": "wiek",
+      "d": {
+        "s": "A period of one hundred years.",
+        "t": "Wiek. Okres stu lat."
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "The 21st century has seen rapid technological advancements.",
+          "t": "XXI wiek był świadkiem szybkich postępów technologicznych."
+        },
+        {
+          "s": "This ancient artifact dates back to the previous century.",
+          "t": "Ten starożytny artefakt pochodzi z poprzedniego wieku."
+        },
+        {
+          "s": "She inherited the house from her great-grandmother, who lived in the last century.",
+          "t": "Odziedziczyła dom po swojej prababci, która żyła w ubiegłym wieku."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "cry": {
+      "t": "płakać / szlochać",
+      "d": {
+        "s": "To shed tears, typically as an expression of distress, pain, or sorrow.",
+        "t": "Płakać, szlochać (zwykle w wyrazie cierpienia, bólu lub smutku)."
+      },
+      "s": [
+        "weep",
+        "sob"
+      ],
+      "e": [
+        {
+          "s": "The baby began to cry when he was hungry.",
+          "t": "Dziecko zaczęło płakać, gdy było głodne."
+        },
+        {
+          "s": "She couldn't help but cry when she heard the sad news.",
+          "t": "Nie mogła powstrzymać się od płaczu, gdy usłyszała smutne wieści."
+        },
+        {
+          "s": "He cried tears of joy at his daughter's wedding.",
+          "t": "Płakał ze szczęścia na ślubie swojej córki."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "skeptical": {
+      "t": "sceptyczny",
+      "d": {
+        "s": "Having or showing doubts about something; not easily convinced.",
+        "t": "Mający lub okazujący wątpliwości co do czegoś; niełatwy do przekonania."
+      },
+      "s": [
+        "doubtful",
+        "dubious"
+      ],
+      "e": [
+        {
+          "s": "He was skeptical about the new proposal.",
+          "t": "Był sceptyczny wobec nowej propozycji."
+        },
+        {
+          "s": "She remained skeptical despite the evidence.",
+          "t": "Pozostała sceptyczna pomimo dowodów."
+        },
+        {
+          "s": "I'm skeptical that he will finish on time.",
+          "t": "Jestem sceptyczny, że skończy na czas."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "hands-on": {
+      "t": "praktyczny",
+      "d": {
+        "s": "Involving or requiring physical touch or direct participation.",
+        "t": "Praktyczny, wymagający bezpośredniego udziału lub fizycznego kontaktu."
+      },
+      "s": [
+        "practical",
+        "experiential"
+      ],
+      "e": [
+        {
+          "s": "The course offers hands-on training in carpentry.",
+          "t": "Kurs oferuje praktyczne szkolenie z ciesielstwa."
+        },
+        {
+          "s": "She prefers hands-on experience to theoretical knowledge.",
+          "t": "Ona woli praktyczne doświadczenie od wiedzy teoretycznej."
+        },
+        {
+          "s": "We had a hands-on session with the new software.",
+          "t": "Mieliśmy praktyczną sesję z nowym oprogramowaniem."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "given": {
+      "t": "podany / uwzględniając",
+      "d": {
+        "s": "provided or specified",
+        "t": "udostępniony lub określony"
+      },
+      "s": [
+        "provided",
+        "specified"
+      ],
+      "e": [
+        {
+          "s": "The information given was accurate.",
+          "t": "Podane informacje były dokładne."
+        },
+        {
+          "s": "Given the circumstances, we had to cancel.",
+          "t": "Biorąc pod uwagę okoliczności, musieliśmy odwołać."
+        },
+        {
+          "s": "He was given a new task.",
+          "t": "Otrzymał nowe zadanie."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "kid": {
+      "t": "dziecko",
+      "d": {
+        "s": "A child.",
+        "t": "Dziecko."
+      },
+      "s": [
+        "child",
+        "youngster"
+      ],
+      "e": [
+        {
+          "s": "He was just a kid when he started working.",
+          "t": "Był tylko dzieckiem, kiedy zaczął pracować."
+        },
+        {
+          "s": "The kid is playing in the park.",
+          "t": "Dziecko bawi się w parku."
+        },
+        {
+          "s": "She's a bright kid.",
+          "t": "Ona jest bystrym dzieckiem."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "gon": {
+      "t": "zamierzać / być bliskim zrobienia czegoś",
+      "d": {
+        "s": "Going to; about to.",
+        "t": "Zamierzać; być bliskim zrobienia czegoś."
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "I'm gon need your help with this.",
+          "t": "Będę potrzebował twojej pomocy z tym."
+        },
+        {
+          "s": "We're gon be late if we don't hurry.",
+          "t": "Spóźnimy się, jeśli się nie pospieszymy."
+        },
+        {
+          "s": "He said he's gon call you later.",
+          "t": "Powiedział, że zadzwoni do ciebie później."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "dear": {
+      "t": "drogi / kochany",
+      "d": {
+        "s": "Beloved or cherished.",
+        "t": "Drogi lub ukochany."
+      },
+      "s": [
+        "beloved",
+        "cherished"
+      ],
+      "e": [
+        {
+          "s": "My dear friend, I miss you.",
+          "t": "Mój drogi przyjacielu, tęsknię za tobą."
+        },
+        {
+          "s": "She gave him a dear little puppy.",
+          "t": "Dała mu drogiego małego szczeniaka."
+        },
+        {
+          "s": "He is dear to me.",
+          "t": "On jest mi drogi."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "michigan": {
+      "t": "Michigan",
+      "d": {
+        "s": "A state in the midwestern United States.",
+        "t": "Stan w środkowo-zachodnich Stanach Zjednoczonych."
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "She grew up in Michigan.",
+          "t": "Dorastała w Michigan."
+        },
+        {
+          "s": "He is visiting Michigan next week.",
+          "t": "W przyszłym tygodniu odwiedza Michigan."
+        },
+        {
+          "s": "Michigan is known for its Great Lakes.",
+          "t": "Michigan słynie z Wielkich Jezior."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "mention": {
+      "t": "wspomnieć",
+      "d": {
+        "s": "To refer to something briefly and without giving much detail.",
+        "t": "Wspomnieć o czymś krótko i bez podawania wielu szczegółów."
+      },
+      "s": [
+        "refer",
+        "note"
+      ],
+      "e": [
+        {
+          "s": "Please do not mention my name.",
+          "t": "Proszę nie wspominać mojego imienia."
+        },
+        {
+          "s": "He mentioned that he was leaving the company.",
+          "t": "Wspomniał, że odchodzi z firmy."
+        },
+        {
+          "s": "She didn't mention the incident.",
+          "t": "Ona nie wspomniała o incydencie."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "keep": {
+      "t": "trzymać / zachować / kontynuować",
+      "d": {
+        "s": "continue to hold or retain something in one's possession.",
+        "t": "kontynuować posiadanie lub zatrzymywanie czegoś w swoim posiadaniu."
+      },
+      "s": [
+        "retain",
+        "hold"
+      ],
+      "e": [
+        {
+          "s": "Please keep the book for me.",
+          "t": "Proszę zatrzymaj dla mnie tę książkę."
+        },
+        {
+          "s": "Keep your room tidy.",
+          "t": "Utrzymuj swój pokój w porządku."
+        },
+        {
+          "s": "Keep going, you're almost there.",
+          "t": "Kontynuuj, już prawie jesteś."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "shine": {
+      "t": "świecić / błyszczeć / lśnić",
+      "d": {
+        "s": "to emit or reflect light; to be bright or brilliant",
+        "t": "świecić / błyszczeć / lśnić"
+      },
+      "s": [
+        "gleam",
+        "glitter"
+      ],
+      "e": [
+        {
+          "s": "The sun will shine tomorrow.",
+          "t": "Słońce będzie świecić jutro."
+        },
+        {
+          "s": "Her eyes shone with happiness.",
+          "t": "Jej oczy lśniły ze szczęścia."
+        },
+        {
+          "s": "Polish the shoes until they shine.",
+          "t": "Poleruj buty, aż będą błyszczeć."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "aperture": {
+      "t": "przesłona",
+      "d": {
+        "s": "An opening, hole, or gap.",
+        "t": "Otwór, dziura lub szczelina."
+      },
+      "s": [
+        "opening",
+        "hole"
+      ],
+      "e": [
+        {
+          "s": "The aperture of the lens affects the depth of field.",
+          "t": "Przesłona obiektywu wpływa na głębię ostrości."
+        },
+        {
+          "s": "He peered through the small aperture in the wall.",
+          "t": "Spojrzał przez mały otwór w ścianie."
+        },
+        {
+          "s": "The camera has a variable aperture.",
+          "t": "Aparat ma zmienną przysłonę."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "high": {
+      "t": "wysoko / na haju",
+      "d": {
+        "s": "Elevated in position or status; of great vertical extent.",
+        "t": "Wysoko położony lub o dużym zasięgu pionowym."
+      },
+      "s": [
+        "tall",
+        "elevated"
+      ],
+      "e": [
+        {
+          "s": "The plane flew high above the clouds.",
+          "t": "Samolot leciał wysoko nad chmurami."
+        },
+        {
+          "s": "She has a high IQ.",
+          "t": "Ona ma wysokie IQ."
+        },
+        {
+          "s": "He felt high after the concert.",
+          "t": "Czuł się na haju po koncercie."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "wanna": {
+      "t": "chcieć",
+      "d": {
+        "s": "Want to (used in informal speech and writing)",
+        "t": "Chcieć (używane w mowie i piśmie nieformalnym)"
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "I wanna go home.",
+          "t": "Chcę iść do domu."
+        },
+        {
+          "s": "Do you wanna play a game?",
+          "t": "Chcesz zagrać w grę?"
+        },
+        {
+          "s": "She doesn't wanna see you.",
+          "t": "Ona nie chce cię widzieć."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "deep": {
+      "t": "głęboki",
+      "d": {
+        "s": "extending far down or in from the top or front",
+        "t": "głęboki"
+      },
+      "s": [
+        "profound",
+        "intense"
+      ],
+      "e": [
+        {
+          "s": "The ocean is very deep.",
+          "t": "Ocean jest bardzo głęboki."
+        },
+        {
+          "s": "He has a deep voice.",
+          "t": "On ma głęboki głos."
+        },
+        {
+          "s": "She felt a deep sense of loss.",
+          "t": "Czuła głębokie poczucie straty."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "cutout": {
+      "t": "wycinanka / wycięcie",
+      "d": {
+        "s": "A piece of material, such as paper or cloth, that has been cut out from a larger piece.",
+        "t": "Wycinanka, wycięty kawałek materiału."
+      },
+      "s": [
+        "cut",
+        "shape"
+      ],
+      "e": [
+        {
+          "s": "She made a cutout of a bird from colored paper.",
+          "t": "Zrobiła wycinankę ptaka z kolorowego papieru."
+        },
+        {
+          "s": "The pattern was a cutout from a magazine.",
+          "t": "Wzór był wycinanką z magazynu."
+        },
+        {
+          "s": "He used a cardboard cutout to represent the character.",
+          "t": "Użył kartonowej wycinanki do przedstawienia postaci."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "enjoy": {
+      "t": "cieszyć się",
+      "d": {
+        "s": "Take pleasure in (something).",
+        "t": "Cieszyć się (czymś)."
+      },
+      "s": [
+        "like",
+        "appreciate"
+      ],
+      "e": [
+        {
+          "s": "I hope you enjoy your meal.",
+          "t": "Mam nadzieję, że posiłek ci się spodoba."
+        },
+        {
+          "s": "She enjoyed the concert.",
+          "t": "Ona cieszyła się koncertem."
+        },
+        {
+          "s": "We enjoyed our vacation.",
+          "t": "Cieszyliśmy się wakacjami."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "cushions": {
+      "t": "poduszki / amortyzuje",
+      "d": {
+        "s": "Soft padding used to make a seat or other object more comfortable or to protect it.",
+        "t": "Miękka wyściółka używana do uczynienia siedzenia lub innego przedmiotu wygodniejszym lub do jego ochrony."
+      },
+      "s": [
+        "pillows",
+        "pads"
+      ],
+      "e": [
+        {
+          "s": "She bought new cushions for her sofa.",
+          "t": "Kupiła nowe poduszki na swoją sofę."
+        },
+        {
+          "s": "The thick carpet cushions the sound of footsteps.",
+          "t": "Gruby dywan amortyzuje dźwięk kroków."
+        },
+        {
+          "s": "He landed on the cushions, unhurt.",
+          "t": "Wylądował na poduszkach, cały i zdrowy."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "blow": {
+      "t": "cios / cios w plecy / niepowodzenie",
+      "d": {
+        "s": "a heavy defeat or setback",
+        "t": "cios / cios w plecy / niepowodzenie"
+      },
+      "s": [
+        "setback",
+        "shock"
+      ],
+      "e": [
+        {
+          "s": "The team suffered a blow when their star player was injured.",
+          "t": "Drużyna poniosła cios, gdy ich gwiazda została kontuzjowana."
+        },
+        {
+          "s": "The economic downturn was a blow to many businesses.",
+          "t": "Spowolnienie gospodarcze było ciosem dla wielu firm."
+        },
+        {
+          "s": "Losing the contract was a serious blow to the company's finances.",
+          "t": "Utrata kontraktu była poważnym ciosem dla finansów firmy."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "twenty": {
+      "t": "dwadzieścia",
+      "d": {
+        "s": "The number equivalent to the sum of ten and ten; one more than nineteen or less than twenty-one.",
+        "t": "Liczba odpowiadająca sumie dziesięciu i dziesięciu; o jeden więcej niż dziewiętnaście lub mniej niż dwadzieścia jeden."
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "There are twenty apples in the basket.",
+          "t": "W koszyku jest dwadzieścia jabłek."
+        },
+        {
+          "s": "She will be twenty next year.",
+          "t": "Ona będzie miała dwadzieścia lat w przyszłym roku."
+        },
+        {
+          "s": "The meeting is scheduled for twenty past three.",
+          "t": "Spotkanie zaplanowano na dwadzieścia po trzeciej."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "facetime": {
+      "t": "rozmawiać przez FaceTime",
+      "d": {
+        "s": "To have a video call with someone using the FaceTime app.",
+        "t": "Rozmawiać przez FaceTime (aplikacja do wideorozmów)."
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "I'll FaceTime you later tonight.",
+          "t": "Zadzwonię do ciebie później dziś wieczorem przez FaceTime."
+        },
+        {
+          "s": "We decided to FaceTime instead of just calling.",
+          "t": "Zdecydowaliśmy się na rozmowę przez FaceTime zamiast zwykłego telefonu."
+        },
+        {
+          "s": "She FaceTimed her parents every Sunday.",
+          "t": "Rozmawiała przez FaceTime z rodzicami w każdą niedzielę."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "sagan": {
+      "t": "Sagan",
+      "d": {
+        "s": "A Polish astronomer and author who popularized science.",
+        "t": "Polski astronom i autor, który popularyzował naukę."
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "Carl Sagan was a famous astronomer.",
+          "t": "Carl Sagan był znanym astronomem."
+        },
+        {
+          "s": "The book was written by Sagan.",
+          "t": "Książka została napisana przez Sagana."
+        },
+        {
+          "s": "Sagan inspired many people to study space.",
+          "t": "Sagan zainspirował wiele osób do studiowania kosmosu."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "b1": {
+      "t": "poziom B1",
+      "d": {
+        "s": "The B1 level of the Common European Framework of Reference for Languages (CEFR), indicating an intermediate level of language proficiency.",
+        "t": "Poziom B1 w skali Rady Europy (CEFR), wskazujący na średnio zaawansowany poziom znajomości języka."
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "She is currently studying to achieve B1 certification.",
+          "t": "Obecnie studiuje, aby uzyskać certyfikat B1."
+        },
+        {
+          "s": "The course is designed for students who have completed A2 and are aiming for B1.",
+          "t": "Kurs jest przeznaczony dla studentów, którzy ukończyli poziom A2 i dążą do poziomu B1."
+        },
+        {
+          "s": "To pass the exam, you need to demonstrate B1 proficiency.",
+          "t": "Aby zdać egzamin, musisz wykazać się znajomością języka na poziomie B1."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "lens": {
+      "t": "soczewka",
+      "d": {
+        "s": "A curved piece of glass or plastic that refracts light, used in eyeglasses, cameras, and telescopes.",
+        "t": "Soczewka - zakrzywiona część szkła lub plastiku, która załamuje światło, używana w okularach, aparatach fotograficznych i teleskopach."
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "The camera lens was smudged.",
+          "t": "Soczewka aparatu była rozmazana."
+        },
+        {
+          "s": "He needed new glasses with a stronger lens.",
+          "t": "Potrzebował nowych okularów z mocniejszą soczewką."
+        },
+        {
+          "s": "The telescope uses a series of lenses to magnify distant objects.",
+          "t": "Teleskop wykorzystuje serię soczewek do powiększania odległych obiektów."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "excitement": {
+      "t": "ekscytacja / podekscytowanie",
+      "d": {
+        "s": "A feeling of great enthusiasm and eagerness.",
+        "t": "Wielki entuzjazm i chęć."
+      },
+      "s": [
+        "thrill",
+        "anticipation"
+      ],
+      "e": [
+        {
+          "s": "The crowd's excitement was palpable.",
+          "t": "Ekscytacja tłumu była wyczuwalna."
+        },
+        {
+          "s": "He could barely contain his excitement.",
+          "t": "Ledwo mógł powstrzymać swoje podekscytowanie."
+        },
+        {
+          "s": "There was a buzz of excitement in the air.",
+          "t": "W powietrzu unosił się gwar ekscytacji."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "personally": {
+      "t": "osobiście",
+      "d": {
+        "s": "By or with respect to one's own person; in person.",
+        "t": "Osobiście; osobiście."
+      },
+      "s": [
+        "individually",
+        "privately"
+      ],
+      "e": [
+        {
+          "s": "I would prefer to handle this matter personally.",
+          "t": "Wolałbym zająć się tą sprawą osobiście."
+        },
+        {
+          "s": "She was personally offended by his remarks.",
+          "t": "Jego uwagi osobiście ją obraziły."
+        },
+        {
+          "s": "He is personally responsible for the project's success.",
+          "t": "Jest osobiście odpowiedzialny za sukces projektu."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "past": {
+      "t": "miniony / przeszły",
+      "d": {
+        "s": "gone by in time; no longer current",
+        "t": "miniony; już nieaktualny"
+      },
+      "s": [
+        "bygone",
+        "former"
+      ],
+      "e": [
+        {
+          "s": "The past week has been very productive.",
+          "t": "Miniony tydzień był bardzo produktywny."
+        },
+        {
+          "s": "She has a past that she doesn't like to talk about.",
+          "t": "Ona ma przeszłość, o której nie lubi rozmawiać."
+        },
+        {
+          "s": "He is a man with a troubled past.",
+          "t": "On jest człowiekiem z trudną przeszłością."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "tell": {
+      "t": "mówić / powiedzieć / oznajmić",
+      "d": {
+        "s": "To communicate information or knowledge to someone.",
+        "t": "Przekazać informacje lub wiedzę komuś."
+      },
+      "s": [
+        "say",
+        "inform"
+      ],
+      "e": [
+        {
+          "s": "Can you tell me the time?",
+          "t": "Czy możesz mi powiedzieć, która jest godzina?"
+        },
+        {
+          "s": "He told me a secret.",
+          "t": "Powiedział mi sekret."
+        },
+        {
+          "s": "The police told them to leave.",
+          "t": "Policja kazała im odejść."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "tiny": {
+      "t": "malutki / drobny / maleńki",
+      "d": {
+        "s": "Extremely small.",
+        "t": "Malutki, drobny, maleńki."
+      },
+      "s": [
+        "minute",
+        "minuscule"
+      ],
+      "e": [
+        {
+          "s": "The baby has tiny hands.",
+          "t": "Dziecko ma malutkie rączki."
+        },
+        {
+          "s": "There was a tiny speck of dust on the lens.",
+          "t": "Na soczewce był drobny pyłek kurzu."
+        },
+        {
+          "s": "She wore a tiny silver locket.",
+          "t": "Nosiła maleńki srebrny medalik."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "excited": {
+      "t": "podekscytowany / rozentuzjazmowany",
+      "d": {
+        "s": "feeling or showing happiness and enthusiasm",
+        "t": "podekscytowany, rozentuzjazmowany, pełen zapału"
+      },
+      "s": [
+        "thrilled",
+        "eager"
+      ],
+      "e": [
+        {
+          "s": "She was excited to start her new job.",
+          "t": "Była podekscytowana rozpoczęciem nowej pracy."
+        },
+        {
+          "s": "The children were excited about the upcoming holiday.",
+          "t": "Dzieci były rozentuzjazmowane nadchodzącymi wakacjami."
+        },
+        {
+          "s": "He felt excited by the prospect of traveling.",
+          "t": "Czuł ekscytację na myśl o podróży."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "biggest": {
+      "t": "największy",
+      "d": {
+        "s": "Of the greatest size, extent, or amount.",
+        "t": "Największy."
+      },
+      "s": [
+        "largest",
+        "greatest"
+      ],
+      "e": [
+        {
+          "s": "This is the biggest house on the street.",
+          "t": "To jest największy dom na ulicy."
+        },
+        {
+          "s": "What is the biggest problem we face?",
+          "t": "Jaki jest największy problem, przed którym stoimy?"
+        },
+        {
+          "s": "The biggest challenge will be funding.",
+          "t": "Największym wyzwaniem będzie finansowanie."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "auto": {
+      "t": "samochód",
+      "d": {
+        "s": "A motor vehicle, especially a car.",
+        "t": "Samochód osobowy, zwłaszcza samochód."
+      },
+      "s": [
+        "car",
+        "automobile"
+      ],
+      "e": [
+        {
+          "s": "He bought a new auto last week.",
+          "t": "Kupił nowe auto w zeszłym tygodniu."
+        },
+        {
+          "s": "The auto drove down the street.",
+          "t": "Samochód jechał ulicą."
+        },
+        {
+          "s": "She learned to drive an auto.",
+          "t": "Nauczyła się prowadzić samochód."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "annoying": {
+      "t": "irytujący",
+      "d": {
+        "s": "Causing irritation or annoyance.",
+        "t": "Irytujący."
+      },
+      "s": [
+        "vexing",
+        "bothersome"
+      ],
+      "e": [
+        {
+          "s": "That constant dripping sound is very annoying.",
+          "t": "Ten ciągły odgłos kapania jest bardzo irytujący."
+        },
+        {
+          "s": "He has an annoying habit of interrupting people.",
+          "t": "On ma irytujący nawyk przerywania ludziom."
+        },
+        {
+          "s": "I find his constant complaining quite annoying.",
+          "t": "Uważam jego ciągłe narzekanie za dość irytujące."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "smooths": {
+      "t": "wygładza",
+      "d": {
+        "s": "To make something smooth, even, or free from obstructions.",
+        "t": "Wygładzać coś, czynić coś równym lub wolnym od przeszkód."
+      },
+      "s": [
+        "levels",
+        "eases"
+      ],
+      "e": [
+        {
+          "s": "The lotion smooths the skin.",
+          "t": "Balsam wygładza skórę."
+        },
+        {
+          "s": "He smooths the wrinkles from his shirt.",
+          "t": "On wygładza zagniecenia z koszuli."
+        },
+        {
+          "s": "The new policy smooths the path for future development.",
+          "t": "Nowa polityka ułatwia drogę przyszłemu rozwojowi."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "starburst": {
+      "t": "efekt rozbłysku",
+      "d": {
+        "s": "A bright flash of light, often with rays extending outwards.",
+        "t": "Jasny błysk światła, często z promieniami rozchodzącymi się na zewnątrz."
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "The camera flash created a starburst effect in the photo.",
+          "t": "Błysk aparatu stworzył efekt rozbłysku na zdjęciu."
+        },
+        {
+          "s": "She saw a starburst of light behind her eyelids.",
+          "t": "Zobaczyła rozbłysk światła za powiekami."
+        },
+        {
+          "s": "The fireworks ended with a massive starburst.",
+          "t": "Fajerwerki zakończyły się masywnym rozbłyskiem."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "teaches": {
+      "t": "uczy",
+      "d": {
+        "s": "To impart knowledge or skill to someone, especially by instructing them.",
+        "t": "Nauczać lub uczyć kogoś wiedzy lub umiejętności, zwłaszcza poprzez instruowanie."
+      },
+      "s": [
+        "instructs",
+        "educates"
+      ],
+      "e": [
+        {
+          "s": "She teaches mathematics at the local high school.",
+          "t": "Ona uczy matematyki w miejscowym liceum."
+        },
+        {
+          "s": "He teaches guitar to beginners.",
+          "t": "On uczy gry na gitarze początkujących."
+        },
+        {
+          "s": "The professor teaches a course on ancient history.",
+          "t": "Profesor prowadzi kurs historii starożytnej."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "either": {
+      "t": "albo / też",
+      "d": {
+        "s": "used to refer to one of two possibilities",
+        "t": "używany w odniesieniu do jednej z dwóch możliwości"
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "You can have either cake or ice cream.",
+          "t": "Możesz mieć albo ciasto, albo lody."
+        },
+        {
+          "s": "He didn't like the movie, and I didn't either.",
+          "t": "Nie podobał mu się film i mnie też nie."
+        },
+        {
+          "s": "There are two options: either you go now, or you stay here.",
+          "t": "Są dwie opcje: albo idziesz teraz, albo zostajesz tutaj."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "through": {
+      "t": "przez",
+      "d": {
+        "s": "From one side to the other of (an opening, a space, or a connecting passage).",
+        "t": "Z jednej strony na drugą (otworu, przestrzeni lub łączącego przejścia)."
+      },
+      "s": [
+        "via",
+        "by way of"
+      ],
+      "e": [
+        {
+          "s": "He walked through the door.",
+          "t": "Wszedł przez drzwi."
+        },
+        {
+          "s": "The train travels through the tunnel.",
+          "t": "Pociąg przejeżdża przez tunel."
+        },
+        {
+          "s": "We drove through the city.",
+          "t": "Przejechaliśmy przez miasto."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "detail": {
+      "t": "szczegół / detal",
+      "d": {
+        "s": "a small part or feature of something",
+        "t": "szczegół"
+      },
+      "s": [
+        "particular",
+        "feature"
+      ],
+      "e": [
+        {
+          "s": "Inspect every detail of the painting.",
+          "t": "Sprawdź każdy szczegół obrazu."
+        },
+        {
+          "s": "The report includes a lot of detail.",
+          "t": "Raport zawiera wiele szczegółów."
+        },
+        {
+          "s": "We need to discuss the detail of the plan.",
+          "t": "Musimy omówić szczegóły planu."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "graduate": {
+      "t": "ukończyć studia",
+      "d": {
+        "s": "complete a course of study at a college or university",
+        "t": "ukończyć studia (na uniwersytecie lub w college'u)"
+      },
+      "s": [
+        "finish school",
+        "complete studies"
+      ],
+      "e": [
+        {
+          "s": "When do you graduate?",
+          "t": "Kiedy kończysz studia?"
+        },
+        {
+          "s": "She graduated from Harvard.",
+          "t": "Ukończyła Harvard."
+        },
+        {
+          "s": "He will graduate next year.",
+          "t": "On skończy studia w przyszłym roku."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "happen": {
+      "t": "zdarzyć się / wydarzyć się",
+      "d": {
+        "s": "to take place; occur",
+        "t": "zdarzyć się; mieć miejsce; wydarzyć się"
+      },
+      "s": [
+        "occur",
+        "transpire"
+      ],
+      "e": [
+        {
+          "s": "What will happen next?",
+          "t": "Co stanie się dalej?"
+        },
+        {
+          "s": "The accident happened on the highway.",
+          "t": "Wypadek wydarzył się na autostradzie."
+        },
+        {
+          "s": "Let's wait and see what happens.",
+          "t": "Poczekajmy i zobaczmy, co się wydarzy."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "list": {
+      "t": "lista",
+      "d": {
+        "s": "A number of people or things that are listed.",
+        "t": "Lista osób lub rzeczy, które są wymienione."
+      },
+      "s": [
+        "roster",
+        "catalog"
+      ],
+      "e": [
+        {
+          "s": "Please make a list of all the items you need.",
+          "t": "Proszę sporządzić listę wszystkich potrzebnych rzeczy."
+        },
+        {
+          "s": "The guest list was very exclusive.",
+          "t": "Lista gości była bardzo ekskluzywna."
+        },
+        {
+          "s": "He keeps a list of his favorite books.",
+          "t": "On prowadzi listę swoich ulubionych książek."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "some": {
+      "t": "jakiś / trochę / pewien",
+      "d": {
+        "s": "An unspecified amount or number of something.",
+        "t": "Jakaś ilość lub liczba czegoś."
+      },
+      "s": [
+        "a portion",
+        "a quantity"
+      ],
+      "e": [
+        {
+          "s": "We need some milk.",
+          "t": "Potrzebujemy trochę mleka."
+        },
+        {
+          "s": "Can I have some cake?",
+          "t": "Czy mogę dostać kawałek ciasta?"
+        },
+        {
+          "s": "There are some people waiting.",
+          "t": "Jest kilka osób czekających."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "minimal": {
+      "t": "minimalny",
+      "d": {
+        "s": "very small or not important",
+        "t": "minimalny, znikomy, najmniejszy"
+      },
+      "s": [
+        "slight",
+        "tiny"
+      ],
+      "e": [
+        {
+          "s": "The impact of the changes was minimal.",
+          "t": "Wpływ zmian był minimalny."
+        },
+        {
+          "s": "He has minimal experience in this field.",
+          "t": "On ma minimalne doświadczenie w tej dziedzinie."
+        },
+        {
+          "s": "We need to keep the costs to a minimal level.",
+          "t": "Musimy utrzymać koszty na minimalnym poziomie."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "urgently": {
+      "t": "pilnie / nagląco",
+      "d": {
+        "s": "To a degree or in a way that requires immediate attention; extremely or very seriously.",
+        "t": "Pilnie; nagląco; bardzo poważnie."
+      },
+      "s": [
+        "immediately",
+        "pressing"
+      ],
+      "e": [
+        {
+          "s": "We need to address this issue urgently.",
+          "t": "Musimy pilnie zająć się tą sprawą."
+        },
+        {
+          "s": "The situation requires our urgent attention.",
+          "t": "Sytuacja wymaga naszej pilnej uwagi."
+        },
+        {
+          "s": "He urgently requested a doctor.",
+          "t": "On pilnie wezwał lekarza."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "curious": {
+      "t": "ciekawski",
+      "d": {
+        "s": "eager to know or learn something",
+        "t": "ciekawski, chętny do poznania czegoś"
+      },
+      "s": [
+        "interested",
+        "inquisitive"
+      ],
+      "e": [
+        {
+          "s": "She was curious about the mysterious package.",
+          "t": "Była ciekawa tajemniczej paczki."
+        },
+        {
+          "s": "He had a curious mind, always asking questions.",
+          "t": "Miał dociekliwy umysł, zawsze zadawał pytania."
+        },
+        {
+          "s": "I'm curious to see how that develops.",
+          "t": "Jestem ciekaw, jak to się rozwinie."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "nanoexture": {
+      "t": "nano-tekstura",
+      "d": {
+        "s": "A texture or structure on a very small scale, typically at the nanometer level.",
+        "t": "Tekstura lub struktura w bardzo małej skali, zazwyczaj na poziomie nanometrów."
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "The material exhibited a unique nanoexture.",
+          "t": "Materiał wykazywał unikalną nano-teksturę."
+        },
+        {
+          "s": "Researchers studied the effects of nanoexture on adhesion.",
+          "t": "Naukowcy badali wpływ nano-tekstury na przyczepność."
+        },
+        {
+          "s": "The device's performance was enhanced by its nanoexture.",
+          "t": "Wydajność urządzenia została zwiększona dzięki jego nano-teksturze."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "initial": {
+      "t": "początkowy",
+      "d": {
+        "s": "Existing or happening at the beginning.",
+        "t": "Początkowy, pierwszy."
+      },
+      "s": [
+        "first",
+        "original"
+      ],
+      "e": [
+        {
+          "s": "The initial cost of the project was higher than expected.",
+          "t": "Początkowy koszt projektu był wyższy niż oczekiwano."
+        },
+        {
+          "s": "She made an initial attempt to solve the problem.",
+          "t": "Ona podjęła pierwszą próbę rozwiązania problemu."
+        },
+        {
+          "s": "The initial reaction was one of surprise.",
+          "t": "Początkowa reakcja była zaskoczeniem."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "play": {
+      "t": "grać / bawić się",
+      "d": {
+        "s": "to engage in activity for enjoyment and recreation or in a competitive game.",
+        "t": "grać / bawić się"
+      },
+      "s": [
+        "perform",
+        "act"
+      ],
+      "e": [
+        {
+          "s": "Children love to play in the park.",
+          "t": "Dzieci uwielbiają bawić się w parku."
+        },
+        {
+          "s": "He will play the piano at the concert.",
+          "t": "On zagra na pianinie na koncercie."
+        },
+        {
+          "s": "They decided to play chess.",
+          "t": "Zdecydowali się zagrać w szachy."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "reaches": {
+      "t": "osiągać / docierać",
+      "d": {
+        "s": "To arrive at or get as far as a particular place or point.",
+        "t": "Osiągać lub docierać do określonego miejsca lub punktu."
+      },
+      "s": [
+        "gets to",
+        "attains"
+      ],
+      "e": [
+        {
+          "s": "The river reaches the sea after a long journey.",
+          "t": "Rzeka dociera do morza po długiej podróży."
+        },
+        {
+          "s": "He finally reaches the summit of the mountain.",
+          "t": "On w końcu osiąga szczyt góry."
+        },
+        {
+          "s": "The sound reaches every corner of the room.",
+          "t": "Dźwięk dociera do każdego zakątka pokoju."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "select": {
+      "t": "wybierać / dobierać",
+      "d": {
+        "s": "To choose or make a choice from a number of alternatives.",
+        "t": "Wybierać, dobierać, selekcjonować."
+      },
+      "s": [
+        "choose",
+        "pick"
+      ],
+      "e": [
+        {
+          "s": "You can select a product and inspect every detail of it.",
+          "t": "Możesz wybrać produkt i obejrzeć każdy jego szczegół."
+        },
+        {
+          "s": "Please select the correct answer from the options provided.",
+          "t": "Proszę wybrać poprawną odpowiedź spośród podanych opcji."
+        },
+        {
+          "s": "He had to select a new car after his old one broke down.",
+          "t": "Musiał wybrać nowy samochód po tym, jak jego stary się zepsuł."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "anymore": {
+      "t": "już nie",
+      "d": {
+        "s": "Used to indicate that something that was true in the past is no longer true.",
+        "t": "Już (nie); obecnie (nie)."
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "I don't live here anymore.",
+          "t": "Nie mieszkam tu już."
+        },
+        {
+          "s": "He doesn't work here anymore.",
+          "t": "On już tu nie pracuje."
+        },
+        {
+          "s": "She isn't a child anymore.",
+          "t": "Ona nie jest już dzieckiem."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "especially": {
+      "t": "szczególnie / zwłaszcza",
+      "d": {
+        "s": "more than usual; very much",
+        "t": "szczególnie / zwłaszcza"
+      },
+      "s": [
+        "particularly"
+      ],
+      "e": [
+        {
+          "s": "He likes all sports, especially football.",
+          "t": "On lubi wszystkie sporty, zwłaszcza piłkę nożną."
+        },
+        {
+          "s": "This is especially important for children.",
+          "t": "Jest to szczególnie ważne dla dzieci."
+        },
+        {
+          "s": "She was especially pleased with the results.",
+          "t": "Była szczególnie zadowolona z wyników."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "underrated": {
+      "t": "niedoceniany",
+      "d": {
+        "s": "Not rated or valued as highly as it should be.",
+        "t": "Niedoceniany, nie w pełni doceniany."
+      },
+      "s": [
+        "underappreciated",
+        "underestimated"
+      ],
+      "e": [
+        {
+          "s": "The film was good, but it was underrated.",
+          "t": "Film był dobry, ale był niedoceniany."
+        },
+        {
+          "s": "He is an underrated musician.",
+          "t": "Jest niedocenianym muzykiem."
+        },
+        {
+          "s": "This is an underrated restaurant.",
+          "t": "To jest niedoceniana restauracja."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "burgundy": {
+      "t": "burgund",
+      "d": {
+        "s": "A dark red color, like that of red wine.",
+        "t": "Ciemnoczerwony kolor, podobny do koloru czerwonego wina."
+      },
+      "s": [
+        "maroon",
+        "wine-colored"
+      ],
+      "e": [
+        {
+          "s": "She wore a beautiful burgundy dress to the party.",
+          "t": "Miała na sobie piękną burgundową sukienkę na przyjęcie."
+        },
+        {
+          "s": "The walls were painted a deep burgundy.",
+          "t": "Ściany były pomalowane na głęboki burgundowy kolor."
+        },
+        {
+          "s": "He preferred the burgundy shade over the lighter red.",
+          "t": "Wolał burgundowy odcień od jaśniejszej czerwieni."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "matte": {
+      "t": "matowy",
+      "d": {
+        "s": "Having a dull, non-shiny surface.",
+        "t": "Matowy, nieszorstki, niebłyszczący."
+      },
+      "s": [
+        "dull",
+        "flat"
+      ],
+      "e": [
+        {
+          "s": "The vase had a matte finish.",
+          "t": "Wazon miał matowe wykończenie."
+        },
+        {
+          "s": "She preferred matte lipstick to glossy.",
+          "t": "Wolała matową szminkę od błyszczącej."
+        },
+        {
+          "s": "The screen is matte to reduce glare.",
+          "t": "Ekran jest matowy, aby zmniejszyć odblaski."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "event": {
+      "t": "wydarzenie",
+      "d": {
+        "s": "A thing that happens or takes place, especially one of importance.",
+        "t": "Coś, co się dzieje lub ma miejsce, zwłaszcza coś ważnego."
+      },
+      "s": [
+        "occurrence",
+        "happening"
+      ],
+      "e": [
+        {
+          "s": "The event was a great success.",
+          "t": "Wydarzenie zakończyło się wielkim sukcesem."
+        },
+        {
+          "s": "We are planning a special event for the anniversary.",
+          "t": "Planujemy specjalne wydarzenie na rocznicę."
+        },
+        {
+          "s": "Don't miss this exciting event!",
+          "t": "Nie przegap tego ekscytującego wydarzenia!"
+        }
+      ],
+      "languageValidation": 1
+    },
+    "coolest": {
+      "t": "najfajniejszy / najchłodniejszy",
+      "d": {
+        "s": "Extremely good, impressive, or fashionable.",
+        "t": "Niezwykle dobry, imponujący lub modny."
+      },
+      "s": [
+        "best",
+        "greatest"
+      ],
+      "e": [
+        {
+          "s": "That's like the coolest animation of the century.",
+          "t": "To jakby najfajniejsza animacja stulecia."
+        },
+        {
+          "s": "He's wearing the coolest jacket I've ever seen.",
+          "t": "On ma na sobie najfajniejszą kurtkę, jaką kiedykolwiek widziałem."
+        },
+        {
+          "s": "This is the coolest party in town.",
+          "t": "To najfajniejsza impreza w mieście."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "crease": {
+      "t": "zagięcie / fałda",
+      "d": {
+        "s": "A line or ridge produced on paper or cloth by pressing, folding, or wrinkling it.",
+        "t": "Linia lub grzbiet utworzony na papierze lub tkaninie przez jego prasowanie, składanie lub marszczenie."
+      },
+      "s": [
+        "fold",
+        "wrinkle"
+      ],
+      "e": [
+        {
+          "s": "Be careful not to crease the paper when you fold it.",
+          "t": "Uważaj, aby nie zagiąć papieru podczas składania."
+        },
+        {
+          "s": "The shirt had a sharp crease down the front.",
+          "t": "Koszula miała wyraźne zagięcie z przodu."
+        },
+        {
+          "s": "The fabric will crease easily if it's not handled carefully.",
+          "t": "Tkanina łatwo się pogniecie, jeśli nie będzie się z nią obchodzić ostrożnie."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "folded": {
+      "t": "złożony / zagięty",
+      "d": {
+        "s": "Bent or creased into layers or sections.",
+        "t": "Złożony lub zagięty w warstwy lub sekcje."
+      },
+      "s": [
+        "creased",
+        "doubled"
+      ],
+      "e": [
+        {
+          "s": "The letter was folded and put in an envelope.",
+          "t": "List został złożony i włożony do koperty."
+        },
+        {
+          "s": "He folded the map carefully.",
+          "t": "Ostrożnie złożył mapę."
+        },
+        {
+          "s": "Once it's folded out, you have a larger surface.",
+          "t": "Gdy zostanie rozłożony, masz większą powierzchnię."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "stabilize": {
+      "t": "stabilizować",
+      "d": {
+        "s": "To make or become steady, stable, or firm.",
+        "t": "Uczynić lub stać się stabilnym, stałym lub pewnym."
+      },
+      "s": [
+        "steady",
+        "firm"
+      ],
+      "e": [
+        {
+          "s": "The government tried to stabilize the economy.",
+          "t": "Rząd próbował ustabilizować gospodarkę."
+        },
+        {
+          "s": "He needs to stabilize his breathing.",
+          "t": "Musi ustabilizować oddech."
+        },
+        {
+          "s": "The new policy will stabilize the situation.",
+          "t": "Nowa polityka ustabilizuje sytuację."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "native": {
+      "t": "rodzimy / tubylczy / wrodzony",
+      "d": {
+        "s": "Belonging to or associated with the place or circumstances of a person's birth or origin.",
+        "t": "Rodzimy, wrodzony, tubylczy."
+      },
+      "s": [
+        "indigenous",
+        "local"
+      ],
+      "e": [
+        {
+          "s": "The native population protested the new law.",
+          "t": "Tubylcza ludność protestowała przeciwko nowemu prawu."
+        },
+        {
+          "s": "She felt a strong connection to her native land.",
+          "t": "Czuła silną więź ze swoją ojczyzną."
+        },
+        {
+          "s": "This is a native species of the region.",
+          "t": "Jest to rodzimy gatunek tego regionu."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "happens": {
+      "t": "zdarza się",
+      "d": {
+        "s": "occurs or takes place",
+        "t": "zdarza się lub ma miejsce"
+      },
+      "s": [
+        "occurs",
+        "takes place"
+      ],
+      "e": [
+        {
+          "s": "What happens if we miss the train?",
+          "t": "Co się stanie, jeśli spóźnimy się na pociąg?"
+        },
+        {
+          "s": "It happens sometimes.",
+          "t": "Czasami się to zdarza."
+        },
+        {
+          "s": "Accidents can happen anywhere.",
+          "t": "Wypadki mogą zdarzyć się wszędzie."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "field": {
+      "t": "pole",
+      "d": {
+        "s": "An area of open land, especially one planted with crops or pasture, typically bounded by hedges or fences.",
+        "t": "Obszar otwartej ziemi, zwłaszcza obsadzony uprawami lub pastwiskiem, zazwyczaj otoczony żywopłotami lub ogrodzeniami."
+      },
+      "s": [
+        "area",
+        "ground"
+      ],
+      "e": [
+        {
+          "s": "The farmer plowed the field.",
+          "t": "Rolnik zaorał pole."
+        },
+        {
+          "s": "Children were playing in the field.",
+          "t": "Dzieci bawiły się na polu."
+        },
+        {
+          "s": "The field was covered in wildflowers.",
+          "t": "Pole było pokryte dzikimi kwiatami."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "slurping": {
+      "t": "mlaskanie / chłeptanie",
+      "d": {
+        "s": "The action of drinking or eating something noisily.",
+        "t": "Dźwięk picia lub jedzenia czegoś głośno."
+      },
+      "s": [
+        "guzzling",
+        "lapping"
+      ],
+      "e": [
+        {
+          "s": "He was slurping his soup loudly.",
+          "t": "Głośno mlaskał zupę."
+        },
+        {
+          "s": "The cat was slurping milk from the bowl.",
+          "t": "Kot chłeptał mleko z miski."
+        },
+        {
+          "s": "Stop slurping your drink, it's annoying.",
+          "t": "Przestań mlaskać przy piciu, to irytujące."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "melee": {
+      "t": "walka wręcz / potyczka",
+      "d": {
+        "s": "A confused fight, skirmish, or battle, especially one involving a confused mass of people.",
+        "t": "Zamieszanie, potyczka lub bitwa, zwłaszcza taka, która obejmuje zdezorientowaną masę ludzi."
+      },
+      "s": [
+        "brawl",
+        "scuffle"
+      ],
+      "e": [
+        {
+          "s": "The soldiers were caught in a fierce melee.",
+          "t": "Żołnierze zostali uwięzieni w zaciętej walce wręcz."
+        },
+        {
+          "s": "A melee broke out in the crowded bar.",
+          "t": "W zatłoczonym barze wybuchła potyczka."
+        },
+        {
+          "s": "The game ended with a chaotic melee near the goal.",
+          "t": "Gra zakończyła się chaotyczną walką wręcz w pobliżu bramki."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "keynote": {
+      "t": "przemówienie otwierające / główna mowa",
+      "d": {
+        "s": "A speech or talk that expresses the main theme or idea of an assembly, conference, or convention.",
+        "t": "Przemówienie otwierające / główna mowa"
+      },
+      "s": [
+        "address",
+        "discourse"
+      ],
+      "e": [
+        {
+          "s": "The CEO delivered the keynote address at the annual conference.",
+          "t": "Dyrektor generalny wygłosił przemówienie otwierające na dorocznej konferencji."
+        },
+        {
+          "s": "Her keynote speech focused on the future of technology.",
+          "t": "Jej główna mowa skupiała się na przyszłości technologii."
+        },
+        {
+          "s": "The keynote speaker was a renowned expert in the field.",
+          "t": "Głównym mówcą był uznany ekspert w tej dziedzinie."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "potions": {
+      "t": "mikstury",
+      "d": {
+        "s": "A liquid mixture, especially one having medicinal, poisonous, or magical properties.",
+        "t": "Płynna mieszanina, zwłaszcza o właściwościach leczniczych, trujących lub magicznych."
+      },
+      "s": [
+        "elixirs",
+        "concoctions"
+      ],
+      "e": [
+        {
+          "s": "The wizard brewed powerful potions.",
+          "t": "Czarodziej warzył potężne mikstury."
+        },
+        {
+          "s": "She bought a love potion.",
+          "t": "Kupiła eliksir miłosny."
+        },
+        {
+          "s": "He doesn't have more potions.",
+          "t": "On nie ma więcej mikstur."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "somehow": {
+      "t": "jakoś / w jakiś sposób",
+      "d": {
+        "s": "in some way or by some means, although it is not clear how",
+        "t": "w jakiś sposób, jakoś"
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "I don't know how, but somehow the door opened.",
+          "t": "Nie wiem jak, ale jakoś drzwi się otworzyły."
+        },
+        {
+          "s": "Somehow, she managed to finish the project on time.",
+          "t": "Jakoś udało jej się dokończyć projekt na czas."
+        },
+        {
+          "s": "He was somehow responsible for the accident.",
+          "t": "Był w jakiś sposób odpowiedzialny za wypadek."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "crash": {
+      "t": "zderzenie / awaria / wypadek",
+      "d": {
+        "s": "To collide violently or noisily.",
+        "t": "Zderzyć się gwałtownie lub hałaśliwie."
+      },
+      "s": [
+        "collision",
+        "impact"
+      ],
+      "e": [
+        {
+          "s": "The car crash was severe.",
+          "t": "Zderzenie samochodu było poważne."
+        },
+        {
+          "s": "The plane crash killed all passengers.",
+          "t": "Katastrofa lotnicza zabiła wszystkich pasażerów."
+        },
+        {
+          "s": "The stock market crash caused panic.",
+          "t": "Kryzys na giełdzie spowodował panikę."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "calculator": {
+      "t": "kalkulator",
+      "d": {
+        "s": "A device for performing arithmetic calculations.",
+        "t": "Kalkulator, maszynka do liczenia."
+      },
+      "s": [
+        "adding machine"
+      ],
+      "e": [
+        {
+          "s": "He used a calculator to add up the figures.",
+          "t": "Użył kalkulatora do zsumowania liczb."
+        },
+        {
+          "s": "She bought a new calculator for her accounting class.",
+          "t": "Kupiła nowy kalkulator na zajęcia z rachunkowości."
+        },
+        {
+          "s": "The calculator has a solar-powered display.",
+          "t": "Kalkulator ma wyświetlacz zasilany energią słoneczną."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "emotional": {
+      "t": "emocjonalny",
+      "d": {
+        "s": "Relating to or characterized by emotion.",
+        "t": "Emocjonalny."
+      },
+      "s": [
+        "sentimental",
+        "passionate"
+      ],
+      "e": [
+        {
+          "s": "He has a very emotional response to music.",
+          "t": "On ma bardzo emocjonalną reakcję na muzykę."
+        },
+        {
+          "s": "The film was so emotional that I cried.",
+          "t": "Film był tak emocjonalny, że płakałem."
+        },
+        {
+          "s": "She is an emotional person, easily moved to tears or laughter.",
+          "t": "Ona jest osobą emocjonalną, łatwo wzruszającą się do łez lub śmiechu."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "computational": {
+      "t": "obliczeniowy / komputacyjny",
+      "d": {
+        "s": "relating to or using computation or computers",
+        "t": "obliczeniowy, komputacyjny"
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "Computational linguistics is a fascinating field.",
+          "t": "Lingwistyka komputerowa to fascynująca dziedzina."
+        },
+        {
+          "s": "The company offers computational modeling services.",
+          "t": "Firma oferuje usługi modelowania obliczeniowego."
+        },
+        {
+          "s": "Computational methods are essential for scientific research.",
+          "t": "Metody obliczeniowe są niezbędne w badaniach naukowych."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "depth": {
+      "t": "głębokość",
+      "d": {
+        "s": "The distance from the top or surface to the bottom.",
+        "t": "Odległość od góry lub powierzchni do dołu."
+      },
+      "s": [
+        "deepness"
+      ],
+      "e": [
+        {
+          "s": "The pool has a depth of 3 meters.",
+          "t": "Basen ma głębokość 3 metrów."
+        },
+        {
+          "s": "He measured the depth of the well.",
+          "t": "Zmierzyli głębokość studni."
+        },
+        {
+          "s": "The submarine can withstand great depth.",
+          "t": "Łódź podwodna może wytrzymać dużą głębokość."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "effect": {
+      "t": "efekt / wpływ",
+      "d": {
+        "s": "a particular appearance or quality produced in the mind; impression.",
+        "t": "wrażenie; odbiór"
+      },
+      "s": [
+        "result",
+        "consequence"
+      ],
+      "e": [
+        {
+          "s": "The special effects were amazing.",
+          "t": "Efekty specjalne były niesamowite."
+        },
+        {
+          "s": "The drug had a strange effect on me.",
+          "t": "Lek miał na mnie dziwny wpływ."
+        },
+        {
+          "s": "We are studying the effect of the new policy.",
+          "t": "Badamy skutki nowej polityki."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "slacking": {
+      "t": "leniuchować / obijać się",
+      "d": {
+        "s": "Failing to do something properly or diligently; not working hard enough.",
+        "t": "Lenić się; nie przykładać się do czegoś; obijać się."
+      },
+      "s": [
+        "lazying",
+        "loafing"
+      ],
+      "e": [
+        {
+          "s": "You're slacking, and I have to pick up your slack.",
+          "t": "Leniuchujesz i muszę nadrabiać twoje zaległości."
+        },
+        {
+          "s": "Stop slacking and get back to work.",
+          "t": "Przestań się obijać i wracaj do pracy."
+        },
+        {
+          "s": "He was accused of slacking off during his shift.",
+          "t": "Został oskarżony o obijanie się podczas swojej zmiany."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "faces": {
+      "t": "twarze",
+      "d": {
+        "s": "The front part of a person's or animal's head from the forehead to the chin, or the corresponding part on an object.",
+        "t": "Przód głowy osoby lub zwierzęcia od czoła do podbródka, lub odpowiadająca mu część obiektu."
+      },
+      "s": [
+        "visages",
+        "profiles"
+      ],
+      "e": [
+        {
+          "s": "The painting showed many different faces.",
+          "t": "Obraz przedstawiał wiele różnych twarzy."
+        },
+        {
+          "s": "He made funny faces at the baby.",
+          "t": "Robił śmieszne miny do dziecka."
+        },
+        {
+          "s": "The building's faces were covered in graffiti.",
+          "t": "Ściany budynku były pokryte graffiti."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "they'll": {
+      "t": "oni będą / one będą",
+      "d": {
+        "s": "Contraction of 'they will' or 'they shall'.",
+        "t": "Skrót od 'they will' lub 'they shall'."
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "They'll be here soon.",
+          "t": "Oni wkrótce tu będą."
+        },
+        {
+          "s": "I think they'll win the game.",
+          "t": "Myślę, że wygrają mecz."
+        },
+        {
+          "s": "Don't worry, they'll help you.",
+          "t": "Nie martw się, pomogą ci."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "worse": {
+      "t": "gorzej / gorszy",
+      "d": {
+        "s": "More bad or severe",
+        "t": "Gorszy"
+      },
+      "s": [
+        "ill",
+        "badder"
+      ],
+      "e": [
+        {
+          "s": "The situation is getting worse.",
+          "t": "Sytuacja staje się gorsza."
+        },
+        {
+          "s": "His condition grew worse.",
+          "t": "Jego stan pogarszał się."
+        },
+        {
+          "s": "This is worse than I thought.",
+          "t": "To jest gorsze niż myślałem."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "actual": {
+      "t": "rzeczywisty / faktyczny",
+      "d": {
+        "s": "existing in fact or reality; real",
+        "t": "rzeczywisty, faktyczny"
+      },
+      "s": [
+        "real",
+        "true"
+      ],
+      "e": [
+        {
+          "s": "The actual cost was much higher than expected.",
+          "t": "Rzeczywisty koszt był znacznie wyższy niż oczekiwano."
+        },
+        {
+          "s": "Is this the actual painting or a copy?",
+          "t": "Czy to jest rzeczywisty obraz, czy kopia?"
+        },
+        {
+          "s": "We need to know the actual number of participants.",
+          "t": "Musimy znać faktyczną liczbę uczestników."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "bringin": {
+      "t": "przynosząc",
+      "d": {
+        "s": "Bringing (present participle of bring)",
+        "t": "Przynoszenie (imiesłów przysłówkowy czynny od 'bring')"
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "He is bringing his new girlfriend to the party.",
+          "t": "On przynosi swoją nową dziewczynę na imprezę."
+        },
+        {
+          "s": "The new policy is bringing about significant changes.",
+          "t": "Nowa polityka przynosi znaczące zmiany."
+        },
+        {
+          "s": "She is bringing up three children on her own.",
+          "t": "Ona wychowuje troje dzieci samodzielnie."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "hold": {
+      "t": "trzymać / dzierżyć",
+      "d": {
+        "s": "To grip, grasp, or support something with your hands or arms.",
+        "t": "Chwycić, trzymać lub podtrzymywać coś rękami lub ramionami."
+      },
+      "s": [
+        "grip",
+        "grasp"
+      ],
+      "e": [
+        {
+          "s": "Please hold my bag for a moment.",
+          "t": "Proszę, potrzymaj moją torbę przez chwilę."
+        },
+        {
+          "s": "She could barely hold the heavy box.",
+          "t": "Ledwo mogła utrzymać ciężkie pudełko."
+        },
+        {
+          "s": "He decided to hold the child's hand as they crossed the street.",
+          "t": "Zdecydował się trzymać dziecko za rękę, gdy przechodzili przez ulicę."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "fastest": {
+      "t": "najszybszy",
+      "d": {
+        "s": "Moving or capable of moving at high speed.",
+        "t": "Poruszający się lub zdolny do poruszania się z dużą prędkością."
+      },
+      "s": [
+        "quickest",
+        "speediest"
+      ],
+      "e": [
+        {
+          "s": "She is the fastest runner in our class.",
+          "t": "Ona jest najszybszą biegaczką w naszej klasie."
+        },
+        {
+          "s": "This is the fastest way to get there.",
+          "t": "To najszybszy sposób, żeby się tam dostać."
+        },
+        {
+          "s": "The cheetah is the fastest land animal.",
+          "t": "Gepard jest najszybszym zwierzęciem lądowym."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "animation": {
+      "t": "animacja",
+      "d": {
+        "s": "The process of creating moving images by photographing successive drawings, models, or computer graphics.",
+        "t": "Proces tworzenia ruchomych obrazów poprzez fotografowanie kolejnych rysunków, modeli lub grafiki komputerowej."
+      },
+      "s": [
+        "cartooning",
+        "motion graphics"
+      ],
+      "e": [
+        {
+          "s": "The film's animation was breathtaking.",
+          "t": "Animacja filmu zapierała dech w piersiach."
+        },
+        {
+          "s": "She is studying animation at university.",
+          "t": "Ona studiuje animację na uniwersytecie."
+        },
+        {
+          "s": "The animation brings the characters to life.",
+          "t": "Animacja ożywia postacie."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "vibes": {
+      "t": "wibracje / atmosfera",
+      "d": {
+        "s": "A person's or thing's emotional atmosphere or aura.",
+        "t": "Atmosfera emocjonalna lub aura osoby lub rzeczy."
+      },
+      "s": [
+        "aura",
+        "feeling"
+      ],
+      "e": [
+        {
+          "s": "The room had a really strange vibe.",
+          "t": "Pokój miał naprawdę dziwną atmosferę."
+        },
+        {
+          "s": "I get good vibes from him.",
+          "t": "Czuję od niego dobre wibracje."
+        },
+        {
+          "s": "She has a positive vibe about her.",
+          "t": "Ma w sobie pozytywną aurę."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "bell": {
+      "t": "dzwon",
+      "d": {
+        "s": "A hollow, cup-shaped metal object that makes a ringing sound when struck.",
+        "t": "Pusty, dzwonkowaty metalowy przedmiot, który wydaje dźwięk dzwonienia po uderzeniu."
+      },
+      "s": [
+        "chime",
+        "peal"
+      ],
+      "e": [
+        {
+          "s": "The church bell rang out across the valley.",
+          "t": "Kościelny dzwon rozbrzmiał po dolinie."
+        },
+        {
+          "s": "He heard the bell ring, signaling the end of class.",
+          "t": "Usłyszał dzwonek, sygnalizujący koniec lekcji."
+        },
+        {
+          "s": "The doorbell rang, and she opened the door.",
+          "t": "Zadzwonił dzwonek do drzwi, a ona otworzyła drzwi."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "hate": {
+      "t": "nienawidzić",
+      "d": {
+        "s": "Intense dislike or ill will.",
+        "t": "Nienawiść lub silna niechęć."
+      },
+      "s": [
+        "detest",
+        "abhor"
+      ],
+      "e": [
+        {
+          "s": "I hate it when my computer crashes.",
+          "t": "Nienawidzę, kiedy mój komputer się zawiesza."
+        },
+        {
+          "s": "She hates being late for appointments.",
+          "t": "Ona nienawidzi spóźniać się na spotkania."
+        },
+        {
+          "s": "They hate the idea of moving to a new city.",
+          "t": "Oni nienawidzą pomysłu przeprowadzki do nowego miasta."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "afford": {
+      "t": "pozwolić sobie na",
+      "d": {
+        "s": "Have enough money to pay for something.",
+        "t": "Mieć wystarczająco pieniędzy, aby zapłacić za coś."
+      },
+      "s": [
+        "budget for",
+        "manage"
+      ],
+      "e": [
+        {
+          "s": "We cannot afford to buy a new car.",
+          "t": "Nie stać nas na kupno nowego samochodu."
+        },
+        {
+          "s": "Can you afford the rent this month?",
+          "t": "Czy stać cię na czynsz w tym miesiącu?"
+        },
+        {
+          "s": "He could not afford the medical expenses.",
+          "t": "Nie było go stać na pokrycie kosztów leczenia."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "boring": {
+      "t": "nudny",
+      "d": {
+        "s": "Not interesting; tedious.",
+        "t": "Nudny; monotonny."
+      },
+      "s": [
+        "tedious",
+        "uninteresting"
+      ],
+      "e": [
+        {
+          "s": "The lecture was so boring that I fell asleep.",
+          "t": "Wykład był tak nudny, że zasnąłem."
+        },
+        {
+          "s": "He found the job incredibly boring.",
+          "t": "Uważał tę pracę za niewiarygodnie nudną."
+        },
+        {
+          "s": "It's a boring film with no plot.",
+          "t": "To nudny film bez fabuły."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "zero": {
+      "t": "zero",
+      "d": {
+        "s": "The numerical symbol or figure representing zero; the number that comes before one in the counting sequence.",
+        "t": "Liczba zero; cyfra oznaczająca zero; nic."
+      },
+      "s": [
+        "naught",
+        "nil"
+      ],
+      "e": [
+        {
+          "s": "The score was zero to zero at halftime.",
+          "t": "Wynik w przerwie wynosił zero do zera."
+        },
+        {
+          "s": "He scored zero points in the game.",
+          "t": "Zdobył zero punktów w meczu."
+        },
+        {
+          "s": "The temperature dropped to zero degrees Celsius.",
+          "t": "Temperatura spadła do zera stopni Celsjusza."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "nano": {
+      "t": "nano",
+      "d": {
+        "s": "A prefix meaning one billionth.",
+        "t": "Przedrostek oznaczający jedną miliardową."
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "The device operates at the nano scale.",
+          "t": "Urządzenie działa w nanoskali."
+        },
+        {
+          "s": "Researchers are exploring nano materials.",
+          "t": "Naukowcy badają nanomateriały."
+        },
+        {
+          "s": "This technology allows for nano fabrication.",
+          "t": "Ta technologia pozwala na nanofabrykację."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "develops": {
+      "t": "rozwijać się",
+      "d": {
+        "s": "To grow or cause to grow and become more mature, advanced, or elaborate.",
+        "t": "Rozwijać się lub powodować rozwój, dojrzewanie, postęp lub uszczegółowienie."
+      },
+      "s": [
+        "evolves",
+        "matures"
+      ],
+      "e": [
+        {
+          "s": "The plot of the movie develops slowly.",
+          "t": "Fabuła filmu rozwija się powoli."
+        },
+        {
+          "s": "He needs to develop his skills.",
+          "t": "On musi rozwijać swoje umiejętności."
+        },
+        {
+          "s": "The situation is developing quickly.",
+          "t": "Sytuacja rozwija się szybko."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "dies": {
+      "t": "umiera",
+      "d": {
+        "s": "To cease to live; to pass away.",
+        "t": "Umarć; umierać."
+      },
+      "s": [
+        "passes away",
+        "perishes"
+      ],
+      "e": [
+        {
+          "s": "The old man dies peacefully in his sleep.",
+          "t": "Stary człowiek umiera spokojnie we śnie."
+        },
+        {
+          "s": "If you don't water the plant, it dies.",
+          "t": "Jeśli nie podlejesz rośliny, ona umrze."
+        },
+        {
+          "s": "He was afraid that he dies soon.",
+          "t": "Bał się, że wkrótce umrze."
         }
       ],
       "languageValidation": 1

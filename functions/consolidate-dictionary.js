@@ -2,6 +2,7 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
+const { isDeepStrictEqual } = require("node:util");
 const {
     S3Client,
     ListObjectsV2Command,
@@ -57,16 +58,19 @@ async function consolidatePair(config, pair, { s3Client, localFallbackDir, force
         }), { abortSignal: AbortSignal.timeout(10000) });
         const json = await streamToString(getRes.Body);
         const parsed = JSON.parse(json);
-        if (parsed?.entries && typeof parsed.entries === "object") {
+        if (parsed?.entries && typeof parsed.entries === "object" && !Array.isArray(parsed.entries)) {
             pack = parsed;
             packExistedOnR2 = true;
+        } else {
+            throw new Error(`Invalid existing pack: ${packKey}`);
         }
     } catch (error) {
         if (error.name !== "NoSuchKey" && error.$metadata?.httpStatusCode !== 404) {
-            console.warn(`[Consolidator] Could not read existing pack for ${pair}:`, error.message);
+            throw new Error(`Could not read existing pack for ${pair}: ${error.message}`, { cause: error });
         }
     }
 
+    const originalEntries = structuredClone(pack.entries);
     let newWordsAdded = 0;
 
     // 2. Merge local pack entries if local file exists (allows manual additions in project folder)
@@ -118,7 +122,7 @@ async function consolidatePair(config, pair, { s3Client, localFallbackDir, force
             }), { abortSignal: AbortSignal.timeout(10000) });
         } catch (listErr) {
             console.warn(`[Consolidator] List error for ${livePrefix}:`, listErr.message);
-            break;
+            throw listErr;
         }
 
         const contents = listRes.Contents || [];
@@ -145,16 +149,22 @@ async function consolidatePair(config, pair, { s3Client, localFallbackDir, force
                         }
                     }
                 } catch (e) {
-                    // Skip corrupt or unreadable files gracefully
+                    throw new Error(`Could not read live file ${item.Key}: ${e.message}`, { cause: e });
                 }
             }));
         }
 
+        if (listRes.IsTruncated && !listRes.NextContinuationToken) {
+            throw new Error(`Missing continuation token for ${livePrefix}`);
+        }
         continuationToken = listRes.IsTruncated ? listRes.NextContinuationToken : null;
     } while (continuationToken);
 
-    // 4. Save updated pack to R2 if new words were added or pack didn't exist or forceUpload is set
-    const shouldUpload = newWordsAdded > 0 || !packExistedOnR2 || forceUpload;
+    // Persist corrections to existing words as well as newly added words.
+    const updatedWords = Object.keys(pack.entries).filter(word =>
+        Object.hasOwn(originalEntries, word) && !isDeepStrictEqual(originalEntries[word], pack.entries[word])
+    ).length;
+    const shouldUpload = newWordsAdded > 0 || updatedWords > 0 || !packExistedOnR2 || forceUpload;
     const totalWords = Object.keys(pack.entries).length;
 
     if (shouldUpload && totalWords > 0) {
@@ -191,6 +201,7 @@ async function consolidatePair(config, pair, { s3Client, localFallbackDir, force
         packKey,
         totalWords,
         newWordsAdded,
+        updatedWords,
         liveFilesExamined,
         uploaded: shouldUpload && totalWords > 0,
     };
@@ -210,6 +221,12 @@ async function consolidateAll(config, options = {}) {
             console.error(`[Consolidator] Failed consolidating ${pair}:`, err.message);
             results.push({ pair, error: err.message });
         }
+    }
+    const failures = results.filter(result => result.error);
+    if (failures.length) {
+        const error = new Error(`Dictionary consolidation failed: ${failures.map(result => `${result.pair}: ${result.error}`).join("; ")}`);
+        error.results = results;
+        throw error;
     }
     return results;
 }

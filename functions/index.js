@@ -1,7 +1,7 @@
 const { onRequest } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { defineSecret } = require("firebase-functions/params");
-const { consolidateAll } = require("./consolidate-dictionary");
+const { consolidateAll, consolidatePair } = require("./consolidate-dictionary");
 const {
     SUBSCRIPTION_PLANS,
     SUBSCRIPTION_LIMITS,
@@ -52,7 +52,7 @@ function getR2SecretAccessKey() {
 function getR2Config() {
     return {
         accountId: process.env.R2_ACCOUNT_ID || "94b9a2de404c8e3f8efa532d0607b5f1",
-        accessKeyId: process.env.R2_ACCESS_KEY_ID || "de6bc2bd824ee7c0963e2df93f80c22b",
+        accessKeyId: process.env.R2_ACCESS_KEY_ID,
         secretAccessKey: getR2SecretAccessKey(),
         bucketName: process.env.R2_BUCKET_NAME || "lectoro-media",
         publicUrl: process.env.R2_PUBLIC_URL || "https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev",
@@ -746,7 +746,11 @@ exports.geminiProxy = onRequest(
 
 exports.consolidateDictionaryDaily = onSchedule(
     {
+        region: "europe-west1",
         schedule: "0 3 * * *",
+        retryCount: 3,
+        minBackoffSeconds: 60,
+        maxBackoffSeconds: 300,
         timeZone: "Europe/Warsaw",
         memory: "1GiB",
         timeoutSeconds: 540,

@@ -2260,7 +2260,7 @@
             signing_in: "⏳ Přihlašování...",
             last_synced: "Poslední synchronizace: {time}",
             never_synced: "nikdy",
-            sync_now: "🔄 Synchronizovat",
+            sync_now: "🔄 Sync",
             sync_done: "✓ Hotovo!",
             sync_retry: "↻ Zkusit znovu",
             syncing: "⏳ Synchronizace...",

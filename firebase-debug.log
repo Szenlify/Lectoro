@@ -1,0 +1,11 @@
+[debug] [2026-09-17T18:11:21.034Z] ----------------------------------------------------------------------
+[debug] [2026-09-17T18:11:21.037Z] Command:       /Users/kondziu/.nvm/versions/node/v22.23.2/bin/node /Users/kondziu/.nvm/versions/node/v22.23.2/bin/firebase login:list
+[debug] [2026-09-17T18:11:21.038Z] CLI Version:   15.30.0
+[debug] [2026-09-17T18:11:21.038Z] Platform:      darwin
+[debug] [2026-09-17T18:11:21.038Z] Node Version:  v22.23.2
+[debug] [2026-09-17T18:11:21.039Z] Detected Agent: codex_cli
+[debug] [2026-09-17T18:11:21.039Z] Time:          Thu Sep 17 2026 20:11:21 GMT+0200 (Central European Summer Time)
+[debug] [2026-09-17T18:11:21.039Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-09-17T18:11:21.053Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[info] Logged in as seovileo@gmail.com
