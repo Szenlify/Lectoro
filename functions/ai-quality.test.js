@@ -56,6 +56,8 @@ test("both quiz formats render true/false and omit retired translation sections 
 test("backend rejects truncation, safety blocks, arrays and malformed JSON", () => {
     const response = (text, finishReason = "STOP") => ({ candidates: [{ finishReason, content: { parts: [{ text }] } }] });
     assert.equal(readJsonResponse(response('{"translation":"Hi"}')), '{"translation":"Hi"}');
+    assert.equal(readJsonResponse(response('```json\n{"translation":"Hi"}\n```')), '{"translation":"Hi"}');
+    assert.equal(readJsonResponse(response('{"translation":"Hi", "items": [],}')), '{"translation":"Hi","items":[]}');
     for (const value of [response('{}', "MAX_TOKENS"), response('{}', "SAFETY"), response('[]'), response('null'), response('{'), {}]) {
         assert.throws(() => readJsonResponse(value));
     }
@@ -172,6 +174,74 @@ test("Enter ignores the previous request after closing and reopening the panel",
     pending[0]({ translation: "Old response", explanation: "Old", items: [] });
     await first;
     assert.deepEqual(displayed, ["New response"]);
+});
+
+test("Enter falls back to 1/1 sentence translation when AI returns invalid JSON", async () => {
+    const source = fs.readFileSync(require.resolve("../video/subtitle-overlay.js"), "utf8");
+    const start = source.indexOf("    async function handleAIExplain(video)");
+    const end = source.indexOf("    function getSpeedOverlayParent", start);
+    const displayed = [];
+    const noop = () => {};
+    const context = vm.createContext({
+        activeText: "It is what it is.", aiExplainRequestId: 0, trackedVideo: null, eTranslateActive: false, wordCloudActive: false,
+        aiSavedIndices: new Set(), aiAiSavedIndices: new Set(), document: { body: { setAttribute: noop } },
+        getPlayerRegistry: () => ({}), cleanupReading: noop, closeSubTooltip: noop,
+        removeSubtitleTranslationUnderOriginal: noop, pauseIfPlaying: noop, captureSubtitleLayout: () => ({ rect: {} }), showAiShimmer: noop,
+        getActiveSubtitleContext: () => null, normalizeLanguageCode: () => "en",
+        SharedTranslatorService: {
+            getLearningLang: async () => "en",
+            translate: async () => ({ translated: "Jest jak jest.", detectedLang: "en" }),
+        },
+        resolveAiBadge: () => "Zdanie",
+        showAiExplainItem: () => displayed.push({
+            meaning: context.aiExplainQueue[0].meaning,
+            total: context.aiExplainQueue.length,
+            title: context.aiExplainQueue[0].title,
+        }),
+        QT: {
+            hideTooltip: noop,
+            getTargetLang: async () => "pl",
+            geminiExplainSentence: async () => {
+                throw new Error("AI returned invalid JSON. Please try again.");
+            },
+        },
+    });
+    vm.runInContext(source.slice(start, end), context);
+    await context.handleAIExplain(null);
+    assert.deepEqual(displayed, [{ meaning: "Jest jak jest.", total: 1, title: "Zdanie" }]);
+    assert.equal(context.aiExplainQueue.length, 1);
+});
+
+test("Enter preserves paywall overlay when credit limit error occurs", async () => {
+    const source = fs.readFileSync(require.resolve("../video/subtitle-overlay.js"), "utf8");
+    const start = source.indexOf("    async function handleAIExplain(video)");
+    const end = source.indexOf("    function getSpeedOverlayParent", start);
+    let paywallShown = false;
+    const noop = () => {};
+    const context = vm.createContext({
+        activeText: "Test sentence", aiExplainRequestId: 0, trackedVideo: null, eTranslateActive: false, wordCloudActive: false,
+        aiSavedIndices: new Set(), aiAiSavedIndices: new Set(), document: { body: { setAttribute: noop } },
+        getPlayerRegistry: () => ({}), cleanupReading: noop, closeSubTooltip: noop,
+        removeSubtitleTranslationUnderOriginal: noop, pauseIfPlaying: noop, captureSubtitleLayout: () => ({ rect: {} }), showAiShimmer: noop,
+        getActiveSubtitleContext: () => null, normalizeLanguageCode: () => "en",
+        SharedTranslatorService: { getLearningLang: async () => "en" },
+        showAiPaywallOverlay: () => { paywallShown = true; },
+        GeminiProxy: { isLimitError: (err) => err?.code === "RATE_LIMITED" },
+        resolveAiBadge: () => "Zdanie",
+        showAiExplainItem: noop,
+        QT: {
+            hideTooltip: noop,
+            getTargetLang: async () => "pl",
+            geminiExplainSentence: async () => {
+                const err = new Error("Rate limit exceeded");
+                err.code = "RATE_LIMITED";
+                throw err;
+            },
+        },
+    });
+    vm.runInContext(source.slice(start, end), context);
+    await context.handleAIExplain(null);
+    assert.equal(paywallShown, true);
 });
 
 function proxyHarness(sendRuntimeMessage) {

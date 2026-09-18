@@ -525,13 +525,9 @@
                     if (typeof result.explanation !== "string") {
                         throw new Error("AI returned an invalid explanation.");
                     }
-                    if (result.items == null) {
+                    if (!Array.isArray(result.items)) {
                         result.items = [];
                     }
-                    if (!Array.isArray(result.items))
-                        throw new Error(
-                            "AI returned invalid explanation items.",
-                        );
                 },
             });
             const detectedLang = AIPrompts.languageCode(

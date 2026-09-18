@@ -2146,7 +2146,7 @@
             // Sequential advance: wait comfortably after speech finishes before moving to next item
             if (!aiAutoAdvanceDisabled && aiExplainIndex + 1 < aiExplainQueue.length) {
                 clearTimeout(aiAutoAdvanceTimer);
-                const advanceDelay = speechPlayed ? 2000 : 3500;
+                const advanceDelay = speechPlayed ? 900 : 3000;
                 aiAutoAdvanceTimer = setTimeout(() => {
                     if (isCancelled() || aiAutoAdvanceDisabled) return;
                     showAiExplainItem(aiExplainIndex + 1);
@@ -2928,12 +2928,22 @@
             const context = getActiveSubtitleContext(video, text);
             const knownSourceLang = await SharedTranslatorService.getLearningLang();
             if (!isCurrent()) return;
-            const res = await QT.geminiExplainSentence(
-                text,
-                targetLang,
-                context,
-                { sourceLang: knownSourceLang },
-            );
+            let res = null;
+            let aiError = null;
+            try {
+                res = await QT.geminiExplainSentence(
+                    text,
+                    targetLang,
+                    context,
+                    { sourceLang: knownSourceLang },
+                );
+            } catch (aiErr) {
+                if (typeof GeminiProxy !== "undefined" && GeminiProxy?.isLimitError?.(aiErr)) {
+                    throw aiErr;
+                }
+                console.warn("[Lectoro] Gemini explainSentence failed, falling back to 1/1 sentence translation:", aiErr);
+                aiError = aiErr;
+            }
             if (!isCurrent()) return;
 
             const sourceLang = knownSourceLang;
@@ -2944,16 +2954,55 @@
             aiSavedIndices.clear();
             aiAiSavedIndices.clear();
 
-            const rawTranslation =
-                res?.translation || "";
-            let translation = typeof rawTranslation === "string"
-                ? rawTranslation.trim()
-                : String(rawTranslation || "").trim();
+            let translation = "";
+            let explanation = "";
+            let breakdownItems = [];
 
-            // Keep every clause and intentional repetition in the subtitle.
-            translation = translation.replace(/\s+/g, " ").trim();
-            const explanation =
-                res?.explanation || (typeof res === "string" ? res : "");
+            if (!aiError && res) {
+                const rawTranslation = res?.translation || "";
+                translation = (typeof rawTranslation === "string" ? rawTranslation : String(rawTranslation || "")).trim().replace(/\s+/g, " ");
+                explanation = res?.explanation || (typeof res === "string" ? res : "");
+                if (Array.isArray(res?.items) && res.items.length > 0) {
+                    breakdownItems = res.items.map((item) => ({
+                        type: item.type || "idiom",
+                        title: item.term,
+                        term: item.term,
+                        meaning: item.meaning || "",
+                        explanation: item.explanation || "",
+                        originalText: text,
+                        sentenceTranslated: translation,
+                        badge: resolveAiBadge(
+                            item.badge,
+                            item.type,
+                            aiExplainTargetLang,
+                        ),
+                    }));
+                }
+            }
+
+            // Fallback: if AI failed or returned empty translation, translate sentence 1/1
+            if (!translation) {
+                let fallback = null;
+                if (typeof SharedTranslatorService?.translate === "function") {
+                    try {
+                        fallback = await SharedTranslatorService.translate(text, targetLang, knownSourceLang);
+                    } catch (_) {}
+                }
+                if (!fallback && typeof QT?.translate === "function") {
+                    try {
+                        fallback = await QT.translate(text, targetLang);
+                    } catch (_) {}
+                }
+                if (!isCurrent()) return;
+                const fallbackText = fallback?.translated || (typeof fallback === "string" ? fallback : "");
+                translation = String(fallbackText || "").trim().replace(/\s+/g, " ");
+                explanation = "";
+                breakdownItems = [];
+            }
+
+            if (!translation) {
+                throw (aiError || new Error("Could not translate sentence."));
+            }
 
             const sentenceBadge = resolveAiBadge(
                 res?.badge,
@@ -2971,24 +3020,6 @@
                 badge: sentenceBadge,
             };
 
-            let breakdownItems = [];
-            if (Array.isArray(res?.items) && res.items.length > 0) {
-                breakdownItems = res.items.map((item) => ({
-                    type: item.type || "idiom",
-                    title: item.term,
-                    term: item.term,
-                    meaning: item.meaning || "",
-                    explanation: item.explanation || "",
-                    originalText: text,
-                    sentenceTranslated: translation,
-                    badge: resolveAiBadge(
-                        item.badge,
-                        item.type,
-                        aiExplainTargetLang,
-                    ),
-                }));
-            }
-
             // In Enter mode, the full sentence translation is ALWAYS the first stage (1/N)
             // in the queue, followed by subsequent breakdown items (idioms, phrasal verbs, words),
             if (breakdownItems.length > 0) {
@@ -3003,7 +3034,7 @@
         } catch (err) {
             console.error("[Lectoro] Gemini AI explain error:", err);
             if (isCurrent()) {
-                if (GeminiProxy?.isLimitError?.(err)) {
+                if (typeof GeminiProxy !== "undefined" && GeminiProxy?.isLimitError?.(err)) {
                     showAiPaywallOverlay(aiExplainLayout, err?.validation);
                 } else {
                     applyAiExplanation(

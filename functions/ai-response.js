@@ -29,14 +29,21 @@ function readTextResponse(response) {
 
 function readJsonResponse(response) {
     const text = readTextResponse(response);
+    const cleaned = text.trim().replace(/^```(?:json)?\s*([\s\S]*?)\s*```$/i, "$1").trim();
     let parsed;
-    try { parsed = JSON.parse(text); } catch (_) {
-        throw new Error("AI returned invalid JSON. Please try again.");
+    try {
+        parsed = JSON.parse(cleaned);
+    } catch (_) {
+        try {
+            parsed = JSON.parse(cleaned.replace(/,\s*([}\]])/g, "$1"));
+        } catch (_) {
+            throw new Error("AI returned invalid JSON. Please try again.");
+        }
     }
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
         throw new Error("AI returned an invalid response object.");
     }
-    return text;
+    return JSON.stringify(parsed);
 }
 
 module.exports = { generationConfig, readJsonResponse, readTextResponse };
