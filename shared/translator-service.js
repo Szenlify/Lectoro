@@ -520,7 +520,10 @@
                 sentence,
                 targetLang,
                 context,
-                { sourceLang },
+                {
+                    sourceLang,
+                    knownTranslation: options.knownTranslation,
+                },
             );
             const parsed = await geminiRequest(prompt, {
                 temperature: 0.2,
@@ -536,8 +539,13 @@
                     requireTextFields(result, [
                         "translation",
                     ]);
+                    if (typeof result.cefr === "string" && /^[A-C][1-2]$/i.test(result.cefr.trim())) {
+                        result.cefr = result.cefr.trim().toUpperCase();
+                    } else {
+                        result.cefr = "";
+                    }
                     if (typeof result.badge !== "string" || !result.badge.trim()) {
-                        result.badge = "Zdanie";
+                        result.badge = result.cefr || "Zdanie";
                     }
                     // A useful translation can be complete without an extra explanation.
                     if (result.explanation == null) {
@@ -572,6 +580,7 @@
                 "slang",
                 "vocabulary",
             ]);
+            const normSentence = sentence.toLowerCase();
             const items = rawItems
                 .filter((item) => {
                     if (
@@ -583,41 +592,107 @@
                         !item.meaning.trim()
                     )
                         return false;
-                    const term = item.term.trim();
+
+                    // Filter out proper nouns/names if the definition reveals it
                     if (
-                        !sentence.includes(term) ||
-                        seen.has(term.toLowerCase())
-                    )
+                        Utils?.isProperNounDefinition?.(item.meaning) ||
+                        Utils?.isProperNounDefinition?.(item.explanation)
+                    ) {
                         return false;
-                    seen.add(term.toLowerCase());
+                    }
+
+                    const term = item.term.trim();
+                    const normTerm = term.toLowerCase();
+                    const cleanTerm = normTerm.replace(/[^\p{L}\p{N}]/gu, "");
+                    const cleanSent = normSentence.replace(/[^\p{L}\p{N}]/gu, "");
+                    const matches = sentence.includes(term) ||
+                        normSentence.includes(normTerm) ||
+                        (cleanTerm.length >= 3 && cleanSent.includes(cleanTerm));
+                    if (!matches || seen.has(normTerm))
+                        return false;
+                    seen.add(normTerm);
                     return true;
                 })
-                .sort(
-                    (a, b) =>
-                        sentence.indexOf(a.term.trim()) -
-                        sentence.indexOf(b.term.trim()),
-                )
+                .sort((a, b) => {
+                    const normA = a.term.trim().toLowerCase();
+                    const normB = b.term.trim().toLowerCase();
+                    const idxA = normSentence.indexOf(normA);
+                    const idxB = normSentence.indexOf(normB);
+                    return (idxA !== -1 ? idxA : sentence.indexOf(a.term.trim())) -
+                           (idxB !== -1 ? idxB : sentence.indexOf(b.term.trim()));
+                })
                 .slice(0, 4)
-                .map((item) => ({
-                    term: String(item.term || "").trim(),
-                    type: String(item.type || "idiom")
-                        .toLowerCase()
-                        .trim(),
-                    meaning: String(
-                        item.meaning || item.translation || "",
-                    ).trim(),
-                    explanation:
-                        typeof item.explanation === "string"
-                            ? item.explanation.trim()
-                            : (item.explanation?.text || ""),
-                    badge:
-                        typeof item.badge === "string" ? item.badge.trim() : "",
-                }));
+                .map((item) => {
+                    const type = String(item.type || "idiom").toLowerCase().trim();
+                    const isIdiom = type === "idiom";
+                    const cefr = typeof item.cefr === "string" && /^[A-C][1-2]$/i.test(item.cefr.trim())
+                        ? item.cefr.trim().toUpperCase()
+                        : "";
+                    let badge = "";
+                    if (isIdiom) {
+                        badge = cefr ? `Idiom • ${cefr}` : (typeof item.badge === "string" && item.badge.trim() ? item.badge.trim() : "Idiom");
+                    } else if (cefr) {
+                        badge = cefr;
+                    } else if (typeof item.badge === "string" && item.badge.trim()) {
+                        badge = item.badge.trim();
+                    }
+                    return {
+                        term: String(item.term || "").trim(),
+                        type,
+                        cefr,
+                        meaning: String(
+                            item.meaning || item.translation || "",
+                        ).trim(),
+                        explanation:
+                            typeof item.explanation === "string"
+                                ? item.explanation.trim()
+                                : (item.explanation?.text || ""),
+                        badge,
+                    };
+                });
+
+            // Ironclad language guarantee: If any item meaning/explanation is still in English
+            // when targetLang is non-English, translate it to targetLang!
+            for (const item of items) {
+                if (Utils?.isLikelyEnglish?.(item.meaning, targetLang)) {
+                    try {
+                        const trRes = await translate(item.meaning, targetLang, "en");
+                        const trText = trRes?.translated || (typeof trRes === "string" ? trRes : "");
+                        if (trText && trText.trim()) {
+                            item.meaning = trText.trim();
+                        }
+                    } catch (_) {}
+                }
+                if (item.explanation && Utils?.isLikelyEnglish?.(item.explanation, targetLang)) {
+                    try {
+                        const trRes = await translate(item.explanation, targetLang, "en");
+                        const trText = trRes?.translated || (typeof trRes === "string" ? trRes : "");
+                        if (trText && trText.trim()) {
+                            item.explanation = trText.trim();
+                        }
+                    } catch (_) {}
+                }
+            }
+
+            let finalTranslation = (options.knownTranslation && typeof options.knownTranslation === "string" && options.knownTranslation.trim())
+                ? options.knownTranslation.trim()
+                : (parsed?.translation || "");
+
+            if (finalTranslation && Utils?.isLikelyEnglish?.(finalTranslation, targetLang)) {
+                try {
+                    const trRes = await translate(sentence, targetLang, sourceLang);
+                    const trText = trRes?.translated || (typeof trRes === "string" ? trRes : "");
+                    if (trText && trText.trim()) {
+                        finalTranslation = trText.trim();
+                    }
+                } catch (_) {}
+            }
 
             return {
                 detectedLang,
-                badge: (typeof parsed?.badge === "string" ? parsed.badge : "Zdanie").trim(),
-                translation: parsed?.translation || "",
+                cefr: parsed?.cefr || "",
+                badge: (typeof parsed?.badge === "string" ? parsed.badge : (parsed?.cefr || "Zdanie")).trim(),
+                translation: finalTranslation,
                 explanation: parsed?.explanation || "",
                 items,
             };

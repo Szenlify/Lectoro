@@ -81,6 +81,83 @@
             },
 
             /**
+             * Checks whether a given definition or explanation text describes a proper noun,
+             * person's name, character, brand, company, or AI model (which must not be treated as vocabulary).
+             */
+            isProperNounDefinition(text) {
+                if (!text || typeof text !== "string") return false;
+                const lower = text.toLowerCase().trim();
+                return /(?:^|[^\p{L}\p{N}])(?:name of|person's name|character in|fictional character|ai model|brand|company|corporation|trademark|actor|celebrity|nazwa|imię|nazwisko|postać|model ai|marka|firma|przedsiębiorstwo)(?:$|[^\p{L}\p{N}])/iu.test(lower);
+            },
+
+            /**
+             * Checks whether a text string appears to be in English when the expected target language is non-English.
+             */
+            isLikelyEnglish(text, targetLang) {
+                const tgt = (targetLang || "").toLowerCase().slice(0, 2);
+                if (tgt === "en" || !text || typeof text !== "string") return false;
+                const lower = text.toLowerCase().trim();
+
+                // If text contains target-specific non-English diacritics / scripts, it is NOT English
+                const DIACRITICS = {
+                    pl: /[ąćęłńóśźż]/,
+                    de: /[äöüß]/,
+                    fr: /[éàèùâêîôûëïüçœæ]/,
+                    es: /[áéíóúüñ¿¡]/,
+                    it: /[àèéìíîòóùú]/,
+                    pt: /[ãõáéíóúâêôç]/,
+                    cs: /[áčďéěíňóřšťúůýž]/,
+                    sk: /[áäčďdžéíĺľňóôŕšťúýž]/,
+                    ru: /[\u0400-\u04FF]/,
+                    uk: /[іїєґ\u0400-\u04FF]/,
+                    zh: /[\u4e00-\u9fff]/,
+                    ja: /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/,
+                    ko: /[\uac00-\ud7af]/,
+                    ar: /[\u0600-\u06FF]/,
+                };
+                if (DIACRITICS[tgt] && DIACRITICS[tgt].test(lower)) {
+                    return false;
+                }
+
+                // English distinct multi-word patterns and definition phrasing
+                const englishMarkers = [
+                    /\b(?:the)\s+[a-z]{2,}/i,
+                    /\bname of\b/i,
+                    /\bused to\b/i,
+                    /\breferring to\b/i,
+                    /\bsomeone who\b/i,
+                    /\bsomething (?:that|which|to)\b/i,
+                    /\bact of\b/i,
+                    /\bstate of\b/i,
+                    /\bmeaning\b/i,
+                    /\bmeans\b/i,
+                    /\bkind of\b/i,
+                    /\btype of\b/i,
+                ];
+                for (const marker of englishMarkers) {
+                    if (marker.test(lower)) return true;
+                }
+
+                const words = lower.split(/[^a-z]+/i).filter(Boolean);
+                if (words.length === 0) return false;
+
+                // Words distinct to English that do not clash with Romance/Slavic/Germanic stop words
+                const englishDistinct = new Set([
+                    "the", "of", "with", "that", "this", "these", "those", "something",
+                    "someone", "anything", "anyone", "doing", "saying", "having",
+                    "which", "who", "whom", "whose", "why", "where", "when", "how",
+                    "because", "should", "would", "could", "been", "being", "were"
+                ]);
+
+                let distinctCount = 0;
+                for (const w of words) {
+                    if (englishDistinct.has(w)) distinctCount++;
+                }
+
+                return distinctCount >= 2 || (distinctCount === 1 && words.length <= 4);
+            },
+
+            /**
              * Checks whether a context sentence is identical or redundant to the target word/phrase
              * (ignoring surrounding punctuation, quotes, symbols, case, and whitespace).
              * When true, the context sentence should not be displayed or saved separately as a duplicate.

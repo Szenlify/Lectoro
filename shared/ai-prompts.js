@@ -82,13 +82,29 @@ JSON: {"sentence":"...","translation":"...","output_language":"${languageCode(tg
             const sourceLang = languageCode(options.sourceLang || defaultLearning);
             const outputLang = languageCode(targetLang);
             const output = getLangName(targetLang);
+            const rawKnown = typeof options.knownTranslation === "string" ? options.knownTranslation.trim() : "";
+            const knownTr = rawKnown ? rawKnown.slice(0, 300) : "";
+            const sentenceRule = knownTr
+                ? `Sentence translation is "${knownTr}". Set "translation": "${knownTr}". Do not re-translate sentence.`
+                : `Translate only the sentence in one natural line, preserving all clauses.`;
+            const forbiddenLangNote = outputLang === "en"
+                ? ` (never in ${getLangName(options.sourceLang || defaultLearning)})`
+                : sourceLang === "en"
+                    ? ` (never in English)`
+                    : ` (never in English or ${getLangName(options.sourceLang || defaultLearning)})`;
             return (
                 `${RULES}
-Study this subtitle in ${getLangName(options.sourceLang || defaultLearning)}; never switch source language. All prose, meanings and badges: ${output}; source terms/expansions may be quoted. Terms: verbatim source text. Badges: short category labels.
-Translate only the sentence in one natural line, preserving all clauses. Context resolves sense only. Do not guess missing facts. Sentence explanation: "".
-items: 0-4 worth learning, not a quota; [] is valid. If there is no phrase or vocabulary to explain, items must be []. Default to single words. Merge only genuine idioms or phrasal verbs whose contextual sense is lost word by word (take off, get up); never literal groups (red car, very good), transparent compounds or grammar alone. Prioritize these expressions, then slang and useful vocabulary; skip names and obvious words. Keep sentence order, no duplicates or overlaps. term: smallest exact span carrying the whole expression; include intervening words only for separated verbs. Never extract an idiom's parts separately. type: idiom, phrasal_verb, slang or vocabulary.
-meaning: one brief contextual meaning; expand contractions here once. Item explanation: "" unless one short sentence adds essential usage/grammar beyond meaning; never restate it. No filler or extra examples.
-JSON: {"source_language":"${sourceLang}","output_language":"${outputLang}","badge":"...","translation":"...","explanation":"","items":[{"term":"...","type":"vocabulary","badge":"...","meaning":"...","explanation":"..."}]}` +
+Subtitle is in ${getLangName(options.sourceLang || defaultLearning)}.
+IRONCLAD: Target/native language is ${output}. All translation, meaning and explanation MUST be strictly in ${output}${forbiddenLangNote}.
+${sentenceRule} Context resolves sense only. Sentence explanation: "". cefr: sentence level ('A1'-'C2').
+items: 0-4 challenging terms: always extract difficult individual words (vocabulary: A2-C2), idioms, phrasal verbs, or slang; never only idioms.
+FORBIDDEN: NEVER extract proper nouns, person/character names, places, brands, products or AI models (e.g. NEVER 'Claude', 'John', 'Google').
+FORBIDDEN: never extract literal phrases (e.g. NEVER 'leave in the night') — extract difficult single words instead.
+term: single word or idiom span from text. type: vocabulary, idiom, phrasal_verb or slang. cefr: term level ('A1'-'C2').
+badge: if idiom, set 'Idiom'; otherwise ''. Never write 'expression', 'czasownik', 'wyrażenie' or 'słowo'.
+meaning: brief contextual meaning strictly in ${output}; expand contractions once.
+Item explanation: MUST be '' unless one short sentence adds essential nuance/grammar beyond meaning (strictly in ${output}); NEVER restate literal words. No filler.
+JSON: {"source_language":"${sourceLang}","output_language":"${outputLang}","cefr":"B1","badge":"","translation":"...","explanation":"","items":[{"term":"...","type":"vocabulary","cefr":"B2","badge":"","meaning":"...","explanation":""}]}` +
                 data({ sentence, learning_language: sourceLang }) +
                 formatSubtitleContext(context)
             );

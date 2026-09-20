@@ -112,3 +112,98 @@ test("Enter always uses native language, including obsolete stored preferences",
     await assert.rejects(service.explainSentence("Viel Erfolg!", "pl"), /different source language/);
 });
 
+test("Enter parses CEFR levels and assigns Idiom-only or CEFR-only badges without generic labels", async () => {
+    const { service } = explanationService(response({
+        cefr: "B1",
+        translation: "Odpocznij i nie poddawaj się.",
+        items: [
+            { term: "take a break", type: "idiom", cefr: "B1", meaning: "zrobić przerwę", explanation: "" },
+            { term: "give up", type: "phrasal_verb", cefr: "B2", meaning: "poddawać się", explanation: "" },
+            { term: "resilience", type: "vocabulary", cefr: "C1", meaning: "odporność", explanation: "" },
+        ],
+    }));
+    const result = await service.explainSentence("Please take a break, show resilience and don't give up.", "pl");
+    assert.equal(result.cefr, "B1");
+    assert.equal(result.items.length, 3);
+    assert.equal(result.items[0].badge, "Idiom • B1");
+    assert.equal(result.items[1].badge, "C1");
+    assert.equal(result.items[2].badge, "B2");
+});
+
+test("Enter prompt contains strict ban on tautologies, literal combinations and mandates CEFR levels", () => {
+    const AIPrompts = require("../shared/ai-prompts");
+    const prompt = AIPrompts.explainSentence("Don't leave in the night.", "pl");
+    assert.match(prompt, /cefr: sentence level/);
+    assert.match(prompt, /FORBIDDEN: never extract literal phrases/);
+    assert.match(prompt, /NEVER restate literal words/);
+    assert.match(prompt, /badge: if idiom, set 'Idiom'; otherwise ''/);
+});
+
+test("Enter skips Gemini sentence translation when Google translation is already known, but falls back when missing", async () => {
+    const AIPrompts = require("../shared/ai-prompts");
+    const promptWithKnown = AIPrompts.explainSentence("Don't leave in the night.", "pl", null, { knownTranslation: "Nie odchodź w nocy." });
+    assert.match(promptWithKnown, /Sentence translation is "Nie odchodź w nocy\."/);
+    assert.match(promptWithKnown, /Do not re-translate sentence/);
+
+    const promptWithoutKnown = AIPrompts.explainSentence("Don't leave in the night.", "pl");
+    assert.match(promptWithoutKnown, /Translate only the sentence in one natural line/);
+
+    const { service, requests } = explanationService(response({
+        translation: "Inne tłumaczenie Gemini",
+        items: [{ term: "leave", type: "vocabulary", cefr: "A2", meaning: "odejść", explanation: "" }],
+    }));
+
+    const resultWithGoogle = await service.explainSentence("Don't leave in the night.", "pl", null, { knownTranslation: "Nie odchodź w nocy." });
+    assert.equal(resultWithGoogle.translation, "Nie odchodź w nocy.");
+    assert.match(requests[0].prompt, /Sentence translation is "Nie odchodź w nocy\."/);
+
+    const resultWithoutGoogle = await service.explainSentence("Don't leave in the night.", "pl");
+    assert.equal(resultWithoutGoogle.translation, "Inne tłumaczenie Gemini");
+    assert.match(requests[1].prompt, /Translate only the sentence in one natural line/);
+});
+
+test("Enter prompt mandates extracting difficult individual words, not restricting to idioms only", () => {
+    const AIPrompts = require("../shared/ai-prompts");
+    const prompt = AIPrompts.explainSentence("He hesitated with reluctance.", "pl");
+    assert.match(prompt, /always extract difficult individual words/);
+    assert.match(prompt, /never only idioms/);
+});
+
+test("Enter prompt enforces ironclad native language and bans proper nouns and AI models", () => {
+    const AIPrompts = require("../shared/ai-prompts");
+    const prompt = AIPrompts.explainSentence("I asked Claude about this.", "pl");
+    assert.match(prompt, /IRONCLAD: Target\/native language is Polish \(pl\)/);
+    assert.match(prompt, /strictly in Polish \(pl\)/);
+    assert.match(prompt, /FORBIDDEN: NEVER extract proper nouns/);
+    assert.ok(prompt.includes("Claude"));
+});
+
+test("Enter filters out proper noun and brand name definitions from breakdown items", async () => {
+    const { service } = explanationService(response({
+        translation: "Zapytałem Claude'a o to z wahaniem.",
+        items: [
+            { term: "Claude", type: "vocabulary", cefr: "C1", meaning: "a name of an AI model", explanation: "" },
+            { term: "hesitation", type: "vocabulary", cefr: "B2", meaning: "wahanie", explanation: "" },
+        ],
+    }));
+
+    const result = await service.explainSentence("I asked Claude about this with hesitation.", "pl");
+    assert.equal(result.items.length, 1);
+    assert.equal(result.items[0].term, "hesitation");
+    assert.equal(result.items[0].meaning, "wahanie");
+});
+
+test("SharedUtils isProperNounDefinition and isLikelyEnglish correctly categorize content", () => {
+    const Utils = require("../shared/utils");
+    assert.equal(Utils.isProperNounDefinition("a name of an AI model"), true);
+    assert.equal(Utils.isProperNounDefinition("nazwa modelu AI"), true);
+    assert.equal(Utils.isProperNounDefinition("imię męskie"), true);
+    assert.equal(Utils.isProperNounDefinition("niechęć lub opór"), false);
+
+    assert.equal(Utils.isLikelyEnglish("a name of an AI model", "pl"), true);
+    assert.equal(Utils.isLikelyEnglish("the act of hesitating", "pl"), true);
+    assert.equal(Utils.isLikelyEnglish("zrobić przerwę", "pl"), false);
+    assert.equal(Utils.isLikelyEnglish("wahać się", "pl"), false);
+});
+
+

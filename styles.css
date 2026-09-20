@@ -1554,6 +1554,17 @@ body[data-lectoro-sub-translate-active="true"]
   display: none !important;
 }
 
+@keyframes __qt_pill_fade_in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 #__qt_sentence_translation .__qt_ai-queue-pill {
   display: inline-flex !important;
   align-items: center !important;
@@ -1578,11 +1589,12 @@ body[data-lectoro-sub-translate-active="true"]
   border-color: rgba(255, 255, 255, 0.2) !important;
 }
 
-/* Nadchodzące idiomy/słówka w kolejce: lekki bg fioletowego */
+/* Nadchodzące idiomy/słówka w kolejce: lekki bg fioletowego i miękkie wejście */
 #__qt_sentence_translation .__qt_ai-queue-pill.__qt_ai-pill-upcoming {
   background: rgba(168, 85, 247, 0.16) !important;
   border: 1px solid rgba(168, 85, 247, 0.35) !important;
   color: #e9d5ff !important;
+  animation: __qt_pill_fade_in 0.28s cubic-bezier(0.16, 1, 0.3, 1) backwards !important;
 }
 
 #__qt_sentence_translation .__qt_ai-queue-pill.__qt_ai-pill-upcoming:hover {
@@ -1656,19 +1668,9 @@ body[data-lectoro-sub-translate-active="true"]
   text-align: center !important;
 }
 
-#__qt_sentence_translation .__qt_ai-badge {
-  font-size: var(--lectoro-ai-badge-font-size, 8px) !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.9px !important;
-  line-height: 1 !important;
-  padding: 2px 7px !important;
-  border-radius: 999px !important;
-  background: rgba(168, 85, 247, 0.16) !important;
-  border: 1px solid rgba(168, 85, 247, 0.32) !important;
-  color: #e9d5ff !important;
-  margin-bottom: 2px !important;
-  display: inline-block !important;
+#__qt_sentence_translation .__qt_ai-badge,
+#__qt_sentence_translation .__qt_ai-credit-pill {
+  display: none !important;
 }
 
 #__qt_sentence_translation .__qt_ai-term-meaning {
@@ -1745,29 +1747,16 @@ body[data-lectoro-sub-translate-active="true"]
 #__qt_sentence_translation .__qt_header {
   display: flex !important;
   align-items: center !important;
-  justify-content: space-between !important;
+  justify-content: flex-end !important;
+  text-align: right !important;
   width: 100% !important;
   box-sizing: border-box !important;
-  padding: 8px 12px 4px !important;
+  padding: 8px 14px 2px !important;
 }
 
 #__qt_sentence_translation .__qt_ai-credit-pill {
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 3px !important;
-  padding: 1.5px 8px !important;
-  border-radius: 999px !important;
-  font-size: 9.5px !important;
-  font-weight: 700 !important;
-  color: #c7d2fe !important;
-  background: rgba(99, 102, 241, 0.18) !important;
-  border: 1px solid rgba(129, 140, 248, 0.35) !important;
-  letter-spacing: 0.2px !important;
-  user-select: none !important;
-  line-height: 1.3 !important;
-  flex-shrink: 0 !important;
+  display: none !important;
 }
-
 
 /* Przyciski nawigacji krokowego przejścia */
 #__qt_sentence_translation .__qt_ai-nav-group {
@@ -1777,6 +1766,7 @@ body[data-lectoro-sub-translate-active="true"]
   gap: 3px !important;
   margin-left: auto !important;
   flex-shrink: 0 !important;
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 #__qt_sentence_translation .__qt_ai-nav-btn {
@@ -2055,7 +2045,7 @@ body[data-lectoro-sub-translate-active="true"]
   align-items: center !important;
   justify-content: flex-end !important;
   text-align: right !important;
-  padding: 8px 16px 0 !important;
+  padding: 6px 14px 0 !important;
   font-size: var(--lectoro-ai-meta-font-size, 10px) !important;
   text-transform: uppercase !important;
   letter-spacing: 0.8px !important;

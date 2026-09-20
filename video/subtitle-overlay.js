@@ -91,6 +91,7 @@
     let aiExplainSpeechToken = 0;
     let aiAutoAdvanceTimer = null;
     let aiAutoAdvanceDisabled = false;
+    let aiExplainSpeechPromise = null;
     const aiSavedIndices = new Set();
     const aiAiSavedIndices = new Set();
 
@@ -1486,6 +1487,7 @@
         aiAutoAdvanceTimer = null;
         aiAutoAdvanceDisabled = false;
         aiExplainSpeechToken++;
+        aiExplainSpeechPromise = null;
         aiExplainQueue = [];
         aiExplainIndex = 0;
         aiExplainLayout = null;
@@ -1790,47 +1792,21 @@
 
         const totalItems = aiExplainQueue.length;
 
-        const ribbonItemsHtml = aiExplainQueue
-            .map((qItem, idx) => {
-                const isActive = idx === index;
-                const isQueued = idx !== index;
-                const icon = qItem.type === "sentence" ? "💬" : "✨";
-                const classes = [
-                    `${PREFIX}ai-queue-pill`,
-                    isActive ? "active" : "",
-                    isQueued ? C.UI_CLASSES.AI_PILL_UPCOMING : "",
-                ]
-                    .filter(Boolean)
-                    .join(" ");
-
-                return `<button type="button" class="${classes}" data-index="${idx}" role="tab" aria-selected="${isActive}" title="${QT.escapeAttr(qItem.title)}">
-                    <span class="${PREFIX}pill-icon">${icon}</span>
-                    <span>${QT.escapeHtml(qItem.title)}</span>
-                </button>`;
-            })
-            .join("");
-
         const lang = (aiExplainTargetLang || (typeof SharedI18n !== "undefined" ? SharedI18n.getLang() : null) || subtitleTranslationLang || "en").toLowerCase().slice(0, 2);
         const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, lang, p) : k);
 
-        const creditPillHtml = aiExplainCreditBadge
-            ? `<span class="${PREFIX}ai-credit-pill" title="${QT.escapeAttr(t("ai_credits_pill"))}">${QT.escapeHtml(aiExplainCreditBadge)}</span>`
-            : "";
-
         const headerHtml = `
             <div class="${PREFIX}header">
-                <div class="${PREFIX}ai-queue-ribbon" role="tablist" aria-label="${QT.escapeAttr(t("breakdown_items"))}">
-                    ${ribbonItemsHtml}
-                </div>
-                ${creditPillHtml}
                 <div class="${PREFIX}ai-nav-group">
+                    ${totalItems > 1 ? `
                     <button type="button" class="${PREFIX}ai-nav-btn ${PREFIX}ai-prev-btn" data-action="prev" ${index === 0 ? "disabled" : ""} title="${QT.escapeAttr(t("nav_previous"))}">
                         ◀
-                    </button>
+                    </button>` : ""}
                     <span class="${PREFIX}ai-step-counter">${index + 1}/${totalItems}</span>
+                    ${totalItems > 1 ? `
                     <button type="button" class="${PREFIX}ai-nav-btn ${PREFIX}ai-next-btn" data-action="next" ${index >= totalItems - 1 ? "disabled" : ""} title="${QT.escapeAttr(t("nav_next"))}">
                         ▶
-                    </button>
+                    </button>` : ""}
                 </div>
             </div>`;
 
@@ -1870,7 +1846,6 @@
                     </div>`
                 : `
                     <div class="${PREFIX}ai-term-header">
-                        ${item.badge ? `<span class="${PREFIX}ai-badge">${QT.escapeHtml(item.badge)}</span>` : ""}
                         <div class="${PREFIX}ai-term-title-wrap">
                             ${!isSentenceStage ? `<span class="${PREFIX}ai-term">${QT.escapeHtml(item.term)}</span>` : ""}
                             <span class="${PREFIX}word-actions">
@@ -2013,11 +1988,24 @@
         try {
             let speechPlayed = false;
             if (item.type === "sentence") {
-                const sentenceLang =
-                    aiExplainTargetLang;
+                let sentenceSpeech = item.meaning;
+                let sentenceLang = aiExplainTargetLang;
 
-                if (item.meaning) {
-                    await speakUntilFinished(item.meaning, sentenceLang, {
+                if (typeof SharedUtils?.isLikelyEnglish === "function" && SharedUtils.isLikelyEnglish(sentenceSpeech, sentenceLang)) {
+                    if (typeof SharedTranslatorService?.translate === "function") {
+                        try {
+                            const tr = await SharedTranslatorService.translate(sentenceSpeech, sentenceLang, "en");
+                            const trText = tr?.translated || (typeof tr === "string" ? tr : "");
+                            if (trText && trText.trim()) sentenceSpeech = trText.trim();
+                        } catch (_) {}
+                    }
+                    if (SharedUtils.isLikelyEnglish(sentenceSpeech, sentenceLang)) {
+                        sentenceLang = aiExplainSourceLang || "en";
+                    }
+                }
+
+                if (sentenceSpeech) {
+                    await speakUntilFinished(sentenceSpeech, sentenceLang, {
                         sourceLang: aiExplainSourceLang,
                         originalText: item.term,
                         isCancelled,
@@ -2035,18 +2023,32 @@
                 }
                 if (isCancelled()) return;
 
-                const detailLang =
-                    aiExplainTargetLang;
-
-                const explanationSpeech = [item.meaning, item.explanation]
+                let explanationSpeech = [item.meaning, item.explanation]
                     .filter(Boolean)
                     .join(". ");
                 if (explanationSpeech) {
                     await new Promise((r) => setTimeout(r, 350));
                     if (isCancelled()) return;
+
+                    let speechLang = aiExplainTargetLang;
+                    if (typeof SharedUtils?.isLikelyEnglish === "function" && SharedUtils.isLikelyEnglish(explanationSpeech, speechLang)) {
+                        if (typeof SharedTranslatorService?.translate === "function") {
+                            try {
+                                const tr = await SharedTranslatorService.translate(explanationSpeech, speechLang, "en");
+                                const trText = tr?.translated || (typeof tr === "string" ? tr : "");
+                                if (trText && trText.trim()) {
+                                    explanationSpeech = trText.trim();
+                                }
+                            } catch (_) {}
+                        }
+                        if (SharedUtils.isLikelyEnglish(explanationSpeech, speechLang)) {
+                            speechLang = aiExplainSourceLang || "en";
+                        }
+                    }
+
                     await speakUntilFinished(
                         explanationSpeech,
-                        detailLang,
+                        speechLang,
                         {
                             sourceLang: aiExplainSourceLang,
                             originalText: item.term,
@@ -2142,7 +2144,7 @@
         window.addEventListener("keydown", aiExplainKeydownHandler, true);
     }
 
-    function showAiExplainItem(index, { manual = false } = {}) {
+    function showAiExplainItem(index, { manual = false, preserveSpeech = false, inPlace = false } = {}) {
         if (!aiTooltipActive || !aiExplainQueue.length) return;
         if (manual) {
             aiAutoAdvanceDisabled = true;
@@ -2154,10 +2156,13 @@
         aiExplainIndex = clampedIndex;
         const item = aiExplainQueue[clampedIndex];
 
-        clearTimeout(aiAutoAdvanceTimer);
-        aiAutoAdvanceTimer = null;
-        const speechToken = ++aiExplainSpeechToken;
-        SharedTtsService.cancel();
+        let speechToken = aiExplainSpeechToken;
+        if (!preserveSpeech) {
+            clearTimeout(aiAutoAdvanceTimer);
+            aiAutoAdvanceTimer = null;
+            speechToken = ++aiExplainSpeechToken;
+            SharedTtsService.cancel();
+        }
 
         ensureAiExplainKeydownListener();
 
@@ -2168,7 +2173,7 @@
 
         // 2. Render and reveal AI card
         const html = renderAiExplainContent(clampedIndex);
-        const copy = applyAiExplanation(html, aiExplainLayout);
+        const copy = applyAiExplanation(html, aiExplainLayout, "Sentence analysis", { inPlace });
 
         // Ribbon pills click navigation
         copy.querySelectorAll(`.${PREFIX}ai-queue-pill`).forEach((pill) => {
@@ -2177,7 +2182,7 @@
                 e.stopPropagation();
                 const targetIdx = parseInt(pill.dataset.index, 10);
                 if (!isNaN(targetIdx) && targetIdx !== aiExplainIndex) {
-                    showAiExplainItem(targetIdx, { manual: true });
+                    showAiExplainItem(targetIdx, { manual: true, inPlace: true });
                 }
             });
         });
@@ -2203,8 +2208,8 @@
         wireAiExplainSpeakButton(item);
         wireAiExplainSaveButton(item);
 
-        if (aiTooltipActive) {
-            speakAiExplainItem(item, speechToken);
+        if (aiTooltipActive && !preserveSpeech) {
+            aiExplainSpeechPromise = speakAiExplainItem(item, speechToken);
         }
     }
 
@@ -2214,7 +2219,7 @@
         if (target < 0 || target >= aiExplainQueue.length) {
             return true;
         }
-        showAiExplainItem(target, { manual });
+        showAiExplainItem(target, { manual, inPlace: true });
         return true;
     }
 
@@ -2613,142 +2618,27 @@
         badgeCandidate,
         type,
         targetLangCode,
+        cefr = "",
     ) {
-        if (typeof badgeCandidate === "string" && badgeCandidate.trim()) {
-            return badgeCandidate.trim();
-        }
-        const lang = (targetLangCode || subtitleTranslationLang || C.DEFAULT_READING_SETTINGS.targetLang).toLowerCase().slice(0, 2);
         const normType = String(type || "").toLowerCase().trim();
+        const candidateStr = typeof badgeCandidate === "string" ? badgeCandidate.trim() : "";
+        const rawCefr = typeof cefr === "string" && /^[A-C][1-2]$/i.test(cefr.trim())
+            ? cefr.trim().toUpperCase()
+            : (/^[A-C][1-2]$/i.test(candidateStr) ? candidateStr.toUpperCase() : "");
 
-        const BADGE_MAP = {
-            pl: {
-                sentence: "Zdanie",
-                idiom: "Idiom",
-                phrasal_verb: "Czasownik złożony",
-                slang: "Slang",
-                vocabulary: "Słowo",
-                word: "Słowo",
-                expression: "Wyrażenie",
-                collocation: "Kolokacja",
-            },
-            en: {
-                sentence: "Sentence",
-                idiom: "Idiom",
-                phrasal_verb: "Phrasal Verb",
-                slang: "Slang",
-                vocabulary: "Word",
-                word: "Word",
-                expression: "Expression",
-                collocation: "Collocation",
-            },
-            es: {
-                sentence: "Oración",
-                idiom: "Modismo",
-                phrasal_verb: "Verbo frasal",
-                slang: "Slang",
-                vocabulary: "Palabra",
-                word: "Palabra",
-                expression: "Expresión",
-                collocation: "Colocación",
-            },
-            de: {
-                sentence: "Satz",
-                idiom: "Redewendung",
-                phrasal_verb: "Phrasal Verb",
-                slang: "Slang",
-                vocabulary: "Wort",
-                word: "Wort",
-                expression: "Ausdruck",
-                collocation: "Kollokation",
-            },
-            fr: {
-                sentence: "Phrase",
-                idiom: "Idiome",
-                phrasal_verb: "Verbe à particule",
-                slang: "Argot",
-                vocabulary: "Mot",
-                word: "Mot",
-                expression: "Expression",
-                collocation: "Collocation",
-            },
-            it: {
-                sentence: "Frase",
-                idiom: "Modo di dire",
-                phrasal_verb: "Verbo frasale",
-                slang: "Slang",
-                vocabulary: "Parola",
-                word: "Parola",
-                expression: "Espressione",
-                collocation: "Collocazione",
-            },
-            uk: {
-                sentence: "Речення",
-                idiom: "Ідіома",
-                phrasal_verb: "Фразове дієслово",
-                slang: "Сленг",
-                vocabulary: "Слово",
-                word: "Слово",
-                expression: "Вираз",
-                collocation: "Колокація",
-            },
-            ru: {
-                sentence: "Предложение",
-                idiom: "Идиома",
-                phrasal_verb: "Фразовый глагол",
-                slang: "Сленг",
-                vocabulary: "Слово",
-                word: "Слово",
-                expression: "Выражение",
-                collocation: "Коллокация",
-            },
-            pt: {
-                sentence: "Frase",
-                idiom: "Expressão idiomática",
-                phrasal_verb: "Phrasal Verb",
-                slang: "Gíria",
-                vocabulary: "Palavra",
-                word: "Palavra",
-                expression: "Expressão",
-                collocation: "Colocação",
-            },
-            zh: {
-                sentence: "句子",
-                idiom: "成语/习语",
-                phrasal_verb: "短语动词",
-                slang: "俚语",
-                vocabulary: "生词",
-                word: "生词",
-                expression: "短语",
-                collocation: "搭配",
-            },
-            ja: {
-                sentence: "文",
-                idiom: "慣用句",
-                phrasal_verb: "句動詞",
-                slang: "スラング",
-                vocabulary: "単語",
-                word: "単語",
-                expression: "表現",
-                collocation: "連語",
-            },
-            ko: {
-                sentence: "문장",
-                idiom: "관용구",
-                phrasal_verb: "구동사",
-                slang: "속어",
-                vocabulary: "단어",
-                word: "단어",
-                expression: "표현",
-                collocation: "연어",
-            },
-        };
+        const isIdiom = normType === "idiom" || /^idiom/i.test(candidateStr);
 
-        const dict = BADGE_MAP[lang] || BADGE_MAP.en;
-        return (
-            dict[normType] ||
-            dict.expression ||
-            "Word"
-        );
+        if (isIdiom) {
+            return rawCefr ? `IDIOM • ${rawCefr}` : "IDIOM";
+        }
+
+        // For non-idioms: do NOT show generic category words like "Wyrażenie", "Czasownik", "Słowo", etc.
+        // Show ONLY the CEFR level if present (e.g. "B1", "B2", "C1", "C2")!
+        if (rawCefr) {
+            return rawCefr;
+        }
+
+        return "";
     }
 
     function showAiPaywallOverlay(layout = aiExplainLayout, validation = null) {
@@ -2837,7 +2727,10 @@
 
     async function handleAIExplain(video) {
         const registry = getPlayerRegistry();
-        const text = activeText || registry?.getCurrentText();
+        let text = activeText || registry?.getCurrentText();
+        if (!text && recentSubtitlesHistory && recentSubtitlesHistory.length > 0) {
+            text = recentSubtitlesHistory[recentSubtitlesHistory.length - 1];
+        }
         if (!text) return;
         const requestId = ++aiExplainRequestId;
         const isCurrent = () => aiTooltipActive && requestId === aiExplainRequestId;
@@ -2889,6 +2782,13 @@
             const context = getActiveSubtitleContext(video, text);
             const knownSourceLang = await SharedTranslatorService.getLearningLang();
             if (!isCurrent()) return;
+
+            aiExplainSourceLang = knownSourceLang;
+            aiExplainTargetLang = targetLang;
+            aiSavedIndices.clear();
+            aiAiSavedIndices.clear();
+
+            // Direct Gemini call: no Google Translate draft, straight to Gemini AI
             let res = null;
             let aiError = null;
             try {
@@ -2898,22 +2798,15 @@
                     context,
                     { sourceLang: knownSourceLang },
                 );
-            } catch (aiErr) {
-                if (typeof GeminiProxy !== "undefined" && GeminiProxy?.isLimitError?.(aiErr)) {
-                    throw aiErr;
+            } catch (err) {
+                if (typeof GeminiProxy !== "undefined" && GeminiProxy?.isLimitError?.(err)) {
+                    throw err;
                 }
-                console.warn("[Lectoro] Gemini explainSentence failed, falling back to 1/1 sentence translation:", aiErr);
-                aiError = aiErr;
+                console.warn("[Lectoro] Gemini explainSentence failed, falling back to 1/1 sentence translation:", err);
+                aiError = err;
             }
-            if (!isCurrent()) return;
 
-            const sourceLang = knownSourceLang;
             if (!isCurrent()) return;
-
-            aiExplainSourceLang = sourceLang;
-            aiExplainTargetLang = targetLang;
-            aiSavedIndices.clear();
-            aiAiSavedIndices.clear();
 
             try {
                 const freshUsage = (await GeminiProxy?.getCachedUsage?.()) || null;
@@ -2939,24 +2832,39 @@
                 translation = (typeof rawTranslation === "string" ? rawTranslation : String(rawTranslation || "")).trim().replace(/\s+/g, " ");
                 explanation = res?.explanation || (typeof res === "string" ? res : "");
                 if (Array.isArray(res?.items) && res.items.length > 0) {
-                    breakdownItems = res.items.map((item) => ({
-                        type: item.type || "idiom",
-                        title: item.term,
-                        term: item.term,
-                        meaning: item.meaning || "",
-                        explanation: item.explanation || "",
-                        originalText: text,
-                        sentenceTranslated: translation,
-                        badge: resolveAiBadge(
-                            item.badge,
-                            item.type,
-                            aiExplainTargetLang,
-                        ),
-                    }));
+                    breakdownItems = res.items
+                        .filter((item) => {
+                            if (!item || !item.term) return false;
+                            if (typeof SharedUtils?.isProperNounDefinition === "function") {
+                                if (
+                                    SharedUtils.isProperNounDefinition(item.meaning) ||
+                                    SharedUtils.isProperNounDefinition(item.explanation)
+                                ) {
+                                    return false;
+                                }
+                            }
+                            return true;
+                        })
+                        .map((item) => ({
+                            type: item.type || "idiom",
+                            title: item.term,
+                            term: item.term,
+                            meaning: item.meaning || "",
+                            explanation: item.explanation || "",
+                            originalText: text,
+                            sentenceTranslated: translation,
+                            cefr: item.cefr || "",
+                            badge: resolveAiBadge(
+                                item.badge,
+                                item.type,
+                                aiExplainTargetLang,
+                                item.cefr,
+                            ),
+                        }));
                 }
             }
 
-            // Fallback: if AI failed or returned empty translation, translate sentence 1/1
+            // Fallback: if Gemini failed or returned empty translation, translate sentence 1/1
             if (!translation) {
                 let fallback = null;
                 if (typeof SharedTranslatorService?.translate === "function") {
@@ -2972,8 +2880,6 @@
                 if (!isCurrent()) return;
                 const fallbackText = fallback?.translated || (typeof fallback === "string" ? fallback : "");
                 translation = String(fallbackText || "").trim().replace(/\s+/g, " ");
-                explanation = "";
-                breakdownItems = [];
             }
 
             if (!translation) {
@@ -2982,24 +2888,20 @@
                 throw (aiError || new Error(t("could_not_translate_sentence")));
             }
 
-            const sentenceBadge = resolveAiBadge(
-                res?.badge,
-                "sentence",
-                aiExplainTargetLang,
-            );
             const sentenceItem = {
                 type: "sentence",
-                title: sentenceBadge,
+                title: "Zdanie",
                 term: text,
                 meaning: translation,
                 explanation: explanation,
                 originalText: text,
                 sentenceTranslated: translation,
-                badge: sentenceBadge,
+                badge: "",
+                cefr: res?.cefr || "",
             };
 
             // In Enter mode, the full sentence translation is ALWAYS the first stage (1/N)
-            // in the queue, followed by subsequent breakdown items (idioms, phrasal verbs, words),
+            // in the queue, followed by subsequent breakdown items (idioms, phrasal verbs, words)
             if (breakdownItems.length > 0) {
                 aiExplainQueue = [sentenceItem, ...breakdownItems];
             } else {
@@ -3014,7 +2916,7 @@
             if (isCurrent()) {
                 if (typeof GeminiProxy !== "undefined" && GeminiProxy?.isLimitError?.(err)) {
                     showAiPaywallOverlay(aiExplainLayout, err?.validation);
-                } else {
+                } else if (!aiExplainQueue.length) {
                     applyAiExplanation(
                         `<div class="${PREFIX}error">⚠ ${QT.escapeHtml(err.message)}</div>`,
                         aiExplainLayout,
@@ -3960,6 +3862,7 @@
         html,
         layout = translationAnchorLayout,
         ariaLabel = "Sentence analysis",
+        { inPlace = false } = {},
     ) {
         const overlay = translationOverlay || createOverlay(layout);
         applyTranslationFontSize(overlay, layout, {
@@ -3972,6 +3875,13 @@
         copy.className = `${PREFIX}translation-copy ${PREFIX}ai-explain-copy`;
         copy.setAttribute("dir", "auto");
         copy.innerHTML = html;
+
+        if (inPlace && overlay.dataset.state === "ready" && overlay.isConnected) {
+            overlay.replaceChildren(copy);
+            positionOverlay(layout);
+            return copy;
+        }
+
         revealOverlayContent(copy, layout, ariaLabel);
         return copy;
     }
