@@ -386,7 +386,11 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
     return;
   }
 
-  setBtnText("⏳ Preparing…");
+  setBtnText(
+    typeof SharedI18n !== "undefined"
+      ? SharedI18n.t("export_preparing")
+      : "⏳ Preparing…"
+  );
   btn.disabled = true;
 
   try {
@@ -405,7 +409,11 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
 
     for (let i = 0; i < words.length; i++) {
       const w = words[i];
-      setBtnText(`⏳ Downloading (${i + 1}/${words.length})…`);
+      setBtnText(
+        typeof SharedI18n !== "undefined"
+          ? SharedI18n.t("export_downloading", null, { current: i + 1, total: words.length })
+          : `⏳ Downloading (${i + 1}/${words.length})…`
+      );
 
 
       const sentenceSource = (w.aiSentence || w.sentence || "").trim();
@@ -841,10 +849,10 @@ if (exportQuizBtn) {
     exportQuizBtn.classList.add("loading");
     if (labelEl) {
       labelEl.innerHTML =
-        '<span class="ai-loader-label review-ai-loader-label">✨ AI…</span>';
+        '<span class="ai-loader-label">✨ AI…</span>';
     } else {
       exportQuizBtn.innerHTML =
-        '<span class="ai-loader-label review-ai-loader-label">✨ AI…</span>';
+        '<span class="ai-loader-label">✨ AI…</span>';
     }
 
     try {

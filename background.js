@@ -951,7 +951,8 @@ const MESSAGE_HANDLERS = Object.freeze({
     result: await SharedTranslatorService.translate(
       message.text,
       message.targetLang,
-      message.sourceLang
+      message.sourceLang,
+      message.options
     ),
   }),
 

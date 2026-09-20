@@ -12,6 +12,7 @@ const POPUP_INIT_KEYS = Object.freeze({
     subscriptionProfileCache: null,
     subtitlePosition: LectoroConstants.DEFAULT_SUBTITLE_SETTINGS.POSITION,
     subtitleBgOpacity: LectoroConstants.DEFAULT_SUBTITLE_SETTINGS.BG_OPACITY,
+    subtitleFontSize: LectoroConstants.DEFAULT_SUBTITLE_SETTINGS.FONT_SIZE,
 });
 
 let popupState = { ...POPUP_INIT_KEYS };
@@ -148,6 +149,7 @@ const volumeRange = document.getElementById("volumeRange");
 const volumeValue = document.getElementById("volumeValue");
 const subBgRange = document.getElementById("subBgRange");
 const subBgValue = document.getElementById("subBgValue");
+const subFontSizeGroup = document.getElementById("subFontSizeGroup");
 
 // ── Review badge from the initial storage batch (without loading the tab) ──
 function updateInitialReviewBadge(words = []) {
@@ -256,13 +258,12 @@ function autoSpeakReviewCard(w, answerVisible = false) {
 //   ↓ / S   → flip the card in place to reveal the answer
 //   ← / A   → "Don't know" (Again) — works from either side, front or back
 //   → / D   → "Know" (Good)        — works from either side, front or back
-//   Enter   → fetch a fresh, on-demand standard AI translation
 document.addEventListener("keydown", (e) => {
     const reviewTab = document.getElementById("tab-review");
     if (!reviewTab || !reviewTab.classList.contains("active")) return;
     if (reviewIndex >= reviewQueue.length || reviewQueue.length === 0) return;
 
-    // Don't hijack WASD/arrows/Enter while the user is typing in the
+    // Don't hijack WASD/arrows while the user is typing in the
     // inline edit form (e.g. editing the word's spelling).
     const activeTag = document.activeElement?.tagName;
     if (activeTag === "INPUT" || activeTag === "TEXTAREA") return;
@@ -291,12 +292,6 @@ document.addEventListener("keydown", (e) => {
     if (key === "ArrowRight" || lowerKey === "d") {
         e.preventDefault();
         animateSwipeAndRate(2);
-        return;
-    }
-
-    if (key === "Enter" || key === "NumpadEnter") {
-        e.preventDefault();
-        aiTranslateReviewCard();
         return;
     }
 });

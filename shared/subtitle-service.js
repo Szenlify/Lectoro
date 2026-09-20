@@ -193,11 +193,9 @@
                         cue.endTime > cue.startTime,
                     )
                     .map((cue) => {
-                        const text = cue.text.replace(/\s+/g, " ").trim();
-                        const lines = preserveLines
-                            ? (cue.lines?.length ? cue.lines : cue.text.split(/\r?\n/))
-                                .map((line) => line.replace(/\s+/g, " ").trim()).filter(Boolean)
-                            : [text];
+                        const lines = (cue.lines?.length ? cue.lines : cue.text.split(/\r?\n/))
+                            .map((line) => line.replace(/\s+/g, " ").trim()).filter(Boolean);
+                        const text = lines.join(" ").trim();
                         const normalized = { ...cue, text, lines };
                         for (const key of ["segs", "tStartMs", "dDurationMs"]) {
                             if (cue[key] != null) {
@@ -807,11 +805,13 @@
                     if (!event || !Array.isArray(event.segs)) continue;
                     const startTime = Number(event.tStartMs) / 1000;
                     const endTime = Math.round(Number(event.tStartMs) + Number(event.dDurationMs)) / 1000;
-                    const text = cleanCueText(event.segs
+                    const rawCueText = cleanCueText(event.segs
                         .map((segment) => typeof segment?.utf8 === "string" ? segment.utf8 : "")
-                        .join(""));
-                    if (!text) continue;
-                    const cue = { startTime, endTime, text };
+                        .join(""), { preserveNewlines: true });
+                    if (!rawCueText) continue;
+                    const lines = rawCueText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+                    const text = lines.join(" ").trim();
+                    const cue = { startTime, endTime, text, lines };
                     if (event.tStartMs != null) {
                         Object.defineProperty(cue, "tStartMs", {
                             value: Number(event.tStartMs),

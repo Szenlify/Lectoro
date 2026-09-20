@@ -97,7 +97,7 @@
         const readBtn = createToolbarButton(
             "read",
             SVG.READ,
-            "Read aloud",
+            QT.t("read_aloud_btn"),
             onReadClick,
         );
         readBtn.setAttribute("aria-pressed", "false");
@@ -106,7 +106,7 @@
             createToolbarButton(
                 "translate",
                 SVG.TRANSLATE,
-                "Translate",
+                QT.t("translate_btn"),
                 onIconClick,
             ),
         );
@@ -120,11 +120,15 @@
         if (!readBtn) return;
         readBtn.classList.toggle("reading", reading);
         readBtn.setAttribute("aria-pressed", String(reading));
-        readBtn.title = reading ? "Stop reading" : "Read aloud";
+        readBtn.title = reading ? QT.t("stop_reading_btn") : QT.t("read_aloud_btn");
     }
 
     function showIcon(rect) {
         const icon = getIcon();
+        const translateBtn = icon.querySelector(`.${PREFIX}tb-translate`);
+        if (translateBtn) translateBtn.title = QT.t("translate_btn");
+        const readBtn = icon.querySelector(`.${PREFIX}tb-read`);
+        if (readBtn && !isReading) readBtn.title = QT.t("read_aloud_btn");
         const parent = QT.getOverlayParent();
         const inFullscreen = parent !== document.body;
         if (icon.parentElement !== parent) parent.appendChild(icon);
@@ -218,15 +222,46 @@
             const targetLang = await getTargetLang();
             let dictionary = null;
             let result = null;
-            const term = SharedTranslatorService.dictionaryTerm(text);
-            if (term) {
-                const { learningLang } = await SharedTranslatorService.getReadingSettings();
-                [dictionary] = await SharedTranslatorService.lookupWords([term], targetLang, learningLang, {
-                    details: true,
-                    context: (anchorEl?.textContent || text).slice(0, 10000),
-                });
-                if (dictionary) result = { translated: dictionary.translated, detectedLang: learningLang };
-                else throw new Error("No dictionary entry available. Please try again.");
+            const words = text.trim().split(/\s+/).filter(Boolean);
+            const isMultiWord = words.length > 1;
+
+            if (isMultiWord) {
+                // For multi-word text on web pages, translate via Google Translate first, then Gemini AI if unable.
+                try {
+                    result = await googleTranslate(text, targetLang, null, { preferGoogle: true });
+                } catch (googleErr) {
+                    console.warn("[Lectoro] Google Translate failed for multi-word selection, falling back to Gemini AI:", googleErr);
+                    if (typeof QT !== "undefined" && typeof QT.geminiExplainSentence === "function") {
+                        try {
+                            const aiRes = await QT.geminiExplainSentence(
+                                text,
+                                targetLang,
+                                anchorEl?.textContent?.slice(0, 1000) || null,
+                            );
+                            if (aiRes?.translation?.trim()) {
+                                result = {
+                                    translated: aiRes.translation.trim(),
+                                    detectedLang: aiRes.detectedLang || "auto",
+                                    provider: "gemini",
+                                };
+                            }
+                        } catch (aiErr) {
+                            console.warn("[Lectoro] Gemini explainSentence fallback failed:", aiErr);
+                        }
+                    }
+                    if (!result) throw googleErr;
+                }
+            } else {
+                const term = SharedTranslatorService.dictionaryTerm(text);
+                if (term) {
+                    const { learningLang } = await SharedTranslatorService.getReadingSettings();
+                    [dictionary] = await SharedTranslatorService.lookupWords([term], targetLang, learningLang, {
+                        details: true,
+                        context: (anchorEl?.textContent || text).slice(0, 10000),
+                    });
+                    if (dictionary) result = { translated: dictionary.translated, detectedLang: learningLang };
+                    else throw new Error("No dictionary entry available. Please try again.");
+                }
             }
             const { translated, detectedLang } = result || await googleTranslate(text, targetLang);
             if (revision !== selectionRevision) return;
@@ -239,6 +274,7 @@
                 original: text,
                 translated,
                 dictionary,
+                provider: result?.provider || null,
             });
             showTooltip(html, rect, "top", anchorEl);
             attachTooltipHandlers();

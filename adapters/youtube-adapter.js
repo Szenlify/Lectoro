@@ -24,31 +24,12 @@
     let cueMaxEnd = [];
     let currentVideoId = "";
     let currentDisplayedText = "";
-    let currentDisplayedTranslation = "";
     let availableTracks = [];
     let activeTrack = null;
     let captionGeneration = 0;
     let pendingTrackKey = "";
-    let lastMasterTrack = null;
     let currentDisplayedCue = null;
-    let dualEnabled = true;
-    const defaultTargetLang = LectoroConstants.DEFAULT_READING_SETTINGS.targetLang;
-    let targetLanguage = defaultTargetLang;
-    let dualStatus = "idle";
-    let settingsRevision = 0;
     const pendingFetches = new Set();
-    const settingsReady = (async () => {
-        try {
-            const revision = settingsRevision;
-            const settings = await chrome.storage.local.get({
-                targetLang: defaultTargetLang,
-                doubleSubtitles: true,
-            });
-            if (revision !== settingsRevision) return;
-            dualEnabled = settings.doubleSubtitles !== false;
-            targetLanguage = settings.targetLang || defaultTargetLang;
-        } catch (_) {}
-    })();
     let playbackRafId = null;
     let boundVideo = null;
     let trackRequestSeq = 0;
@@ -137,7 +118,6 @@
         cueMaxEnd = cues.map((cue) => (maxEnd = Math.max(maxEnd, cue.endTime)));
         if (videoId) currentVideoId = videoId;
         currentDisplayedText = "";
-        currentDisplayedTranslation = "";
         currentDisplayedCue = null;
 
         const video = boundVideo || document.querySelector("video");
@@ -161,9 +141,9 @@
         return null;
     }
 
-    function getDomSubtitleText() {
+    function getDomSubtitleLines() {
         const container = document.querySelector(".ytp-caption-window-container");
-        if (!container) return "";
+        if (!container) return [];
         const cleanFn = (t) => {
             const service = getSubtitleService();
             if (service && service.cleanCueText) return service.cleanCueText(t);
@@ -176,21 +156,24 @@
 
         const lines = Array.from(container.querySelectorAll(".caption-visual-line"));
         if (lines.length > 0) {
-            const texts = lines
-                .map((l) => cleanFn((l.textContent || "").replace(/\s+/g, " ").trim()))
+            return lines
+                .map((l) => cleanFn((l.textContent || "").trim()))
                 .filter(Boolean);
-            return Array.from(new Set(texts)).join(" ").trim();
         }
         const segments = Array.from(container.querySelectorAll(".ytp-caption-segment"));
         if (segments.length > 0) {
             const raw = segments
                 .map((s) => s.textContent || "")
-                .join(" ")
-                .replace(/\s+/g, " ")
+                .join("")
                 .trim();
-            return cleanFn(raw);
+            const cleaned = cleanFn(raw);
+            return cleaned ? cleaned.split(/\r?\n/).map((l) => l.trim()).filter(Boolean) : [];
         }
-        return "";
+        return [];
+    }
+
+    function getDomSubtitleText() {
+        return getDomSubtitleLines().join(" ").trim();
     }
 
     function syncActiveCue(video) {
@@ -200,7 +183,6 @@
         if (!checkIsCcActive(video)) {
             if (currentDisplayedText !== "" || (globalThis.LectoroSubtitleOverlay?.getActiveLines?.()?.length > 0)) {
                 currentDisplayedText = "";
-                currentDisplayedTranslation = "";
                 currentDisplayedCue = null;
                 if (globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
                     globalThis.LectoroSubtitleOverlay.renderCustomSubtitles([]);
@@ -213,7 +195,6 @@
         if (typeof video.readyState === "number" && video.readyState < 2) {
             if (currentDisplayedText !== "" || (globalThis.LectoroSubtitleOverlay?.getActiveLines?.()?.length > 0)) {
                 currentDisplayedText = "";
-                currentDisplayedTranslation = "";
                 currentDisplayedCue = null;
                 if (globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
                     globalThis.LectoroSubtitleOverlay.renderCustomSubtitles([]);
@@ -223,38 +204,35 @@
         }
 
         const time = video.currentTime;
-        let targetText = "";
-        let targetTranslation = "";
+        let targetLines = [];
         const activeCue = findActiveCue(time);
 
         if (cueIndex.length > 0) {
-            if (activeCue && activeCue.text) {
-                targetText = activeCue.text;
-                targetTranslation = dualEnabled ? activeCue.translation || "" : "";
+            if (activeCue) {
+                if (Array.isArray(activeCue.lines) && activeCue.lines.length > 0) {
+                    targetLines = activeCue.lines;
+                } else if (activeCue.text) {
+                    targetLines = String(activeCue.text).split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+                }
             }
         } else {
             // Fallback to DOM player text ONLY if timedtext has not loaded
-            const domText = getDomSubtitleText();
-            if (domText) targetText = domText;
+            targetLines = getDomSubtitleLines();
         }
 
+        const targetText = targetLines.join("\n");
         const overlayText = globalThis.LectoroSubtitleOverlay?.getActiveText?.() ?? "";
         if (
             targetText !== currentDisplayedText ||
-            targetTranslation !== currentDisplayedTranslation ||
             activeCue !== currentDisplayedCue ||
-            (targetText && overlayText !== targetText)
+            (targetText && overlayText !== targetLines.join(" "))
         ) {
             currentDisplayedText = targetText;
-            currentDisplayedTranslation = targetTranslation;
             currentDisplayedCue = activeCue;
             if (globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
-                const lines = Array.isArray(activeCue?.lines) && activeCue.lines.length > 0
-                    ? activeCue.lines
-                    : (targetText ? [targetText] : []);
                 globalThis.LectoroSubtitleOverlay.renderCustomSubtitles(
-                    lines,
-                    { secondaryText: targetTranslation, cue: activeCue },
+                    targetLines,
+                    { cue: activeCue },
                 );
             }
         }
@@ -289,7 +267,6 @@
 
         const clearSubtitlesOnLoad = () => {
             currentDisplayedText = "";
-            currentDisplayedTranslation = "";
             currentDisplayedCue = null;
             if (globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
                 globalThis.LectoroSubtitleOverlay.renderCustomSubtitles([]);
@@ -391,31 +368,6 @@
             (!videoId || !pageVideoId || videoId === pageVideoId);
     }
 
-    function reportDualStatus(status) {
-        const nextStatus = dualEnabled ? status : "idle";
-        if (nextStatus === dualStatus && nextStatus === "error") return;
-        dualStatus = nextStatus;
-        globalThis.LectoroSubtitleOverlay?.setDualSubtitleStatus?.({
-            platform: "youtube",
-            status: nextStatus,
-            retry: retryDualSubtitles,
-        });
-    }
-
-    async function retryDualSubtitles() {
-        await settingsReady;
-        if (!dualEnabled) return;
-        reportDualStatus("loading");
-        if (lastMasterTrack && checkIsCcActive(boundVideo || document.querySelector("video"))) {
-            const { cues, baseUrl, videoId } = lastMasterTrack;
-            await processCaptionTrackWithDualSync(cues, baseUrl, videoId);
-        } else if (activeTrack?.baseUrl) {
-            await loadCaptionTrack(activeTrack, currentVideoId);
-        } else {
-            requestTracklistFromBridge();
-        }
-    }
-
     function fetchTimedTextViaBridge(url) {
         const requestId = `${Date.now()}-${++trackRequestSeq}`;
         return new Promise((resolve) => {
@@ -471,12 +423,15 @@
         return [];
     }
 
-    async function processCaptionTrackWithDualSync(rawCues, baseUrl = "", videoId = "", generation = invalidateCaptionRequest()) {
+    function processCaptionTrack(rawCues, videoId = "", generation = captionGeneration) {
         if (!Array.isArray(rawCues) || !rawCues.length || !isCurrentRequest(generation, videoId)) return;
-        const service = getSubtitleService();
         const masterCues = rawCues.map((cue) => {
-            const text = String(cue.text || "").replace(/\s+/g, " ").trim();
-            const res = { ...cue, text, lines: [text], translation: "" };
+            const rawText = String(cue.text || "");
+            const lines = Array.isArray(cue.lines) && cue.lines.length > 0
+                ? cue.lines
+                : rawText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+            const text = lines.join(" ").trim();
+            const res = { ...cue, text, lines };
             if (Array.isArray(cue.segs)) {
                 Object.defineProperty(res, "segs", { value: cue.segs, enumerable: false });
             }
@@ -498,60 +453,7 @@
             }
             return res;
         });
-        const pairedMaster = service?.pairTwoClusters ? service.pairTwoClusters(masterCues) : masterCues;
-        // Rebuild translations from original clusters, never from already paired output.
-        lastMasterTrack = { cues: masterCues, baseUrl, videoId };
-        setCueIndex(pairedMaster, videoId);
-        await settingsReady;
-        if (!isCurrentRequest(generation, videoId)) return;
-        if (!dualEnabled) {
-            reportDualStatus("idle");
-            return;
-        }
-        reportDualStatus("loading");
-        try {
-            if (!baseUrl || !service?.alignSlaveTrackToMaster) throw new Error("missing_track");
-            const language = targetLanguage;
-            const sourceLanguage = activeTrack?.languageCode || new URL(baseUrl).searchParams.get("lang") || "";
-            if (sourceLanguage.toLowerCase() === language.toLowerCase()) {
-                const sameLangCues = masterCues.map((cue) => ({ ...cue, translation: cue.text }));
-                const pairedSame = service?.pairTwoClusters ? service.pairTwoClusters(sameLangCues) : sameLangCues;
-                setCueIndex(pairedSame, videoId);
-                reportDualStatus("ready");
-                return;
-            }
-            let slaveCues = [];
-            // 1. First priority (like LR): Check if an official human translation track exists in availableTracks
-            const humanTrack = (availableTracks || []).find((t) => {
-                if (!t || t.kind === "asr" || !t.baseUrl) return false;
-                const langCode = (t.languageCode || "").toLowerCase();
-                const vssId = (t.vssId || "").toLowerCase();
-                const target = language.toLowerCase();
-                return langCode === target || langCode.startsWith(target + "-") || vssId.includes("." + target);
-            });
-
-            if (humanTrack?.baseUrl) {
-                const humanUrls = ["json3", "vtt", "srv3", ""].map((fmt) =>
-                    buildTimedTextUrl(humanTrack.baseUrl, { fmt }));
-                slaveCues = await fetchCueCandidates(humanUrls, generation, videoId);
-            }
-
-            // 2. Fallback to machine translation (mTranslations with &tlang=...)
-            if (!slaveCues.length) {
-                const translatedUrls = ["json3", "vtt", "srv3", ""].map((fmt) =>
-                    buildTimedTextUrl(baseUrl, { lang: sourceLanguage, tlang: language, fmt }));
-                slaveCues = await fetchCueCandidates(translatedUrls, generation, videoId);
-            }
-            if (!isCurrentRequest(generation, videoId)) return;
-            if (!slaveCues.length) throw new Error("missing_translation");
-            const unifiedCues = service.alignSlaveTrackToMaster(masterCues, slaveCues, { alignSentences: true });
-            if (!unifiedCues.some((cue) => cue.translation)) throw new Error("unaligned_translation");
-            const pairedUnified = service?.pairTwoClusters ? service.pairTwoClusters(unifiedCues) : unifiedCues;
-            setCueIndex(pairedUnified, videoId);
-            reportDualStatus("ready");
-        } catch (error) {
-            if (isCurrentRequest(generation, videoId)) reportDualStatus("error");
-        }
+        setCueIndex(masterCues, videoId);
     }
 
     async function loadCaptionTrack(track, videoId = "") {
@@ -562,20 +464,17 @@
         pendingTrackKey = key;
         activeTrack = track;
         currentVideoId = videoId || getVideoIdFromUrl();
-        lastMasterTrack = null;
         cueIndex = [];
         syncActiveCue(boundVideo || document.querySelector("video"));
-        await settingsReady;
         if (!isCurrentRequest(generation, videoId)) return;
-        reportDualStatus("loading");
         try {
             const candidateUrls = ["json3", "vtt", "srv3", ""].map((fmt) => buildTimedTextUrl(track.baseUrl, { fmt }));
             const cues = await fetchCueCandidates(candidateUrls, generation, videoId);
             if (!isCurrentRequest(generation, videoId)) return;
-            if (!cues.length) throw new Error("missing_track");
-            await processCaptionTrackWithDualSync(cues, track.baseUrl, videoId || currentVideoId, generation);
+            if (!cues.length) return;
+            processCaptionTrack(cues, videoId || currentVideoId, generation);
         } catch (error) {
-            if (isCurrentRequest(generation, videoId)) reportDualStatus("error");
+            // Caption loading error
         } finally {
             if (generation === captionGeneration) pendingTrackKey = "";
         }
@@ -585,10 +484,8 @@
         const requestId = `${Date.now()}-${++trackRequestSeq}`;
         const generation = captionGeneration;
         const videoId = getVideoIdFromUrl();
-        const timer = setTimeout(async () => {
+        const timer = setTimeout(() => {
             window.removeEventListener(TRACK_RESPONSE_EVENT, onResponse);
-            await settingsReady;
-            if (isCurrentRequest(generation, videoId) && !lastMasterTrack) reportDualStatus("error");
         }, 3000);
 
         function onResponse(event) {
@@ -621,23 +518,16 @@
         isCcActive = ccState;
 
         if (Array.isArray(tracks) && tracks.length === 0) {
-            const generation = invalidateCaptionRequest();
+            invalidateCaptionRequest();
             cueIndex = [];
-            lastMasterTrack = null;
             activeTrack = null;
             availableTracks = [];
             globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles?.([]);
-            void (async () => {
-                await settingsReady;
-                if (isCurrentRequest(generation, videoId)) reportDualStatus("error");
-            })();
             return;
         }
         if (!ccState) {
             invalidateCaptionRequest();
-            reportDualStatus("idle");
             currentDisplayedText = "";
-            currentDisplayedTranslation = "";
             currentDisplayedCue = null;
             activeTrack = null;
             if (globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
@@ -670,9 +560,7 @@
             isCcActive = active;
             if (!active) {
                 invalidateCaptionRequest();
-                reportDualStatus("idle");
                 currentDisplayedText = "";
-                currentDisplayedTranslation = "";
                 currentDisplayedCue = null;
                 activeTrack = null;
                 stopPlaybackLoop();
@@ -733,32 +621,8 @@
         if (videoId && getVideoIdFromUrl() && videoId !== getVideoIdFromUrl()) return;
         if (activeTrack?.languageCode && source.searchParams.get("lang") !== activeTrack.languageCode) return;
         const cues = getSubtitleService()?.parseTimedText(detail.text, "", "", { preserveTiming: true, preserveCueBoundaries: true }) || [];
-        if (cues.length) void processCaptionTrackWithDualSync(cues, detail.url, videoId);
+        if (cues.length) processCaptionTrack(cues, videoId);
     });
-
-    // Unsolicited Slave events never update the DOM: only the current Master request owns its translation.
-    if (typeof chrome !== "undefined" && chrome.storage?.onChanged) {
-        chrome.storage.onChanged.addListener((changes, area) => {
-            if (area !== "local" || (!changes.doubleSubtitles && !changes.targetLang)) return;
-            settingsRevision++;
-            if (changes.doubleSubtitles) dualEnabled = changes.doubleSubtitles.newValue !== false;
-            if (changes.targetLang) targetLanguage = changes.targetLang.newValue || defaultTargetLang;
-            invalidateCaptionRequest();
-            if (lastMasterTrack && checkIsCcActive(boundVideo || document.querySelector("video"))) {
-                const { cues, baseUrl, videoId } = lastMasterTrack;
-                void processCaptionTrackWithDualSync(cues, baseUrl, videoId);
-            } else {
-                cueIndex = cueIndex.map((cue) => ({ ...cue, translation: "" }));
-                syncActiveCue(boundVideo || document.querySelector("video"));
-                reportDualStatus("idle");
-                if (activeTrack?.baseUrl && checkIsCcActive(boundVideo || document.querySelector("video"))) {
-                    void loadCaptionTrack(activeTrack, currentVideoId);
-                } else if (dualEnabled) {
-                    void retryDualSubtitles();
-                }
-            }
-        });
-    }
 
     window.addEventListener(TRACKS_EVENT, (event) => {
         handleTracksAvailable(event?.detail);
@@ -768,9 +632,6 @@
         const newVideoId = event?.detail?.videoId || getVideoIdFromUrl();
         if (newVideoId !== currentVideoId) {
             invalidateCaptionRequest();
-            reportDualStatus("idle");
-            lastMasterTrack = null;
-            currentDisplayedTranslation = "";
             currentDisplayedCue = null;
             currentVideoId = newVideoId;
             cueIndex = [];
@@ -788,9 +649,6 @@
 
     window.addEventListener("yt-navigate-start", () => {
         invalidateCaptionRequest();
-        reportDualStatus("idle");
-        lastMasterTrack = null;
-        currentDisplayedTranslation = "";
         currentDisplayedCue = null;
         currentDisplayedText = "";
         cueIndex = [];

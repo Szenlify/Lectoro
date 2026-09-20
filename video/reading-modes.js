@@ -79,7 +79,8 @@
             }
             const tasks = [
                 ui.showWordClouds(video, {
-                    skipSpeech: true,
+                    skipSpeech: settings.subtitleTTS === false,
+                    speakFullSentence: settings.subtitleTTS !== false,
                     revision,
                     sourceText: snapshot.text,
                     sourceElements: snapshot.elements,
@@ -105,7 +106,7 @@
     root.chrome?.storage?.onChanged?.addListener((changes, area) => {
         if (
             area === "local" &&
-            (changes.targetLang || changes.learningLang || changes.wordCloudMode || changes.doubleSubtitles || changes.subtitleTTS)
+            (changes.targetLang || changes.learningLang || changes.wordCloudMode || changes.subtitleTTS)
         ) {
             const ui = overlay();
             if (ui?.isSubtitleUiOpen()) ui.restoreOriginal();

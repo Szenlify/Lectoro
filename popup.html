@@ -45,7 +45,8 @@
                         <span data-i18n="learning_lang">Learning</span>
                     </label>
                     <div class="select-wrap">
-                        <select id="learningLang" title="Choose the language you are learning"></select>
+                        <select id="learningLang" title="Choose the language you are learning"
+                            data-i18n-title="select_learning_lang"></select>
                     </div>
                 </div>
                 <button type="button" id="swapLanguages" class="swap-languages" title="Swap translation languages"
@@ -61,7 +62,8 @@
                         <span data-i18n="native_lang">Native</span>
                     </label>
                     <div class="select-wrap">
-                        <select id="targetLang" title="Select your native language">
+                        <select id="targetLang" title="Select your native language"
+                            data-i18n-title="select_native_lang">
                             <option value="en">English</option>
                             <option value="ja">Japanese</option>
                             <option value="de">German</option>
@@ -84,17 +86,13 @@
             <!-- Transparent subscription & AI credit usage overview -->
             <div class="setting-group" id="aiUsageSection">
                 <div class="glass-card ai-usage-card" id="aiUsageCard">
-                    <div class="ai-usage-top-status">
-                        <button type="button" class="ai-usage-upgrade-btn" id="usageUpgradeBtn">Unlock Pro (3-day trial $0) →</button>
-                    </div>
-
                     <div class="usage-meter" id="aiUsageMeter">
                         <div class="ai-usage-head">
                             <div class="usage-meter-name">
                                 <span class="usage-meter-icon usage-meter-icon-ai" aria-hidden="true">✦</span>
                                 <div>
-                                    <div class="ai-usage-title" data-i18n="ai_explanations">AI Explanations (Enter)</div>
-                                    <div class="usage-meter-note" id="aiUsageTitle">Checking limit...</div>
+                                    <div class="ai-usage-title" data-i18n="ai_explanations">AI Explanations</div>
+                                    <div class="usage-meter-note" id="aiUsageTitle" data-i18n="checking_limit">Checking limit...</div>
                                 </div>
                             </div>
                             <div class="ai-usage-value" id="aiUsageValue">— / —</div>
@@ -111,7 +109,7 @@
                                 <span class="usage-meter-icon usage-meter-icon-voice" aria-hidden="true">E</span>
                                 <div>
                                     <div class="ai-usage-title" data-i18n="elevenlabs_voices">ElevenLabs Natural Voices</div>
-                                    <div class="usage-meter-note" id="elevenLabsUsageTitle">Checking usage...
+                                    <div class="usage-meter-note" id="elevenLabsUsageTitle" data-i18n="checking_usage">Checking usage...
                                     </div>
                                 </div>
                             </div>
@@ -123,14 +121,10 @@
                         </div>
                     </div>
 
-                    <div class="ai-free-perks-strip">
-                        <div class="ai-free-perk-item"><i aria-hidden="true">✓</i> <span data-i18n="perk_subtitles">Dual subtitles: <b>Unlimited</b></span></div>
-                        <div class="ai-free-perk-item"><i aria-hidden="true">✓</i> <span data-i18n="perk_dictionary">Dictionary & words (S): <b>Unlimited</b></span></div>
-                    </div>
 
                     <div class="ai-usage-footer">
                         <div class="usage-reset-copy">
-                            <span id="aiUsageInfo">AI credits renew monthly</span>
+                            <span id="aiUsageInfo" data-i18n="credits_renew_monthly">AI credits renew monthly</span>
                             <span class="usage-reset-date" id="aiUsageRenewalDate"></span>
                         </div>
                     </div>
@@ -157,7 +151,8 @@
                 </div>
                 <div class="subscription-carousel" id="subscriptionCarousel">
                     <div class="subscription-plans-grid" id="subscriptionPlansGrid"></div>
-                    <button type="button" class="carousel-arrow-next" id="carouselNext" aria-label="Scroll plans">
+                    <button type="button" class="carousel-arrow-next" id="carouselNext" aria-label="Scroll plans"
+                        data-i18n-aria="scroll_plans" data-i18n-title="scroll_plans" title="Scroll plans">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                             stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="9 6 15 12 9 18" />
@@ -183,18 +178,21 @@
                     </div>
                 </div>
 
+
                 <div class="setting-group">
-                    <label data-i18n="reading_modes">Reading Modes</label>
+                    <label data-i18n="subtitle_font_size">Subtitle font size</label>
                     <div class="glass-card">
-                        <div class="toggle-row">
-                            <span class="toggle-label" data-i18n="double_subtitles">Double subtitles</span>
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="doubleSubtitles" checked>
-                                <span class="toggle-slider"></span>
-                            </label>
+                        <div class="font-size-button-group" id="subFontSizeGroup" role="group" data-i18n-aria-label="subtitle_font_size" aria-label="Subtitle font size">
+                            <button type="button" class="font-size-btn" data-size="small" data-i18n-title="font_size_small" data-i18n-aria-label="font_size_small" title="Small" aria-label="Small">
+                                <span class="font-size-icon-small" aria-hidden="true">A</span>
+                            </button>
+                            <button type="button" class="font-size-btn active" data-size="medium" data-i18n-title="font_size_medium" data-i18n-aria-label="font_size_medium" title="Medium" aria-label="Medium">
+                                <span class="font-size-icon-medium" aria-hidden="true">A</span>
+                            </button>
+                            <button type="button" class="font-size-btn" data-size="large" data-i18n-title="font_size_large" data-i18n-aria-label="font_size_large" title="Large" aria-label="Large">
+                                <span class="font-size-icon-large" aria-hidden="true">A</span>
+                            </button>
                         </div>
-                        <div class="toggle-desc" data-i18n="double_subtitles_desc">Bilingual subtitles (Netflix & YouTube): master full sentence on top,
-                            aligned translation below.</div>
                     </div>
                 </div>
 
@@ -280,18 +278,21 @@
                         <!-- Left: Quiz AI group -->
                         <div class="quiz-compact-group">
 
-                            <select class="quiz-select-compact" id="quizScope" title="Number of words in quiz">
+                            <select class="quiz-select-compact" id="quizScope" title="Number of words in quiz"
+                                data-i18n-title="quiz_scope_title">
                                 <option value="5" selected data-i18n="quiz_scope_5">5 words</option>
                                 <option value="10" data-i18n="quiz_scope_10">10 words</option>
                                 <option value="15" data-i18n="quiz_scope_15">15 words</option>
                                 <option value="20" data-i18n="quiz_scope_20">20 words</option>
                             </select>
-                            <select class="quiz-select-compact" id="quizSource" title="Quiz word source">
+                            <select class="quiz-select-compact" id="quizSource" title="Quiz word source"
+                                data-i18n-title="quiz_source_title">
                                 <option value="recent" selected data-i18n="quiz_source_recent">Recent</option>
                                 <option value="random" data-i18n="quiz_source_random">Random</option>
                             </select>
                             <button type="button" class="export-btn export-quiz" id="exportQuiz"
-                                title="Generate interactive AI quiz">
+                                title="Generate interactive AI quiz"
+                                data-i18n-title="quiz_ai_title">
                                 <span class="quiz-btn-label" data-i18n="quiz_ai_btn">✨ AI Quiz</span>
                                 <span class="quiz-free-badge" id="quizFreeBadge" style="display:none;"
                                     title="Free quizzes">0/3</span>
@@ -301,13 +302,15 @@
                         <!-- Right: Anki, Excel, Delete -->
                         <div class="export-compact-actions">
                             <button type="button" class="export-btn export-anki" id="exportAnki"
-                                title="Export to Anki deck (.zip)">
+                                title="Export to Anki deck (.zip)"
+                                data-i18n-title="export_anki_title">
                                 <span class="export-btn-label" data-i18n="export_anki">📋 Anki</span>
                                 <span class="quiz-free-badge export-free-badge" id="ankiFreeBadge" style="display:none;"
                                     title="Free Anki exports">0/3</span>
                             </button>
                             <button type="button" class="export-btn export-csv" id="exportCsv"
-                                title="Export to Excel (.csv)">
+                                title="Export to Excel (.csv)"
+                                data-i18n-title="export_csv_title">
                                 <span class="export-btn-label" data-i18n="export_excel">📊 Excel</span>
                                 <span class="quiz-free-badge export-free-badge" id="excelFreeBadge"
                                     style="display:none;" title="Free Excel exports">0/3</span>
@@ -335,11 +338,13 @@
                     <span class="review-icon">🧠</span>
                     <span class="review-title" data-i18n="review_daily_title">Daily Review</span>
                     <span class="review-count" id="reviewCount"></span>
-                    <button class="review-dir-btn" id="reviewDirBtn" title="Change review direction">EN <span
+                    <button class="review-dir-btn" id="reviewDirBtn" title="Change review direction"
+                        data-i18n-title="review_dir_title">EN <span
                             class="dir-arrow">→</span> PL</button>
                     <div class="review-voice-picker" id="reviewVoicePicker">
                         <button class="review-voice-btn" id="reviewVoiceBtn" type="button" aria-expanded="false"
-                            aria-controls="reviewVoiceMenu" title="Choose review voice">
+                            aria-controls="reviewVoiceMenu" title="Choose review voice"
+                            data-i18n-title="review_voice_title">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
                                 <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
                                 <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
@@ -355,7 +360,7 @@
                                     <span data-i18n="review_voice_natural_desc">Listen and memorize more naturally</span>
                                 </div>
                                 <button type="button" class="review-voice-close" id="reviewVoiceClose"
-                                    aria-label="Close">×</button>
+                                    aria-label="Close" data-i18n-aria="close_label" data-i18n-title="close_label" title="Close">×</button>
                             </div>
                             <button type="button" class="review-voice-system" id="reviewBrowserVoiceOption">
                                 <span class="review-voice-avatar system">🔊</span>

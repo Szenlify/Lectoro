@@ -10,6 +10,18 @@
     const { PREFIX, isOwnUI } = C;
     const SVG = C.SVG_ICONS;
     const { cleanCardText, isRedundantSentence } = SharedUtils;
+    const escapeHtml = (s) =>
+        typeof SharedUtils?.escapeHtml === "function"
+            ? SharedUtils.escapeHtml(s)
+            : typeof QT?.escapeHtml === "function"
+              ? QT.escapeHtml(s)
+              : String(s ?? "");
+    const escapeAttr = (s) =>
+        typeof SharedUtils?.escapeAttr === "function"
+            ? SharedUtils.escapeAttr(s)
+            : typeof QT?.escapeAttr === "function"
+              ? QT.escapeAttr(s)
+              : String(s ?? "");
     const SUB_WORD_CLASS = C.UI_CLASSES.SUB_WORD;
     const WORD_CLOUD_CLASS = C.UI_CLASSES.WORD_CLOUD;
     const WORD_HOVER_CLASS = `${PREFIX}word-hover`;
@@ -42,6 +54,7 @@
     let isSubDragging = false;
     let currentSubPosition = C.DEFAULT_SUBTITLE_SETTINGS.POSITION;
     let currentSubBgOpacity = C.DEFAULT_SUBTITLE_SETTINGS.BG_OPACITY;
+    let currentSubFontSize = C.DEFAULT_SUBTITLE_SETTINGS.FONT_SIZE || "medium";
     let currentSubBottomPx = 0;
     let aiSubTranslationEl = null;
     let aiSubTranslationText = "";
@@ -145,31 +158,7 @@
         return "generic";
     }
 
-    let currentDoubleSubtitles = true;
     let activeUnifiedCue = null;
-    let dualSubtitleToast = null;
-
-    function setDualSubtitleStatus({ platform, status, retry } = {}) {
-        if (platform !== getPlatformName()) return;
-        if (!dualSubtitleToast && globalThis.LectoroDualSubtitleToast) {
-            dualSubtitleToast = globalThis.LectoroDualSubtitleToast.create({
-                getVideo: () => getPlayerRegistry()?.getVideo(),
-                getPlayerContainer: findPlayerContainer,
-                onRetryError: (_error, retryAction) => setDualSubtitleStatus({ platform, status: "error", retry: retryAction }),
-            });
-        }
-        if (status === "error" && isDoubleSubtitlesActive()) {
-            dualSubtitleToast?.show({ retry });
-        } else {
-            dualSubtitleToast?.dismiss({ immediate: status === "idle" });
-        }
-    }
-
-    function isDoubleSubtitlesActive() {
-        if (!currentDoubleSubtitles) return false;
-        const platform = getPlatformName();
-        return platform === "netflix" || platform === "youtube";
-    }
 
     function findPlayerContainer(video) {
         if (!video) return null;
@@ -228,6 +217,16 @@
         }
 
         return video.parentElement || document.body;
+    }
+
+    function getSubtitleFontSizeFactor(size) {
+        if (typeof size === "number" && size > 0) return size;
+        const factors = C.SUBTITLE_FONT_SIZE_FACTORS || {
+            small: 0.016,
+            medium: 0.020,
+            large: 0.027,
+        };
+        return factors[size] || factors.medium || 0.020;
     }
 
     function applySubtitleStyles(layer) {
@@ -565,9 +564,10 @@
             layer.style.overflow = "hidden";
 
             // Proportional uniform font sizing across all video platforms
+            const fontFactor = getSubtitleFontSizeFactor(currentSubFontSize);
             const fontSizePx = Math.max(
                 20,
-                Math.min(57, Math.round(actualWidth * 0.020/*  */ + 4)),
+                Math.min(57, Math.round(actualWidth * fontFactor + 4)),
             );
             layer.style.setProperty(
                 "--lectoro-sub-font-size",
@@ -760,65 +760,6 @@
         return text.length * fontSizePx * 0.55;
     }
 
-    /**
-     * Consolidates 3-line subtitles into 2 lines if they can comfortably fit
-     * within the available subtitle box width without overflowing/wrapping.
-     */
-    function consolidateLinesIfFit(lines, maxAvailableWidth, fontSizePx) {
-        if (!Array.isArray(lines) || lines.length !== 3) {
-            return lines;
-        }
-
-        // Available width for text inside line container with safety margin
-        const maxWidth = Math.max(200, maxAvailableWidth - 48);
-
-        const [l0, l1, l2] = lines;
-
-        const comboA_line0 = `${l0} ${l1}`.trim();
-        const comboA_line1 = l2.trim();
-
-        const comboB_line0 = l0.trim();
-        const comboB_line1 = `${l1} ${l2}`.trim();
-
-        const wA0 = measureTextWidth(comboA_line0, fontSizePx);
-        const wA1 = measureTextWidth(comboA_line1, fontSizePx);
-
-        const wB0 = measureTextWidth(comboB_line0, fontSizePx);
-        const wB1 = measureTextWidth(comboB_line1, fontSizePx);
-
-        const fitsA = wA0 <= maxWidth && wA1 <= maxWidth;
-        const fitsB = wB0 <= maxWidth && wB1 <= maxWidth;
-
-        // Check if l1 or l2 starts with a dialogue speaker dash (e.g. "- Yes", "— No", "– Sure")
-        const isL1SpeakerChange = /^[-–—]\s*\S/.test(l1);
-        const isL2SpeakerChange = /^[-–—]\s*\S/.test(l2);
-
-        if (fitsA && fitsB) {
-            if (isL1SpeakerChange) {
-                return [comboB_line0, comboB_line1];
-            }
-            if (isL2SpeakerChange) {
-                return [comboA_line0, comboA_line1];
-            }
-            // Choose the combination with more balanced line widths
-            const diffA = Math.abs(wA0 - wA1);
-            const diffB = Math.abs(wB0 - wB1);
-            return diffA <= diffB
-                ? [comboA_line0, comboA_line1]
-                : [comboB_line0, comboB_line1];
-        }
-
-        if (fitsB && !isL2SpeakerChange) {
-            return [comboB_line0, comboB_line1];
-        }
-
-        if (fitsA && !isL1SpeakerChange) {
-            return [comboA_line0, comboA_line1];
-        }
-
-        return lines;
-    }
-
     function renderCustomSubtitles(lines = [], options = {}) {
         const { box } = ensureCustomSubtitlesLayer();
         const registry = getPlayerRegistry();
@@ -855,39 +796,12 @@
             return;
         }
 
-        const doubleActive = isDoubleSubtitlesActive();
-        box.classList.toggle(`${PREFIX}subtitles-dual`, doubleActive);
-        box.classList.toggle(`${PREFIX}dual-subtitles`, doubleActive);
-        const platform = getPlatformName();
-        const singleRow = doubleActive && (platform === "youtube" || platform === "netflix");
-        let displayLines = rawCleanLines;
-        if (singleRow) {
-            // One text block per language; long text wraps to the player width.
-            displayLines = [rawCleanLines.join(" ").replace(/\s+/g, " ").trim()];
-        } else if (displayLines.length === 3) {
-            const playerEl = findPlayerContainer(video);
-            const actualWidth = playerEl?.offsetWidth || window.innerWidth || 1280;
-            const fontSizePx = Math.max(20, Math.min(54, Math.round(actualWidth * 0.026 + 4)));
-            displayLines = consolidateLinesIfFit(displayLines, actualWidth * 0.92, fontSizePx);
-        }
+        const displayLines = rawCleanLines;
         const newText = displayLines.join(" ").replace(/\s+/g, " ").trim();
-
-        // Slave text belongs to this exact Master cue, never to a text-only cache.
         const cue = options.cue || lines.cue || null;
-        // Netflix may have several independently timed cues on screen at once.
-        const rawSecondary = lines.allCues?.length > 1
-            ? lines.translation
-            : cue ? cue.translation : options.secondaryText;
-        const secondaryText = doubleActive && typeof rawSecondary === "string"
-            ? rawSecondary.replace(singleRow ? /\s+/g : /[^\S\r\n]+/g, " ").trim()
-            : "";
 
         if (newText === activeText && activeLines.length > 0 && activeUnifiedCue === cue) {
-            const existingSecEl =
-                box.querySelector(`.${PREFIX}sub-secondary`) ||
-                box.querySelector(`.${PREFIX}custom-sub-secondary`);
-            const existingSecText = existingSecEl?.textContent || "";
-            if (displayLines.length === activeLines.length && existingSecText === secondaryText && !!existingSecEl === doubleActive) {
+            if (displayLines.length === activeLines.length) {
                 syncCustomSubtitlePosition();
                 return;
             }
@@ -953,15 +867,6 @@
             box.appendChild(lineEl);
         }
 
-        if (doubleActive) {
-            const secEl = document.createElement("div");
-            secEl.className = `${PREFIX}sub-secondary`;
-            secEl.setAttribute("dir", "auto");
-            secEl.textContent = secondaryText || "";
-            secEl.setAttribute("aria-hidden", secondaryText ? "false" : "true");
-            box.appendChild(secEl);
-        }
-
         box.style.setProperty("opacity", "1", "important");
         box.style.setProperty("pointer-events", "auto", "important");
         syncCustomSubtitlePosition();
@@ -998,13 +903,13 @@
     // Subtitle visual preferences from storage (Single Source of Truth)
     const subPosKey = C.STORAGE_KEYS.SUBTITLE_POSITION;
     const subBgKey = C.STORAGE_KEYS.SUBTITLE_BG_OPACITY;
-    const doubleSubKey = C.STORAGE_KEYS.DOUBLE_SUBTITLES || "doubleSubtitles";
+    const subFontSizeKey = C.STORAGE_KEYS.SUBTITLE_FONT_SIZE;
 
     chrome.storage.local.get(
         {
             [subPosKey]: C.DEFAULT_SUBTITLE_SETTINGS.POSITION,
             [subBgKey]: C.DEFAULT_SUBTITLE_SETTINGS.BG_OPACITY,
-            [doubleSubKey]: true,
+            [subFontSizeKey]: C.DEFAULT_SUBTITLE_SETTINGS.FONT_SIZE,
         },
         (data) => {
             if (data && typeof data[subPosKey] === "number") {
@@ -1013,8 +918,8 @@
             if (data && typeof data[subBgKey] === "number") {
                 currentSubBgOpacity = data[subBgKey];
             }
-            if (data && typeof data[doubleSubKey] === "boolean") {
-                currentDoubleSubtitles = data[doubleSubKey];
+            if (data && data[subFontSizeKey]) {
+                currentSubFontSize = data[subFontSizeKey];
             }
             if (customSubLayerEl) {
                 applySubtitleStyles(customSubLayerEl);
@@ -1044,16 +949,14 @@
             shouldSync = true;
         }
         if (
-            changes[doubleSubKey] &&
-            typeof changes[doubleSubKey].newValue === "boolean"
+            changes[subFontSizeKey] &&
+            (typeof changes[subFontSizeKey].newValue === "string" ||
+                typeof changes[subFontSizeKey].newValue === "number")
         ) {
-            currentDoubleSubtitles = changes[doubleSubKey].newValue;
-            dualSubtitleToast?.dismiss({ immediate: true });
-            if (activeLines.length) renderCustomSubtitles(activeSubtitleInput.lines, activeSubtitleInput.options);
+            currentSubFontSize = changes[subFontSizeKey].newValue;
             shouldSync = true;
         }
         if (changes.targetLang) {
-            dualSubtitleToast?.dismiss({ immediate: true });
             if (activeLines.length) renderCustomSubtitles(activeSubtitleInput.lines, activeSubtitleInput.options);
         }
         if (shouldSync) {
@@ -1063,12 +966,11 @@
 
     // Connect to PlayerRegistry subtitle changes (Single Source of Truth)
     getPlayerRegistry().onSubtitleChange((payload) => {
-        const secondary = payload?.secondaryText || payload?.lines?.translation || "";
         const cue = payload?.cue || payload?.lines?.cue || null;
         if (Array.isArray(payload)) {
-            renderCustomSubtitles(LectoroBaseAdapter.extractCueLines(payload), { secondaryText: secondary, cue });
+            renderCustomSubtitles(LectoroBaseAdapter.extractCueLines(payload), { cue });
         } else if (payload && Array.isArray(payload.lines)) {
-            renderCustomSubtitles(payload.lines, { secondaryText: secondary, cue });
+            renderCustomSubtitles(payload.lines, { cue });
         } else if (payload && typeof payload.fullText === "string") {
             const lines = payload.fullText
                 ? payload.fullText
@@ -1076,7 +978,7 @@
                     .map((l) => l.trim())
                     .filter(Boolean)
                 : [];
-            renderCustomSubtitles(lines, { secondaryText: secondary, cue });
+            renderCustomSubtitles(lines, { cue });
         }
     });
 
@@ -1549,9 +1451,11 @@
     }
 
     function showAiShimmer(layout) {
+        const lang = ((typeof SharedI18n !== "undefined" ? SharedI18n.getLang() : null) || subtitleTranslationLang || "en").toLowerCase().slice(0, 2);
+        const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, lang, p) : k);
         return showSubtitleOverlayLoader(layout, {
-            text: "✨ Analyzing…",
-            ariaLabel: "Sentence analysis in progress",
+            text: `✨ ${t("analyzing_sentence")}`,
+            ariaLabel: t("analyzing_sentence_aria"),
         });
     }
 
@@ -1906,23 +1810,25 @@
             })
             .join("");
 
-        const isPro = aiExplainCreditBadge.includes("PRO");
+        const lang = (aiExplainTargetLang || (typeof SharedI18n !== "undefined" ? SharedI18n.getLang() : null) || subtitleTranslationLang || "en").toLowerCase().slice(0, 2);
+        const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, lang, p) : k);
+
         const creditPillHtml = aiExplainCreditBadge
-            ? `<span class="${PREFIX}ai-credit-pill ${isPro ? "is-pro" : ""}" title="AI Credits">${QT.escapeHtml(aiExplainCreditBadge)}</span>`
+            ? `<span class="${PREFIX}ai-credit-pill" title="${QT.escapeAttr(t("ai_credits_pill"))}">${QT.escapeHtml(aiExplainCreditBadge)}</span>`
             : "";
 
         const headerHtml = `
             <div class="${PREFIX}header">
-                <div class="${PREFIX}ai-queue-ribbon" role="tablist" aria-label="Breakdown items">
+                <div class="${PREFIX}ai-queue-ribbon" role="tablist" aria-label="${QT.escapeAttr(t("breakdown_items"))}">
                     ${ribbonItemsHtml}
                 </div>
                 ${creditPillHtml}
                 <div class="${PREFIX}ai-nav-group">
-                    <button type="button" class="${PREFIX}ai-nav-btn ${PREFIX}ai-prev-btn" data-action="prev" ${index === 0 ? "disabled" : ""} title="Previous (← / A)">
+                    <button type="button" class="${PREFIX}ai-nav-btn ${PREFIX}ai-prev-btn" data-action="prev" ${index === 0 ? "disabled" : ""} title="${QT.escapeAttr(t("nav_previous"))}">
                         ◀
                     </button>
                     <span class="${PREFIX}ai-step-counter">${index + 1}/${totalItems}</span>
-                    <button type="button" class="${PREFIX}ai-nav-btn ${PREFIX}ai-next-btn" data-action="next" ${index >= totalItems - 1 ? "disabled" : ""} title="Next (→ / D)">
+                    <button type="button" class="${PREFIX}ai-nav-btn ${PREFIX}ai-next-btn" data-action="next" ${index >= totalItems - 1 ? "disabled" : ""} title="${QT.escapeAttr(t("nav_next"))}">
                         ▶
                     </button>
                 </div>
@@ -1959,7 +1865,7 @@
                             ${QT.escapeHtml(item.meaning || "")}
                         </div>
                         <span class="${PREFIX}word-actions">
-                            <button class="${PREFIX}speak" data-text="${QT.escapeAttr(speechText)}" data-lang="${QT.escapeAttr(speakLang)}" data-source-lang="${QT.escapeAttr(aiExplainSourceLang)}" data-original-text="${QT.escapeAttr(item.term)}" title="Play pronunciation" aria-label="Play pronunciation">${SVG.SPEAKER}</button>
+                            <button class="${PREFIX}speak" data-text="${QT.escapeAttr(speechText)}" data-lang="${QT.escapeAttr(speakLang)}" data-source-lang="${QT.escapeAttr(aiExplainSourceLang)}" data-original-text="${QT.escapeAttr(item.term)}" title="${QT.escapeAttr(t("play_pronunciation"))}" aria-label="${QT.escapeAttr(t("play_pronunciation"))}">${SVG.SPEAKER}</button>
                         </span>
                     </div>`
                 : `
@@ -1968,7 +1874,7 @@
                         <div class="${PREFIX}ai-term-title-wrap">
                             ${!isSentenceStage ? `<span class="${PREFIX}ai-term">${QT.escapeHtml(item.term)}</span>` : ""}
                             <span class="${PREFIX}word-actions">
-                                <button class="${PREFIX}speak" data-text="${QT.escapeAttr(speechText)}" data-lang="${QT.escapeAttr(speakLang)}" data-source-lang="${QT.escapeAttr(aiExplainSourceLang)}" data-original-text="${QT.escapeAttr(item.term)}" title="Play pronunciation" aria-label="Play pronunciation">${SVG.SPEAKER}</button>
+                                <button class="${PREFIX}speak" data-text="${QT.escapeAttr(speechText)}" data-lang="${QT.escapeAttr(speakLang)}" data-source-lang="${QT.escapeAttr(aiExplainSourceLang)}" data-original-text="${QT.escapeAttr(item.term)}" title="${QT.escapeAttr(t("play_pronunciation"))}" aria-label="${QT.escapeAttr(t("play_pronunciation"))}">${SVG.SPEAKER}</button>
                             </span>
                         </div>
                     </div>
@@ -1994,14 +1900,24 @@
         const isAiSaved = aiAiSavedIndices.has(index);
         const dataAttrs = `data-src="${QT.escapeAttr(item.term || item.originalText || "")}" data-translated="${QT.escapeAttr(item.meaning || item.translation || "")}" data-src-lang="${QT.escapeAttr(aiExplainSourceLang || "")}" data-tgt-lang="${QT.escapeAttr(aiExplainTargetLang || "")}"`;
 
+        const saveLabel = t("save_label") || "Save";
+        const saveTitle = `${t("save_word_title") || t("save_word")} (Z)`;
+        const savedLabel = t("saved_status") || "Saved!";
+        const aiLabel = t("ai_sentence") || "AI Sentence";
+        const aiTitle = `${t("ai_sentence_title")} (X)`;
+        const aiSavedLabel = t("saved_to_review") || "Saved to Review!";
+
         const footerHtml = QT.buildSaveFooterHtml(dataAttrs, {
-            saveLabel: "Save",
-            saveTitle: "Save for review (Z)",
+            saveLabel,
+            saveTitle,
             saveKeyHint: "Z",
             isSaved,
+            savedLabel,
             showAi: true,
-            aiLabel: "AI Sentence",
-            aiTitle: "Generate smart AI sentence",
+            aiLabel,
+            aiTitle,
+            aiKeyHint: "X",
+            aiSavedLabel,
             isAiSaved,
         });
 
@@ -2193,6 +2109,16 @@
                 return;
             }
 
+            if (ev.key === "x" || ev.key === "X") {
+                if (aiTooltipActive && !aiPaywallActive) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    ev.stopImmediatePropagation();
+                    saveCurrentAiSentenceItem();
+                }
+                return;
+            }
+
             if (ev.key === "ArrowRight" || ev.key === "d" || ev.key === "D") {
                 if (aiTooltipActive && aiExplainQueue.length > 1) {
                     ev.preventDefault();
@@ -2316,12 +2242,36 @@
     }
 
     function saveCurrentAiExplainItem() {
-        if (!aiTooltipActive) return false;
-        const currentSaveBtn = translationOverlay?.querySelector(
+        if (aiPaywallActive) return false;
+        const container = (aiTooltipActive ? translationOverlay : null) || QT.getTooltipEl?.();
+        const currentSaveBtn = container?.querySelector(
             `.${PREFIX}save-word-btn, .${PREFIX}ai-explain-save-btn`,
         );
-        if (currentSaveBtn && document.contains(currentSaveBtn)) {
+        if (
+            currentSaveBtn &&
+            !currentSaveBtn.disabled &&
+            !currentSaveBtn.classList.contains("saving") &&
+            !currentSaveBtn.classList.contains("saved")
+        ) {
             currentSaveBtn.click();
+            return true;
+        }
+        return false;
+    }
+
+    function saveCurrentAiSentenceItem() {
+        if (aiPaywallActive) return false;
+        const container = (aiTooltipActive ? translationOverlay : null) || QT.getTooltipEl?.();
+        const currentAiBtn = container?.querySelector(
+            `.${PREFIX}save-ai-btn`,
+        );
+        if (
+            currentAiBtn &&
+            !currentAiBtn.disabled &&
+            !currentAiBtn.classList.contains("loading") &&
+            !currentAiBtn.classList.contains("saved")
+        ) {
+            currentAiBtn.click();
             return true;
         }
         return false;
@@ -2330,9 +2280,20 @@
     function wireAiSentenceSaveButton(saveAiBtn, tooltipNode, item) {
         if (!saveAiBtn) return;
         const currentItem = item || aiExplainQueue[aiExplainIndex] || {};
+        const lang = (aiExplainTargetLang || (typeof SharedI18n !== "undefined" ? SharedI18n.getLang() : null) || subtitleTranslationLang || "en").toLowerCase().slice(0, 2);
+        const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, lang, p) : k);
+        const aiLabel = t("ai_sentence") || "AI Sentence";
+        const aiSavedLabel = t("saved_to_review") || "Saved to Review!";
+
+        if (!saveAiBtn.querySelector(`.${PREFIX}key-hint`)) {
+            const hintNode = document.createElement("kbd");
+            hintNode.className = `${PREFIX}key-hint`;
+            hintNode.textContent = "X";
+            saveAiBtn.appendChild(hintNode);
+        }
 
         if (aiAiSavedIndices.has(aiExplainIndex)) {
-            saveAiBtn.innerHTML = `${SVG.SAVE_AI_CHECK} <span>Saved to Review!</span>`;
+            saveAiBtn.innerHTML = `${SVG.SAVE_AI_CHECK} <span>${escapeHtml(aiSavedLabel)}</span>`;
             saveAiBtn.classList.add("saved");
             saveAiBtn.disabled = true;
         }
@@ -2349,7 +2310,7 @@
 
             saveAiBtn.classList.add("loading");
             saveAiBtn.disabled = true;
-            saveAiBtn.innerHTML = `<span class="ai-loader-label">✨ Generating…</span>`;
+            saveAiBtn.innerHTML = `<span class="ai-loader-label">✨ ${escapeHtml(t("generating_ai"))}</span>`;
 
             try {
                 const targetVideo =
@@ -2361,13 +2322,10 @@
                         targetVideo,
                     );
 
-                const cleanedTerm =
-                    cleanCardText(currentItem.term) || currentItem.term;
-                let cleanedMeaning =
-                    cleanCardText(currentItem.meaning || currentItem.translation) ||
-                    currentItem.meaning ||
-                    currentItem.translation ||
-                    cleanedTerm;
+                const termRaw = currentItem.term || currentItem.originalText || saveAiBtn.dataset.src || "";
+                const meaningRaw = currentItem.meaning || currentItem.translation || saveAiBtn.dataset.translated || "";
+                const cleanedTerm = cleanCardText(termRaw) || termRaw;
+                let cleanedMeaning = cleanCardText(meaningRaw) || meaningRaw || cleanedTerm;
 
                 const targetNativeLang =
                     aiExplainTargetLang || (await QT.getTargetLang?.()) || C.DEFAULT_READING_SETTINGS.targetLang;
@@ -2407,7 +2365,7 @@
                 aiAiSavedIndices.add(aiExplainIndex);
                 saveAiBtn.classList.remove("loading");
                 saveAiBtn.classList.add("saved");
-                saveAiBtn.innerHTML = `${SVG.SAVE_AI_CHECK} <span>Saved to Review!</span>`;
+                saveAiBtn.innerHTML = `${SVG.SAVE_AI_CHECK} <span>${escapeHtml(aiSavedLabel)}</span>`;
 
                 const termCard = tooltipNode?.querySelector(`.${PREFIX}ai-term-card`);
                 if (termCard && genSentence) {
@@ -2419,16 +2377,16 @@
                             "margin-top:10px;padding:8px 12px;background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.25);border-radius:8px;font-size:12px;";
                         termCard.appendChild(aiResultWrap);
                     }
-                    aiResultWrap.innerHTML = `<div style="color:#c084fc;font-weight:600;margin-bottom:3px;">✨ AI Sentence:</div><div style="color:#fff;margin-bottom:2px;">${QT.escapeHtml(genSentence)}</div><div style="color:rgba(255,255,255,0.7);font-size:11px;">${QT.escapeHtml(genTranslation)}</div>`;
+                    aiResultWrap.innerHTML = `<div style="color:#c084fc;font-weight:600;margin-bottom:3px;">✨ ${escapeHtml(aiLabel)}:</div><div style="color:#fff;margin-bottom:2px;">${QT.escapeHtml(genSentence)}</div><div style="color:rgba(255,255,255,0.7);font-size:11px;">${QT.escapeHtml(genTranslation)}</div>`;
                 }
             } catch (err) {
                 console.error("[Lectoro] Video card AI sentence error:", err);
                 saveAiBtn.classList.remove("loading");
                 saveAiBtn.disabled = false;
-                saveAiBtn.innerHTML = `${SVG.SAVE_AI} <span style="color:#f87171;">Error</span>`;
+                saveAiBtn.innerHTML = `${SVG.SAVE_AI} <span style="color:#f87171;">${escapeHtml(t("error_label"))}</span>`;
                 setTimeout(() => {
                     if (!saveAiBtn.classList.contains("saved")) {
-                        saveAiBtn.innerHTML = `${SVG.SAVE_AI} <span>AI Sentence</span>`;
+                        saveAiBtn.innerHTML = `${SVG.SAVE_AI} <span>${escapeHtml(aiLabel)}</span><kbd class="${PREFIX}key-hint">X</kbd>`;
                     }
                 }, 3000);
             }
@@ -2447,6 +2405,10 @@
         );
         if (!saveBtn) return;
 
+        const lang = (aiExplainTargetLang || (typeof SharedI18n !== "undefined" ? SharedI18n.getLang() : null) || subtitleTranslationLang || "en").toLowerCase().slice(0, 2);
+        const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, lang, p) : k);
+        const savedLabel = t("saved_status") || "Saved!";
+
         if (!saveBtn.querySelector(`.${PREFIX}key-hint`)) {
             const hintNode = document.createElement("kbd");
             hintNode.className = `${PREFIX}key-hint`;
@@ -2455,7 +2417,7 @@
         }
 
         if (aiSavedIndices.has(aiExplainIndex)) {
-            saveBtn.innerHTML = `<span>Saved!</span>`;
+            saveBtn.innerHTML = `<span>${escapeHtml(savedLabel)}</span>`;
             saveBtn.classList.add("saved");
             saveBtn.disabled = true;
         }
@@ -2472,7 +2434,7 @@
 
             saveBtn.classList.add("saving");
             saveBtn.disabled = true;
-            saveBtn.innerHTML = `${SVG.SAVE} <span>Saving…</span><kbd class="${PREFIX}key-hint">Z</kbd>`;
+            saveBtn.innerHTML = `${SVG.SAVE} <span>${escapeHtml(t("toast_saving_sentence"))}</span><kbd class="${PREFIX}key-hint">Z</kbd>`;
 
             try {
                 const targetVideo =
@@ -2485,13 +2447,10 @@
                     );
                 const currentItem = item || aiExplainQueue[aiExplainIndex] || {};
 
-                const cleanedTerm =
-                    cleanCardText(currentItem.term) || currentItem.term;
-                let cleanedMeaning =
-                    cleanCardText(currentItem.meaning || currentItem.translation) ||
-                    currentItem.meaning ||
-                    currentItem.translation ||
-                    cleanedTerm;
+                const termRaw = currentItem.term || currentItem.originalText || saveBtn.dataset.src || "";
+                const meaningRaw = currentItem.meaning || currentItem.translation || saveBtn.dataset.translated || "";
+                const cleanedTerm = cleanCardText(termRaw) || termRaw;
+                let cleanedMeaning = cleanCardText(meaningRaw) || meaningRaw || cleanedTerm;
                 const cleanedExplanation = cleanCardText(currentItem.explanation);
                 const isSentenceCard = currentItem.type === "sentence";
                 const rawContextSentence = isSentenceCard
@@ -2546,13 +2505,13 @@
                 });
 
                 aiSavedIndices.add(aiExplainIndex);
-                saveBtn.innerHTML = `${SVG.SAVE_CHECK} <span>Saved!</span>`;
+                saveBtn.innerHTML = `${SVG.SAVE_CHECK} <span>${escapeHtml(savedLabel)}</span>`;
                 saveBtn.classList.remove("saving");
                 saveBtn.classList.add("saved");
             } catch (error) {
                 saveBtn.disabled = false;
                 saveBtn.classList.remove("saving");
-                saveBtn.innerHTML = `${SVG.SAVE} <span>Could not save</span><kbd class="${PREFIX}key-hint">Z</kbd>`;
+                saveBtn.innerHTML = `${SVG.SAVE} <span>${escapeHtml(t("toast_could_not_save"))}</span><kbd class="${PREFIX}key-hint">Z</kbd>`;
                 saveBtn.title = error.message;
             }
         });
@@ -2805,6 +2764,10 @@
 
         const lang = ((typeof SharedI18n !== "undefined" ? SharedI18n.getLang() : null) || subtitleTranslationLang || "en").toLowerCase().slice(0, 2);
         const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, lang, p) : k);
+        const safeAttr = (s) =>
+            typeof QT !== "undefined" && QT?.escapeAttr
+                ? QT.escapeAttr(s)
+                : String(s || "").replace(/"/g, "&quot;");
 
         const titleText = t("paywall_ai_title");
         const bannerTitle = t("video_paywall_banner_title");
@@ -2822,7 +2785,7 @@
                     <span class="${PREFIX}paywall-icon">✨</span>
                     <span>${titleText}</span>
                 </div>
-                <button type="button" class="${PREFIX}paywall-close-btn" aria-label="Close (W)" title="Close and resume (W)">✕</button>
+                <button type="button" class="${PREFIX}paywall-close-btn" aria-label="${safeAttr(t("close_and_resume_aria"))}" title="${safeAttr(t("video_paywall_close_title"))}">✕</button>
             </div>
             <div class="${PREFIX}body ${PREFIX}paywall-body">
                 <div class="${PREFIX}paywall-card">
@@ -2842,7 +2805,7 @@
                 </div>
             </div>
             <div class="${PREFIX}save-footer ${PREFIX}paywall-footer">
-                <button type="button" class="${PREFIX}paywall-btn-ghost ${PREFIX}paywall-resume-btn" title="Resume playback">
+                <button type="button" class="${PREFIX}paywall-btn-ghost ${PREFIX}paywall-resume-btn" title="${safeAttr(resumeText)}">
                     ${resumeText}
                 </button>
                 <button type="button" class="${PREFIX}paywall-btn-primary ${PREFIX}paywall-upgrade-btn">
@@ -2852,7 +2815,7 @@
 
         const effectiveLayout =
             layout || aiExplainLayout || translationAnchorLayout || captureSubtitleLayout();
-        const copy = applyAiExplanation(html, effectiveLayout, "Lectoro AI Limit");
+        const copy = applyAiExplanation(html, effectiveLayout, t("ai_limit_title"));
 
         copy.querySelector(`.${PREFIX}paywall-close-btn`)?.addEventListener("click", () => {
             closeAiTooltip({ resumeVideo: true });
@@ -2906,16 +2869,14 @@
 
         try {
             const cachedUsage = (await GeminiProxy?.getCachedUsage?.()) || null;
-            if (cachedUsage && cachedUsage.limit > 0) {
-                const plan = String(cachedUsage.plan || "free").toLowerCase();
-                if (plan !== "free") {
-                    aiExplainCreditBadge = "✦ PRO AI";
-                } else {
-                    const rem = Math.max(0, (cachedUsage.limit || 15) - (cachedUsage.used || 0));
-                    aiExplainCreditBadge = `✦ AI ${rem}/${cachedUsage.limit || 15}`;
-                }
+            const plan = String(cachedUsage?.plan || "free").toLowerCase();
+            if (plan !== "free") {
+                aiExplainCreditBadge = "";
             } else {
-                aiExplainCreditBadge = "✦ AI Free";
+                const limit = cachedUsage?.limit || 15;
+                const used = cachedUsage?.used || 0;
+                const rem = Math.max(0, limit - used);
+                aiExplainCreditBadge = `✦ AI ${rem}/${limit}`;
             }
         } catch (_) {
             aiExplainCreditBadge = "";
@@ -2953,6 +2914,21 @@
             aiExplainTargetLang = targetLang;
             aiSavedIndices.clear();
             aiAiSavedIndices.clear();
+
+            try {
+                const freshUsage = (await GeminiProxy?.getCachedUsage?.()) || null;
+                const freshPlan = String(freshUsage?.plan || "free").toLowerCase();
+                if (freshPlan !== "free") {
+                    aiExplainCreditBadge = "";
+                } else {
+                    const limit = freshUsage?.limit || 15;
+                    const used = freshUsage?.used || 0;
+                    const rem = Math.max(0, limit - used);
+                    aiExplainCreditBadge = `✦ AI ${rem}/${limit}`;
+                }
+            } catch (_) {
+                aiExplainCreditBadge = "";
+            }
 
             let translation = "";
             let explanation = "";
@@ -3001,7 +2977,9 @@
             }
 
             if (!translation) {
-                throw (aiError || new Error("Could not translate sentence."));
+                const lang = (targetLang || (typeof SharedI18n !== "undefined" ? SharedI18n.getLang() : null) || subtitleTranslationLang || "en").toLowerCase().slice(0, 2);
+                const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, lang, p) : k);
+                throw (aiError || new Error(t("could_not_translate_sentence")));
             }
 
             const sentenceBadge = resolveAiBadge(
@@ -3140,11 +3118,162 @@
         wordCloudActive = false;
     }
 
+    function positionAllWordClouds() {
+        const activeItems = wordCloudEls.filter(
+            (item) => item.cloud?.isConnected && item.span?.isConnected,
+        );
+        if (!activeItems.length) return;
+
+        const itemsWithGeometry = [];
+        for (const item of activeItems) {
+            const members = (item.members || [item.span]).filter((m) => m?.isConnected);
+            const rects = members
+                .map((m) => m.getBoundingClientRect())
+                .filter((r) => r && (r.width > 0 || r.height > 0));
+            if (!rects.length) continue;
+            const anchorRect = {
+                left: Math.min(...rects.map((r) => r.left)),
+                right: Math.max(...rects.map((r) => r.right)),
+                top: Math.min(...rects.map((r) => r.top)),
+                bottom: Math.max(...rects.map((r) => r.bottom)),
+            };
+            anchorRect.width = anchorRect.right - anchorRect.left;
+            anchorRect.height = anchorRect.bottom - anchorRect.top;
+
+            const cloudRect = item.cloud.getBoundingClientRect();
+            const cloudWidth = cloudRect.width > 0 ? cloudRect.width : 60;
+            const cloudHeight = cloudRect.height > 0 ? cloudRect.height : 22;
+
+            itemsWithGeometry.push({
+                item,
+                anchorRect,
+                cloudWidth,
+                cloudHeight,
+            });
+        }
+
+        if (!itemsWithGeometry.length) return;
+
+        const winWidth = typeof window !== "undefined" && window.innerWidth ? window.innerWidth : 1000;
+
+        if (itemsWithGeometry.length === 1) {
+            const { item, anchorRect, cloudWidth, cloudHeight } = itemsWithGeometry[0];
+            let left = anchorRect.left + (anchorRect.width - cloudWidth) / 2;
+            let top = anchorRect.top - cloudHeight + 12;
+            left = Math.max(4, Math.min(left, winWidth - cloudWidth - 4));
+            if (top < 4) top = anchorRect.bottom + 6;
+            item.cloud.style.left = Math.round(left) + "px";
+            item.cloud.style.top = Math.round(top) + "px";
+            return;
+        }
+
+        // Group by subtitle line (items within 16px vertically belong to the same line)
+        itemsWithGeometry.sort((a, b) => {
+            const dy = a.anchorRect.top - b.anchorRect.top;
+            if (Math.abs(dy) > 16) return dy;
+            return a.anchorRect.left - b.anchorRect.left;
+        });
+
+        const lines = [];
+        let currentLine = [];
+        let currentLineTop = null;
+
+        for (const g of itemsWithGeometry) {
+            if (currentLineTop === null || Math.abs(g.anchorRect.top - currentLineTop) <= 16) {
+                currentLine.push(g);
+                currentLineTop = currentLineTop === null ? g.anchorRect.top : Math.min(currentLineTop, g.anchorRect.top);
+            } else {
+                lines.push(currentLine);
+                currentLine = [g];
+                currentLineTop = g.anchorRect.top;
+            }
+        }
+        if (currentLine.length) lines.push(currentLine);
+
+        const MIN_HORIZ_GAP = 6;
+        const VERTICAL_GAP = 5;
+        const MAX_NUDGE = 14;
+
+        for (const line of lines) {
+            line.sort((a, b) => a.anchorRect.left - b.anchorRect.left);
+            const placedTiers = new Map();
+
+            for (const g of line) {
+                const { item, anchorRect, cloudWidth, cloudHeight } = g;
+                const idealLeft = Math.max(
+                    4,
+                    Math.min(
+                        anchorRect.left + (anchorRect.width - cloudWidth) / 2,
+                        winWidth - cloudWidth - 4,
+                    ),
+                );
+                const baseTop = anchorRect.top - cloudHeight + 12;
+                const placeAbove = baseTop >= 4;
+
+                let assignedTier = 0;
+                let assignedLeft = idealLeft;
+                let assignedTop = baseTop;
+
+                for (let tier = 0; tier < 4; tier++) {
+                    let candidateTop;
+                    if (placeAbove) {
+                        candidateTop = baseTop - tier * (cloudHeight + VERTICAL_GAP);
+                        if (candidateTop < 4) {
+                            candidateTop = anchorRect.bottom + 6 + (tier > 0 ? (tier - 1) * (cloudHeight + VERTICAL_GAP) : 0);
+                        }
+                    } else {
+                        candidateTop = anchorRect.bottom + 6 + tier * (cloudHeight + VERTICAL_GAP);
+                    }
+
+                    const placedOnTier = placedTiers.get(tier) || [];
+                    const prev = placedOnTier.length > 0 ? placedOnTier[placedOnTier.length - 1] : null;
+
+                    if (!prev || idealLeft >= prev.right + MIN_HORIZ_GAP) {
+                        assignedTier = tier;
+                        assignedLeft = idealLeft;
+                        assignedTop = candidateTop;
+                        break;
+                    }
+
+                    const overlap = (prev.right + MIN_HORIZ_GAP) - idealLeft;
+                    if (overlap <= MAX_NUDGE && (idealLeft + overlap + cloudWidth) <= (winWidth - 4)) {
+                        assignedTier = tier;
+                        assignedLeft = idealLeft + overlap;
+                        assignedTop = candidateTop;
+                        break;
+                    }
+
+                    assignedTier = tier + 1;
+                    assignedLeft = idealLeft;
+                    assignedTop = candidateTop;
+                }
+
+                if (!placedTiers.has(assignedTier)) {
+                    placedTiers.set(assignedTier, []);
+                }
+                placedTiers.get(assignedTier).push({
+                    left: assignedLeft,
+                    right: assignedLeft + cloudWidth,
+                    top: assignedTop,
+                    bottom: assignedTop + cloudHeight,
+                });
+
+                item.cloud.dataset.tier = String(assignedTier);
+                item.cloud.style.left = Math.round(assignedLeft) + "px";
+                item.cloud.style.top = Math.round(assignedTop) + "px";
+            }
+        }
+    }
+
     function positionWordCloud(cloud, span, members = [span]) {
         if (!cloud?.isConnected || !span?.isConnected) return;
+        if (wordCloudEls.length > 1) {
+            positionAllWordClouds();
+            return;
+        }
         const rects = members.filter((member) => member?.isConnected)
             .map((member) => member.getBoundingClientRect())
-            .filter((rect) => rect.width > 0 || rect.height > 0);
+            .filter((rect) => rect && (rect.width > 0 || rect.height > 0));
         if (!rects.length) return;
         const rect = {
             left: Math.min(...rects.map((r) => r.left)),
@@ -3154,15 +3283,18 @@
         };
         rect.width = rect.right - rect.left;
         const cloudRect = cloud.getBoundingClientRect();
-        let left = rect.left + (rect.width - cloudRect.width) / 2;
-        let top = rect.top - cloudRect.height + 12;
+        const cloudWidth = cloudRect.width > 0 ? cloudRect.width : 60;
+        const cloudHeight = cloudRect.height > 0 ? cloudRect.height : 22;
+        let left = rect.left + (rect.width - cloudWidth) / 2;
+        let top = rect.top - cloudHeight + 12;
+        const winWidth = typeof window !== "undefined" && window.innerWidth ? window.innerWidth : 1000;
         left = Math.max(
             4,
-            Math.min(left, window.innerWidth - cloudRect.width - 4),
+            Math.min(left, winWidth - cloudWidth - 4),
         );
         if (top < 4) top = rect.bottom + 6;
-        cloud.style.left = left + "px";
-        cloud.style.top = top + "px";
+        cloud.style.left = Math.round(left) + "px";
+        cloud.style.top = Math.round(top) + "px";
     }
 
     function ensureSubtitleUiTracking() {
@@ -3174,8 +3306,8 @@
         subtitleUiTrackingFrame = null;
         if (translationOverlay?.isConnected) positionOverlay();
 
-        for (const { cloud, span, members } of wordCloudEls) {
-            positionWordCloud(cloud, span, members);
+        if (wordCloudEls.length > 0) {
+            positionAllWordClouds();
         }
 
         if (isSubHovering && subTooltipAnchor) {
@@ -3258,6 +3390,29 @@
 
         const { targetLang, learningLang } = await SharedTranslatorService.getReadingSettings();
         if (modeRevision !== subtitleModeRevision) return;
+
+        let sentenceSpeechPromise = null;
+        if (opts.speakFullSentence) {
+            sentenceSpeechPromise = (async () => {
+                try {
+                    const translation = await SharedTranslatorService.translate(
+                        fullText.trim(),
+                        targetLang,
+                        learningLang,
+                        { preferGoogle: true },
+                    );
+                    if (modeRevision !== subtitleModeRevision) return;
+                    const textToSpeak = translation?.translatedText || translation?.translated;
+                    if (textToSpeak && typeof textToSpeak === "string" && textToSpeak.trim()) {
+                        await QT.speak(textToSpeak.trim(), targetLang, {
+                            isCancelled: () => modeRevision !== subtitleModeRevision,
+                        });
+                    }
+                } catch (error) {
+                    console.warn("[Lectoro] Full sentence Google translation/TTS failed in word cloud mode:", error);
+                }
+            })();
+        }
 
         const pendingClass = `${PREFIX}word-cloud-loading`;
         const pendingOwner = String(modeRevision);
@@ -3385,6 +3540,11 @@
             }
         }));
         missing.forEach(({ span }) => stopLoading(span));
+        if (sentenceSpeechPromise && modeRevision === subtitleModeRevision && !generationError) {
+            try {
+                await sentenceSpeechPromise;
+            } catch (_) {}
+        }
         if (generationError && modeRevision === subtitleModeRevision) {
             throw generationError;
         }
@@ -4079,6 +4239,9 @@
         clearTimeout(saveToastHideTimer);
         el.className = `${PREFIX}${state}`;
 
+        const lang = ((typeof SharedI18n !== "undefined" ? SharedI18n.getLang() : null) || subtitleTranslationLang || "en").toLowerCase().slice(0, 2);
+        const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, lang, p) : k);
+
         let iconHtml;
         let title;
         let bodyHtml;
@@ -4087,11 +4250,11 @@
 
         if (state === "saving") {
             iconHtml = `<span class="ai-loader-label ${PREFIX}save_toast_sparkle">✨</span>`;
-            title = `<span class="ai-loader-label">Saving sentence…</span>`;
+            title = `<span class="ai-loader-label">${escapeHtml(t("toast_saving_sentence"))}</span>`;
             bodyHtml = textHtml;
         } else if (state === "success") {
             iconHtml = `<div class="${PREFIX}check_pop">${SVG.SAVE_SENTENCE_CHECK}</div>`;
-            title = "✔ Saved for review";
+            title = `✔ ${escapeHtml(t("toast_saved_sentence"))}`;
             bodyHtml = `
                 ${textHtml}
                 ${translated && translated !== text
@@ -4103,7 +4266,7 @@
                 thumbHtml = `<img class="${PREFIX}save_toast_thumb" src="${QT.escapeAttr(thumb)}" alt="" />`;
         } else {
             iconHtml = `<div class="${PREFIX}error_mark">!</div>`;
-            title = "⚠ Could not save";
+            title = `⚠ ${escapeHtml(t("toast_could_not_save"))}`;
             bodyHtml = textHtml;
         }
 
@@ -4139,9 +4302,11 @@
         if (savingSentence) return;
         const registry = getPlayerRegistry();
         const text = activeText || registry?.getCurrentText();
+        const lang = ((typeof SharedI18n !== "undefined" ? SharedI18n.getLang() : null) || subtitleTranslationLang || "en").toLowerCase().slice(0, 2);
+        const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, lang, p) : k);
         if (!text) {
             QT.createHint(C.UI_CLASSES.SUB_HINT).show(
-                "No subtitles to save",
+                t("no_subtitles_to_save"),
                 2000,
             );
             return;
@@ -4202,7 +4367,7 @@
         } catch (err) {
             console.error("[Lectoro] saveCurrentSentence error:", err);
             showSaveToast("error", {
-                text: "Could not save sentence",
+                text: t("toast_could_not_save_sentence"),
                 duration: SAVE_TOAST_ERROR_MS,
             });
             saveResumeTimer = setTimeout(resumeAfterSave, SAVE_TOAST_ERROR_MS);
@@ -4213,7 +4378,6 @@
 
     const SubtitleOverlay = {
         renderCustomSubtitles,
-        setDualSubtitleStatus,
         getCustomSubtitleElements: () => activeWordSpans,
         getActiveLines: () => activeLines,
         getActiveText: () => activeText,
@@ -4239,6 +4403,8 @@
         restoreOriginal,
         resumeVideoAfterSubtitleClose,
         saveCurrentSentenceToReview,
+        saveCurrentAiExplainItem,
+        saveCurrentAiSentenceItem,
         showSpeedOverlay,
         captureSubtitleSnapshot,
         createSubtitleTranslationTask,

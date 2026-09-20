@@ -19,7 +19,7 @@ After silence
 `;
     const cues = SubtitleService.parseTimedText(input, "vtt", "text/vtt", exact);
     assert.deepEqual(cues, [
-        { startTime: 1, endTime: 1.1, text: "First line", lines: ["First line"] },
+        { startTime: 1, endTime: 1.1, text: "First line", lines: ["First", "line"] },
         { startTime: 1.02, endTime: 1.08, text: "Second speaker", lines: ["Second speaker"] },
         { startTime: 3, endTime: 3.2, text: "After silence", lines: ["After silence"] },
     ]);
@@ -36,7 +36,7 @@ test("platform JSON3 parsing uses event timings and joins segments without chang
     ] });
     const cues = SubtitleService.parseTimedText(input, "json3", "application/json", exact);
     assert.equal(cues.length, 2);
-    assert.deepEqual(cues[0], { startTime: 1.234, endTime: 1.934, text: "Hello, world!", lines: ["Hello, world!"] });
+    assert.deepEqual(cues[0], { startTime: 1.234, endTime: 1.934, text: "Hello, world!", lines: ["Hello,", "world!"] });
     assert.equal(cues[1].endTime, 5.15);
 });
 
@@ -46,7 +46,7 @@ test("exact normalization never rounds platform boundaries or invents missing du
         { startTime: 2, endTime: null, text: "Missing duration" },
         { startTime: 3, endTime: 2, text: "Negative duration" },
     ], exact);
-    assert.deepEqual(cues, [{ startTime: 1.1234567, endTime: 1.2345678, text: "Exact time", lines: ["Exact time"] }]);
+    assert.deepEqual(cues, [{ startTime: 1.1234567, endTime: 1.2345678, text: "Exact time", lines: ["Exact", "time"] }]);
 });
 
 test("platform SubRip fallback keeps authored timing", () => {

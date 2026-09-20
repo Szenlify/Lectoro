@@ -56,20 +56,19 @@ whenPopupReady((data) => {
     }
     const defaultSubBg = LectoroConstants.DEFAULT_SUBTITLE_SETTINGS.BG_OPACITY;
 
-
     const subBg = data.subtitleBgOpacity !== undefined ? data.subtitleBgOpacity : defaultSubBg;
     if (subBgRange) {
         subBgRange.value = subBg;
         if (subBgValue) subBgValue.textContent = `${subBg}%`;
     }
+    const defaultSubFontSize = LectoroConstants.DEFAULT_SUBTITLE_SETTINGS.FONT_SIZE || "medium";
+    const subFontSize = data.subtitleFontSize || defaultSubFontSize;
+    updateSubFontSizeButtons(subFontSize);
     const voice = data.speechVoice || "";
     if (voice === "random") {
         chrome.storage.local.set({ speechVoice: "" });
     }
 
-    if (doubleSubtitlesToggle) {
-        doubleSubtitlesToggle.checked = data.doubleSubtitles !== undefined ? !!data.doubleSubtitles : true;
-    }
 });
 
 select.addEventListener("change", () => {
@@ -81,18 +80,6 @@ select.addEventListener("change", () => {
 learningLangSelect.addEventListener("change", () => {
     chrome.storage.local.set({ learningLang: learningLangSelect.value }, flashSaved);
 });
-
-// ── Subtitle reading modes ───────────────────────────────────────
-const doubleSubtitlesToggle = document.getElementById("doubleSubtitles");
-
-if (doubleSubtitlesToggle) {
-    doubleSubtitlesToggle.addEventListener("change", () => {
-        chrome.storage.local.set(
-            { doubleSubtitles: doubleSubtitlesToggle.checked },
-            flashSaved,
-        );
-    });
-}
 
 // ── Rate slider ───────────────────────────────────────────────────
 rateRange.addEventListener("input", () => {
@@ -144,8 +131,36 @@ function bindPercentageSlider(rangeEl, valueEl, storageKey, fallback = 0) {
 }
 
 const subBgStorageKey = LectoroConstants.STORAGE_KEYS.SUBTITLE_BG_OPACITY;
+const subFontSizeStorageKey = LectoroConstants.STORAGE_KEYS.SUBTITLE_FONT_SIZE || "subtitleFontSize";
 
 bindPercentageSlider(subBgRange, subBgValue, subBgStorageKey, 0);
+
+function updateSubFontSizeButtons(activeSize) {
+    if (!subFontSizeGroup) return;
+    const size = activeSize || LectoroConstants.DEFAULT_SUBTITLE_SETTINGS.FONT_SIZE || "medium";
+    const buttons = subFontSizeGroup.querySelectorAll(".font-size-btn");
+    buttons.forEach((btn) => {
+        const isMatch = btn.dataset.size === size;
+        btn.classList.toggle("active", isMatch);
+        btn.setAttribute("aria-pressed", isMatch ? "true" : "false");
+    });
+}
+
+if (subFontSizeGroup) {
+    subFontSizeGroup.addEventListener("click", (e) => {
+        const btn = e.target.closest(".font-size-btn");
+        if (!btn) return;
+        const selectedSize = btn.dataset.size;
+        if (!selectedSize) return;
+
+        updateSubFontSizeButtons(selectedSize);
+
+        if (typeof popupState === "object" && popupState !== null) {
+            popupState[subFontSizeStorageKey] = selectedSize;
+        }
+        chrome.storage.local.set({ [subFontSizeStorageKey]: selectedSize }, flashSaved);
+    });
+}
 
 // ── Subscription & AI Usage ──────────────────────────────────────
 function renderSubscriptionPlans(subscription, signedIn = true) {
@@ -371,7 +386,6 @@ async function refreshAiUsageUI() {
     const usageSection = document.getElementById("aiUsageSection");
     const plansSection = document.getElementById("aiPlansSection");
     const planBadge = document.getElementById("aiPlanBadge");
-    const upgradeBtn = document.getElementById("usageUpgradeBtn");
 
     const user =
         typeof FirebaseSync !== "undefined"
@@ -450,16 +464,6 @@ async function refreshAiUsageUI() {
         }
     }
 
-    if (upgradeBtn) {
-        if (isPaidPlan) {
-            upgradeBtn.textContent = t("manage_plan");
-            upgradeBtn.dataset.billingAction = "portal";
-        } else {
-            upgradeBtn.textContent = t("unlock_pro_trial");
-            delete upgradeBtn.dataset.billingAction;
-        }
-    }
-
     if (usage) {
         const used = Math.max(0, Number(usage.used || 0));
         const limit = Math.max(0, Number(usage.limit || 0)) || 15;
@@ -523,18 +527,8 @@ async function refreshAiUsageUI() {
             fill.style.width = "38%";
             fill.classList.add("is-loading");
         }
-        info.textContent = "Could not refresh AI usage";
+        info.textContent = t("could_not_refresh_ai_usage");
         if (renewalDate) renewalDate.textContent = "";
-    }
-
-    const usageUpgradeButton = document.getElementById("usageUpgradeButton");
-    if (usageUpgradeButton) {
-        const elevenLabsCard = document.getElementById("elevenLabsUsageCard");
-        usageUpgradeButton.hidden = !(
-            limitReached ||
-            elevenLabsCard?.classList.contains("is-empty") ||
-            elevenLabsCard?.classList.contains("is-unavailable")
-        );
     }
 
     const quizButton = document.getElementById("exportQuiz");
@@ -543,15 +537,15 @@ async function refreshAiUsageUI() {
         quizButton.setAttribute("aria-disabled", String(limitReached));
         const labelEl = quizButton.querySelector(".quiz-btn-label");
         if (labelEl) {
-            labelEl.textContent = limitReached ? "✦ Out of AI" : "✨ AI Quiz";
+            labelEl.textContent = limitReached ? t("quiz_out_of_credits") : t("quiz_ai_btn");
         } else {
             quizButton.textContent = limitReached
-                ? "✦ Out of AI"
-                : "✨ AI Quiz";
+                ? t("quiz_out_of_credits")
+                : t("quiz_ai_btn");
         }
         quizButton.title = limitReached
-            ? "Monthly AI limit reached — view available plans"
-            : "Generate interactive quiz using AI";
+            ? t("quiz_btn_out_of_ai")
+            : t("quiz_ai_title");
     }
 
     await GeminiProxy.applyLocalLimitToUI();
@@ -568,20 +562,6 @@ function showAiPlans() {
     plans?.classList.add("is-highlighted");
     setTimeout(() => plans?.classList.remove("is-highlighted"), 2200);
 }
-
-document
-    .getElementById("usageUpgradeButton")
-    ?.addEventListener("click", showAiPlans);
-
-document
-    .getElementById("usageUpgradeBtn")
-    ?.addEventListener("click", (e) => {
-        if (e.currentTarget?.dataset?.billingAction === "portal") {
-            SubscriptionService.openBillingPortal().catch(() => showAiPlans());
-        } else {
-            showAiPlans();
-        }
-    });
 
 document
     .getElementById("subscriptionPlansGrid")
@@ -606,13 +586,13 @@ document
         button.classList.add("is-loading");
         button.setAttribute("aria-busy", "true");
         button.innerHTML =
-            '<span class="ai-loader-label review-ai-loader-label">✨ Processing</span>';
+            '<span class="ai-loader-label">✨ Processing</span>';
         grid?.setAttribute("aria-busy", "true");
 
         if (status) {
             status.className = "stripe-billing-status is-loading";
             status.innerHTML =
-                '<span class="ai-loader-label review-ai-loader-label">✨ Opening secure checkout...</span>';
+                '<span class="ai-loader-label">✨ Opening secure checkout...</span>';
         }
 
         try {
@@ -628,7 +608,7 @@ document
                 if (status) {
                     status.className = "stripe-billing-status is-loading";
                     status.innerHTML =
-                        '<span class="ai-loader-label review-ai-loader-label">✨ Signing in with Google...</span>';
+                        '<span class="ai-loader-label">✨ Signing in with Google...</span>';
                 }
                 if (typeof sendBackgroundMessage === "function") {
                     await sendBackgroundMessage({
@@ -648,18 +628,22 @@ document
                     : await SubscriptionService.startCheckout(targetPlan);
 
             if (status) {
+                const lang = getPopupLang();
+                const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, lang, p) : k);
                 status.className = "stripe-billing-status is-success";
                 status.textContent = result?.redirectedToPortal
-                    ? "You already have a subscription — opened plan management."
+                    ? t("status_portal_redirect")
                     : result?.trialDays > 0
-                        ? "On Stripe add your card — $0 charged today."
-                        : "Stripe opened in a new tab.";
+                        ? t("status_stripe_trial")
+                        : t("status_stripe_opened");
             }
             startBillingPolling();
         } catch (error) {
             if (status) {
+                const lang = getPopupLang();
+                const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, lang, p) : k);
                 status.className = "stripe-billing-status is-error";
-                status.textContent = error.message || "Failed to open Stripe.";
+                status.textContent = error.message || t("status_stripe_error");
             }
         } finally {
             isBillingBusy = false;
@@ -700,8 +684,10 @@ function startBillingPolling() {
                 await refreshAiUsageUI();
                 const status = document.getElementById("stripeBillingStatus");
                 if (status) {
+                    const lang = getPopupLang();
+                    const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, lang, p) : k);
                     status.className = "stripe-billing-status is-success";
-                    status.textContent = `Plan updated: ${SubscriptionConfig.getPlanLimits(updated.plan).displayName}!`;
+                    status.textContent = t("status_plan_updated", { plan: SubscriptionConfig.getPlanLimits(updated.plan).displayName });
                 }
             }
         } catch (_) { }
@@ -753,6 +739,10 @@ chrome.storage.onChanged.addListener((changes, area) => {
             const val = changes[subBgStorageKey].newValue ?? 0;
             subBgRange.value = val;
             if (subBgValue) subBgValue.textContent = `${val}%`;
+        }
+        if (changes[subFontSizeStorageKey]) {
+            const val = changes[subFontSizeStorageKey].newValue || LectoroConstants.DEFAULT_SUBTITLE_SETTINGS.FONT_SIZE || "medium";
+            updateSubFontSizeButtons(val);
         }
         if (
             !isBillingBusy &&

@@ -15,10 +15,6 @@ let reviewTotalDue = 0;
 let _reviewSaving = false; // guard: skip storage listener while rating
 let _reviewQueueStale = false; // set when a background sync happens mid-session
 let _reviewLoading = false; // guard: prevent duplicate concurrent queue loads
-// Keep AI results on the in-memory card object. This prevents repeated Enter
-// presses (including while a request is still running) from consuming more AI
-// credits and lets the result survive flipping the same card back and forth.
-const reviewAiStates = new WeakMap();
 
 // ── Review direction: "normal" = show original, guess translation
 //                      "reverse" = show translation, guess original
@@ -626,9 +622,6 @@ function renderReview() {
 
 function reviewControlsHtml(sr, answerShown) {
     const labels = [1, 2].map((grade) => previewLabel(sr, grade));
-    const originalSideShown =
-        (reviewDirection === "normal" && !answerShown) ||
-        (reviewDirection === "reverse" && answerShown);
     const t = (k, d) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k) : d);
     const flipText = answerShown
         ? t("review_show_question", "Show question")
@@ -690,19 +683,6 @@ function reviewControlsHtml(sr, answerShown) {
             </span>
             ${t("review_shortcut_flip", "flip")}
         </span>
-
-        ${
-            originalSideShown
-                ? `
-                <span>
-                    <span class="shortcut-keys">
-                        <kbd>Enter</kbd>
-                    </span>
-                    ${t("review_shortcut_ai", "AI explain & translate")}
-                </span>
-                `
-                : ""
-        }
     </div>
 
     <div class="review-actions-row">
@@ -800,7 +780,6 @@ function renderQuestion(w) {
 
     attachReviewSpeakHandlers(card);
     attachReviewCardControls(card, w);
-    restoreReviewAiPanels(w);
     autoSpeakReviewCard(w, false);
 
     // Every new card must always start fully scrolled to the top — force
@@ -887,244 +866,6 @@ function animateSwipeAndRate(grade) {
     }
 }
 
-/**
- * On-demand AI translate ('Enter' shortcut) — fetches a fresh, plain/accurate
- * translation of the original word + sentence via Gemini and shows it inline,
- * without flipping or rating the card. It is available only while the original
- * side is visible and may make at most one successful request per card.
- */
-async function aiTranslateReviewCard() {
-    const card = getReviewCard();
-    if (!card || reviewIndex >= reviewQueue.length) return;
-    const w = reviewQueue[reviewIndex];
-    if (!w) return;
-
-    const originalSideShown =
-        (reviewDirection === "normal" && !reviewAnswerShown) ||
-        (reviewDirection === "reverse" && reviewAnswerShown);
-    if (!originalSideShown) return;
-
-    const settings = w.srcLang && w.tgtLang
-        ? null
-        : await SharedTranslatorService.getReadingSettings();
-    if (reviewQueue[reviewIndex] !== w) return;
-    const srcL = w.srcLang || settings.learningLang;
-    const tgtL = w.tgtLang || settings.targetLang;
-    const qWord = w.original;
-    const qSentence = String(w.sentence || "").trim();
-    if (!qWord) return;
-
-    const state = getReviewAiState(w).translation;
-    if (state.status === "loading") return;
-    if (state.status === "done") {
-        restoreReviewAiPanels(w);
-        const panel = document.getElementById("reviewAiTranslate");
-        if (panel) {
-            panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
-        }
-        const res = state.result;
-        if (res) {
-            const speakText = [res.wordTr, res.sentTr, res.explanation]
-                .filter(Boolean)
-                .join(". ");
-            if (speakText) {
-                stopPopupSpeak();
-                popupSpeak(speakText, res.targetLang || tgtL, {
-                    forceBrowser: true,
-                    useConfiguredRate: true,
-                    sourceLang: res.srcLang || srcL,
-                    originalText: w.original || "",
-                }).catch(() => {});
-            }
-        }
-        return;
-    }
-
-    const panel = ensureReviewAiPanel("reviewAiTranslate");
-    if (!panel) return;
-    state.status = "loading";
-    panel.innerHTML = `<div class="review-ai-translate-loading"><span class="ai-loader-label review-ai-loader-label">✨ Analyzing…</span></div>`;
-    panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
-
-    try {
-        const prompt = AIPrompts.standardTranslate(
-            qWord,
-            qSentence,
-            srcL,
-            tgtL,
-        );
-
-        // Secure proxy – Gemini API key is ONLY on server.
-        if (typeof GeminiProxy === "undefined") {
-            state.status = "idle";
-            panel.innerHTML = `<div class="review-ai-translate-error">GeminiProxy unavailable.</div>`;
-            return;
-        }
-        let parsed;
-        try {
-            parsed = await GeminiProxy.requestJSON(prompt, {
-                temperature: 0.2,
-                maxOutputTokens: 500,
-                validate(result) {
-                    AIPrompts.validateLanguage(result, tgtL);
-                    const required = [
-                        "word_translation",
-                        ...(qSentence ? ["sentence_translation"] : []),
-                    ];
-                    if (
-                        typeof result.explanation !== "string" ||
-                        required.some(
-                            (key) =>
-                                typeof result[key] !== "string" ||
-                                !result[key].trim(),
-                        )
-                    ) {
-                        throw new Error(
-                            "AI returned an incomplete translation.",
-                        );
-                    }
-                },
-            });
-        } catch (aiErr) {
-            const limitReached = GeminiProxy?.isLimitError?.(aiErr);
-            state.status = "idle";
-            if (limitReached) {
-                panel.remove();
-            } else {
-                panel.innerHTML = `<div class="review-ai-translate-error">${escapeHtml(aiErr.message)}</div>`;
-            }
-            return;
-        }
-        const wordTr = parsed.word_translation || "";
-        // With no source sentence there must be no placeholder/error message.
-        const sentTr = qSentence ? parsed.sentence_translation || "" : "";
-        const explanation = parsed.explanation || "";
-
-        state.status = "done";
-        state.result = { wordTr, sentTr, explanation, srcLang: srcL, targetLang: tgtL };
-
-        // Bail out silently if the user already moved to a different card
-        // while the request was in flight.
-        if (reviewQueue[reviewIndex] !== w) return;
-        if (!document.body.contains(panel)) return;
-
-        renderReviewTranslationResult(panel, state.result);
-        panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
-
-        // AI-generated text always uses the free system/browser voice.
-        const speakText = [wordTr, sentTr, explanation]
-            .filter(Boolean)
-            .join(". ");
-        if (speakText) {
-            stopPopupSpeak();
-            popupSpeak(speakText, tgtL, {
-                forceBrowser: true,
-                useConfiguredRate: true,
-                sourceLang: srcL,
-                originalText: w.original || "",
-            }).catch((ttsErr) => {
-                console.warn("[Lectoro] AI Review TTS error:", ttsErr);
-            });
-        }
-    } catch (err) {
-        state.status = "idle";
-        if (reviewQueue[reviewIndex] !== w) return;
-        if (!document.body.contains(panel)) return;
-        panel.innerHTML = `<div class="review-ai-translate-error">AI Error: ${escapeHtml(err.message)}</div>`;
-    }
-}
-
-function getReviewAiState(w) {
-    let state = reviewAiStates.get(w);
-    if (!state) {
-        state = {
-            translation: { status: "idle", result: null },
-        };
-        reviewAiStates.set(w, state);
-    }
-    return state;
-}
-
-function ensureReviewAiPanel(id) {
-    const card = getReviewCard();
-    const flashcard = card?.querySelector(".review-flashcard");
-    if (!card || !flashcard) return null;
-    let panel = card.querySelector(`#${id}`);
-    if (!panel) {
-        panel = document.createElement("div");
-        panel.id = id;
-        panel.className = "review-ai-translate";
-        flashcard.appendChild(panel);
-    }
-    return panel;
-}
-
-function renderReviewTranslationResult(panel, result) {
-    const srcTag = (result.srcLang || reviewLearningLang).toUpperCase();
-    const tgtTag = (result.targetLang || reviewTargetLang).toUpperCase();
-    const speakText = [result.wordTr, result.sentTr, result.explanation]
-        .filter(Boolean)
-        .join(". ");
-
-    let explanationHtml = "";
-    if (result.explanation) {
-        explanationHtml = `
-            <div class="review-ai-explanation">
-                <div class="review-ai-explanation-label">✨ AI Explanation:</div>
-                <div class="review-ai-explanation-text">${escapeHtml(result.explanation)}</div>
-            </div>`;
-    }
-
-    panel.innerHTML = `
-        <div class="review-ai-header">
-            <span>${escapeHtml(srcTag)} → ${escapeHtml(tgtTag)}</span>
-        </div>
-        <div class="review-ai-body">
-            <div class="review-ai-row">
-                <span class="review-ai-label">${escapeHtml(srcTag)}</span>
-                <span class="review-ai-text review-ai-original">${escapeHtml(result.wordTr || "—")}</span>
-            </div>
-            ${
-                result.sentTr
-                    ? `
-            <div class="review-ai-row">
-                <span class="review-ai-label">${escapeHtml(tgtTag)}</span>
-                <span class="review-ai-text review-ai-translated">${escapeHtml(result.sentTr)}</span>
-                <span class="review-ai-actions">
-                    ${
-                        speakText
-                            ? `<button class="review-speak-btn review-speak-sm" data-text="${escapeAttr(speakText)}" data-lang="${escapeAttr(result.targetLang)}" data-source-lang="${escapeAttr(result.srcLang || reviewLearningLang)}" data-original-text="${escapeAttr(result.wordTr || "")}" data-force-browser-tts="true" data-use-configured-rate="true" title="Read translation and explanation">${SPEAK_SVG}</button>`
-                            : ""
-                    }
-                </span>
-            </div>`
-                    : ""
-            }
-            ${explanationHtml}
-        </div>
-    `;
-    attachReviewSpeakHandlers(panel);
-}
-
-function restoreReviewAiPanels(w) {
-    const originalSideShown =
-        (reviewDirection === "normal" && !reviewAnswerShown) ||
-        (reviewDirection === "reverse" && reviewAnswerShown);
-    if (!originalSideShown) return;
-
-    const state = getReviewAiState(w);
-    if (state.translation.status === "done" && state.translation.result) {
-        const panel = ensureReviewAiPanel("reviewAiTranslate");
-        if (panel)
-            renderReviewTranslationResult(panel, state.translation.result);
-    } else if (state.translation.status === "loading") {
-        const panel = ensureReviewAiPanel("reviewAiTranslate");
-        if (panel) {
-            panel.innerHTML = `<div class="review-ai-translate-loading"><span class="ai-loader-label review-ai-loader-label">✨ Translating…</span></div>`;
-        }
-    }
-}
-
 function renderAnswer(w) {
     const card = getReviewCard();
     const sr = w.sr || { step: 0, interval: 0 };
@@ -1180,7 +921,6 @@ function renderAnswer(w) {
     // Attach TTS handlers
     attachReviewSpeakHandlers(card);
     attachReviewCardControls(card, w);
-    restoreReviewAiPanels(w);
     autoSpeakReviewCard(w, true);
 
     // Same as the question side: always force a full scroll back to the

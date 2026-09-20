@@ -59,3 +59,96 @@ test("UniversalVideoController exports user-adjustable config values", () => {
     assert.equal(config.FALLBACK_SEEK_SECONDS, 5);
     assert.equal(config.NETFLIX_ADVANCE_OFFSET, 0.125);
 });
+
+test("UniversalVideoController routes Z and X to word save and AI sentence save when tooltip is open", () => {
+    let wordSavedClicked = false;
+    let aiSavedClicked = false;
+    let sentenceSaved = false;
+
+    const mockWordBtn = {
+        disabled: false,
+        classList: { contains: () => false },
+        click: () => { wordSavedClicked = true; },
+    };
+    const mockAiBtn = {
+        disabled: false,
+        classList: { contains: () => false },
+        click: () => { aiSavedClicked = true; },
+    };
+
+    const prevDoc = global.document;
+    global.document = {
+        querySelector: (sel) => {
+            if (sel.includes(".visible")) return true;
+            if (sel.includes("save-word-btn")) return mockWordBtn;
+            if (sel.includes("save-ai-btn")) return mockAiBtn;
+            return null;
+        },
+    };
+
+    const prevOverlay = global.LectoroSubtitleOverlay;
+    global.LectoroSubtitleOverlay = {
+        isSubtitleUiOpen: () => false,
+        isAiTooltipActive: () => false,
+        saveCurrentSentenceToReview: () => { sentenceSaved = true; },
+    };
+
+    const prevRegistry = global.LectoroPlayerRegistry;
+    global.LectoroPlayerRegistry = {
+        getVideo: () => ({ paused: false, playbackRate: 1.0 }),
+    };
+
+    try {
+        const preventDefault = () => {};
+        const stopPropagation = () => {};
+        const stopImmediatePropagation = () => {};
+
+        // Press 'Z' with tooltip open -> clicks word save button, does NOT call sentence save
+        Controller.handleKeyDown({ key: "z", preventDefault, stopPropagation, stopImmediatePropagation });
+        assert.equal(wordSavedClicked, true, "Z key must trigger word save button");
+        assert.equal(sentenceSaved, false, "Z key must not trigger full sentence save when tooltip is open");
+
+        // Press 'X' with tooltip open -> clicks AI sentence button
+        Controller.handleKeyDown({ key: "x", preventDefault, stopPropagation, stopImmediatePropagation });
+        assert.equal(aiSavedClicked, true, "X key must trigger AI sentence save button");
+    } finally {
+        global.document = prevDoc;
+        global.LectoroSubtitleOverlay = prevOverlay;
+        global.LectoroPlayerRegistry = prevRegistry;
+    }
+});
+
+test("core.js buildSaveFooterHtml renders Z and X kbd hints and type='button'", () => {
+    const vm = require("node:vm");
+    const { loadFunction } = require("./helpers");
+    const C = require("../shared/constants");
+    const U = require("../shared/utils");
+
+    const context = vm.createContext({
+        LectoroConstants: C,
+        C,
+        SharedUtils: U,
+        PREFIX: "__qt_",
+        SVG: C.SVG_ICONS,
+        escapeHtml: U.escapeHtml,
+        escapeAttr: U.escapeAttr,
+    });
+    loadFunction(context, "core.js", "buildSaveFooterHtml");
+
+    const html = context.buildSaveFooterHtml('data-src="test" data-translated="test2"', {
+        saveLabel: "Zapisz",
+        saveTitle: "Zapisz słowo (Z)",
+        saveKeyHint: "Z",
+        aiLabel: "Zdanie AI",
+        aiTitle: "Generuj zdanie AI (X)",
+        aiKeyHint: "X",
+    });
+
+    assert.ok(html.includes('type="button"'), "Buttons must have type='button'");
+    assert.ok(html.includes('<kbd class="__qt_key-hint">Z</kbd>'), "Must render kbd hint for Z");
+    assert.ok(html.includes('<kbd class="__qt_key-hint">X</kbd>'), "Must render kbd hint for X");
+    assert.ok(html.includes("Zapisz"), "Must include save label");
+    assert.ok(html.includes("Zdanie AI"), "Must include AI label");
+});
+
+

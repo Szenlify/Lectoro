@@ -121,11 +121,11 @@
             TTS_VOLUME: "ttsVolume",
             TTS_MODE: "ttsMode",
             EL_VOICE_ID: "elVoiceId",
-            DOUBLE_SUBTITLES: "doubleSubtitles",
             SUBTITLE_TTS: "subtitleTTS",
             WORD_CLOUD_MODE: "wordCloudMode",
             SUBTITLE_POSITION: "subtitlePosition",
             SUBTITLE_BG_OPACITY: "subtitleBgOpacity",
+            SUBTITLE_FONT_SIZE: "subtitleFontSize",
             REVIEW_DIRECTION: "reviewDirection",
             FIREBASE_AUTH: "firebaseAuth",
             LAST_FIREBASE_SYNC: "lastFirebaseSync",
@@ -146,13 +146,19 @@
         const DEFAULT_SUBTITLE_SETTINGS = Object.freeze({
             POSITION: 14,
             BG_OPACITY: 0,
+            FONT_SIZE: "medium",
+        });
+
+        const SUBTITLE_FONT_SIZE_FACTORS = Object.freeze({
+            small: 0.016,
+            medium: 0.020,
+            large: 0.027,
         });
 
         const DEFAULT_READING_SETTINGS = Object.freeze({
             targetLang: "pl",
             learningLang: "en",
-            doubleSubtitles: true,
-            subtitleTTS: false,
+            subtitleTTS: true,
             wordCloudMode: true,
         });
 
@@ -391,6 +397,7 @@
             MESSAGE_TYPES,
             STORAGE_KEYS,
             DEFAULT_SUBTITLE_SETTINGS,
+            SUBTITLE_FONT_SIZE_FACTORS,
             DEFAULT_TTS_SETTINGS,
             DEFAULT_READING_SETTINGS,
             ENDPOINTS,

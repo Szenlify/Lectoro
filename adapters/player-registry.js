@@ -574,8 +574,6 @@
             }
         }
         const fullText = lines.join(" ").trim();
-        // Both rows must come from the same timeline read, including empty gaps.
-        const secondaryText = lines.translation ?? lines.cue?.translation ?? "";
         if (typeof subtitleChangeCallback === "function") {
             subtitleChangeCallback({
                 lines,
@@ -583,7 +581,6 @@
                 elements: adapterElements,
                 session,
                 video: session.video,
-                secondaryText,
                 cue: lines.cue || null,
             });
         }

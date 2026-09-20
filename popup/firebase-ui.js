@@ -125,13 +125,13 @@ async function renderSyncUI() {
                     refreshViewsAfterSync();
                     showFirebaseFeedback(
                         "success",
-                        "Signed in and data synced.",
+                        t("signed_in_feedback"),
                     );
                 } catch (error) {
                     firebaseUiAction = null;
                     showFirebaseFeedback(
                         "error",
-                        error.message || "Sign in error",
+                        error.message || t("sign_in_error"),
                         0,
                     );
                 }
@@ -171,7 +171,7 @@ async function renderSyncUI() {
             <div class="sync-actions">
                 <button id="firebaseSyncNow" class="sync-btn sync-primary" ${syncing || signingOut || deletingAccount ? "disabled" : ""}>${syncButtonText}</button>
                 <button id="firebaseSignOut" class="sync-btn" ${firebaseUiAction ? "disabled" : ""}>
-                    ${signingOut ? "Signing out..." : t("sign_out")}
+                    ${signingOut ? t("signing_out") : t("sign_out")}
                 </button>
             </div>
         </div>
@@ -182,7 +182,7 @@ async function renderSyncUI() {
         accountDeletion.innerHTML = `
             <p id="accountDeletionDescription">${t("delete_account_desc")}</p>
             ${firebaseUiFeedback?.type === "error" ? `<div class="sync-status sync-status-error" role="alert">${escapeSyncHtml(firebaseUiFeedback.message)}</div>` : ""}<button id="firebaseDeleteAccount" class="account-delete-btn" ${firebaseUiAction ? "disabled" : ""} aria-describedby="accountDeletionDescription">
-                ${deletingAccount ? "Deleting account..." : t("delete_account")}
+                ${deletingAccount ? t("deleting_account") : t("delete_account")}
             </button>`;
     }
 
@@ -204,14 +204,14 @@ async function renderSyncUI() {
                 const pulled = Number(result.pulled || 0);
                 const message =
                     sent || pulled
-                        ? `Done — uploaded ${sent}, downloaded ${pulled}.`
-                        : "All data is already in sync.";
+                        ? t("sync_done_summary", { sent, pulled })
+                        : t("sync_all_synced");
                 showFirebaseFeedback("success", message);
             } catch (error) {
                 firebaseUiAction = null;
                 showFirebaseFeedback(
                     "error",
-                    error.message || "Sync failed.",
+                    error.message || t("sync_failed"),
                     0,
                 );
             }
@@ -233,7 +233,7 @@ async function renderSyncUI() {
                 firebaseUiAction = null;
                 showFirebaseFeedback(
                     "error",
-                    error.message || "Failed to sign out.",
+                    error.message || t("failed_sign_out"),
                     0,
                 );
             }
@@ -244,7 +244,7 @@ async function renderSyncUI() {
         ?.addEventListener("click", async () => {
             if (firebaseUiAction) return;
             const confirmed = confirm(
-                "Are you sure you want to permanently delete your Lectoro account and all synced words and screenshots in the cloud?\n\nIf you have an active subscription, cancel it in your billing settings first to stop future charges. Deleting your account does not cancel your subscription.\n\nThis action cannot be undone.",
+                t("delete_account_confirm"),
             );
             if (!confirmed) return;
 
@@ -261,13 +261,13 @@ async function renderSyncUI() {
                 refreshViewsAfterSync();
                 showFirebaseFeedback(
                     "success",
-                    "Account and cloud data have been permanently deleted.",
+                    t("account_deleted_feedback"),
                 );
             } catch (error) {
                 firebaseUiAction = null;
                 showFirebaseFeedback(
                     "error",
-                    error.message || "Failed to delete account.",
+                    error.message || t("account_delete_failed"),
                     0,
                 );
             }

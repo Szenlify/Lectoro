@@ -42,27 +42,13 @@
     const OPTIMISTIC_SEEK_MAX_MS = 3000;
     const POST_SEEK_DOM_GRACE_MS = 450;
 
-    function setDualSubtitleStatus(status, error = null) {
-        globalThis.LectoroSubtitleOverlay?.setDualSubtitleStatus?.({
-            platform: "netflix",
-            status,
-            error: error?.message || "",
-            retry: retryDualSubtitles,
-        });
-    }
-
-    function invalidateSubtitleIndex({ keepMaster = false } = {}) {
-        cueIndex = keepMaster
-            ? cueIndex.map((cue) => ({ ...cue, translation: "" }))
-            : [];
+    function invalidateSubtitleIndex() {
+        cueIndex = [];
         cueIndexKey = "";
         cueIndexPromise = null;
         manifestRevision += 1;
         optimisticSeek = null;
-        setDualSubtitleStatus("idle");
-        if (!keepMaster) {
-            globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles?.([]);
-        }
+        globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles?.([]);
     }
 
     function renderIndexedCue() {
@@ -70,20 +56,9 @@
         const lines = getCurrentCueLines(video);
         if (video && Array.isArray(lines)) {
             globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles?.(lines, {
-                secondaryText: lines.translation || "",
                 cue: lines.cue || null,
             });
         }
-    }
-
-    async function retryDualSubtitles() {
-        if (!isWatchPage()) return [];
-        invalidateSubtitleIndex({ keepMaster: true });
-        renderIndexedCue();
-        const pending = ensureSubtitleIndex({ forceRetry: true });
-        // Ask for refreshed signed CDN URLs, and bypass the worker's negative cache.
-        window.dispatchEvent(new CustomEvent(MANIFEST_REQUEST_EVENT));
-        return pending;
     }
 
     function getWatchMovieId() {
@@ -465,23 +440,17 @@
         const movieId = getWatchMovieId();
         if (!movieId) return [];
         attemptedRevision = buildRevision;
-        let doubleSubEnabled = true;
         const isCurrent = () => buildRevision === manifestRevision && movieId === getWatchMovieId();
 
         try {
-            const defaultTargetLang = globalThis.LectoroConstants?.DEFAULT_READING_SETTINGS?.targetLang || "pl";
-            const [manifest, trackState, settings] = await Promise.all([
+            const [manifest, trackState] = await Promise.all([
                 waitForTimedTextManifest(),
                 waitForActiveTextTrack(buildRevision),
-                globalThis.chrome?.storage?.local?.get({ targetLang: defaultTargetLang, doubleSubtitles: true }) || {},
             ]);
             if (!isCurrent()) return [];
-            doubleSubEnabled = settings.doubleSubtitles !== false;
             if (!trackState.isCcActive || trackState.movieId !== movieId) {
-                setDualSubtitleStatus("idle");
                 return [];
             }
-            setDualSubtitleStatus(doubleSubEnabled ? "loading" : "idle");
             if (!manifest || String(manifest.movieId) !== movieId) {
                 throw new Error("Netflix subtitle manifest is unavailable.");
             }
@@ -492,37 +461,17 @@
             const context = { movieId, buildRevision, forceRetry };
             const master = await fetchTrackCues(masterTrack, context);
             if (!isCurrent() || !master) return [];
-            const service = getSubtitleService();
-            // Publish Master immediately. Slave failures must never delay or remove it.
-            // On Netflix, cues are authored professionally in full dialog utterances (matching LR).
-            // Do NOT pair/merge cues across silence gaps.
-            cueIndex = master.cues.map((cue) => ({ ...cue, translation: "" }));
+            cueIndex = master.cues.map((cue) => {
+                const lines = Array.isArray(cue.lines) && cue.lines.length > 0
+                    ? cue.lines
+                    : (cue.text ? cue.text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean) : []);
+                return { ...cue, lines };
+            });
             cueIndexKey = master.key;
             renderIndexedCue();
-
-            if (!doubleSubEnabled) return cueIndex;
-            const targetLang = settings.targetLang || defaultTargetLang;
-            if (sameLanguage(masterTrack.bcp47 || masterTrack.language, targetLang)) {
-                setDualSubtitleStatus("idle");
-                return cueIndex;
-            }
-            const slaveTrack = manifest.tracks
-                .filter((track) => sameLanguage(track.bcp47 || track.language, targetLang) || sameLanguage(track.displayName, targetLang))
-                .sort((a, b) => Number(a.isForcedNarrative) - Number(b.isForcedNarrative))[0];
-            if (!slaveTrack) throw new Error("Netflix has no subtitle track for the requested language.");
-            const slave = await fetchTrackCues(slaveTrack, context);
-            if (!isCurrent() || !slave) return [];
-            const aligned = service.alignSlaveTrackToMaster(master.cues, slave.cues, { multiOverlap: true, preserveLines: true });
-            if (!aligned.some((cue) => cue.translation)) {
-                throw new Error("Netflix subtitle tracks have no matching timed cues.");
-            }
-            cueIndex = aligned;
-            renderIndexedCue();
-            setDualSubtitleStatus("ready");
             return cueIndex;
         } catch (error) {
             if (!isCurrent()) return [];
-            if (doubleSubEnabled) setDualSubtitleStatus("error", error);
             return cueIndex;
         }
     }
@@ -654,8 +603,7 @@
             const active = findActiveIndexedCuesAt(lookupTime);
             if (active.length) {
                 const lines = [...new Set(active.flatMap((cue) =>
-                    cue.lines?.length ? cue.lines : [cue.text]).filter(Boolean))];
-                lines.translation = [...new Set(active.map((cue) => cue.translation).filter(Boolean))].join("\n");
+                    cue.lines?.length ? cue.lines : (cue.text ? cue.text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean) : [])).filter(Boolean))];
                 lines.cue = active[0];
                 lines.allCues = active;
                 return lines;
@@ -680,7 +628,6 @@
                         ? globalThis.LectoroBaseAdapter.extractCueLines(cueElements)
                         : [];
                     if (domLines.length > 0) {
-                        domLines.translation = "";
                         domLines.cue = null;
                         return domLines;
                     }
@@ -1148,12 +1095,6 @@
         }
     });
     window.addEventListener(MANIFEST_EVENT, acceptTimedTextManifest);
-    globalThis.chrome?.storage?.onChanged?.addListener((changes, areaName) => {
-        if (!isPage() || areaName !== "local" || (!changes.doubleSubtitles && !changes.targetLang)) return;
-        invalidateSubtitleIndex({ keepMaster: true });
-        renderIndexedCue();
-        if (isWatchPage()) ensureSubtitleIndex().catch(() => { });
-    });
     window.addEventListener(TRACK_RESPONSE_EVENT, (event) => {
         if (event.detail?.requestId === "ui-click-sync") {
             const nextState = {

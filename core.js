@@ -81,6 +81,48 @@
         lastMouseY = e.clientY;
     });
 
+    document.addEventListener(
+        "keydown",
+        (e) => {
+            if (!tooltipEl || !tooltipEl.classList.contains("visible")) return;
+            const target = e.target;
+            if (
+                target &&
+                (target.tagName === "INPUT" ||
+                    target.tagName === "TEXTAREA" ||
+                    target.isContentEditable)
+            ) {
+                return;
+            }
+
+            const key = e.key;
+            if (key === "z" || key === "Z") {
+                const saveWordBtn = tooltipEl.querySelector(`.${PREFIX}save-word-btn`);
+                if (
+                    saveWordBtn &&
+                    !saveWordBtn.disabled &&
+                    !saveWordBtn.classList.contains("saving")
+                ) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    saveWordBtn.click();
+                }
+            } else if (key === "x" || key === "X") {
+                const saveAiBtn = tooltipEl.querySelector(`.${PREFIX}save-ai-btn`);
+                if (
+                    saveAiBtn &&
+                    !saveAiBtn.disabled &&
+                    !saveAiBtn.classList.contains("loading")
+                ) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    saveAiBtn.click();
+                }
+            }
+        },
+        true,
+    );
+
     // ═══════════════════════════════════════════════════════════════
     //  UI – Overlay Parent & Tooltip
     // ═══════════════════════════════════════════════════════════════
@@ -825,10 +867,14 @@
 
         const saveFooterHtml = buildSaveFooterHtml(dataAttrs, {
             showExampleStatus: true,
-            saveLabel: t("save_word"),
-            saveTitle: t("save_word"),
+            saveLabel: t("save_label") || t("save_word"),
+            saveTitle: `${t("save_word_title") || t("save_word")} (Z)`,
+            saveKeyHint: "Z",
+            savedLabel: t("saved_status"),
             aiLabel: t("ai_sentence"),
-            aiTitle: t("ai_sentence_title"),
+            aiTitle: `${t("ai_sentence_title")} (X)`,
+            aiKeyHint: "X",
+            aiSavedLabel: t("saved_to_review"),
         });
 
         return `
@@ -867,11 +913,13 @@
             saveTitle = "Save word",
             saveKeyHint = "",
             isSaved = false,
+            savedLabel = "Saved!",
             showExampleStatus = false,
             showAi = true,
             aiLabel = "AI Sentence",
             aiTitle = "Generate AI sentence (Gemini)",
             aiKeyHint = "",
+            aiSavedLabel = "Saved to Review!",
             isAiSaved = false,
             extraClass = "",
         } = {},
@@ -885,15 +933,15 @@
             : "";
 
         const saveBtnContent = isSaved
-            ? `${SVG.SAVE_CHECK} <span>Saved!</span>`
+            ? `${SVG.SAVE_CHECK} <span>${escapeHtml(savedLabel)}</span>`
             : `${SVG.SAVE} <span>${escapeHtml(saveLabel)}</span>${saveKeyHtml}`;
 
         const aiBtnContent = isAiSaved
-            ? `${SVG.SAVE_AI_CHECK} <span>Saved to Review!</span>`
+            ? `${SVG.SAVE_AI_CHECK} <span>${escapeHtml(aiSavedLabel)}</span>`
             : `${SVG.SAVE_AI} <span>${escapeHtml(aiLabel)}</span>${aiKeyHtml}`;
 
         const aiBtnHtml = showAi
-            ? `<button class="${P}save-ai-btn ${P}save-footer-btn ${isAiSaved ? "saved" : ""}" ${dataAttrs} ${isAiSaved ? "disabled" : ""} title="${escapeAttr(aiTitle)}">
+            ? `<button type="button" class="${P}save-ai-btn ${P}save-footer-btn ${isAiSaved ? "saved" : ""}" ${dataAttrs} ${isAiSaved ? "disabled" : ""} title="${escapeAttr(aiTitle)}">
                     ${aiBtnContent}
                 </button>`
             : "";
@@ -903,7 +951,7 @@
         return `
             <div class="${P}save-footer${extraClassAttr}">
                 ${showExampleStatus ? `<div class="${P}example-status" role="status" aria-live="polite"></div>` : ""}
-                <button class="${P}save-word-btn ${P}save-footer-btn ${isSaved ? "saved" : ""}" ${dataAttrs} ${isSaved ? "disabled" : ""} title="${escapeAttr(saveTitle)}">
+                <button type="button" class="${P}save-word-btn ${P}save-footer-btn ${isSaved ? "saved" : ""}" ${dataAttrs} ${isSaved ? "disabled" : ""} title="${escapeAttr(saveTitle)}">
                     ${saveBtnContent}
                 </button>
                 ${aiBtnHtml}
@@ -1002,13 +1050,30 @@
     }
 
     async function handleSaveWordClick(saveWordBtn) {
+        if (
+            saveWordBtn.classList.contains("saved") ||
+            saveWordBtn.classList.contains("saving") ||
+            saveWordBtn.disabled
+        ) {
+            return;
+        }
+
+        const targetLang = saveWordBtn.dataset.tgtLang || (await QT.getTargetLang?.()) || C.DEFAULT_READING_SETTINGS.targetLang;
+        const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, targetLang, p) : k);
+
+        saveWordBtn.classList.add("saving");
+        saveWordBtn.disabled = true;
+
         try {
             const entry = await buildSaveEntry(saveWordBtn);
             await QT.saveWord(entry);
-            saveWordBtn.innerHTML = `${SVG.SAVE_CHECK} <span>Saved!</span>`;
+            saveWordBtn.innerHTML = `${SVG.SAVE_CHECK} <span>${escapeHtml(t("saved_status"))}</span>`;
+            saveWordBtn.classList.remove("saving");
             saveWordBtn.classList.add("saved");
         } catch (error) {
-            saveWordBtn.innerHTML = `${SVG.SAVE} <span>Plan limit</span>`;
+            saveWordBtn.disabled = false;
+            saveWordBtn.classList.remove("saving");
+            saveWordBtn.innerHTML = `${SVG.SAVE} <span>${escapeHtml(t("plan_limit"))}</span><kbd class="${PREFIX}key-hint">Z</kbd>`;
             saveWordBtn.title = error.message;
         }
     }
@@ -1020,6 +1085,8 @@
         btn.setAttribute("aria-busy", "true");
         const status = btn.closest(`#${PREFIX}tooltip`)?.querySelector(`.${PREFIX}example-status`);
         if (status) status.textContent = "";
+        const targetLang = btn.dataset.tgtLang || (await QT.getTargetLang?.()) || C.DEFAULT_READING_SETTINGS.targetLang;
+        const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, targetLang, p) : k);
         try {
             const original = cleanCardText(btn.dataset.src);
             let translated = cleanCardText(btn.dataset.translated);
@@ -1027,7 +1094,7 @@
                 const result = await SharedTranslatorService.translate(original, btn.dataset.tgtLang, btn.dataset.srcLang);
                 translated = cleanCardText(result?.translated);
             }
-            if (!translated) throw new Error("Could not translate this sentence. Try again.");
+            if (!translated) throw new Error(t("could_not_translate_sentence"));
             await QT.saveWord({
                 original, translated,
                 srcLang: btn.dataset.srcLang, tgtLang: btn.dataset.tgtLang,
@@ -1037,13 +1104,14 @@
             btn.innerHTML = SVG.SAVE;
             btn.setAttribute("aria-pressed", "true");
             btn.classList.add("saved");
-            btn.title = "Sentence saved to review";
-            btn.setAttribute("aria-label", "Sentence saved to review");
-            if (status) status.textContent = "Sentence saved to review.";
+            const savedMsg = t("sentence_saved_to_review");
+            btn.title = savedMsg;
+            btn.setAttribute("aria-label", savedMsg);
+            if (status) status.textContent = savedMsg;
         } catch (error) {
             btn.disabled = false;
             btn.innerHTML = SVG.SAVE;
-            btn.title = error?.message || "Could not save sentence";
+            btn.title = error?.message || t("toast_could_not_save_sentence");
             if (status) status.textContent = btn.title;
         } finally {
             btn.setAttribute("aria-busy", "false");
@@ -1053,15 +1121,20 @@
     async function handleSaveAiClick(saveAiBtn) {
         if (
             saveAiBtn.classList.contains("saved") ||
-            saveAiBtn.classList.contains("loading")
+            saveAiBtn.classList.contains("loading") ||
+            saveAiBtn.disabled
         )
             return;
 
+        const targetLang = saveAiBtn.dataset.tgtLang || (await QT.getTargetLang?.()) || C.DEFAULT_READING_SETTINGS.targetLang;
+        const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, targetLang, p) : k);
+
         saveAiBtn.classList.add("loading");
-        saveAiBtn.innerHTML = `<span class="ai-loader-label">✨ Generating…</span>`;
+        saveAiBtn.disabled = true;
+        saveAiBtn.innerHTML = `<span class="ai-loader-label">✨ ${escapeHtml(t("generating_ai"))}</span>`;
         const screenshotPromise = captureContextScreenshot();
         const aiResultEl = tooltipEl.querySelector(`#${C.UI_IDS.AI_RESULT}`);
-        const idleLabel = `${SVG.SAVE_AI} <span>AI</span>`;
+        const idleLabel = `${SVG.SAVE_AI} <span>${escapeHtml(t("ai_sentence"))}</span><kbd class="${PREFIX}key-hint">X</kbd>`;
 
         try {
             const result = await QT.geminiGenerateSentence(
@@ -1079,7 +1152,7 @@
             if (aiResultEl) {
                 aiResultEl.style.display = "block";
                 aiResultEl.innerHTML = `
-                    <div class="${PREFIX}ai-label">✨ AI sentence:</div>
+                    <div class="${PREFIX}ai-label">✨ ${escapeHtml(t("ai_sentence"))}:</div>
                     <div class="${PREFIX}ai-text">${escapeHtml(cleanedSentence)}</div>
                     <div class="${PREFIX}ai-translation">${escapeHtml(cleanedTranslation)}</div>`;
             }
@@ -1091,16 +1164,17 @@
             entry.sentenceTranslated = cleanedTranslation;
             await QT.saveWord(entry);
 
-            saveAiBtn.innerHTML = `${SVG.SAVE_AI_CHECK} <span>Saved to Review!</span>`;
+            saveAiBtn.innerHTML = `${SVG.SAVE_AI_CHECK} <span>${escapeHtml(t("saved_to_review"))}</span>`;
             saveAiBtn.classList.remove("loading");
             saveAiBtn.classList.add("saved");
         } catch (err) {
             console.error("[Lectoro] Gemini AI error:", err);
             saveAiBtn.classList.remove("loading");
+            saveAiBtn.disabled = false;
             const limitReached = GeminiProxy.isLimitError(err);
             saveAiBtn.innerHTML = limitReached
-                ? idleLabel
-                : `${SVG.SAVE_AI} <span style="color:#f87171;">Error</span>`;
+                ? `${SVG.SAVE_AI} <span style="color:#f87171;">${escapeHtml(t("plan_limit"))}</span>`
+                : `${SVG.SAVE_AI} <span style="color:#f87171;">${escapeHtml(t("error_label"))}</span>`;
 
             if (aiResultEl) {
                 aiResultEl.style.display = limitReached ? "none" : "block";
@@ -1109,11 +1183,11 @@
                     : `<div style="color:#f87171;font-size:11px;padding:6px 12px;">⚠ ${escapeHtml(err.message)}</div>`;
             }
 
-            if (!limitReached) {
-                setTimeout(() => {
+            setTimeout(() => {
+                if (!saveAiBtn.classList.contains("saved")) {
                     saveAiBtn.innerHTML = idleLabel;
-                }, 3000);
-            }
+                }
+            }, 3000);
         }
     }
 
@@ -1387,8 +1461,8 @@
         getMousePos: () => ({ x: lastMouseX, y: lastMouseY }),
 
         // Translation – delegates to SharedTranslatorService
-        translate: (text, lang) =>
-            SharedTranslatorService.translate(text, lang),
+        translate: (text, lang, sourceLang = null, opts = {}) =>
+            SharedTranslatorService.translate(text, lang, sourceLang, opts),
         createTranslateCache: (size) =>
             SharedTranslatorService.createTranslateCache(size),
 
@@ -1403,6 +1477,10 @@
         // Storage – delegates to SharedWordRepository and SharedTranslatorService
         getTargetLang: () => SharedTranslatorService.getTargetLang(),
         saveWord: (entry) => SharedWordRepository.saveWord(entry),
+        t: (k, lang = null, p = null) =>
+            typeof SharedI18n !== "undefined"
+                ? SharedI18n.t(k, lang || SharedI18n.getLang(), p)
+                : k,
 
         // AI & Screenshots – delegates to SharedTranslatorService
         geminiGenerateSentence: (w, t, s, tgt) =>

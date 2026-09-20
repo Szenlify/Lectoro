@@ -44,14 +44,14 @@
 | Plik / moduł | Połączenie i rola |
 | --- | --- |
 | `adapters/base-adapter.js` | Wspólna baza adapterów odtwarzaczy. |
-| `adapters/youtube-adapter.js`, `netflix-adapter.js`, `ted-adapter.js` | Adaptery platform → wspólny system napisów; rekonstrukcja pełnych zdań i pobieranie ścieżek dwujęzycznych (YT `availableTracks` / `&tlang=`, Netflix `manifest.tracks`) wyrównanych do Master Track; dynamiczny odczyt `targetLang` ze storage z fallbackiem do SSOT. |
+| `adapters/youtube-adapter.js`, `netflix-adapter.js`, `ted-adapter.js` | Adaptery platform → bezpośrednie przechwytywanie napisów z odtwarzacza lub timed text, zachowywanie oryginalnych linii i nakładanie stylów Lectoro. |
 | `adapters/generic-video-adapter.js`, `generic-adapters.js` | Obsługa pozostałych odtwarzaczy. |
 | `adapters/player-registry.js` → adaptery | Dobór i rejestracja odtwarzacza. |
 | `youtube-player-bridge.js`, `netflix-player-bridge.js` | Mosty działające w kontekście strony; dostęp do danych odtwarzacza. |
 | `video-frame-bootstrap.js` | Uruchamianie obsługi w ramkach wideo. |
-| `shared/subtitle-service.js` → adaptery / nakładka | Dane napisów, kontekst sąsiednich kwestii, łączenie klocków w pełne zdania (`reconstructFullSentenceCues`) i algorytm dopasowania ścieżki podrzędnej do nadrzędnej z synchronizacją do przodu (`alignSlaveTrackToMaster`) łączący klocki w jedną linię. |
-| `video/subtitle-overlay.js` → `QT`, translator, subtitle service | Wyświetlanie napisów pojedynczych i dwujęzycznych (`doubleSubtitles`) bez użycia AI/Google Translate, wyjaśnienia Enter, kolejka odczytu i zapis fiszek; dynamiczne języki AI (`aiExplainSourceLang`, `aiExplainTargetLang`) z ustawień użytkownika. |
-| `video/reading-modes.js` → translator, nakładka | Tryb czytania (chmurki słów) pod S; reaguje na zmianę języków i ustawień (`doubleSubtitles`, `wordCloudMode`). |
+| `shared/subtitle-service.js` → adaptery / nakładka | Dane napisów, parsowanie formatów (JSON3, TTML, VTT), zachowanie oryginalnych linii i formatowania. |
+| `video/subtitle-overlay.js` → `QT`, translator, subtitle service | Wyświetlanie napisów w stylach Lectoro (kolor, rozmiar, czcionka, tło, pozycja) z zachowaniem wieloliniowości, wyjaśnienia Enter, kolejka odczytu i zapis fiszek. |
+| `video/reading-modes.js` → translator, nakładka | Tryb czytania (chmurki słów) pod S; reaguje na zmianę języków i ustawień (`wordCloudMode`). |
 | `video/universal-video-controller.js` → nakładka / odtwarzacz | Skróty klawiaturowe wideo; `video/subtitle-overlay.js` rejestruje także osobny listener skrótów Enter. |
 | `shared/subtitle-translation-service.js` → worker | Wspólny przepływ tłumaczenia napisów. |
 
@@ -59,7 +59,7 @@ Przepływ Enter: `video/subtitle-overlay.js` → `core.js` (`QT.geminiExplainSen
 
 Przepływ hover słowa: `video/subtitle-overlay.js` → `QT` / `shared/translator-service.js` → worker → `shared/local-dictionary.js` / `shared/dictionary-store.js` → lokalna kopia lub R2; brakujący wpis może być generowany przez `shared/gemini-proxy.js` → `functions/live-translation.js`. Prompt wyjaśnień Enter i prompt generowania hasła słownika są odrębnymi kontraktami.
 
-Wykrywanie słowa: `core.js` (`findWordAtPoint`) → `shared/constants.js` (`isOwnUI`) — awaryjna tokenizacja napisów, również w kontenerze odtwarzacza Netflix. `video/subtitle-overlay.js` renderuje drugi rząd zwykłym tekstem, lecz obecna awaryjna tokenizacja może ponownie nadać mu interaktywność.
+Wykrywanie słowa: `core.js` (`findWordAtPoint`) → `shared/constants.js` (`isOwnUI`) — interaktywne słowa w napisach, również w kontenerze odtwarzacza Netflix.
 
 ## Dane i usługi wspólne
 

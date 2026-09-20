@@ -7,7 +7,6 @@
   "use strict";
 
   const TIMED_TEXT_EVENT = "__lectoro_youtube_timed_text";
-  const SLAVE_TIMED_TEXT_EVENT = "__lectoro_youtube_slave_timed_text";
   const TRACKS_EVENT = "__lectoro_youtube_tracks_available";
   const TRACK_REQUEST_EVENT = "__lectoro_youtube_track_request";
   const TRACK_RESPONSE_EVENT = "__lectoro_youtube_track_response";
@@ -326,11 +325,8 @@
             .text()
             .then((text) => {
               if (text) {
-                const eventName = requestUrl.includes("tlang=")
-                  ? SLAVE_TIMED_TEXT_EVENT
-                  : TIMED_TEXT_EVENT;
                 window.dispatchEvent(
-                  new CustomEvent(eventName, {
+                  new CustomEvent(TIMED_TEXT_EVENT, {
                     detail: {
                       url: requestUrl,
                       text,
@@ -362,11 +358,8 @@
         try {
           const text = this.responseText;
           if (text && this.status >= 200 && this.status < 300) {
-            const eventName = this.__lectoro_url.includes("tlang=")
-              ? SLAVE_TIMED_TEXT_EVENT
-              : TIMED_TEXT_EVENT;
             window.dispatchEvent(
-              new CustomEvent(eventName, {
+              new CustomEvent(TIMED_TEXT_EVENT, {
                 detail: {
                   url: this.__lectoro_url,
                   text,

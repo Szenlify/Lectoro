@@ -169,3 +169,45 @@ test("other single-word actions read live dictionary before any sentence or Goog
     assert.equal(result.translated, "dom"); assert.equal(result.provider, "dictionary");
     assert.deepEqual(words, [[["house"], "pl", "en"]]); assert.equal(state.calls.length, 0);
 });
+
+test("preferGoogle prioritizes Google Translate for multiword text even when signed in", async () => {
+    const state = app();
+    const result = await state.service.translate("How are you today", "pl", "en", { preferGoogle: true });
+    assert.equal(result.translated, "Google result");
+    assert.equal(result.provider, "google");
+    assert.equal(state.calls.length, 1);
+    assert.ok(state.calls[0].url.startsWith(C.ENDPOINTS.GOOGLE_TRANSLATE));
+});
+
+test("preferGoogle falls back to Gemini AI when Google Translate fails", async () => {
+    let googleFailed = false;
+    const store = storage({});
+    const calls = [];
+    const context = vm.createContext({
+        LectoroConstants: C, SharedUtils: U,
+        chrome: { storage: store, i18n: { detectLanguage: async () => ({ languages: [{ language: "en" }] }) } },
+        FirebaseSync: { getUser: async () => ({ uid: "reader" }), getValidToken: async () => "test-token" },
+        AbortController, setTimeout, clearTimeout,
+        fetch: async (url, options) => {
+            const body = options?.body ? JSON.parse(options.body) : null;
+            calls.push({ url, body });
+            await tick();
+            if (url.startsWith(C.ENDPOINTS.GOOGLE_TRANSLATE)) {
+                googleFailed = true;
+                return { ok: false, status: 429, headers: new Map() };
+            }
+            if (url === C.ENDPOINTS.GEMINI_PROXY) {
+                return { ok: true, json: async () => ({ result: { t: "Cześć z Gemini!" }, usage: { plan: "free", used: 1, limit: 100 } }) };
+            }
+            return { ok: true, json: async () => [[["Google result"]], null, "no"] };
+        },
+    });
+    context.SharedUtils = { ...U, postJson: (url, body, options) => context.fetch(url, { body: JSON.stringify(body), options }) };
+    load(context, "shared/gemini-proxy.js");
+    load(context, "shared/translator-service.js");
+    const result = await context.SharedTranslatorService.translate("How are you today", "pl", "en", { preferGoogle: true });
+    assert.equal(googleFailed, true);
+    assert.equal(result.translated, "Cześć z Gemini!");
+    assert.equal(result.provider, "gemini");
+});
+

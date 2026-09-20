@@ -338,6 +338,7 @@
             text,
             targetLang = null,
             sourceLang = null,
+            options = {},
         ) {
             text = String(text || "").trim();
             if (!text)
@@ -352,6 +353,7 @@
                     text,
                     targetLang,
                     sourceLang,
+                    options,
                 });
                 if (!validResult(response?.result))
                     throw translationError(
@@ -361,15 +363,15 @@
                 return response.result;
             }
             return transportCache.get(text, targetLang, (value, lang, source) =>
-                scheduleRequest(() => fetchPreferredTranslation(value, lang, source)),
+                scheduleRequest(() => fetchPreferredTranslation(value, lang, source, options)),
                 sourceLang,
             );
         }
 
-        async function fetchPreferredTranslation(text, targetLang, sourceLang) {
+        async function fetchPreferredTranslation(text, targetLang, sourceLang, options = {}) {
             // Selection, saved words and other single-word actions use the same live dictionary as hover.
             const term = dictionaryTerm(text);
-            if (term && globalThis.LocalDictionary) {
+            if (term && globalThis.LocalDictionary && !options?.preferGoogle) {
                 try {
                     const [translated] = await globalThis.LocalDictionary.lookupWords([term], targetLang, sourceLang);
                     if (translated) return { translated, detectedLang: sourceLang, provider: "dictionary" };
@@ -378,21 +380,50 @@
                     return fetchTranslation(text, targetLang, sourceLang);
                 }
             }
+
+            // If preferGoogle: true, try Google Translate first.
+            // If Google Translate fails (e.g. rate limit 429, network error), fall back to Gemini AI.
+            if (options?.preferGoogle) {
+                try {
+                    const googleResult = await fetchTranslation(text, targetLang, sourceLang);
+                    if (validResult(googleResult)) {
+                        return { ...googleResult, provider: "google" };
+                    }
+                } catch (googleError) {
+                    console.warn("[Lectoro] Google Translate failed, falling back to Gemini AI:", googleError);
+                }
+            }
+
             const user = typeof FirebaseSync !== "undefined" ? await FirebaseSync.getUser() : null;
-            if (!user || typeof GeminiProxy === "undefined") return fetchTranslation(text, targetLang, sourceLang);
+            if (!user || typeof GeminiProxy === "undefined") {
+                if (options?.preferGoogle) {
+                    throw translationError("Could not connect to translation services.", "TRANSLATION_FAILED");
+                }
+                return fetchTranslation(text, targetLang, sourceLang);
+            }
             if (typeof GeminiProxy.liveTranslation === "function") {
                 try {
                     const result = await GeminiProxy.liveTranslation("sentence", text, sourceLang, targetLang);
                     if (!result?.t?.trim()) throw new Error("Empty sentence translation.");
-                    return { translated: result.t, detectedLang: sourceLang, provider: "gemini" };
+                    return { translated: result.t.trim(), detectedLang: sourceLang, provider: "gemini" };
                 } catch (error) {
-                    if (GeminiProxy.isLimitError(error) || error.code === "AUTH_REQUIRED") return fetchTranslation(text, targetLang, sourceLang);
-                    throw error;
+                    if (options?.preferGoogle) {
+                        if (GeminiProxy.isLimitError(error) || error.code === "AUTH_REQUIRED") {
+                            throw error;
+                        }
+                    } else if (GeminiProxy.isLimitError(error) || error.code === "AUTH_REQUIRED") {
+                        return fetchTranslation(text, targetLang, sourceLang);
+                    } else {
+                        throw error;
+                    }
                 }
             }
             const usage = await GeminiProxy.getCachedUsage();
             if (usage?.uid === user.uid && usage?.month === Utils.currentMonth() &&
                 Number.isFinite(usage.limit) && usage.used >= usage.limit) {
+                if (options?.preferGoogle) {
+                    throw translationError("Translation limit reached and Google Translate unavailable.", "AI_LIMIT_REACHED");
+                }
                 return fetchTranslation(text, targetLang, sourceLang);
             }
             const language = Constants.SUPPORTED_LANGUAGES[targetLang]?.name || targetLang;
@@ -408,7 +439,7 @@
                 if (!translated) throw translationError("Empty translation response.", "INVALID_RESPONSE");
                 return { translated, detectedLang: sourceLang, provider: "gemini" };
             } catch (error) {
-                if (GeminiProxy.isLimitError(error) || error.code === "AUTH_REQUIRED") {
+                if (!options?.preferGoogle && (GeminiProxy.isLimitError(error) || error.code === "AUTH_REQUIRED")) {
                     return fetchTranslation(text, targetLang, sourceLang);
                 }
                 throw error;

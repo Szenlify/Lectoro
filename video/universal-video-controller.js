@@ -62,6 +62,7 @@
         "q", "Q",
         "Escape",
         "z", "Z", "v", "V",
+        "x", "X",
         "[", "{", "]", "}",
         "Home", "PageUp",
     ]);
@@ -316,9 +317,18 @@
             overlay?.isAiTooltipActive?.() ||
             (typeof document !== "undefined" && (
                 (typeof document.body?.hasAttribute === "function" && document.body.hasAttribute("data-lectoro-ai-active")) ||
-                (typeof document.querySelector === "function" && document.querySelector(".lectoro-ai-explain-overlay"))
+                (typeof document.querySelector === "function" && document.querySelector(".lectoro-ai-explain-overlay, .__qt_ai-explain-overlay"))
             ))
         );
+        const wordTooltipOpen = Boolean(
+            typeof document !== "undefined" &&
+            typeof document.querySelector === "function" &&
+            document.querySelector("#__qt_tooltip.visible, #lectoro-tooltip.visible")
+        );
+
+        if (["x", "X"].includes(key) && !aiTooltipOpen && !wordTooltipOpen) {
+            return;
+        }
 
         e.preventDefault();
         e.stopPropagation();
@@ -344,7 +354,7 @@
             return;
         }
 
-        // Sterowanie otwartym dymkiem AI (W, A, D, Strzałki, Z, V, Escape)
+        // Sterowanie otwartym dymkiem AI (W, A, D, Strzałki, Z, V, X, Escape)
         if (aiTooltipOpen) {
             if (["w", "W", "ArrowUp"].includes(key)) {
                 overlay?.closeAiTooltip?.({ resumeVideo: true });
@@ -362,12 +372,42 @@
                 overlay?.saveCurrentAiExplainItem?.();
                 return;
             }
+            if (["x", "X"].includes(key)) {
+                overlay?.saveCurrentAiSentenceItem?.();
+                return;
+            }
             if (key === "Escape") {
                 overlay?.closeAiTooltip?.({ resumeVideo: true });
                 return;
             }
             overlay?.closeAiTooltip?.({ resumeVideo: !isHorizontalSubtitleNavigation });
             if (!isHorizontalSubtitleNavigation) return;
+        }
+
+        // Sterowanie otwartym podręcznym dymkiem słowa lub zaznaczenia (Z, X)
+        if (wordTooltipOpen) {
+            if (["z", "Z", "v", "V"].includes(key)) {
+                const saveWordBtn = typeof document?.querySelector === "function" ? document.querySelector(
+                    "#__qt_tooltip .__qt_save-word-btn, #lectoro-tooltip .lectoro-save-word-btn",
+                ) : null;
+                if (saveWordBtn && !saveWordBtn.disabled) {
+                    saveWordBtn.click();
+                    return;
+                }
+            }
+            if (["x", "X"].includes(key)) {
+                const saveAiBtn = typeof document?.querySelector === "function" ? document.querySelector(
+                    "#__qt_tooltip .__qt_save-ai-btn, #lectoro-tooltip .lectoro-save-ai-btn",
+                ) : null;
+                if (
+                    saveAiBtn &&
+                    !saveAiBtn.disabled &&
+                    !saveAiBtn.classList.contains("loading")
+                ) {
+                    saveAiBtn.click();
+                    return;
+                }
+            }
         }
 
         // Zapisanie bieżącego zdania do powtórek SRS: Z / V / Home / PageUp

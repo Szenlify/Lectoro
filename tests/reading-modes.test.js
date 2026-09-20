@@ -160,6 +160,8 @@ function app(settings = {}) {
         "showWordClouds",
         "doSentenceTranslation",
         "createSubtitleTranslationTask",
+        "positionAllWordClouds",
+        "positionWordCloud",
     ]) {
         loadFunction(context, overlayFile, name);
     }
@@ -231,14 +233,43 @@ for (const language of ["pl", "de"]) {
             ),
             [`${language}:important`, `${language}:example`],
         );
-        assert.equal(state.speech.length, 0);
+        assert.equal(state.speech.length, 1);
+        assert.equal(state.speech[0].text, `${language}:important example`);
+        assert.equal(state.speech[0].lang, language);
         assert.equal(state.loading.length, 0);
         assert.equal(state.charged(), 0);
-        assert.equal(state.urls.length, 0);
+        assert.equal(state.urls.length, 1);
         assert.equal(state.video.paused, true);
         assert.equal(state.errors.length, 0);
     });
 }
+
+test("S mode avoids cloud overlap with vertical tiering and speaks full sentence via Google Translate without drawing it", async () => {
+    const state = app({ wordCloudMode: true, targetLang: "pl", learningLang: "en" });
+    const words = ["unfortunately", "circumstances"];
+    const spans = words.map(element);
+    spans[0].getBoundingClientRect = () => ({ left: 100, right: 180, top: 200, bottom: 220, width: 80, height: 20 });
+    spans[1].getBoundingClientRect = () => ({ left: 190, right: 280, top: 200, bottom: 220, width: 90, height: 20 });
+    state.context.activeWordSpans = spans;
+    state.context.activeText = "unfortunately circumstances";
+    state.context.SharedTranslatorService.lookupWords = async () => [
+        { translated: "niestety", length: 1 },
+        { translated: "okoliczności", length: 1 },
+    ];
+    await state.start();
+    assert.equal(state.context.wordCloudEls.length, 2);
+    const [cloud1, cloud2] = state.context.wordCloudEls;
+    const left1 = parseInt(cloud1.cloud.style.left, 10);
+    const top1 = parseInt(cloud1.cloud.style.top, 10);
+    const left2 = parseInt(cloud2.cloud.style.left, 10);
+    const top2 = parseInt(cloud2.cloud.style.top, 10);
+    const horizCollision = !(left1 + 60 + 6 <= left2 || left2 + 60 + 6 <= left1);
+    const vertCollision = !(top1 + 20 <= top2 || top2 + 20 <= top1);
+    assert.ok(!(horizCollision && vertCollision), "adjacent clouds must not overlap each other");
+    assert.equal(state.speech.length, 1);
+    assert.equal(state.speech[0].lang, "pl");
+    assert.deepEqual(state.drawn, []);
+});
 
 test("HTTP 429 produces one visible error, no original-as-translation and no quota charge", async () => {
     const state = app({ wordCloudMode: true });

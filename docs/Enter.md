@@ -29,6 +29,7 @@ Obsługiwane w plikach [`video/universal-video-controller.js`](file:///Users/kon
 | **`D`** / **`ArrowRight`** | Skok wideo w przód | Przejście do **następnego elementu** w kolejce AI (`nextAiExplainItem`) |
 | **`A`** / **`ArrowLeft`** | Skok wideo w tył | Przejście do **poprzedniego elementu** w kolejce AI (`prevAiExplainItem`) |
 | **`Z`** / **`V`** | Zapis słowa | Zapis aktualnie wyświetlanego elementu AI do powtórek (`saveCurrentAiExplainItem`) |
+| **`X`** / **`x`** | — | Wygenerowanie inteligentnego zdania z AI i zapis do powtórek (`saveCurrentAiSentenceItem`) |
 | **Kliknięcie słowa na napisach** | Tłumaczenie pojedynczego słowa | Przejście bezpośrednio do tego słowa w kolejce AI |
 | **Kliknięcie pigułki (pill) we wstążce** | — | Skok do wybranego etapu analizy |
 
@@ -88,9 +89,8 @@ sequenceDiagram
    - Zapis geometrii napisów przez `captureSubtitleLayout()` do `aiExplainLayout`.
    - Asynchroniczne sprawdzenie kredytów w pamięci podręcznej: `GeminiProxy.getCachedUsage()`.
    - Sformatowanie odznaki konta:
-     - Dla subskrypcji płatnej: `✦ PRO AI`.
-     - Dla darmowej: `✦ AI {pozostało}/{limit}` (np. `✦ AI 14/15`).
-     - Domyślnie: `✦ AI Free`.
+     - Dla subskrypcji darmowej: `✦ AI {pozostało}/{limit}` (np. `✦ AI 14/15` - odliczanie w dół).
+     - Dla subskrypcji płatnej: brak odznaki (ukryta).
 5. **Wyświetlenie animacji ładowania (Shimmer Loader)**:
    - Wywołanie `showAiShimmer(aiExplainLayout)`, które tworzy element `#_qt_sentence_translation` z klasami `__qt_sub-overlay` i `__qt_ai-explain-overlay`, atrybutem `data-state="ai-loading"` oraz tekstem:
      ```html
@@ -127,7 +127,7 @@ sequenceDiagram
      - `data-state="measuring"` (mierzenie wymiarów w tle),
      - `data-state="expanding"` (płynna animacja szerokości i wysokości w 0.22s),
      - `data-state="ready"` z dodaniem klasy `__qt_translation-reveal` — uruchamia to efektowny obrót obramowania `conic-gradient` (`__qt_ai_border_sweep`).
-   - Podpięcie zdarzeń: kliknięcie pigułek wstążki, przycisków poprzedni/następny, przycisku odsłuchu `__qt_speak` oraz przycisków zapisu fiszek `Save (Z)` i `AI Sentence`.
+   - Podpięcie zdarzeń: kliknięcie pigułek wstążki, przycisków poprzedni/następny, przycisku odsłuchu `__qt_speak` oraz przycisków zapisu fiszek `Save (Z)` i `AI Sentence (X)`.
    - Uruchomienie lektora TTS (`speakAiExplainItem`):
      - Dla całego zdania: odczytanie tłumaczenia w języku docelowym.
      - Dla idiomu/słowa: odczytanie oryginalnego terminu w języku nauki, krótka pauza (350 ms), a następnie odczytanie znaczenia i wyjaśnienia w języku docelowym.
@@ -145,7 +145,7 @@ Dymek `Enter` to pływający panel typu **Glassmorphism**, pozycjonowany automat
 ### Hierarchia elementów:
 1. **Pasek nagłówka (`.__qt_header`)**:
    - **Wstążka zakładek (`.__qt_ai-queue-ribbon`)**: przewijana poziomo lista pigułek reprezentujących każdy krok (💬 Zdanie, ✨ Idiom, ✨ Słowo). Aktywny krok ma turkusowe obramowanie i poświatę; pozostałe są fioletowe.
-   - **Odznaka kredytów (`.__qt_ai-credit-pill`)**: np. `✦ AI 14/15` lub złota `✦ PRO AI`.
+   - **Odznaka kredytów (`.__qt_ai-credit-pill`)**: dla planu darmowego odliczanie w dół (np. `✦ AI 14/15`); dla planów płatnych odznaka jest ukryta.
    - **Nawigacja krokowa (`.__qt_ai-nav-group`)**: przycisk `◀`, licznik kroków (np. `1/3`), przycisk `▶`.
 2. **Główna treść (`.__qt_body`)**:
    - **Gdy krok to całe zdanie (`data-type="sentence"`)**:
@@ -158,7 +158,7 @@ Dymek `Enter` to pływający panel typu **Glassmorphism**, pozycjonowany automat
      - Dodatkowa ramka z wyjaśnieniem kontekstowym i gramatycznym (`.__qt_ai-term-explanation`), z żółtym wyróżnieniem cytowanych zwrotów (`.__qt_tts-original-quote`).
 3. **Stopka akcji (`.__qt_save-footer`)**:
    - Przycisk zapisu do powtórek `Save (Z)` z ikoną zakładki i podpowiedzią klawisza `<kbd>Z</kbd>`. Po zapisaniu zmienia kolor na turkusowy ze stanem `Saved!`.
-   - Przycisk generowania inteligentnego zdania fiszkowego `AI Sentence`.
+   - Przycisk generowania inteligentnego zdania fiszkowego `AI Sentence (X)` z podpowiedzią klawisza `<kbd>X</kbd>`.
 
 ---
 
@@ -820,7 +820,7 @@ Poniżej znajdują się **dokładnie przepisane, oryginalne reguły CSS** z plik
 
 ---
 
-### 6.7. Stopka zapisu słów i fiszek (`Save` i `AI Sentence`)
+### 6.7. Stopka zapisu słów i fiszek (`Save (Z)` i `AI Sentence (X)`)
 
 ```css
 #__qt_sentence_translation .__qt_save-footer {

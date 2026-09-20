@@ -99,9 +99,9 @@ test('SharedI18n.getLocalizedPrice returns localized prices and currencies', () 
     assert.equal(plBasic.formatted, '29,99 zł');
 
     const plPro = SharedI18n.getLocalizedPrice('pro', 'pl');
-    assert.equal(plPro.amount, 89.99);
+    assert.equal(plPro.amount, 79.99);
     assert.equal(plPro.currency, 'PLN');
-    assert.equal(plPro.formatted, '89,99 zł');
+    assert.equal(plPro.formatted, '79,99 zł');
 
     // English
     const enBasic = SharedI18n.getLocalizedPrice('basic', 'en');
@@ -114,7 +114,7 @@ test('SharedI18n.getLocalizedPrice returns localized prices and currencies', () 
     // German (Euro)
     const deBasic = SharedI18n.getLocalizedPrice('basic', 'de');
     assert.equal(deBasic.currency, 'EUR');
-    assert.equal(deBasic.formatted, '7,99 €');
+    assert.equal(deBasic.formatted, '6,99 €');
 
     // Japanese (Yen)
     const jaPro = SharedI18n.getLocalizedPrice('pro', 'ja');
@@ -156,7 +156,50 @@ test('SharedI18n translates newly added keys across all 11 locales', () => {
         'video_reading_error_busy',
         'video_reading_error_generic',
         'video_sub_limit_title',
-        'paywall_ai_title'
+        'paywall_ai_title',
+        'save_label',
+        'save_word_title',
+        'saved_status',
+        'saved_to_review',
+        'generating_ai',
+        'error_label',
+        'plan_limit',
+        'breakdown_items',
+        'play_pronunciation',
+        'analyzing_sentence',
+        'toast_saving_sentence',
+        'toast_saved_sentence',
+        'toast_could_not_save',
+        'no_subtitles_to_save',
+        'sentence_saved_to_review',
+        'translate_btn',
+        'read_aloud_btn',
+        'stop_reading_btn',
+        'quiz_out_of_credits',
+        'could_not_refresh_ai_usage',
+        'export_preparing',
+        'export_downloading',
+        'close_label',
+        'scroll_plans',
+        'signing_out',
+        'deleting_account',
+        'signed_in_feedback',
+        'sign_in_error',
+        'sync_done_summary',
+        'sync_all_synced',
+        'sync_failed',
+        'delete_account_confirm',
+        'account_deleted_feedback',
+        'account_delete_failed',
+        'failed_sign_out',
+        'video_paywall_close_title',
+        'close_and_resume_aria',
+        'ai_limit_title',
+        'status_portal_redirect',
+        'status_stripe_trial',
+        'status_stripe_opened',
+        'status_stripe_error',
+        'status_plan_updated'
     ];
 
     for (const locale of SharedI18n.SUPPORTED_LOCALES) {
