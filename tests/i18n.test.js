@@ -361,3 +361,46 @@ test('SharedI18n.applyToDOM updates privacy and terms links to match current lan
     assert.equal(termsLink.getAttribute('href'), 'https://lectoroai.vercel.app/ja/terms');
 });
 
+test('LectoroConstants detects browser UI language and normalizes regional dialects like pt-BR', () => {
+    const C = require('../shared/constants');
+
+    // 1. Regional dialect normalization
+    assert.equal(C.normalizeSupportedLanguage('pt-BR'), 'pt', 'pt-BR must normalize to pt');
+    assert.equal(C.normalizeSupportedLanguage('pt_BR'), 'pt', 'pt_BR must normalize to pt');
+    assert.equal(C.normalizeSupportedLanguage('pt-PT'), 'pt', 'pt-PT must normalize to pt');
+    assert.equal(C.normalizeSupportedLanguage('es-419'), 'es', 'es-419 must normalize to es');
+    assert.equal(C.normalizeSupportedLanguage('es-MX'), 'es', 'es-MX must normalize to es');
+    assert.equal(C.normalizeSupportedLanguage('en-US'), 'en', 'en-US must normalize to en');
+    assert.equal(C.normalizeSupportedLanguage('de-AT'), 'de', 'de-AT must normalize to de');
+    assert.equal(C.normalizeSupportedLanguage('fr-CA'), 'fr', 'fr-CA must normalize to fr');
+    assert.equal(C.normalizeSupportedLanguage('pl-PL'), 'pl', 'pl-PL must normalize to pl');
+    assert.equal(C.normalizeSupportedLanguage('sv-SE', 'en'), 'en', 'Unsupported locale sv-SE must fallback to en');
+
+    // 2. Detection from chrome.i18n.getUILanguage
+    const origChrome = global.chrome;
+    try {
+        global.chrome = { i18n: { getUILanguage: () => 'pt-BR' } };
+        assert.equal(C.detectBrowserLanguage(), 'pt', 'Brazilian Chrome must detect pt');
+
+        global.chrome = { i18n: { getUILanguage: () => 'es-419' } };
+        assert.equal(C.detectBrowserLanguage(), 'es', 'Latin American Spanish must detect es');
+
+        global.chrome = { i18n: { getUILanguage: () => 'tr-TR' } };
+        assert.equal(C.detectBrowserLanguage('en'), 'en', 'Turkish must fallback to en, never pl');
+
+        // 3. Pairing: non-English native learns English, English native learns Spanish
+        global.chrome = { i18n: { getUILanguage: () => 'pt-BR' } };
+        const ptSettings = C.getDefaultLanguageSettings();
+        assert.equal(ptSettings.targetLang, 'pt');
+        assert.equal(ptSettings.learningLang, 'en');
+
+        global.chrome = { i18n: { getUILanguage: () => 'en-US' } };
+        const enSettings = C.getDefaultLanguageSettings();
+        assert.equal(enSettings.targetLang, 'en');
+        assert.equal(enSettings.learningLang, 'es');
+    } finally {
+        global.chrome = origChrome;
+    }
+});
+
+

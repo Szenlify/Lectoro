@@ -151,4 +151,40 @@ test("core.js buildSaveFooterHtml renders Z and X kbd hints and type='button'", 
     assert.ok(html.includes("Zdanie AI"), "Must include AI label");
 });
 
+test("UniversalVideoController rewinding during active subtitle jumps directly to active subtitle start", async () => {
+    const mockVideo = {
+        currentTime: 14.8,
+        duration: 120,
+        paused: false,
+    };
+
+    const prevOverlay = global.LectoroSubtitleOverlay;
+    const prevRegistry = global.LectoroPlayerRegistry;
+
+    try {
+        // Mock active subtitle started at 12.0s
+        global.LectoroSubtitleOverlay = {
+            getActiveSubtitleStartTime: () => 12.0,
+            isSubtitleUiOpen: () => false,
+            isAiTooltipActive: () => false,
+        };
+        global.LectoroPlayerRegistry = {
+            getVideo: () => mockVideo,
+            // no custom navigateSubtitle, fallback to controller logic
+        };
+
+        // Current time is 14.8s (2.8s into subtitle). Rewinding should jump to 12.0s, NOT (14.8 - 5s = 9.8s)!
+        await Controller.navigateSubtitle(mockVideo, -1);
+        assert.equal(mockVideo.currentTime, 12.0, "Must jump directly to subtitle start time 12.0s");
+
+        // Forward seeking when no future cues should jump by fallback delta (+5s)
+        await Controller.navigateSubtitle(mockVideo, 1);
+        assert.equal(mockVideo.currentTime, 17.0, "Forward seek should advance by fallback delta");
+    } finally {
+        global.LectoroSubtitleOverlay = prevOverlay;
+        global.LectoroPlayerRegistry = prevRegistry;
+    }
+});
+
+
 

@@ -428,8 +428,8 @@ async function syncActiveDictionaryPack(force = false) {
       KEYS.TARGET_LANGUAGE,
       KEYS.SOURCE_LANGUAGE,
     ]);
-    const target = data[KEYS.TARGET_LANGUAGE] || "pl";
-    const source = data[KEYS.SOURCE_LANGUAGE] || "en";
+    const target = data[KEYS.TARGET_LANG] || data[KEYS.TARGET_LANGUAGE] || "pl";
+    const source = data[KEYS.LEARNING_LANG] || data[KEYS.SOURCE_LANGUAGE] || "en";
     if (source !== target) {
       await globalThis.DictionaryStore.syncPack(source, target, { force });
     }
@@ -461,9 +461,27 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   }
 });
 
-chrome.runtime.onInstalled.addListener(() => {
+async function initializeDefaultLanguages() {
+  try {
+    const data = await chrome.storage.local.get([
+      KEYS.TARGET_LANG,
+      KEYS.LEARNING_LANG,
+    ]);
+    if (!data[KEYS.TARGET_LANG]) {
+      const detectedNative = LectoroConstants?.detectBrowserLanguage?.("en") || "en";
+      const detectedLearning = detectedNative === "en" ? "es" : "en";
+      await chrome.storage.local.set({
+        [KEYS.TARGET_LANG]: detectedNative,
+        [KEYS.LEARNING_LANG]: data[KEYS.LEARNING_LANG] || detectedLearning,
+      });
+    }
+  } catch (_) {}
+}
+
+chrome.runtime.onInstalled.addListener(async () => {
   updateBadge();
   initializeAiUsage();
+  await initializeDefaultLanguages().catch(() => {});
   syncActiveDictionaryPack().catch(() => {});
 });
 chrome.runtime.onStartup.addListener(() => {
@@ -477,7 +495,12 @@ chrome.runtime.onStartup.addListener(() => {
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") return;
-  if (changes[KEYS.TARGET_LANGUAGE] || changes[KEYS.SOURCE_LANGUAGE]) {
+  if (
+    changes[KEYS.TARGET_LANG] ||
+    changes[KEYS.TARGET_LANGUAGE] ||
+    changes[KEYS.LEARNING_LANG] ||
+    changes[KEYS.SOURCE_LANGUAGE]
+  ) {
     syncActiveDictionaryPack().catch(() => {});
   }
   const savedWordsChange = changes[KEYS.SAVED_WORDS];

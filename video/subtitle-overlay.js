@@ -62,6 +62,7 @@
     let activeLines = [];
     let activeSubtitleInput = { lines: [], options: {} };
     let activeText = "";
+    let activeSubtitleStartTime = null;
     let activeWordSpans = [];
     let activeWordTimings = [];
     let lastFocusedSpan = null;
@@ -1063,6 +1064,7 @@
             activeUnifiedCue = null;
             activeLines = [];
             activeText = "";
+            activeSubtitleStartTime = null;
             activeWordSpans = [];
             activeWordTimings = [];
             if (focusSliderEl) {
@@ -1098,6 +1100,12 @@
         }
 
         if (newText !== activeText) {
+            activeSubtitleStartTime =
+                cue && typeof cue.startTime === "number" && !isNaN(cue.startTime)
+                    ? cue.startTime
+                    : Number.isFinite(video?.currentTime)
+                      ? video.currentTime
+                      : null;
             if (isSentenceOverlayOpen()) {
                 restoreOriginal();
             }
@@ -4673,6 +4681,7 @@
         getCustomSubtitleElements: () => activeWordSpans,
         getActiveLines: () => activeLines,
         getActiveText: () => activeText,
+        getActiveSubtitleStartTime: () => activeSubtitleStartTime,
         getActiveSubtitleContext,
         closeSubTooltip,
         handleAIExplain,

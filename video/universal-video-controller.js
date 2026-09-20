@@ -210,11 +210,18 @@
         }
 
         // Standardowy fallback dla dowolnego HTML5 <video>
-        const fallbackDelta = direction > 0 ? FALLBACK_SEEK_SECONDS : -FALLBACK_SEEK_SECONDS;
-        targetVideo.currentTime = Math.max(
-            0,
-            Math.min(targetVideo.duration || Infinity, targetVideo.currentTime + fallbackDelta),
-        );
+        const activeStartTime = getOverlay()?.getActiveSubtitleStartTime?.();
+        let targetTime = null;
+        if (direction < 0 && Number.isFinite(activeStartTime) && targetVideo.currentTime > activeStartTime + 0.35) {
+            targetTime = activeStartTime;
+        } else {
+            const fallbackDelta = direction > 0 ? FALLBACK_SEEK_SECONDS : -FALLBACK_SEEK_SECONDS;
+            targetTime = Math.max(
+                0,
+                Math.min(targetVideo.duration || Infinity, targetVideo.currentTime + fallbackDelta),
+            );
+        }
+        targetVideo.currentTime = targetTime;
         if (targetVideo.paused) {
             targetVideo.play?.().catch?.(() => {});
         }

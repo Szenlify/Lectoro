@@ -27,6 +27,18 @@ function whenPopupReady(fn) {
 }
 
 chrome.storage.local.get(POPUP_INIT_KEYS, async (data) => {
+    // If targetLang has not been explicitly stored yet, detect browser UI language
+    const stored = await chrome.storage.local.get(["targetLang", "learningLang"]);
+    if (!stored.targetLang) {
+        const detectedNative = LectoroConstants?.detectBrowserLanguage?.("en") || "en";
+        const detectedLearning = detectedNative === "en" ? "es" : "en";
+        data.targetLang = detectedNative;
+        data.learningLang = stored.learningLang || detectedLearning;
+        await chrome.storage.local.set({
+            targetLang: data.targetLang,
+            learningLang: data.learningLang,
+        });
+    }
     const migrated = LectoroConstants.normalizeTtsProviderSettings(data);
     if (data.ttsMode !== migrated.ttsMode || data.elVoiceId !== migrated.elVoiceId) {
         await chrome.storage.local.set(migrated);

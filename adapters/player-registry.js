@@ -574,6 +574,41 @@
             }
         }
         const fullText = lines.join(" ").trim();
+        const currentTime = Number(session?.video?.currentTime || 0);
+
+        if (session) {
+            if (fullText) {
+                if (session.lastDispatchedFullText !== fullText) {
+                    session.lastDispatchedFullText = fullText;
+                    session.activeSubtitleStartTime = currentTime;
+                    if (!Array.isArray(session.observedCues)) {
+                        session.observedCues = [];
+                    }
+                    const existing = session.observedCues.find(
+                        (c) => Math.abs(c.startTime - currentTime) < 0.4 && c.text === fullText,
+                    );
+                    if (!existing) {
+                        session.observedCues.push({
+                            startTime: currentTime,
+                            endTime: currentTime + 3.0,
+                            text: fullText,
+                        });
+                        if (session.observedCues.length > 150) {
+                            session.observedCues.shift();
+                        }
+                    }
+                } else if (Array.isArray(session.observedCues) && session.observedCues.length > 0) {
+                    const last = session.observedCues[session.observedCues.length - 1];
+                    if (last && currentTime > last.startTime) {
+                        last.endTime = Math.max(last.endTime, currentTime + 0.5);
+                    }
+                }
+            } else {
+                session.lastDispatchedFullText = "";
+                session.activeSubtitleStartTime = null;
+            }
+        }
+
         if (typeof subtitleChangeCallback === "function") {
             subtitleChangeCallback({
                 lines,
@@ -743,6 +778,9 @@
             domFrame: null,
             subtitleFrame: null,
             lastFallbackAt: 0,
+            activeSubtitleStartTime: null,
+            lastDispatchedFullText: "",
+            observedCues: [],
         };
         const signal = controller.signal;
 
@@ -885,23 +923,63 @@
                 return adapterCues;
             }
         }
-        if (!video?.textTracks) return [];
+
         const cues = [];
-        for (let i = 0; i < video.textTracks.length; i++) {
-            const track = video.textTracks[i];
-            if (
-                !["subtitles", "captions"].includes(track.kind) ||
-                track.mode === "disabled" ||
-                !track.cues
-            ) {
-                continue;
+
+        // 1. Check HTML5 textTracks (switch "disabled" to "hidden" so browser populates cues)
+        if (video?.textTracks) {
+            for (let i = 0; i < video.textTracks.length; i++) {
+                const track = video.textTracks[i];
+                if (track.mode === "disabled") {
+                    try {
+                        track.mode = "hidden";
+                    } catch (_) {}
+                }
+                if (track.cues && track.cues.length > 0) {
+                    for (let j = 0; j < track.cues.length; j++) {
+                        cues.push(track.cues[j]);
+                    }
+                }
             }
-            for (let j = 0; j < track.cues.length; j++) cues.push(track.cues[j]);
         }
+
+        // 2. Check <track> elements inside video
+        if (typeof video?.querySelectorAll === "function") {
+            try {
+                const trackEls = video.querySelectorAll("track");
+                for (let i = 0; i < trackEls.length; i++) {
+                    const trackObj = trackEls[i].track;
+                    if (trackObj) {
+                        if (trackObj.mode === "disabled") {
+                            try {
+                                trackObj.mode = "hidden";
+                            } catch (_) {}
+                        }
+                        if (trackObj.cues && trackObj.cues.length > 0) {
+                            for (let j = 0; j < trackObj.cues.length; j++) {
+                                cues.push(trackObj.cues[j]);
+                            }
+                        }
+                    }
+                }
+            } catch (_) {}
+        }
+
+        // 3. Include dynamically observed cues from DOM / custom caption adapters
+        if (Array.isArray(session?.observedCues) && session.observedCues.length > 0) {
+            for (let i = 0; i < session.observedCues.length; i++) {
+                cues.push(session.observedCues[i]);
+            }
+        }
+
+        if (cues.length === 0) return [];
+
         const seen = new Set();
         return cues
             .filter((c) => {
-                const key = `${c.startTime.toFixed(3)}-${c.endTime.toFixed(3)}`;
+                if (typeof c?.startTime !== "number" || isNaN(c.startTime)) return false;
+                const end = typeof c.endTime === "number" ? c.endTime : c.startTime;
+                const key = `${c.startTime.toFixed(2)}-${end.toFixed(2)}`;
                 if (seen.has(key)) return false;
                 seen.add(key);
                 return true;
@@ -1089,6 +1167,20 @@
                 video.currentTime,
                 direction,
             );
+        }
+
+        // If rewinding (direction < 0) while a subtitle is active on screen,
+        // jump directly to when that subtitle started!
+        const activeStartTime =
+            session?.activeSubtitleStartTime ??
+            globalThis.LectoroSubtitleOverlay?.getActiveSubtitleStartTime?.();
+
+        if (direction < 0 && Number.isFinite(activeStartTime)) {
+            // If the video has played more than 0.35s into the current subtitle,
+            // jump directly back to when it started!
+            if (video.currentTime > activeStartTime + 0.35) {
+                targetTime = activeStartTime;
+            }
         }
 
         // On Netflix, NEVER use +-3s fallback seeking

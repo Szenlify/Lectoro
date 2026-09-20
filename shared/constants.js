@@ -115,7 +115,9 @@
         const STORAGE_KEYS = Object.freeze({
             SAVED_WORDS: "savedWords",
             TARGET_LANG: "targetLang",
+            TARGET_LANGUAGE: "targetLang",
             LEARNING_LANG: "learningLang",
+            SOURCE_LANGUAGE: "learningLang",
             TRANSLATE_RETRY_AT: "lectoro_translate_retry_at",
             SPEECH_VOICE: "speechVoice",
             SPEECH_RATE: "speechRate",
@@ -314,7 +316,37 @@
 
         function normalizeSupportedLanguage(code, fallback = "en") {
             const language = String(code || "").trim().toLowerCase().replace(/_/g, "-");
-            return Object.hasOwn(SUPPORTED_LANGUAGES, language) ? language : fallback;
+            if (!language) return fallback;
+            if (Object.hasOwn(SUPPORTED_LANGUAGES, language)) return language;
+            const base = language.split("-")[0];
+            if (Object.hasOwn(SUPPORTED_LANGUAGES, base)) return base;
+            return fallback;
+        }
+
+        function detectBrowserLanguage(fallback = "en") {
+            let lang = "";
+            try {
+                if (typeof chrome !== "undefined" && typeof chrome.i18n?.getUILanguage === "function") {
+                    lang = chrome.i18n.getUILanguage();
+                } else if (typeof window !== "undefined" && typeof navigator !== "undefined" && navigator.language) {
+                    const isNode = typeof process !== "undefined" && Boolean(process.versions?.node);
+                    if (!isNode) lang = navigator.language;
+                }
+            } catch (_) {}
+            if (!lang && typeof window !== "undefined" && typeof navigator !== "undefined" && Array.isArray(navigator.languages) && navigator.languages.length > 0) {
+                const isNode = typeof process !== "undefined" && Boolean(process.versions?.node);
+                if (!isNode) lang = navigator.languages[0];
+            }
+            return normalizeSupportedLanguage(lang, fallback);
+        }
+
+        function getDefaultLanguageSettings() {
+            const nativeLang = detectBrowserLanguage("en");
+            const learningLang = nativeLang === "en" ? "es" : "en";
+            return {
+                targetLang: nativeLang,
+                learningLang,
+            };
         }
 
         function langTag(code) {
@@ -408,6 +440,8 @@
             R2_CDN_BASE_URL,
             SUPPORTED_LANGUAGES,
             normalizeSupportedLanguage,
+            detectBrowserLanguage,
+            getDefaultLanguageSettings,
             LANG_NAMES,
             LANG_TAGS,
             GEMINI_TTS_MODEL,

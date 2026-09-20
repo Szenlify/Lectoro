@@ -531,7 +531,7 @@
             plan_current: "Aktualny plan",
             manage_on_stripe: "Zarządzaj w Stripe",
             change_plan: "Zmień plan",
-            start_trial: "Rozpocznij 3-dniowy okres próbny",
+            start_trial: "3-dniowy okres próbny",
             choose_plan: "Wybierz {name}",
             badge_trial: "Próbny",
             badge_active: "Aktywny",
@@ -3259,7 +3259,18 @@
         return Object.hasOwn(STRINGS, base) ? base : "en";
     }
 
-    let currentLang = "en";
+    let currentLang = (() => {
+        try {
+            if (typeof chrome !== "undefined" && typeof chrome.i18n?.getUILanguage === "function") {
+                return normalizeLang(chrome.i18n.getUILanguage());
+            }
+            if (typeof window !== "undefined" && typeof navigator !== "undefined" && navigator.language) {
+                const isNode = typeof process !== "undefined" && Boolean(process.versions?.node);
+                if (!isNode) return normalizeLang(navigator.language);
+            }
+        } catch (_) {}
+        return "en";
+    })();
 
     function setLang(lang) {
         currentLang = normalizeLang(lang);
@@ -3630,7 +3641,21 @@
             }
         });
         chrome.storage.local.get("targetLang", (data) => {
-            if (data?.targetLang) setLang(data.targetLang);
+            if (data?.targetLang) {
+                setLang(data.targetLang);
+            } else {
+                let browserLang = "";
+                try {
+                    if (typeof chrome.i18n?.getUILanguage === "function") {
+                        browserLang = chrome.i18n.getUILanguage();
+                    } else if (typeof navigator !== "undefined" && navigator.language) {
+                        browserLang = navigator.language;
+                    }
+                } catch (_) {}
+                if (browserLang) {
+                    setLang(browserLang);
+                }
+            }
         });
     }
 
