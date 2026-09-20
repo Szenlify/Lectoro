@@ -89,7 +89,7 @@ Wykrywanie słowa: `core.js` (`findWordAtPoint`) → `shared/constants.js` (`isO
 | `functions/ai-response.js` → `index.js` | Parsowanie odpowiedzi modelu i konfiguracja generowania. |
 | `functions/live-translation.js` → `index.js`, R2 | Tłumaczenia i słownik generowane na żądanie. |
 | `functions/r2-storage.js` | Wspólny dostęp backendu do zasobów R2. |
-| `functions/elevenlabs-policy.js` → `index.js` | Zasady dostępu do ElevenLabs. |
+| `functions/gemini-policy.js` → `index.js` | Zasady dostępu do Gemini TTS; synteza w `functions/gemini-tts.js`. |
 | `functions/stripe-billing.js` → konfiguracja planów | Rozliczenia i integracja Stripe. |
 | `functions/set-user-plan.js`, `remove-user-plan.js` | Narzędzia administracyjne planów użytkownika. |
 | `functions/firebase.json`, `functions/functions.yaml`, `functions/package.json` | Wdrożenie i zależności backendu. |

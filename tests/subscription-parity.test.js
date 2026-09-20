@@ -18,7 +18,7 @@ test("subscription plan keys and pricing match between client and backend config
         assert.deepEqual(clientPlan.priceMonthly, serverPlan.priceMonthly, `Price mismatch for ${plan}`);
         assert.deepEqual(clientPlan.ai, serverPlan.ai, `AI limits mismatch for ${plan}`);
         assert.deepEqual(clientPlan.srs, serverPlan.srs, `SRS limits mismatch for ${plan}`);
-        assert.deepEqual(clientPlan.elevenLabs, serverPlan.elevenLabs, `ElevenLabs limits mismatch for ${plan}`);
+        assert.deepEqual(clientPlan.geminiTts, serverPlan.geminiTts, `Gemini TTS limits mismatch for ${plan}`);
         assert.deepEqual(clientPlan.subtitles, serverPlan.subtitles, `Subtitles limits mismatch for ${plan}`);
     }
 });

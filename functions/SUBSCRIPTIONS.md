@@ -94,13 +94,20 @@ Jedynym źródłem prawdy dla limitów jest `SUBSCRIPTION_LIMITS` w pliku
 `subscription-config.js`. Ta sama konfiguracja jest używana przez rozszerzenie
 i Firebase Functions.
 
-| Plan | Trial | AI / miesiąc | Zapisane fiszki SRS | ElevenLabs / żądanie | ElevenLabs / miesiąc |
+| Plan | Trial | AI / miesiąc | Zapisane fiszki SRS | Gemini TTS / żądanie | Gemini TTS / miesiąc |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| FREE | — | 10 | 50 | niedostępne | niedostępne |
-| BASIC | 3 dni | 200 | 3 000 | 500 znaków | 20 000 znaków |
-| PRO | 3 dni | 1 200 | 10 000 | 1 000 znaków | 120 000 znaków |
+| FREE | — | 15 | 25 | niedostępne | niedostępne |
+| BASIC | 3 dni | 1 000 | 3 000 | 500 znaków | 15 000 znaków |
+| PRO | 3 dni | 10 000 | 10 000 | 1 000 znaków | 100 000 znaków |
 
 `priceMonthly` steruje ceną wyświetlaną w rozszerzeniu. Kwota pobierana od
 użytkownika jest przypisana do `STRIPE_BASIC_PRICE_ID` i
 `STRIPE_PRO_PRICE_ID`, więc zmianę ceny trzeba również wykonać w Stripe i
 zaktualizować odpowiedni sekret Firebase.
+
+Synteza Gemini TTS używa istniejącego sekretu `LECTORO_GEMINI_API_KEY`.
+Pola Firestore `elevenLabsCharactersThisMonth` i `elevenLabsResetDate` oraz
+`usage.elevenLabsCharacters` pozostają kompatybilnymi licznikami TTS, aby migracja
+nie resetowała wykorzystanego limitu. Kwoty użytkownika nadal liczymy w znakach,
+a koszt dostawcy zależy od tokenów wejściowych i długości audio.
+Szczegóły: [Gemini TTS](../docs/Gemini-TTS.md).

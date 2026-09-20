@@ -21,8 +21,8 @@ let _reviewLoading = false; // guard: prevent duplicate concurrent queue loads
 let reviewDirection = "normal";
 let ttsMode = "browser";
 let reviewSystemVoice = "";
-let reviewElVoiceId = "";
-let reviewElVoices = [];
+let reviewGeminiVoiceId = "";
+let reviewGeminiVoices = [];
 let reviewVoiceProfile = null;
 let reviewVoicesLoading = false;
 
@@ -39,7 +39,7 @@ whenPopupReady((data) => {
         chrome.storage.local.set({ speechVoice: "" });
     }
     ttsMode = data.ttsMode || "browser";
-    reviewElVoiceId = data.elVoiceId || "";
+    reviewGeminiVoiceId = data.elVoiceId || "";
     updateDirBtnLabel();
     void updateReviewVoiceUI();
 });
@@ -115,7 +115,7 @@ function closeReviewVoiceMenu() {
 
 function selectedReviewVoice() {
     return (
-        reviewElVoices.find((voice) => voice.voice_id === reviewElVoiceId) ||
+        reviewGeminiVoices.find((voice) => voice.voice_id === reviewGeminiVoiceId) ||
         null
     );
 }
@@ -129,27 +129,28 @@ function syncReviewVoiceButton() {
 
     const enabled =
         !!reviewVoiceProfile &&
-        SubscriptionConfig.getPlanLimits(reviewVoiceProfile.plan).elevenLabs
+        SubscriptionConfig.getPlanLimits(reviewVoiceProfile.plan).geminiTts
             .enabled;
     const voice = selectedReviewVoice();
-    const usingElevenLabs =
+    const usingGeminiTts =
         enabled &&
-        ttsMode === "elevenlabs" &&
-        !!reviewElVoiceId &&
-        reviewElVoiceId !== "random";
+        ttsMode === "gemini" &&
+        !!reviewGeminiVoiceId &&
+        reviewGeminiVoiceId !== "random";
 
-    btn.classList.toggle("is-elevenlabs", usingElevenLabs);
-    systemOption?.classList.toggle("active", !usingElevenLabs);
+    btn.classList.toggle("is-gemini", usingGeminiTts);
+    systemOption?.classList.toggle("active", !usingGeminiTts);
     badge.classList.toggle("is-locked", !enabled);
-    badge.textContent = usingElevenLabs ? "EL" : "AI";
-    label.textContent = usingElevenLabs ? voice?.name || "ElevenLabs" : "Voice";
-    btn.title = usingElevenLabs
-        ? `ElevenLabs: ${voice?.name || "selected voice"}`
+    badge.textContent = usingGeminiTts ? "G" : "AI";
+    const voiceIcon = voice?.voice_id === "Sulafat" ? "👩 " : voice?.voice_id === "Algieba" ? "👨 " : "";
+    label.textContent = usingGeminiTts ? `${voiceIcon}${voice?.name || "Gemini TTS"}` : "Voice";
+    btn.title = usingGeminiTts
+        ? `Gemini TTS: ${voice?.name || "selected voice"}`
         : "Choose review voice";
 }
 
 function renderFreeVoiceTeaser() {
-    const content = document.getElementById("reviewElevenLabsContent");
+    const content = document.getElementById("reviewGeminiTtsContent");
     if (!content) return;
     if (content.querySelector(".review-voice-teaser")) return;
     const t = (k, d) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k) : d);
@@ -158,10 +159,10 @@ function renderFreeVoiceTeaser() {
             <div class="review-voice-teaser-title"><span>${t("review_voice_natural_title", "Natural AI voices")}</span><span>🔒</span></div>
             <p>${t("review_voice_natural_desc", "Listen to authentic accents and choose a voice for your reviews.")}</p>
             <div class="review-voice-chips" aria-hidden="true">
-                <span class="review-voice-chip">Liam</span>
-                <span class="review-voice-chip">Matilda</span>
+                <span class="review-voice-chip">👩 Sulafat (${t("voice_female", "żeński")})</span>
+                <span class="review-voice-chip">👨 Algieba (${t("voice_male", "męski")})</span>
             </div>
-            <button type="button" class="review-voice-upgrade" id="reviewVoiceUpgrade">${t("review_voice_unlock_btn", "Unlock ElevenLabs voices")}</button>
+            <button type="button" class="review-voice-upgrade" id="reviewVoiceUpgrade">${t("review_voice_unlock_btn", "Unlock Gemini TTS voices")}</button>
         </div>`;
     content
         .querySelector("#reviewVoiceUpgrade")
@@ -171,24 +172,25 @@ function renderFreeVoiceTeaser() {
         });
 }
 
-function syncElevenLabsVoiceActiveState() {
+function syncGeminiTtsVoiceActiveState() {
     const list = document.querySelector(
-        "#reviewElevenLabsContent .review-voice-list",
+        "#reviewGeminiTtsContent .review-voice-list",
     );
     if (!list) return false;
     list.querySelectorAll(".review-voice-item").forEach((btn) => {
         const isActive =
-            ttsMode === "elevenlabs" && reviewElVoiceId === btn.dataset.voiceId;
+            ttsMode === "gemini" && reviewGeminiVoiceId === btn.dataset.voiceId;
         btn.classList.toggle("active", isActive);
+        btn.setAttribute("aria-pressed", String(isActive));
     });
     return true;
 }
 
-function renderElevenLabsVoiceSelect() {
-    const content = document.getElementById("reviewElevenLabsContent");
+function renderGeminiTtsVoiceSelect() {
+    const content = document.getElementById("reviewGeminiTtsContent");
     if (!content) return;
 
-    if (!reviewElVoices.length) {
+    if (!reviewGeminiVoices.length) {
         content.replaceChildren();
         return;
     }
@@ -196,9 +198,9 @@ function renderElevenLabsVoiceSelect() {
     const existingList = content.querySelector(".review-voice-list");
     if (
         existingList &&
-        existingList.children.length === reviewElVoices.length
+        existingList.children.length === reviewGeminiVoices.length
     ) {
-        syncElevenLabsVoiceActiveState();
+        syncGeminiTtsVoiceActiveState();
         return;
     }
 
@@ -207,17 +209,21 @@ function renderElevenLabsVoiceSelect() {
     const list = document.createElement("div");
     list.className = "review-voice-list";
 
-    reviewElVoices.forEach((voice) => {
+    const t = (k, d) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k) : d);
+
+    reviewGeminiVoices.forEach((voice) => {
         const item = document.createElement("button");
         item.type = "button";
         const isActive =
-            ttsMode === "elevenlabs" && reviewElVoiceId === voice.voice_id;
+            ttsMode === "gemini" && reviewGeminiVoiceId === voice.voice_id;
         item.className = `review-voice-item${isActive ? " active" : ""}`;
         item.dataset.voiceId = voice.voice_id;
+        item.setAttribute("aria-pressed", String(isActive));
 
+        const isFemale = voice.voice_id === "Sulafat";
         const avatar = document.createElement("span");
         avatar.className = "review-voice-avatar el";
-        avatar.textContent = "🎙️";
+        avatar.textContent = isFemale ? "👩" : "👨";
 
         const copy = document.createElement("span");
         copy.className = "review-voice-option-copy";
@@ -225,7 +231,13 @@ function renderElevenLabsVoiceSelect() {
         const name = document.createElement("strong");
         name.textContent = voice.name;
 
-        copy.append(name);
+        const desc = document.createElement("small");
+        desc.className = "review-voice-desc";
+        desc.textContent = isFemale
+            ? `${t("voice_female_full", "Głos żeński")} · Warm`
+            : `${t("voice_male_full", "Głos męski")} · Smooth`;
+
+        copy.append(name, desc);
 
         const check = document.createElement("span");
         check.className = "review-voice-check";
@@ -236,16 +248,16 @@ function renderElevenLabsVoiceSelect() {
 
         item.addEventListener("click", async (event) => {
             event.stopPropagation();
-            reviewElVoiceId = voice.voice_id;
-            ttsMode = "elevenlabs";
-            if (typeof clearPopupElevenLabsProviderBlock === "function") {
-                clearPopupElevenLabsProviderBlock();
+            reviewGeminiVoiceId = voice.voice_id;
+            ttsMode = "gemini";
+            if (typeof clearPopupGeminiTtsProviderBlock === "function") {
+                clearPopupGeminiTtsProviderBlock();
             }
             await chrome.storage.local.set({
                 ttsMode,
-                elVoiceId: reviewElVoiceId,
+                elVoiceId: reviewGeminiVoiceId,
             });
-            syncElevenLabsVoiceActiveState();
+            syncGeminiTtsVoiceActiveState();
             syncReviewVoiceButton();
             const voiceMsg = typeof SharedI18n !== "undefined"
                 ? SharedI18n.t("review_voice_selected", null, { name: voice.name })
@@ -259,8 +271,8 @@ function renderElevenLabsVoiceSelect() {
     content.appendChild(list);
 }
 
-async function loadReviewElevenLabsVoices() {
-    if (reviewVoicesLoading || reviewElVoices.length) return;
+async function loadReviewGeminiTtsVoices() {
+    if (reviewVoicesLoading || reviewGeminiVoices.length) return;
     reviewVoicesLoading = true;
     const loadingMsg = typeof SharedI18n !== "undefined"
         ? SharedI18n.t("review_voice_loading")
@@ -268,32 +280,32 @@ async function loadReviewElevenLabsVoices() {
     setReviewVoiceStatus(loadingMsg);
     try {
         const rawVoices =
-            await SubscriptionService.getElevenLabsVoices("review");
-        reviewElVoices = Array.isArray(rawVoices) ? rawVoices : [];
-        if (reviewElVoices.length > 0) {
-            const currentValid = reviewElVoices.some(
-                (v) => v.voice_id === reviewElVoiceId,
+            await SubscriptionService.getGeminiTtsVoices("review");
+        reviewGeminiVoices = Array.isArray(rawVoices) ? rawVoices : [];
+        if (reviewGeminiVoices.length > 0) {
+            const currentValid = reviewGeminiVoices.some(
+                (v) => v.voice_id === reviewGeminiVoiceId,
             );
             if (!currentValid) {
-                reviewElVoiceId = reviewElVoices[0].voice_id;
-                if (ttsMode === "elevenlabs") {
+                reviewGeminiVoiceId = reviewGeminiVoices[0].voice_id;
+                if (ttsMode === "gemini") {
                     await chrome.storage.local.set({
-                        elVoiceId: reviewElVoiceId,
+                        elVoiceId: reviewGeminiVoiceId,
                     });
                 }
             }
         }
-        renderElevenLabsVoiceSelect();
-        const availMsg = reviewElVoices.length
+        renderGeminiTtsVoiceSelect();
+        const availMsg = reviewGeminiVoices.length
             ? (typeof SharedI18n !== "undefined"
-                ? SharedI18n.t("review_voice_available", null, { count: reviewElVoices.length })
-                : `${reviewElVoices.length} voices available`)
+                ? SharedI18n.t("review_voice_available", null, { count: reviewGeminiVoices.length })
+                : `${reviewGeminiVoices.length} voices available`)
             : (typeof SharedI18n !== "undefined"
                 ? SharedI18n.t("review_voice_none")
                 : "No voices available.");
         setReviewVoiceStatus(
             availMsg,
-            reviewElVoices.length ? "" : "error",
+            reviewGeminiVoices.length ? "" : "error",
         );
         syncReviewVoiceButton();
     } catch (error) {
@@ -322,16 +334,17 @@ async function updateReviewVoiceUI() {
 
     const enabled =
         !!reviewVoiceProfile &&
-        SubscriptionConfig.getPlanLimits(reviewVoiceProfile.plan).elevenLabs
+        SubscriptionConfig.getPlanLimits(reviewVoiceProfile.plan).geminiTts
             .enabled;
     if (!enabled) {
-        if (ttsMode === "elevenlabs") {
+        if (ttsMode === "gemini") {
             ttsMode = "browser";
             await chrome.storage.local.set({ ttsMode });
         }
         renderFreeVoiceTeaser();
-    } else if (reviewElVoices.length) {
-        renderElevenLabsVoiceSelect();
+    } else {
+        if (!reviewGeminiVoices.length) await loadReviewGeminiTtsVoices();
+        else renderGeminiTtsVoiceSelect();
     }
     syncReviewVoiceButton();
 }
@@ -348,18 +361,7 @@ document
         btn.setAttribute("aria-expanded", String(willOpen));
         if (!willOpen) return;
 
-        if (reviewElVoices.length && syncElevenLabsVoiceActiveState()) {
-            syncReviewVoiceButton();
-            return;
-        }
-
         await updateReviewVoiceUI();
-        const enabled =
-            !!reviewVoiceProfile &&
-            SubscriptionConfig.getPlanLimits(reviewVoiceProfile.plan).elevenLabs
-                .enabled;
-        if (enabled && !reviewElVoices.length)
-            await loadReviewElevenLabsVoices();
     });
 
 document
@@ -386,7 +388,7 @@ document
             elVoiceId: "",
             speechVoice: reviewSystemVoice,
         });
-        syncElevenLabsVoiceActiveState();
+        syncGeminiTtsVoiceActiveState();
         syncReviewVoiceButton();
         const sysMsg = typeof SharedI18n !== "undefined"
             ? SharedI18n.t("review_voice_system_used")
@@ -731,6 +733,54 @@ function reviewScreenshotHtml(url) {
         </div>`;
 }
 
+// ── Intelligent N+1 card audio prefetching ────────────────────────
+const _prefetchedCardKeys = new Set();
+
+function prefetchReviewCardAudio(w) {
+    if (!w) return;
+    if (typeof SharedTtsService === "undefined" || typeof SharedTtsService.getAudioBlob !== "function") return;
+
+    // Check TTS settings: only prefetch if Gemini TTS mode is enabled
+    if (ttsMode !== "gemini") return;
+
+    const defaultLearning = typeof popupState !== "undefined" && popupState.learningLang
+        ? popupState.learningLang
+        : (typeof LectoroConstants !== "undefined" && LectoroConstants.DEFAULT_READING_SETTINGS?.learningLang) || "en";
+    const srcL = w.srcLang || reviewLearningLang || defaultLearning;
+
+    const speakText = typeof buildReviewSpeakText === "function"
+        ? buildReviewSpeakText(w.original, w.sentence || "")
+        : (w.original || "");
+
+    if (!speakText || !speakText.trim()) return;
+
+    const voiceId = reviewGeminiVoiceId || "Sulafat";
+    const key = `${srcL}::${voiceId}::${speakText.trim()}`;
+    if (_prefetchedCardKeys.has(key)) return;
+    _prefetchedCardKeys.add(key);
+
+    if (_prefetchedCardKeys.size > 50) {
+        const firstKey = _prefetchedCardKeys.values().next().value;
+        _prefetchedCardKeys.delete(firstKey);
+    }
+
+    SharedTtsService.getAudioBlob(speakText, srcL, {
+        allowSynthesis: true,
+        allowFallback: false,
+        voiceId,
+        context: "review",
+        cacheNotBefore: Number(w.ttsCacheInvalidatedAt || 0),
+    }).catch((err) => {
+        console.debug("[Lectoro Review] Prefetch card audio:", err?.message || err);
+    });
+}
+
+function prefetchNextReviewCardAudio() {
+    if (!Array.isArray(reviewQueue) || reviewIndex + 1 >= reviewQueue.length) return;
+    const nextCard = reviewQueue[reviewIndex + 1];
+    prefetchReviewCardAudio(nextCard);
+}
+
 function renderQuestion(w) {
     const card = getReviewCard();
     const srcL = w.srcLang || reviewLearningLang;
@@ -781,6 +831,7 @@ function renderQuestion(w) {
     attachReviewSpeakHandlers(card);
     attachReviewCardControls(card, w);
     autoSpeakReviewCard(w, false);
+    prefetchNextReviewCardAudio();
 
     // Every new card must always start fully scrolled to the top — force
     // the scrollable card container itself back to 0 rather than relying
@@ -922,6 +973,7 @@ function renderAnswer(w) {
     attachReviewSpeakHandlers(card);
     attachReviewCardControls(card, w);
     autoSpeakReviewCard(w, true);
+    prefetchNextReviewCardAudio();
 
     // Same as the question side: always force a full scroll back to the
     // top of the card container (re-run once the screenshot finishes

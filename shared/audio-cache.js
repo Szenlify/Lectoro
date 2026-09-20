@@ -1,6 +1,6 @@
 /**
  * Lectoro - Audio Cache
- * Wraps IndexedDB to persistently store generated ElevenLabs audio blobs.
+ * Wraps IndexedDB to persistently store generated Gemini TTS audio blobs.
  */
 (function initAudioCache(root, factory) {
     const api = factory();
@@ -114,7 +114,7 @@
                 }
             },
 
-            /** Return the newest cached ElevenLabs recording for this exact text,
+            /** Return the newest cached Gemini TTS recording for this exact text,
              * regardless of which voice is currently selected. */
             async findByText(text, { notBefore = 0 } = {}) {
                 try {

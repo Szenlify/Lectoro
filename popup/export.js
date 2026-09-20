@@ -3,7 +3,7 @@ const {csvCell} =
     ? SharedUtils
     : {csvCell: (s) => String(s ?? "")};
 
-// ── Unified Audio Fetcher (SSOT with ElevenLabs, R2 CDN & AudioCache) ──
+// ── Unified Audio Fetcher (SSOT with Gemini TTS, R2 CDN & AudioCache) ──
 async function fetchAudioBlob(text, lang, {allowFallback = true} = {}) {
   if (
     typeof SharedTtsService !== "undefined" &&
@@ -11,7 +11,7 @@ async function fetchAudioBlob(text, lang, {allowFallback = true} = {}) {
   ) {
     const res = await SharedTtsService.getAudioBlob(text, lang, {
       context: "review",
-      allowSynthesis: false, // Do not trigger fresh ElevenLabs synthesis on export; fallback to system voice if missing from R2 CDN
+      allowSynthesis: false, // Do not trigger fresh Gemini TTS synthesis on export; fallback to system voice if missing from R2 CDN
       allowFallback,
     });
     if (res?.blob) return res;
@@ -552,7 +552,7 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
         }
       }
 
-      // 5. Audio: priority search for ElevenLabs recording in R2 CDN / AudioCache
+      // 5. Audio: priority search for Gemini TTS recording in R2 CDN / AudioCache
       let audioFile = null;
       let audioDataUri = null;
       const ttsLang = w.srcLang || defaultLearningLang;
@@ -574,19 +574,19 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
       let audioRes = null;
       let usedAudioText = "";
 
-      // Probe candidate texts in R2 CDN and AudioCache for authentic ElevenLabs audio
+      // Probe candidate texts in R2 CDN and AudioCache for authentic Gemini TTS audio
       for (const candText of textCandidates) {
         const res = await fetchAudioBlob(candText, ttsLang, {
           allowFallback: false,
         });
-        if (res?.blob && res.provider === "elevenlabs") {
+        if (res?.blob && res.provider === "gemini") {
           audioRes = res;
           usedAudioText = candText;
           break;
         }
       }
 
-      // If no ElevenLabs recording exists in R2 or cache, fallback to Google TTS
+      // If no Gemini TTS recording exists in R2 or cache, fallback to Google TTS
       if (!audioRes) {
         usedAudioText = w.sentence || w.original || w.aiSentence || "";
         if (usedAudioText) {
@@ -604,7 +604,8 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
           .replace(/[^a-z0-9]+/g, "_")
           .replace(/^_|_$/g, "")
           .substring(0, 30) || "audio";
-      const candidateAudioFile = `lectoro_${slug}_${ts}.mp3`;
+      const audioExtension = /audio\/(?:wav|wave|x-wav)/i.test(audioRes?.blob?.type || "") ? "wav" : "mp3";
+      const candidateAudioFile = `lectoro_${slug}_${ts}.${audioExtension}`;
       if (audioRes?.blob && audioRes.blob.size > 0) {
         audioFile = candidateAudioFile;
         const audioBuffer = await audioRes.blob.arrayBuffer();
@@ -668,14 +669,14 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
       "===============================================================",
       "",
       "Your ZIP archive contains generated flashcards (.txt), video screenshots (.jpg),",
-      "and crystal-clear audio recordings (.mp3).",
+      "and crystal-clear audio recordings (.wav / .mp3).",
       "",
       "Follow these simple steps to import your flashcards into Anki:",
       "",
       "STEP 1 (Recommended for full offline audio sync):",
       "Copy media files to Anki's 'collection.media' folder",
       "---------------------------------------------------------------",
-      "All image files (.jpg) and audio files (.mp3) from this archive",
+      "All image files (.jpg) and audio files (.wav / .mp3) from this archive",
       "should be copied to Anki's media folder: 'collection.media'.",
       "",
       "Where to find this folder on your computer:",

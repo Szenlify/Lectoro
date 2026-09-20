@@ -230,9 +230,14 @@
             currentDisplayedText = targetText;
             currentDisplayedCue = activeCue;
             if (globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
+                const isAsr = Boolean(
+                    activeTrack?.kind === "asr" ||
+                    activeTrack?.vssId?.startsWith("a.") ||
+                    (activeCue && Array.isArray(activeCue.segs) && activeCue.segs.some((s) => s?.tOffsetMs != null || s?.tAbsMs != null))
+                );
                 globalThis.LectoroSubtitleOverlay.renderCustomSubtitles(
                     targetLines,
-                    { cue: activeCue },
+                    { cue: activeCue, isAsr },
                 );
             }
         }
@@ -245,6 +250,7 @@
         function step() {
             if (!video.paused && !video.ended) {
                 syncActiveCue(video);
+                globalThis.LectoroSubtitleOverlay?.updateFocusTiming?.(video.currentTime * 1000);
                 playbackRafId = requestAnimationFrame(step);
             } else {
                 playbackRafId = null;
@@ -277,9 +283,11 @@
         video.addEventListener("emptied", clearSubtitlesOnLoad);
         video.addEventListener("loadeddata", () => {
             syncActiveCue(video);
+            globalThis.LectoroSubtitleOverlay?.updateFocusTiming?.(video.currentTime * 1000);
         });
         video.addEventListener("canplay", () => {
             syncActiveCue(video);
+            globalThis.LectoroSubtitleOverlay?.updateFocusTiming?.(video.currentTime * 1000);
         });
 
         video.addEventListener("play", () => {
@@ -291,12 +299,15 @@
         video.addEventListener("pause", () => {
             stopPlaybackLoop();
             syncActiveCue(video);
+            globalThis.LectoroSubtitleOverlay?.updateFocusTiming?.(video.currentTime * 1000);
         });
         video.addEventListener("timeupdate", () => {
             syncActiveCue(video);
+            globalThis.LectoroSubtitleOverlay?.updateFocusTiming?.(video.currentTime * 1000);
         });
         video.addEventListener("seeked", () => {
             syncActiveCue(video);
+            globalThis.LectoroSubtitleOverlay?.updateFocusTiming?.(video.currentTime * 1000);
         });
     }
 

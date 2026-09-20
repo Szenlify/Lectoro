@@ -765,6 +765,96 @@ body::before {
     line-height: 1.6;
 }
 
+.focus-color-wrap {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.focus-color-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.focus-color-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.02em;
+}
+
+.focus-color-palette {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.color-swatch {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: var(--swatch-color);
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    padding: 0;
+    outline: none;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.color-swatch:hover {
+    transform: scale(1.15);
+}
+
+.color-swatch.active {
+    border-color: #ffffff;
+    box-shadow: 0 0 0 2px var(--swatch-color), 0 2px 8px rgba(0, 0, 0, 0.5);
+    transform: scale(1.12);
+}
+
+.color-picker-label {
+    position: relative;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.color-picker-label:hover {
+    transform: scale(1.15);
+    background: rgba(255, 255, 255, 0.18);
+}
+
+.color-picker-label.active {
+    border-color: #ffffff;
+    box-shadow: 0 0 0 2px var(--accent);
+}
+
+.color-picker-icon {
+    font-size: 12px;
+    pointer-events: none;
+    user-select: none;
+}
+
+.color-picker-native {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    border: none;
+    padding: 0;
+}
+
 /* ══════════════════════════════════════════
            WORDS PANEL
            ══════════════════════════════════════════ */
@@ -1370,7 +1460,7 @@ body::before {
     color: var(--text-primary);
 }
 
-.review-voice-btn.is-elevenlabs {
+.review-voice-btn.is-gemini {
     background: linear-gradient(
         135deg,
         rgba(129, 140, 248, 0.16),
@@ -3301,7 +3391,7 @@ html[data-lectoro-ai-limit-reached] #exportQuiz {
     margin: 7px 0 0 35px;
 }
 
-.elevenlabs-usage-meter .ai-usage-fill {
+.gemini-usage-meter .ai-usage-fill {
     background: linear-gradient(90deg, #2dd4bf, #67e8f9);
     box-shadow: 0 0 12px rgba(45, 212, 191, 0.3);
 }

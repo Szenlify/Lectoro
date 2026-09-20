@@ -7,7 +7,7 @@ const {
     countCharacters,
     checkAiLimit,
     checkSrsLimit,
-    checkElevenLabsLimit,
+    checkGeminiTtsLimit,
     checkExportLimit,
 } = require("./subscription-config");
 
@@ -22,9 +22,9 @@ test("central configuration matches the three product plans", () => {
                     currency: value.priceMonthly.currency,
                     ai: value.ai.usesPerMonth,
                     srs: value.srs.maxSavedCards,
-                    ttsEnabled: value.elevenLabs.enabled,
-                    ttsRequest: value.elevenLabs.maxCharactersPerRequest,
-                    ttsMonth: value.elevenLabs.charactersPerMonth,
+                    ttsEnabled: value.geminiTts.enabled,
+                    ttsRequest: value.geminiTts.maxCharactersPerRequest,
+                    ttsMonth: value.geminiTts.charactersPerMonth,
                 },
             ]),
         ),
@@ -99,21 +99,21 @@ test("AI and SRS limits come from the central configuration", () => {
     }
 });
 
-test("FREE cannot use ElevenLabs", () => {
-    const result = checkElevenLabsLimit({
+test("FREE cannot use Gemini TTS", () => {
+    const result = checkGeminiTtsLimit({
         plan: "free",
         text: "Hello",
         usedCharacters: 0,
     });
     assert.equal(result.allowed, false);
-    assert.equal(result.code, "ELEVENLABS_NOT_INCLUDED");
+    assert.equal(result.code, "GEMINI_TTS_NOT_INCLUDED");
 });
 
-test("ElevenLabs enforces per-request and monthly character quotas", () => {
-    const basicLimits = SUBSCRIPTION_LIMITS.basic.elevenLabs;
-    const proLimits = SUBSCRIPTION_LIMITS.pro.elevenLabs;
+test("Gemini TTS enforces per-request and monthly character quotas", () => {
+    const basicLimits = SUBSCRIPTION_LIMITS.basic.geminiTts;
+    const proLimits = SUBSCRIPTION_LIMITS.pro.geminiTts;
     assert.equal(
-        checkElevenLabsLimit({
+        checkGeminiTtsLimit({
             plan: "basic",
             text: "a".repeat(basicLimits.maxCharactersPerRequest),
             usedCharacters: 0,
@@ -121,22 +121,22 @@ test("ElevenLabs enforces per-request and monthly character quotas", () => {
         true,
     );
     assert.equal(
-        checkElevenLabsLimit({
+        checkGeminiTtsLimit({
             plan: "basic",
             text: "a".repeat(basicLimits.maxCharactersPerRequest + 1),
             usedCharacters: 0,
         }).code,
-        "ELEVENLABS_REQUEST_TOO_LONG",
+        "GEMINI_TTS_REQUEST_TOO_LONG",
     );
     assert.equal(
-        checkElevenLabsLimit({
+        checkGeminiTtsLimit({
             plan: "pro",
             text: "abc",
             usedCharacters: proLimits.charactersPerMonth - 2,
         }).code,
-        "ELEVENLABS_MONTHLY_LIMIT_REACHED",
+        "GEMINI_TTS_MONTHLY_LIMIT_REACHED",
     );
-    const lastCharacter = checkElevenLabsLimit({
+    const lastCharacter = checkGeminiTtsLimit({
         plan: "pro",
         text: "a",
         usedCharacters: proLimits.charactersPerMonth - 1,
@@ -144,12 +144,12 @@ test("ElevenLabs enforces per-request and monthly character quotas", () => {
     assert.equal(lastCharacter.allowed, true);
     assert.equal(lastCharacter.remaining, 1);
     assert.equal(
-        checkElevenLabsLimit({
+        checkGeminiTtsLimit({
             plan: "pro",
             text: "a",
             usedCharacters: proLimits.charactersPerMonth,
         }).code,
-        "ELEVENLABS_MONTHLY_LIMIT_REACHED",
+        "GEMINI_TTS_MONTHLY_LIMIT_REACHED",
     );
 });
 

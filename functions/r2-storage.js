@@ -1,8 +1,9 @@
 /**
  * Cloudflare R2 Storage integration for Lectoro (S3-compatible).
- * Central audio cache for ElevenLabs & optimized WebP flashcard images.
+ * Central audio cache for Gemini TTS & optimized WebP flashcard images.
  */
 const crypto = require("crypto");
+const { audioCacheKey } = require("./gemini-tts");
 
 let S3Sdk = null;
 function getS3Sdk() {
@@ -60,16 +61,14 @@ async function streamToBuffer(stream) {
 }
 
 /**
- * Check and fetch cached ElevenLabs audio from Cloudflare R2.
+ * Check and fetch cached Gemini TTS audio from Cloudflare R2.
  */
-async function getCachedAudio(config, voiceId, text) {
+async function getCachedAudio(config, voiceId, text, language = "en") {
     const s3 = getR2Client(config);
     const bucket = config.bucketName;
     if (!s3 || !bucket) return null;
 
-    const hash = computeTextHash(text);
-    const safeVoiceId = String(voiceId || "default").replace(/[^a-zA-Z0-9_-]/g, "");
-    const key = `audio/${safeVoiceId}/${hash}.mp3`;
+    const key = audioCacheKey(voiceId, text, language);
 
     try {
         const { GetObjectCommand } = getS3Sdk();
@@ -87,7 +86,7 @@ async function getCachedAudio(config, voiceId, text) {
             key,
             buffer,
             publicUrl,
-            contentType: response.ContentType || "audio/mpeg",
+            contentType: response.ContentType || "audio/wav",
         };
     } catch (error) {
         // NoSuchKey / 404 is expected on cache miss
@@ -99,16 +98,15 @@ async function getCachedAudio(config, voiceId, text) {
 }
 
 /**
- * Save synthesized ElevenLabs audio buffer to Cloudflare R2.
+ * Save synthesized Gemini TTS audio buffer to Cloudflare R2.
  */
-async function saveCachedAudio(config, voiceId, text, audioBuffer) {
+async function saveCachedAudio(config, voiceId, text, audioBuffer, language = "en") {
     const s3 = getR2Client(config);
     const bucket = config.bucketName;
     if (!s3 || !bucket || !audioBuffer || audioBuffer.length === 0) return null;
 
-    const hash = computeTextHash(text);
-    const safeVoiceId = String(voiceId || "default").replace(/[^a-zA-Z0-9_-]/g, "");
-    const key = `audio/${safeVoiceId}/${hash}.mp3`;
+    const key = audioCacheKey(voiceId, text, language);
+    const hash = key.split("/").pop().replace(/\.wav$/, "");
 
     try {
         const { PutObjectCommand } = getS3Sdk();
@@ -116,10 +114,10 @@ async function saveCachedAudio(config, voiceId, text, audioBuffer) {
             Bucket: bucket,
             Key: key,
             Body: audioBuffer,
-            ContentType: "audio/mpeg",
+            ContentType: "audio/wav",
             CacheControl: "public, max-age=31536000, immutable",
             Metadata: {
-                voiceId: safeVoiceId,
+                voiceId,
                 hash,
             },
         });

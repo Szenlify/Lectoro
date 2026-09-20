@@ -103,21 +103,21 @@
                         </div>
                     </div>
 
-                    <div class="usage-meter elevenlabs-usage-meter" id="elevenLabsUsageCard">
+                    <div class="usage-meter gemini-usage-meter" id="geminiTtsUsageCard">
                         <div class="ai-usage-head">
                             <div class="usage-meter-name">
                                 <span class="usage-meter-icon usage-meter-icon-voice" aria-hidden="true">E</span>
                                 <div>
-                                    <div class="ai-usage-title" data-i18n="elevenlabs_voices">ElevenLabs Natural Voices</div>
-                                    <div class="usage-meter-note" id="elevenLabsUsageTitle" data-i18n="checking_usage">Checking usage...
+                                    <div class="ai-usage-title" data-i18n="gemini_voices">Gemini TTS Natural Voices</div>
+                                    <div class="usage-meter-note" id="geminiTtsUsageTitle" data-i18n="checking_usage">Checking usage...
                                     </div>
                                 </div>
                             </div>
-                            <div class="ai-usage-value" id="elevenLabsUsageValue">—</div>
+                            <div class="ai-usage-value" id="geminiTtsUsageValue">—</div>
                         </div>
-                        <div class="ai-usage-track" role="progressbar" aria-label="ElevenLabs Character Usage"
-                            aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="elevenLabsUsageTrack">
-                            <div class="ai-usage-fill is-loading" id="elevenLabsUsageFill"></div>
+                        <div class="ai-usage-track" role="progressbar" aria-label="Gemini TTS Character Usage"
+                            aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="geminiTtsUsageTrack">
+                            <div class="ai-usage-fill is-loading" id="geminiTtsUsageFill"></div>
                         </div>
                     </div>
 
@@ -202,6 +202,38 @@
                         <div class="slider-row">
                             <input type="range" id="subBgRange" min="0" max="100" step="5" value="0">
                             <span class="slider-value" id="subBgValue">0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-group" id="youtubeFocusModeGroup">
+                    <div class="glass-card">
+                        <div class="toggle-row">
+                            <div>
+                                <div class="toggle-label" data-i18n="youtube_focus_mode">YouTube Focus Mode</div>
+                                <div class="toggle-desc" data-i18n="youtube_focus_mode_desc">Smoothly slide animated background highlight across spoken words for YouTube captions with word timing.</div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="ytFocusModeToggle" aria-label="YouTube Focus Mode">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="focus-color-wrap" id="ytFocusColorWrap" style="display: none;">
+                            <div class="focus-color-header">
+                                <span class="focus-color-label" data-i18n="youtube_focus_color">Highlight Color</span>
+                            </div>
+                            <div class="focus-color-palette" id="ytFocusColorPalette">
+                                <button type="button" class="color-swatch" data-color="#6366f1" style="--swatch-color: #6366f1;" title="Indigo" aria-label="Indigo"></button>
+                                <button type="button" class="color-swatch" data-color="#0ea5e9" style="--swatch-color: #0ea5e9;" title="Sky Blue" aria-label="Sky Blue"></button>
+                                <button type="button" class="color-swatch" data-color="#10b981" style="--swatch-color: #10b981;" title="Emerald" aria-label="Emerald"></button>
+                                <button type="button" class="color-swatch" data-color="#f59e0b" style="--swatch-color: #f59e0b;" title="Amber" aria-label="Amber"></button>
+                                <button type="button" class="color-swatch" data-color="#f43f5e" style="--swatch-color: #f43f5e;" title="Rose" aria-label="Rose"></button>
+                                <button type="button" class="color-swatch" data-color="#a855f7" style="--swatch-color: #a855f7;" title="Violet" aria-label="Violet"></button>
+                                <label class="color-picker-label" id="ytFocusColorPickerLabel" title="Custom color">
+                                    <input type="color" id="ytFocusColorPicker" class="color-picker-native" value="#6366f1" aria-label="Custom color picker">
+                                    <span class="color-picker-icon">🎨</span>
+                                </label>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -371,10 +403,10 @@
                                 <span class="review-voice-check" aria-hidden="true">✓</span>
                             </button>
                             <div class="review-voice-el-head">
-                                <span>ElevenLabs</span>
+                                <span>Gemini TTS</span>
                                 <span class="review-voice-premium">PREMIUM</span>
                             </div>
-                            <div id="reviewElevenLabsContent"></div>
+                            <div id="reviewGeminiTtsContent"></div>
                             <div class="review-voice-status" id="reviewVoiceStatus" aria-live="polite"></div>
                         </div>
                     </div>

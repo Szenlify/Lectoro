@@ -72,6 +72,78 @@ whenPopupReady((data) => {
     const defaultSubFontSize = LectoroConstants.DEFAULT_SUBTITLE_SETTINGS.FONT_SIZE || "medium";
     const subFontSize = data.subtitleFontSize || defaultSubFontSize;
     updateSubFontSizeButtons(subFontSize);
+    const ytFocusModeToggle = document.getElementById("ytFocusModeToggle");
+    const ytFocusColorWrap = document.getElementById("ytFocusColorWrap");
+    const ytFocusColorPicker = document.getElementById("ytFocusColorPicker");
+    const initialFocusColor = data.youtubeFocusColor || "#6366f1";
+
+    function updateFocusColorSelection(activeColor) {
+        const color = (activeColor || "#6366f1").toLowerCase();
+        const swatches = document.querySelectorAll("#ytFocusColorPalette .color-swatch");
+        let matched = false;
+        swatches.forEach((btn) => {
+            const c = (btn.dataset.color || "").toLowerCase();
+            if (c === color) {
+                btn.classList.add("active");
+                matched = true;
+            } else {
+                btn.classList.remove("active");
+            }
+        });
+        const pickerLabel = document.getElementById("ytFocusColorPickerLabel");
+        const picker = document.getElementById("ytFocusColorPicker");
+        if (picker) picker.value = color;
+        if (pickerLabel) {
+            if (!matched) {
+                pickerLabel.classList.add("active");
+                pickerLabel.style.borderColor = color;
+            } else {
+                pickerLabel.classList.remove("active");
+                pickerLabel.style.borderColor = "";
+            }
+        }
+    }
+
+    if (ytFocusModeToggle) {
+        const isYtFocusActive = Boolean(data.youtubeFocusMode);
+        ytFocusModeToggle.checked = isYtFocusActive;
+        if (ytFocusColorWrap) {
+            ytFocusColorWrap.style.display = isYtFocusActive ? "block" : "none";
+        }
+        ytFocusModeToggle.addEventListener("change", () => {
+            const checked = ytFocusModeToggle.checked;
+            if (ytFocusColorWrap) {
+                ytFocusColorWrap.style.display = checked ? "block" : "none";
+            }
+            chrome.storage.local.set(
+                { youtubeFocusMode: checked },
+                flashSaved,
+            );
+        });
+    }
+
+    updateFocusColorSelection(initialFocusColor);
+
+    const swatches = document.querySelectorAll("#ytFocusColorPalette .color-swatch");
+    swatches.forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const color = btn.dataset.color;
+            if (color) {
+                updateFocusColorSelection(color);
+                chrome.storage.local.set({ youtubeFocusColor: color }, flashSaved);
+            }
+        });
+    });
+
+    if (ytFocusColorPicker) {
+        ytFocusColorPicker.addEventListener("input", (e) => {
+            const color = e.target.value;
+            if (color) {
+                updateFocusColorSelection(color);
+                chrome.storage.local.set({ youtubeFocusColor: color }, flashSaved);
+            }
+        });
+    }
     const voice = data.speechVoice || "";
     if (voice === "random") {
         chrome.storage.local.set({ speechVoice: "" });
@@ -210,8 +282,8 @@ function renderSubscriptionPlans(subscription, signedIn = true) {
                 : (limits.priceMonthly.amount === 0
                     ? (lang === "pl" ? "0 zł" : "$0")
                     : `$${limits.priceMonthly.amount}`);
-            const tts = limits.elevenLabs.enabled
-                ? `${limits.elevenLabs.charactersPerMonth.toLocaleString(lang)} ElevenLabs`
+            const tts = limits.geminiTts.enabled
+                ? `${limits.geminiTts.charactersPerMonth.toLocaleString(lang)} Gemini TTS`
                 : t("basic_voice");
             let action =
                 `<span class="subscription-plan-current">${t("plan_current")}</span>`;
@@ -268,15 +340,15 @@ function renderSubscriptionPlans(subscription, signedIn = true) {
 </span>
                     <span><i aria-hidden="true">✓</i><b>${limits.srs.maxSavedCards.toLocaleString(lang)}</b> ${t("feature_srs_flashcards")}</span>
                     <span><i aria-hidden="true">✓</i><b>${planId === SubscriptionConfig.SUBSCRIPTION_PLANS.FREE ? "3/mo" : t("unlimited")}</b> ${t("feature_export")}</span>
-                    ${limits.elevenLabs.enabled
+                    ${limits.geminiTts.enabled
                     ? `<span><i aria-hidden="true">✓</i><b>${t("feature_natural_voices")}</b></span>`
                     : ""
                 }
-                    ${limits.elevenLabs.enabled
+                    ${limits.geminiTts.enabled
                     ? `<span><i aria-hidden="true">✓</i><b>${t("feature_unlimited_practice")}</b></span>`
                     : ""
                 }
-                    <span class="${limits.elevenLabs.enabled ? "" : "is-muted"}"><i aria-hidden="true">${limits.elevenLabs.enabled ? "✓" : "—"}</i>${tts}</span>
+                    <span class="${limits.geminiTts.enabled ? "" : "is-muted"}"><i aria-hidden="true">${limits.geminiTts.enabled ? "✓" : "—"}</i>${tts}</span>
                 </div>
                 <div class="subscription-plan-action">${action}${billingNote}</div>
             </article>`;
@@ -317,19 +389,19 @@ function initSubscriptionCarousel(grid) {
     updateArrow();
 }
 
-function renderElevenLabsUsage(subscription) {
-    const card = document.getElementById("elevenLabsUsageCard");
-    const title = document.getElementById("elevenLabsUsageTitle");
-    const value = document.getElementById("elevenLabsUsageValue");
-    const info = document.getElementById("elevenLabsUsageInfo");
-    const track = document.getElementById("elevenLabsUsageTrack");
-    const fill = document.getElementById("elevenLabsUsageFill");
+function renderGeminiTtsUsage(subscription) {
+    const card = document.getElementById("geminiTtsUsageCard");
+    const title = document.getElementById("geminiTtsUsageTitle");
+    const value = document.getElementById("geminiTtsUsageValue");
+    const info = document.getElementById("geminiTtsUsageInfo");
+    const track = document.getElementById("geminiTtsUsageTrack");
+    const fill = document.getElementById("geminiTtsUsageFill");
     if (!card || !subscription) return;
 
     const lang = getPopupLang();
     const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, lang, p) : k);
     const plan = SubscriptionConfig.normalizePlan(subscription.plan);
-    const limits = SubscriptionConfig.getPlanLimits(plan).elevenLabs;
+    const limits = SubscriptionConfig.getPlanLimits(plan).geminiTts;
     const used = Math.max(
         0,
         Number(subscription.usage?.elevenLabsCharacters?.used) || 0,
@@ -353,10 +425,10 @@ function renderElevenLabsUsage(subscription) {
 
     if (!limits.enabled) {
         card.classList.add("is-unavailable");
-        if (title) title.textContent = t("elevenlabs_unavailable");
+        if (title) title.textContent = t("gemini_unavailable");
         if (value) value.textContent = t("status_unavailable");
         if (fill) fill.style.width = "0%";
-        if (info) info.textContent = t("elevenlabs_from_basic");
+        if (info) info.textContent = t("gemini_from_basic");
         return;
     }
 
@@ -364,15 +436,15 @@ function renderElevenLabsUsage(subscription) {
     if (fill) fill.style.width = `${percentage}%`;
     if (limitReached) {
         card.classList.add("is-empty");
-        if (title) title.textContent = t("elevenlabs_limit_reached");
-        if (info) info.textContent = `ElevenLabs: ${t("elevenlabs_chars_left", { left: 0 })}`;
+        if (title) title.textContent = t("gemini_limit_reached");
+        if (info) info.textContent = `Gemini TTS: ${t("gemini_chars_left", { left: 0 })}`;
     } else {
         if (percentage >= 80) card.classList.add("is-warning");
         const formattedLeft = left.toLocaleString(lang === "pl" ? "pl-PL" : "en-US");
         if (title)
-            title.textContent = t("elevenlabs_chars_left", { left: formattedLeft });
+            title.textContent = t("gemini_chars_left", { left: formattedLeft });
         if (info)
-            info.textContent = `ElevenLabs: ${t("elevenlabs_chars_left", { left: formattedLeft })}`;
+            info.textContent = `Gemini TTS: ${t("gemini_chars_left", { left: formattedLeft })}`;
     }
 }
 
@@ -411,7 +483,7 @@ async function refreshAiUsageUI() {
         renderSubscriptionPlans(subscription, signedIn);
     }
 
-    renderElevenLabsUsage(subscription);
+    renderGeminiTtsUsage(subscription);
 
     let usage = null;
     if (signedIn) {
@@ -751,6 +823,43 @@ chrome.storage.onChanged.addListener((changes, area) => {
         if (changes[subFontSizeStorageKey]) {
             const val = changes[subFontSizeStorageKey].newValue || LectoroConstants.DEFAULT_SUBTITLE_SETTINGS.FONT_SIZE || "medium";
             updateSubFontSizeButtons(val);
+        }
+        if (changes.youtubeFocusMode) {
+            const toggle = document.getElementById("ytFocusModeToggle");
+            const wrap = document.getElementById("ytFocusColorWrap");
+            const isChecked = Boolean(changes.youtubeFocusMode.newValue);
+            if (toggle) {
+                toggle.checked = isChecked;
+            }
+            if (wrap) {
+                wrap.style.display = isChecked ? "block" : "none";
+            }
+        }
+        if (changes.youtubeFocusColor) {
+            const swatches = document.querySelectorAll("#ytFocusColorPalette .color-swatch");
+            const color = (changes.youtubeFocusColor.newValue || "#6366f1").toLowerCase();
+            let matched = false;
+            swatches.forEach((btn) => {
+                const c = (btn.dataset.color || "").toLowerCase();
+                if (c === color) {
+                    btn.classList.add("active");
+                    matched = true;
+                } else {
+                    btn.classList.remove("active");
+                }
+            });
+            const pickerLabel = document.getElementById("ytFocusColorPickerLabel");
+            const picker = document.getElementById("ytFocusColorPicker");
+            if (picker) picker.value = color;
+            if (pickerLabel) {
+                if (!matched) {
+                    pickerLabel.classList.add("active");
+                    pickerLabel.style.borderColor = color;
+                } else {
+                    pickerLabel.classList.remove("active");
+                    pickerLabel.style.borderColor = "";
+                }
+            }
         }
         if (
             !isBillingBusy &&

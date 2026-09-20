@@ -139,6 +139,8 @@ Serwis tłumaczeń korzysta z promptu w [ai-prompts.js](../shared/ai-prompts.js)
 
 ## 5. Lektor i automatyczne przechodzenie
 
+Wspólny serwis TTS obsługuje teraz Gemini 2.5 Flash TTS z głosami Sulafat i Algieba w miejsce ElevenLabs. Wybrany tryb głosu i limity decydują o użyciu syntezy premium; dostępny pozostaje głos przeglądarki. Szczegóły migracji: [Gemini TTS](Gemini-TTS.md).
+
 Dla całego zdania lektor czyta tłumaczenie w języku ojczystym. Dla słowa/zwrotu czyta najpierw termin w języku nauki, następnie po 350 ms znaczenie i wyjaśnienie w języku ojczystym. Kod zawiera dodatkową próbę przetłumaczenia tekstu rozpoznanego jako angielski mimo oczekiwanego innego języka.
 
 Po odsłuchu kolejny krok uruchamia się po 900 ms; bez treści oznaczonej jako odczytana opóźnienie wynosi 3000 ms. Ręczna zmiana kroku wyłącza automatyczne przechodzenie w bieżącej sesji. Ostatni krok pozostaje otwarty. `aiExplainSpeechToken` unieważnia starszy odsłuch po zmianie kroku lub zamknięciu.

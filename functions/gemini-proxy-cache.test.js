@@ -569,12 +569,12 @@ test("SharedUtils.getR2AudioUrl builds deterministic CDN URL", async () => {
     const SharedUtils = require("../shared/utils");
     const crypto = require("crypto");
 
-    const url = await SharedUtils.getR2AudioUrl("21m00Tcm4TlvDq8ikWAM", "Hello World! ");
-    const expectedHash = crypto.createHash("sha256").update("hello world!").digest("hex");
+    const url = await SharedUtils.getR2AudioUrl("Sulafat", "Hello World! ", "en");
+    const expectedHash = crypto.createHash("sha256").update("Hello World!").digest("hex");
 
     assert.equal(
         url,
-        `https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev/audio/21m00Tcm4TlvDq8ikWAM/${expectedHash}.mp3`,
+        `https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev/audio/gemini/gemini-2.5-flash-preview-tts/v1/Sulafat/en/${expectedHash}.wav`,
     );
 });
 

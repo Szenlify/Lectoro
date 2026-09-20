@@ -107,8 +107,8 @@
             GOOGLE_TRANSLATE: "QT_GOOGLE_TRANSLATE",
             TRANSLATE_SUBTITLE: "QT_TRANSLATE_SUBTITLE",
             SUBSCRIPTION_REFRESH_PROFILE: "QT_SUBSCRIPTION_REFRESH_PROFILE",
-            ELEVENLABS_SYNTHESIZE: "QT_ELEVENLABS_SYNTHESIZE",
-            ELEVENLABS_VOICES: "QT_ELEVENLABS_VOICES",
+            GEMINI_TTS_SYNTHESIZE: "QT_GEMINI_TTS_SYNTHESIZE",
+            GEMINI_TTS_VOICES: "QT_GEMINI_TTS_VOICES",
         });
 
         const STORAGE_KEYS = Object.freeze({
@@ -123,6 +123,8 @@
             EL_VOICE_ID: "elVoiceId",
             SUBTITLE_TTS: "subtitleTTS",
             WORD_CLOUD_MODE: "wordCloudMode",
+            YOUTUBE_FOCUS_MODE: "youtubeFocusMode",
+            YOUTUBE_FOCUS_COLOR: "youtubeFocusColor",
             SUBTITLE_POSITION: "subtitlePosition",
             SUBTITLE_BG_OPACITY: "subtitleBgOpacity",
             SUBTITLE_FONT_SIZE: "subtitleFontSize",
@@ -160,6 +162,8 @@
             learningLang: "en",
             subtitleTTS: true,
             wordCloudMode: true,
+            youtubeFocusMode: false,
+            youtubeFocusColor: "#6366f1",
         });
 
         /** Default TTS settings shared by popup, content scripts and SharedTtsService */
@@ -318,28 +322,24 @@
             return LANG_TAGS[c] || String(code).toUpperCase();
         }
 
-        /**
-         * Central ElevenLabs Voices registry – Single Source of Truth (SSOT)
-         */
-        const ELEVENLABS_VOICES = Object.freeze([
-            Object.freeze({
-                id: "TX3LPaxmHKxFdv7VOQHJ",
-                name: "Liam",
-                key: "liam",
-            }),
-            Object.freeze({
-                id: "XrExE9yKIg1WjnnlVkGX",
-                name: "Matilda",
-                key: "matilda",
-            }),
+        // Keep aligned with functions/gemini-tts.js (enforced by tests).
+        const GEMINI_TTS_MODEL = "gemini-2.5-flash-preview-tts";
+        const GEMINI_TTS_CACHE_VERSION = "v1";
+        const GEMINI_TTS_VOICES = Object.freeze([
+            Object.freeze({ id: "Sulafat", name: "Sulafat", key: "sulafat" }),
+            Object.freeze({ id: "Algieba", name: "Algieba", key: "algieba" }),
         ]);
+        const ALLOWED_GEMINI_TTS_VOICE_KEYS = Object.freeze(GEMINI_TTS_VOICES.map((v) => v.key));
+        const ALLOWED_GEMINI_TTS_VOICE_IDS = Object.freeze(GEMINI_TTS_VOICES.map((v) => v.id));
 
-        const ALLOWED_ELEVENLABS_VOICE_KEYS = Object.freeze(
-            ELEVENLABS_VOICES.map((v) => v.key),
-        );
-        const ALLOWED_ELEVENLABS_VOICE_IDS = Object.freeze(
-            ELEVENLABS_VOICES.map((v) => v.id),
-        );
+        function normalizeTtsProviderSettings(settings = {}) {
+            const ttsMode = settings.ttsMode === "elevenlabs" ? "gemini" : settings.ttsMode || "browser";
+            // elVoiceId is a persisted legacy key. Reuse it to preserve existing installations.
+            const voice = settings.elVoiceId;
+            const elVoiceId = ALLOWED_GEMINI_TTS_VOICE_IDS.includes(voice) ? voice
+                : voice === "TX3LPaxmHKxFdv7VOQHJ" ? "Algieba" : "Sulafat";
+            return { ttsMode, elVoiceId };
+        }
 
         /**
          * Simple functional words (pronouns, auxiliary verbs, articles, prepositions)
@@ -409,9 +409,12 @@
             normalizeSupportedLanguage,
             LANG_NAMES,
             LANG_TAGS,
-            ELEVENLABS_VOICES,
-            ALLOWED_ELEVENLABS_VOICE_KEYS,
-            ALLOWED_ELEVENLABS_VOICE_IDS,
+            GEMINI_TTS_MODEL,
+            GEMINI_TTS_CACHE_VERSION,
+            normalizeTtsProviderSettings,
+            GEMINI_TTS_VOICES,
+            ALLOWED_GEMINI_TTS_VOICE_KEYS,
+            ALLOWED_GEMINI_TTS_VOICE_IDS,
             getLanguageName,
             langTag,
             isOwnUI,

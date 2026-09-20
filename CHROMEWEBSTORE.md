@@ -72,6 +72,7 @@ Every permission declared in `manifest.json` adheres to the Principle of Least P
 - **Personally Identifiable Information:** Only collected if the user explicitly signs in via Google OAuth (email address used solely for cross-device synchronization).
 - **User Vocabulary & Flashcards:** Stored locally in browser storage by default; synchronized to private user records only upon explicit account sign-in.
 - **Web Content:** Webpage text is processed strictly on-demand in response to user text selection or video playback. Browsing history is never stored, tracked, or sold to third parties.
+- **Optional natural voices:** Text selected for cloud pronunciation is sent to Google Gemini through our backend. Generated recordings are cached locally and on Cloudflare for reuse; shared audio-cache URLs are publicly retrievable. See [Google’s privacy policy](https://policies.google.com/privacy) and [Cloudflare’s privacy policy](https://www.cloudflare.com/privacypolicy/).
 - **Advertising & Trackers:** The extension contains zero advertising, trackers, analytics beacons, or data broker integrations.
 
 ---
@@ -88,12 +89,14 @@ Every permission declared in `manifest.json` adheres to the Principle of Least P
   - 3. In-Video AI Explanations
   - 4. SRS Review & Vocabulary Cards
   - 5. Anki / Quiz Export
+  - Refresh the review voice-picker screenshot to show Sulafat and Algieba.
 
 ---
 
 ## Version History
 
 - **1.0.0 (Current):**
+  - Natural pronunciation with two multilingual voices, Sulafat and Algieba; saved recordings remain available for Anki export. The Review voice choices appear without a separate voice-list download.
   - Stable Netflix subtitles when skipping forward or backward between dialogue lines.
   - Contextual word and phrase translations on S, with fast automatic fallback and reusable results.
   - Initial Manifest V3 release for Chrome Web Store.

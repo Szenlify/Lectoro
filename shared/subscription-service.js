@@ -223,45 +223,59 @@
             });
         }
 
-        async function checkElevenLabs(text) {
+        async function checkGeminiTts(text) {
             const profile = await effectiveProfile(false);
-            return Config.checkElevenLabsLimit({
+            return Config.checkGeminiTtsLimit({
                 plan: profile.plan,
                 text,
                 usedCharacters: profile.usage.elevenLabsCharacters.used,
             });
         }
 
-        async function synthesizeElevenLabs(text, voiceId, context = "") {
-            if (context !== "review") {
-                throw new Error("ElevenLabs is only available during reviews.");
+        async function synthesizeGeminiTts(text, voiceId, context = "", language = "en", options = {}) {
+            if (context !== "review" && context !== "hover") {
+                throw new Error("Gemini TTS is only available during reviews and hover.");
             }
-            const localValidation = await checkElevenLabs(text);
+            const localValidation = await checkGeminiTts(text);
             Config.assertAllowed(localValidation);
+
+            const onlyIfCached = !!options.onlyIfCached;
+            const skipCacheCheck = !!options.skipCacheCheck;
 
             if (Utils.isContentScriptEnvironment()) {
                 const response = await Utils.sendRuntimeMessage({
-                    type: MSG.ELEVENLABS_SYNTHESIZE,
+                    type: MSG.GEMINI_TTS_SYNTHESIZE,
+                    language,
                     text,
                     voiceId,
                     context,
+                    onlyIfCached,
+                    skipCacheCheck,
                 });
                 if (response?.base64) {
                     return Utils.base64ToBlob(
                         response.base64,
-                        response.mimeType || "audio/mpeg",
+                        response.mimeType || "audio/wav",
                     );
                 }
-                throw new Error("No audio data received from ElevenLabs.");
+                throw new Error("No audio data received from Gemini TTS.");
             }
 
             const token = await getToken();
             if (!token) {
-                throw new Error("Sign in to use ElevenLabs.");
+                throw new Error("Sign in to use Gemini TTS.");
             }
             const response = await Utils.postJson(
                 PROXY_URL,
-                { action: "synthesizeElevenLabs", context, text, voiceId },
+                {
+                    action: "synthesizeGeminiTts",
+                    context,
+                    text,
+                    voiceId,
+                    language,
+                    onlyIfCached,
+                    skipCacheCheck,
+                },
                 { token },
             );
             if (!response.ok) {
@@ -271,9 +285,9 @@
                     throw new Config.SubscriptionLimitError(data.limit);
                 const error = new Error(
                     data.error ||
-                        `ElevenLabs is unavailable (${response.status})`,
+                        `Gemini TTS is unavailable (${response.status})`,
                 );
-                error.code = data.code || "ELEVENLABS_REQUEST_FAILED";
+                error.code = data.code || "GEMINI_TTS_REQUEST_FAILED";
                 throw error;
             }
             const profile = await effectiveProfile(false);
@@ -284,87 +298,50 @@
                 month: currentMonth(),
                 used: Math.max(
                     0,
-                    Number(response.headers.get("X-Lectoro-TTS-Used")) ||
-                        profile.usage.elevenLabsCharacters.used +
-                            localValidation.requested,
+                    (response.headers.has("X-Lectoro-TTS-Used")
+                        ? Number(response.headers.get("X-Lectoro-TTS-Used"))
+                        : profile.usage.elevenLabsCharacters.used + localValidation.requested),
                 ),
             };
             await setCachedProfile(profile);
-            const limits = Config.getPlanLimits(profile.plan).elevenLabs;
+            const limits = Config.getPlanLimits(profile.plan).geminiTts;
             if (
                 limits.enabled &&
                 profile.usage.elevenLabsCharacters.used >=
                     limits.charactersPerMonth
             ) {
                 showUpgradePrompt({
-                    feature: "elevenLabs",
+                    feature: "geminiTts",
                     code: Config.LIMIT_ERROR_CODES
-                        .ELEVENLABS_MONTHLY_LIMIT_REACHED,
-                    message: `Monthly limit of ${limits.charactersPerMonth} ElevenLabs characters reached. System voice will be used until renewal.`,
+                        .GEMINI_TTS_MONTHLY_LIMIT_REACHED,
+                    message: `Monthly limit of ${limits.charactersPerMonth} Gemini TTS characters reached. System voice will be used until renewal.`,
                 });
             }
             return response.blob();
         }
 
-        async function getElevenLabsVoices(context = "") {
+        async function getGeminiTtsVoices(context = "") {
             if (context !== "review") {
                 throw new Error(
-                    "ElevenLabs voices are only available during reviews.",
+                    "Gemini TTS voices are only available during reviews.",
                 );
             }
             const profile = await effectiveProfile(false);
-            if (!Config.getPlanLimits(profile.plan).elevenLabs.enabled) {
+            if (!Config.getPlanLimits(profile.plan).geminiTts.enabled) {
                 Config.assertAllowed(
-                    Config.checkElevenLabsLimit({
+                    Config.checkGeminiTtsLimit({
                         plan: profile.plan,
                         text: "a",
                     }),
                 );
             }
 
-            if (Utils.isContentScriptEnvironment()) {
-                const response = await Utils.sendRuntimeMessage({
-                    type: MSG.ELEVENLABS_VOICES,
-                    context,
-                });
-                return response?.voices || [];
-            }
-
-            const token = await getToken();
-            if (!token) throw new Error("Sign in to fetch ElevenLabs voices.");
-            const response = await Utils.postJson(
-                PROXY_URL,
-                { action: "elevenLabsVoices", context },
-                { token },
-            );
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok)
-                throw new Error(
-                    data.error || `Voice error (${response.status})`,
-                );
-            const allowedOrder = Constants.ALLOWED_ELEVENLABS_VOICE_KEYS;
-            const rawVoices = data.voices || [];
-            const filtered = rawVoices
-                .filter((voice) => {
-                    const name = (voice?.name || "").trim().toLowerCase();
-                    return allowedOrder.some(
-                        (t) => name.startsWith(t) || name.includes(t),
-                    );
-                })
-                .sort((a, b) => {
-                    const nameA = (a?.name || "").trim().toLowerCase();
-                    const nameB = (b?.name || "").trim().toLowerCase();
-                    const idxA = allowedOrder.findIndex(
-                        (t) => nameA.startsWith(t) || nameA.includes(t),
-                    );
-                    const idxB = allowedOrder.findIndex(
-                        (t) => nameB.startsWith(t) || nameB.includes(t),
-                    );
-                    return (
-                        (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB)
-                    );
-                });
-            return filtered;
+            // Gemini uses prebuilt voice names. The Review picker needs no API key
+            // or backend catalogue request; the server validates these IDs on synthesis.
+            return Constants.GEMINI_TTS_VOICES.map((voice) => ({
+                voice_id: voice.id,
+                name: voice.name,
+            }));
         }
 
         async function updateAiUsage(usage) {
@@ -460,8 +437,8 @@
 
         function showUpgradePrompt(validation) {
             if (typeof document === "undefined") return;
-            const isElevenLabs = validation?.feature === "elevenLabs";
-            if (document.getElementById("aiPlansSection") && !isElevenLabs) {
+            const isGeminiTts = validation?.feature === "geminiTts";
+            if (document.getElementById("aiPlansSection") && !isGeminiTts) {
                 openPlans();
                 return;
             }
@@ -470,11 +447,11 @@
             document.getElementById(AI_LIMIT_TOAST_ID)?.remove();
             const toast = document.createElement("div");
             const i18n = typeof globalThis !== "undefined" ? globalThis.SharedI18n : null;
-            const defaultMsg = isElevenLabs
-                ? (i18n ? i18n.t("toast_elevenlabs_limit") : "Monthly ElevenLabs voice synthesis limit reached.")
+            const defaultMsg = isGeminiTts
+                ? (i18n ? i18n.t("toast_gemini_limit") : "Monthly Gemini TTS voice synthesis limit reached.")
                 : (i18n ? i18n.t("toast_ai_limit") : "Monthly free AI credits reached. Dual subtitles and dictionary (S) remain unlimited!");
-            const toastTitle = isElevenLabs
-                ? (i18n ? i18n.t("toast_elevenlabs_title") : "ElevenLabs Limit Reached")
+            const toastTitle = isGeminiTts
+                ? (i18n ? i18n.t("toast_gemini_title") : "Gemini TTS Limit Reached")
                 : (i18n ? i18n.t("toast_ai_title") : "Monthly AI Limit Reached");
             const tryProLabel = i18n ? i18n.t("toast_try_pro") : "Try Pro (3 days free)";
             toast.innerHTML = `
@@ -507,13 +484,13 @@
         async function applyPlanToUI() {
             if (typeof document === "undefined") return;
             const profile = await effectiveProfile(false);
-            const enabled = Config.getPlanLimits(profile.plan).elevenLabs
+            const enabled = Config.getPlanLimits(profile.plan).geminiTts
                 .enabled;
             if (!enabled) {
                 const stored = await chrome.storage.local.get({
                     ttsMode: "browser",
                 });
-                if (stored.ttsMode === "elevenlabs") {
+                if (["gemini", "elevenlabs"].includes(stored.ttsMode)) {
                     await chrome.storage.local.set({ ttsMode: "browser" });
                 }
             }
@@ -752,9 +729,9 @@
             setCachedProfile,
             effectiveProfile,
             checkSrsSave,
-            checkElevenLabs,
-            synthesizeElevenLabs,
-            getElevenLabsVoices,
+            checkGeminiTts,
+            synthesizeGeminiTts,
+            getGeminiTtsVoices,
             updateAiUsage,
             startCheckout,
             openBillingPortal,

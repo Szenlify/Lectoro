@@ -407,21 +407,27 @@
                 return Math.abs(hash).toString(16).padStart(8, "0");
             },
 
-            /**
-             * Returns the deterministic Cloudflare R2 CDN URL for a given voice and text.
-             * Format: {R2_CDN_BASE_URL}/audio/{voiceId}/{sha256_hash_tekstu}.mp3
-             *
-             * @param {string} voiceId
-             * @param {string} text
-             * @returns {Promise<string>}
-             */
-            async getR2AudioUrl(voiceId, text) {
-                const safeVoiceId = String(voiceId || "default").replace(
-                    /[^a-zA-Z0-9_-]/g,
-                    "",
-                );
-                const hash = await SharedUtils.computeTextHash(text);
-                return `${R2_CDN_BASE_URL}/audio/${safeVoiceId}/${hash}.mp3`;
+            /** Provider/model/voice/language-scoped cache key. Preserve text case for pronunciation. */
+            async getGeminiAudioCacheKey(voiceId, text, language = "en") {
+                if (!C.ALLOWED_GEMINI_TTS_VOICE_IDS.includes(voiceId)) throw new Error("Invalid Gemini TTS voice.");
+                const lang = String(language || "en").trim().toLowerCase();
+                if (!/^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/.test(lang) || lang.length > 35) throw new Error("Invalid speech language.");
+                const value = String(text || "").trim();
+                let hash;
+                if (typeof crypto !== "undefined" && crypto.subtle) {
+                    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+                    hash = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+                } else if (typeof require !== "undefined") {
+                    hash = require("crypto").createHash("sha256").update(value).digest("hex");
+                } else {
+                    throw new Error("SHA-256 is unavailable.");
+                }
+                return `audio/gemini/${C.GEMINI_TTS_MODEL}/${C.GEMINI_TTS_CACHE_VERSION}/${voiceId}/${lang}/${hash}.wav`;
+            },
+
+            async getR2AudioUrl(voiceId, text, language = "en") {
+                const key = await SharedUtils.getGeminiAudioCacheKey(voiceId, text, language);
+                return `${R2_CDN_BASE_URL}/${key}`;
             },
 
             /** Flat (voice-agnostic) R2 audio URL for legacy uploads: {R2_CDN_BASE_URL}/audio/{hash}.mp3 */

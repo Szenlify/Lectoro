@@ -9,9 +9,10 @@ const {
     normalizePlan,
     getPlanLimits,
     checkAiLimit,
-    checkElevenLabsLimit,
+    checkGeminiTtsLimit,
 } = require("./subscription-config");
-const { isReviewContext, ALLOWED_VOICE_KEYS } = require("./elevenlabs-policy");
+const { isReviewContext } = require("./gemini-policy");
+const { VOICES, normalizeLanguage, synthesizeSpeech } = require("./gemini-tts");
 const {
     getCachedAudio,
     saveCachedAudio,
@@ -34,15 +35,10 @@ function getAdmin() {
 
 // Secret Manager is used strictly for sensitive private keys
 const geminiApiKey = defineSecret("LECTORO_GEMINI_API_KEY");
-const elevenLabsApiKey = defineSecret("ELEVENLABS_API_KEY");
 const r2SecretAccessKey = defineSecret("R2_SECRET_ACCESS_KEY");
 
 function getGeminiApiKey() {
     return geminiApiKey.value() || process.env.LECTORO_GEMINI_API_KEY || "";
-}
-
-function getElevenLabsApiKey() {
-    return elevenLabsApiKey.value() || process.env.ELEVENLABS_API_KEY || "";
 }
 
 function getR2SecretAccessKey() {
@@ -103,6 +99,7 @@ function usageForMonth(value, resetDate, month) {
     return resetDate === month ? Math.max(0, Number(value) || 0) : 0;
 }
 
+// Legacy elevenLabs* usage fields remain server-owned to preserve quotas across migration.
 function subscriptionProfile(uid, plan, data = {}, month = currentMonth()) {
     return {
         uid,
@@ -130,8 +127,8 @@ function subscriptionProfile(uid, plan, data = {}, month = currentMonth()) {
 }
 
 function limitHttpStatus(validation) {
-    if (validation.code === "ELEVENLABS_REQUEST_TOO_LONG") return 413;
-    if (validation.code === "ELEVENLABS_NOT_INCLUDED") return 403;
+    if (validation.code === "GEMINI_TTS_REQUEST_TOO_LONG") return 413;
+    if (validation.code === "GEMINI_TTS_NOT_INCLUDED") return 403;
     return 429;
 }
 
@@ -152,7 +149,7 @@ async function rollbackAiReservation(db, userRef, month) {
     }
 }
 
-async function rollbackElevenLabsReservation(db, userRef, month, characters) {
+async function rollbackGeminiTtsReservation(db, userRef, month, characters) {
     try {
         await db.runTransaction(async (transaction) => {
             const snapshot = await transaction.get(userRef);
@@ -167,38 +164,8 @@ async function rollbackElevenLabsReservation(db, userRef, month, characters) {
             );
         });
     } catch (error) {
-        console.error("[subscriptionProxy] ElevenLabs rollback error:", error);
+        console.error("[subscriptionProxy] Gemini TTS rollback error:", error);
     }
-}
-
-function elevenLabsClientError(details) {
-    const status = details?.detail?.status || details?.status || "";
-    if (status === "detected_unusual_activity") {
-        return {
-            httpStatus: 503,
-            code: "ELEVENLABS_PROVIDER_DISABLED",
-            error: "ElevenLabs voices are temporarily unavailable. Service administrator must activate the API account.",
-        };
-    }
-    if (status === "quota_exceeded" || status === "insufficient_credits") {
-        return {
-            httpStatus: 503,
-            code: "ELEVENLABS_PROVIDER_QUOTA",
-            error: "ElevenLabs API account limit reached.",
-        };
-    }
-    if (status === "voice_not_found") {
-        return {
-            httpStatus: 409,
-            code: "ELEVENLABS_VOICE_UNAVAILABLE",
-            error: "This ElevenLabs voice is no longer available. Please select another voice.",
-        };
-    }
-    return {
-        httpStatus: 502,
-        code: "ELEVENLABS_SYNTHESIS_FAILED",
-        error: "ElevenLabs synthesis failed.",
-    };
 }
 
 async function fetchGeminiWithRetry(geminiKey, payload, maxRetries = 2, timeoutMs) {
@@ -251,7 +218,6 @@ exports.geminiProxy = onRequest(
         memory: "256MiB",
         secrets: [
             geminiApiKey,
-            elevenLabsApiKey,
             r2SecretAccessKey,
         ],
     },
@@ -465,91 +431,48 @@ exports.geminiProxy = onRequest(
             return res.status(200).json({ ok: true, message: "Account and data permanently deleted." });
         }
 
-        if (req.body?.action === "elevenLabsVoices") {
+        if (req.body?.action === "geminiTtsVoices") {
             if (!isReviewContext(req.body?.context)) {
                 return res.status(403).json({
-                    error: "ElevenLabs voices are only available in review mode.",
-                    code: "ELEVENLABS_REVIEW_ONLY",
+                    error: "Gemini TTS voices are only available in review mode.",
+                    code: "GEMINI_TTS_REVIEW_ONLY",
                 });
             }
-            if (!getPlanLimits(plan).elevenLabs.enabled) {
+            if (!getPlanLimits(plan).geminiTts.enabled) {
                 return res.status(403).json({
-                    error: "ElevenLabs is not included in the FREE plan.",
-                    code: "ELEVENLABS_NOT_INCLUDED",
+                    error: "Gemini TTS is not included in the FREE plan.",
+                    code: "GEMINI_TTS_NOT_INCLUDED",
                 });
             }
-            try {
-                const voicesResponse = await fetch("https://api.elevenlabs.io/v1/voices", {
-                    headers: { "xi-api-key": getElevenLabsApiKey() },
-                });
-                const details = await voicesResponse.json().catch(() => ({}));
-                if (!voicesResponse.ok) {
-                    console.error("[subscriptionProxy] ElevenLabs voices error:", details);
-                    return res.status(502).json({ error: "Failed to fetch ElevenLabs voices." });
-                }
-
-                const allowedOrder = ALLOWED_VOICE_KEYS || ["liam", "matilda"];
-                const rawVoices = details.voices || [];
-                const filteredVoices = rawVoices
-                    .filter((voice) => {
-                        const name = (voice?.name || "").trim().toLowerCase();
-                        return allowedOrder.some((t) => name.startsWith(t) || name.includes(t));
-                    })
-                    .sort((a, b) => {
-                        const nameA = (a?.name || "").trim().toLowerCase();
-                        const nameB = (b?.name || "").trim().toLowerCase();
-                        const idxA = allowedOrder.findIndex((t) => nameA.startsWith(t) || nameA.includes(t));
-                        const idxB = allowedOrder.findIndex((t) => nameB.startsWith(t) || nameB.includes(t));
-                        return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
-                    })
-                    .map((voice) => ({
-                        voice_id: voice.voice_id,
-                        name: voice.name,
-                        labels: voice.labels || {},
-                    }));
-
-                return res.status(200).json({
-                    voices: filteredVoices,
-                });
-            } catch (error) {
-                console.error("[subscriptionProxy] ElevenLabs voices fetch error:", error);
-                return res.status(502).json({ error: "ElevenLabs connection error." });
-            }
+            return res.status(200).json({ voices: VOICES });
         }
 
-        if (req.body?.action === "synthesizeElevenLabs") {
+        if (req.body?.action === "synthesizeGeminiTts") {
             if (!isReviewContext(req.body?.context)) {
                 return res.status(403).json({
-                    error: "ElevenLabs is only available in review mode.",
-                    code: "ELEVENLABS_REVIEW_ONLY",
+                    error: "Gemini TTS is only available in review mode.",
+                    code: "GEMINI_TTS_REVIEW_ONLY",
                 });
             }
-            const text = typeof req.body.text === "string" ? req.body.text : "";
+            const text = typeof req.body.text === "string" ? req.body.text.trim() : "";
             const voiceId = typeof req.body.voiceId === "string" ? req.body.voiceId : "";
-            if (!/^[a-zA-Z0-9_-]{10,64}$/.test(voiceId)) {
-                return res.status(400).json({ error: "Invalid ElevenLabs voice identifier." });
+            if (!VOICES.some((voice) => voice.voice_id === voiceId)) {
+                return res.status(400).json({ error: "Invalid Gemini TTS voice identifier." });
             }
 
-            // 1. Central R2 Cache Check: if already synthesized, serve for free without deducting quota!
-            const r2Config = getR2Config();
+            let language;
             try {
-                const cached = await getCachedAudio(r2Config, voiceId, text);
-                if (cached && cached.buffer && cached.buffer.length > 0) {
-                    res.set("Content-Type", cached.contentType || "audio/mpeg");
-                    res.set("Cache-Control", "public, max-age=31536000, immutable");
-                    res.set("X-Lectoro-Plan", plan);
-                    res.set("X-Lectoro-Cache", "HIT");
-                    res.set(
-                        "X-Lectoro-TTS-Used",
-                        String(userData.elevenLabsCharactersThisMonth || 0),
-                    );
-                    return res.status(200).send(cached.buffer);
-                }
-            } catch (cacheError) {
-                console.warn("[geminiProxy] R2 cache check warning:", cacheError.message);
+                language = normalizeLanguage(req.body.language);
+            } catch (_) {
+                return res.status(400).json({ error: "Invalid speech language." });
+            }
+            if (!text) return res.status(400).json({ error: "Speech text is empty." });
+            const entitlement = checkGeminiTtsLimit({ plan, text, usedCharacters: 0 });
+            if (!entitlement.allowed) {
+                return res.status(limitHttpStatus(entitlement)).json({ error: entitlement.message, limit: entitlement });
             }
 
-            // 2. Cache Miss: check plan entitlements & deduct characters
+            // Reserve characters for user in transaction (R2 downloads and Gemini synthesis both count towards character usage)
             let reservation = null;
             try {
                 reservation = await db.runTransaction(async (transaction) => {
@@ -560,7 +483,7 @@ exports.geminiProxy = onRequest(
                         data.elevenLabsResetDate,
                         month,
                     );
-                    const validation = checkElevenLabsLimit({
+                    const validation = checkGeminiTtsLimit({
                         plan,
                         text,
                         usedCharacters: used,
@@ -591,53 +514,53 @@ exports.geminiProxy = onRequest(
                     });
                 }
 
-                const ttsResponse = await fetch(
-                    `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}`,
-                    {
-                        method: "POST",
-                        headers: {
-                            "xi-api-key": getElevenLabsApiKey(),
-                            "Content-Type": "application/json",
-                            Accept: "audio/mpeg",
-                        },
-                        body: JSON.stringify({
-                            text,
-                            model_id: "eleven_flash_v2_5",
-                            voice_settings: { stability: 0.7, similarity_boost: 0.75 },
-                            style: 0.2,
-                            use_speaker_boost: true,
-                        }),
-                    },
-                );
-                if (!ttsResponse.ok) {
-                    const rawDetails = await ttsResponse.text().catch(() => "");
-                    let details = {};
+                // 1. Central R2 Cache Check (if skipCacheCheck is not requested)
+                const r2Config = getR2Config();
+                if (!req.body?.skipCacheCheck) {
                     try {
-                        details = JSON.parse(rawDetails);
-                    } catch (_) {
-                        details = { detail: rawDetails };
+                        const cached = await getCachedAudio(r2Config, voiceId, text, language);
+                        if (cached && cached.buffer && cached.buffer.length > 0) {
+                            res.set("Content-Type", cached.contentType || "audio/wav");
+                            res.set("Cache-Control", "private, no-store");
+                            res.set("X-Lectoro-Plan", plan);
+                            res.set("X-Lectoro-Cache", "HIT");
+                            res.set(
+                                "X-Lectoro-TTS-Used",
+                                String(reservation.data.elevenLabsCharactersThisMonth),
+                            );
+                            return res.status(200).send(cached.buffer);
+                        }
+                    } catch (cacheError) {
+                        console.warn("[geminiProxy] R2 cache check warning:", cacheError.message);
                     }
-                    console.error("[subscriptionProxy] ElevenLabs TTS error:", details);
-                    await rollbackElevenLabsReservation(
+                }
+
+                // If only checking cache (e.g. hover), roll back reservation and return 404
+                if (req.body?.onlyIfCached || req.body?.context === "hover") {
+                    await rollbackGeminiTtsReservation(
                         db,
                         userRef,
                         month,
                         reservation.validation.requested,
                     );
-                    const clientError = elevenLabsClientError(details);
-                    return res.status(clientError.httpStatus).json({
-                        error: clientError.error,
-                        code: clientError.code,
+                    return res.status(404).json({
+                        error: "Audio not cached in R2.",
+                        code: "GEMINI_TTS_NOT_CACHED",
+                        cached: false,
                     });
                 }
-                const audio = Buffer.from(await ttsResponse.arrayBuffer());
 
-                // Asynchronously cache in Cloudflare R2 for future requests
-                saveCachedAudio(r2Config, voiceId, text, audio).catch((err) =>
+                // 2. Cache Miss in Review mode: synthesize with Gemini
+                const audio = await synthesizeSpeech({
+                    apiKey: getGeminiApiKey(), text, voiceId, language,
+                });
+
+                // Asynchronously save to Cloudflare R2 cache so the client receives audio without waiting
+                saveCachedAudio(r2Config, voiceId, text, audio, language).catch((err) =>
                     console.warn("[geminiProxy] Async R2 save error:", err.message),
                 );
 
-                res.set("Content-Type", ttsResponse.headers.get("content-type") || "audio/mpeg");
+                res.set("Content-Type", "audio/wav");
                 res.set("Cache-Control", "private, no-store");
                 res.set("X-Lectoro-Plan", plan);
                 res.set("X-Lectoro-Cache", "MISS");
@@ -650,16 +573,19 @@ exports.geminiProxy = onRequest(
                 );
                 return res.status(200).send(audio);
             } catch (error) {
-                console.error("[subscriptionProxy] ElevenLabs request error:", error);
+                console.error("[subscriptionProxy] Gemini TTS request error:", error);
                 if (reservation?.validation?.allowed) {
-                    await rollbackElevenLabsReservation(
+                    await rollbackGeminiTtsReservation(
                         db,
                         userRef,
                         month,
                         reservation.validation.requested,
                     );
                 }
-                return res.status(503).json({ error: "Failed to execute ElevenLabs synthesis." });
+                return res.status(503).json({
+                    error: "Gemini TTS is temporarily unavailable. System voice will be used.",
+                    code: error.code || "GEMINI_TTS_SYNTHESIS_FAILED",
+                });
             }
         }
 

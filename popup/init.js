@@ -26,7 +26,12 @@ function whenPopupReady(fn) {
     return popupReadyPromise;
 }
 
-chrome.storage.local.get(POPUP_INIT_KEYS, (data) => {
+chrome.storage.local.get(POPUP_INIT_KEYS, async (data) => {
+    const migrated = LectoroConstants.normalizeTtsProviderSettings(data);
+    if (data.ttsMode !== migrated.ttsMode || data.elVoiceId !== migrated.elVoiceId) {
+        await chrome.storage.local.set(migrated);
+    }
+    Object.assign(data, migrated);
     popupState = { ...POPUP_INIT_KEYS, ...data };
     if (typeof SharedI18n !== "undefined") {
         SharedI18n.applyToDOM(document, popupState.targetLang || "en");
@@ -237,7 +242,7 @@ function autoSpeakReviewCard(w, answerVisible = false) {
         cacheNotBefore: Number(w.ttsCacheInvalidatedAt || 0),
     };
 
-    // Original text (srcLang) uses chosen voice (e.g. ElevenLabs);
+    // Original text (srcLang) uses chosen voice (e.g. Gemini TTS);
     // Translation (tgtLang) uses system voice.
     const isSpeakingOriginal = !answerVisible ? !isReverse : isReverse;
     const speakWord = isSpeakingOriginal ? w.original : w.translated;

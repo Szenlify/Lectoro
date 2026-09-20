@@ -63,6 +63,11 @@
     let activeSubtitleInput = { lines: [], options: {} };
     let activeText = "";
     let activeWordSpans = [];
+    let activeWordTimings = [];
+    let lastFocusedSpan = null;
+    let youtubeFocusModeActive = false;
+    let youtubeFocusColor = C.DEFAULT_READING_SETTINGS?.youtubeFocusColor || "#6366f1";
+    let focusSliderEl = null;
     let trackedVideo = null;
     let activeAiVideo = null;
     let videoResizeObserver = null;
@@ -610,6 +615,10 @@
             );
             box.style.marginBottom = `${baseBottomPx}px`;
 
+            if (focusSliderEl && lastFocusedSpan) {
+                syncFocusSliderPosition();
+            }
+
             if (aiSubTranslationEl && aiSubTranslationText) {
                 adjustSubtitlePositionForTranslation();
             }
@@ -761,6 +770,276 @@
         return text.length * fontSizePx * 0.55;
     }
 
+    function isYouTubeHost() {
+        try {
+            const host = (typeof window !== "undefined" && window.location?.hostname) || "";
+            return host.includes("youtube.com") || host.includes("youtu.be");
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function extractSegmentTimings(cue) {
+        if (!cue || !Array.isArray(cue.segs) || cue.segs.length === 0) {
+            return [];
+        }
+        const defaultBaseMs = cue.tStartMs != null
+            ? Number(cue.tStartMs)
+            : (cue.startTime != null ? cue.startTime * 1000 : 0);
+        const cueEndMs = cue.endTime != null
+            ? cue.endTime * 1000
+            : (cue.tStartMs != null && cue.dDurationMs != null ? Number(cue.tStartMs) + Number(cue.dDurationMs) : null);
+
+        const rawSegs = cue.segs.filter((s) => s && typeof s.utf8 === "string" && /\S/.test(s.utf8));
+        if (rawSegs.length === 0) return [];
+
+        const segments = [];
+        for (let i = 0; i < rawSegs.length; i++) {
+            const seg = rawSegs[i];
+            const startMs = seg.tAbsMs != null
+                ? Number(seg.tAbsMs)
+                : (defaultBaseMs + (Number(seg.tOffsetMs) || 0));
+
+            segments.push({
+                text: seg.utf8.trim(),
+                startMs,
+                endMs: null,
+            });
+        }
+
+        for (let i = 0; i < segments.length; i++) {
+            const current = segments[i];
+            const next = segments[i + 1];
+            if (next && typeof next.startMs === "number" && next.startMs > current.startMs) {
+                current.endMs = next.startMs;
+            } else if (cueEndMs && cueEndMs > current.startMs) {
+                current.endMs = cueEndMs;
+            } else {
+                current.endMs = current.startMs + 500;
+            }
+        }
+        return segments;
+    }
+
+    function mapSpansToTimings(spans, segments, cue) {
+        if (!Array.isArray(spans) || spans.length === 0) return [];
+        if (!segments || segments.length === 0) {
+            if (cue && cue.startTime != null && cue.endTime != null) {
+                const cueStart = cue.startTime * 1000;
+                const cueEnd = cue.endTime * 1000;
+                const duration = Math.max(cueEnd - cueStart, 200);
+                const step = duration / spans.length;
+                return spans.map((span, idx) => ({
+                    span,
+                    startMs: cueStart + idx * step,
+                    endMs: cueStart + (idx + 1) * step,
+                }));
+            }
+            return [];
+        }
+
+        if (spans.length === segments.length) {
+            return spans.map((span, idx) => ({
+                span,
+                startMs: segments[idx].startMs,
+                endMs: segments[idx].endMs,
+            }));
+        }
+
+        const result = [];
+        let segIdx = 0;
+        for (let i = 0; i < spans.length; i++) {
+            const span = spans[i];
+            const spanClean = (span.dataset?.clean || span.textContent || "").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+
+            let foundIdx = -1;
+            for (let j = segIdx; j < segments.length; j++) {
+                const segClean = segments[j].text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+                if (spanClean && (segClean.includes(spanClean) || spanClean.includes(segClean))) {
+                    foundIdx = j;
+                    break;
+                }
+            }
+
+            if (foundIdx !== -1) {
+                result.push({
+                    span,
+                    startMs: segments[foundIdx].startMs,
+                    endMs: segments[foundIdx].endMs,
+                });
+                segIdx = foundIdx + 1;
+            } else if (segIdx < segments.length) {
+                result.push({
+                    span,
+                    startMs: segments[segIdx].startMs,
+                    endMs: segments[segIdx].endMs,
+                });
+                segIdx++;
+            } else {
+                const last = result[result.length - 1];
+                const startMs = last ? last.endMs : (cue?.startTime ? cue.startTime * 1000 : 0);
+                const endMs = startMs + 400;
+                result.push({ span, startMs, endMs });
+            }
+        }
+        return result;
+    }
+
+    function cueHasWordTimestamps(cue) {
+        if (!cue || !Array.isArray(cue.segs) || cue.segs.length <= 1) {
+            return false;
+        }
+        let timedWordsCount = 0;
+        let lastOffset = -1;
+        for (let i = 0; i < cue.segs.length; i++) {
+            const seg = cue.segs[i];
+            if (seg && typeof seg.utf8 === "string" && /\S/.test(seg.utf8)) {
+                const offset = seg.tOffsetMs != null
+                    ? Number(seg.tOffsetMs)
+                    : (seg.tAbsMs != null ? Number(seg.tAbsMs) : null);
+                if (offset != null && offset !== lastOffset) {
+                    timedWordsCount++;
+                    lastOffset = offset;
+                }
+            }
+        }
+        return timedWordsCount >= 2;
+    }
+
+    function hexToRgba(hex, alpha = 1) {
+        if (!hex || typeof hex !== "string") return `rgba(99, 102, 241, ${alpha})`;
+        let clean = hex.replace("#", "").trim();
+        if (clean.length === 3) {
+            clean = clean.split("").map((c) => c + c).join("");
+        }
+        if (clean.length !== 6) return `rgba(99, 102, 241, ${alpha})`;
+        const num = parseInt(clean, 16);
+        const r = (num >> 16) & 255;
+        const g = (num >> 8) & 255;
+        const b = num & 255;
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    function applyFocusColorStyles() {
+        if (!focusSliderEl) return;
+        const color = youtubeFocusColor || "#6366f1";
+        const bg = hexToRgba(color, 0.85);
+        const glow = hexToRgba(color, 0.85);
+        const border = hexToRgba(color, 1);
+        focusSliderEl.style.setProperty("--lectoro-focus-bg", bg);
+        focusSliderEl.style.setProperty("--lectoro-focus-glow", glow);
+        focusSliderEl.style.setProperty("--lectoro-focus-border", border);
+    }
+
+    function ensureFocusSlider(box) {
+        if (!box) return null;
+        if (!focusSliderEl || !focusSliderEl.isConnected) {
+            focusSliderEl = document.createElement("div");
+            focusSliderEl.className = "__qt_focus_slider";
+        }
+        applyFocusColorStyles();
+        if (focusSliderEl.parentElement !== box) {
+            box.insertBefore(focusSliderEl, box.firstChild);
+        }
+        return focusSliderEl;
+    }
+
+    function syncFocusSliderPosition() {
+        if (!lastFocusedSpan || !focusSliderEl || !customSubBoxEl || !lastFocusedSpan.isConnected) return;
+        if (typeof lastFocusedSpan.getBoundingClientRect !== "function" || typeof customSubBoxEl.getBoundingClientRect !== "function") return;
+        const boxRect = customSubBoxEl.getBoundingClientRect();
+        const spanRect = lastFocusedSpan.getBoundingClientRect();
+        const paddingX = 4;
+        const paddingY = 2;
+        const left = Math.round(spanRect.left - boxRect.left - paddingX);
+        const top = Math.round(spanRect.top - boxRect.top - paddingY);
+        const width = Math.max(12, Math.round(spanRect.width + paddingX * 2));
+        const height = Math.max(12, Math.round(spanRect.height + paddingY * 2));
+        focusSliderEl.style.setProperty("transition", "none", "important");
+        focusSliderEl.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+        focusSliderEl.style.width = `${width}px`;
+        focusSliderEl.style.height = `${height}px`;
+        if (typeof focusSliderEl.offsetWidth === "number") {
+            void focusSliderEl.offsetWidth;
+        }
+        focusSliderEl.style.removeProperty("transition");
+    }
+
+    function updateFocusTiming(currentTimeMs) {
+        if (!youtubeFocusModeActive || activeWordTimings.length === 0) {
+            if (focusSliderEl) {
+                focusSliderEl.style.opacity = "0";
+                focusSliderEl.classList?.remove("is-active");
+            }
+            if (lastFocusedSpan) {
+                lastFocusedSpan.classList?.remove("__qt_word-focused");
+                lastFocusedSpan = null;
+            }
+            return;
+        }
+
+        if (typeof currentTimeMs !== "number" || isNaN(currentTimeMs)) {
+            return;
+        }
+
+        let matchedItem = null;
+        for (let i = 0; i < activeWordTimings.length; i++) {
+            const item = activeWordTimings[i];
+            if (currentTimeMs >= item.startMs && currentTimeMs < item.endMs) {
+                matchedItem = item;
+                break;
+            }
+        }
+
+        const targetSpan = matchedItem ? matchedItem.span : null;
+        if (targetSpan !== lastFocusedSpan) {
+            if (lastFocusedSpan) {
+                lastFocusedSpan.classList?.remove("__qt_word-focused");
+            }
+
+            if (targetSpan && (targetSpan.isConnected ?? true)) {
+                targetSpan.classList?.add("__qt_word-focused");
+                lastFocusedSpan = targetSpan;
+
+                if (focusSliderEl && customSubBoxEl && typeof targetSpan.getBoundingClientRect === "function" && typeof customSubBoxEl.getBoundingClientRect === "function") {
+                    const boxRect = customSubBoxEl.getBoundingClientRect();
+                    const spanRect = targetSpan.getBoundingClientRect();
+                    const paddingX = 4;
+                    const paddingY = 2;
+                    const left = Math.round(spanRect.left - boxRect.left - paddingX);
+                    const top = Math.round(spanRect.top - boxRect.top - paddingY);
+                    const width = Math.max(12, Math.round(spanRect.width + paddingX * 2));
+                    const height = Math.max(12, Math.round(spanRect.height + paddingY * 2));
+
+                    const isFirstActivation = !focusSliderEl.classList?.contains("is-active") || focusSliderEl.style.opacity === "0";
+                    if (isFirstActivation) {
+                        focusSliderEl.style.setProperty("transition", "none", "important");
+                        focusSliderEl.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+                        focusSliderEl.style.width = `${width}px`;
+                        focusSliderEl.style.height = `${height}px`;
+                        if (typeof focusSliderEl.offsetWidth === "number") {
+                            void focusSliderEl.offsetWidth;
+                        }
+                        focusSliderEl.style.removeProperty("transition");
+                    } else {
+                        focusSliderEl.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+                        focusSliderEl.style.width = `${width}px`;
+                        focusSliderEl.style.height = `${height}px`;
+                    }
+
+                    focusSliderEl.style.opacity = "1";
+                    focusSliderEl.classList?.add("is-active");
+                }
+            } else {
+                lastFocusedSpan = null;
+                if (focusSliderEl) {
+                    focusSliderEl.style.opacity = "0";
+                    focusSliderEl.classList?.remove("is-active");
+                }
+            }
+        }
+    }
+
     function renderCustomSubtitles(lines = [], options = {}) {
         const { box } = ensureCustomSubtitlesLayer();
         const registry = getPlayerRegistry();
@@ -785,6 +1064,16 @@
             activeLines = [];
             activeText = "";
             activeWordSpans = [];
+            activeWordTimings = [];
+            if (focusSliderEl) {
+                focusSliderEl.style.opacity = "0";
+                focusSliderEl.classList?.remove("is-active");
+            }
+            if (lastFocusedSpan) {
+                lastFocusedSpan.classList?.remove("__qt_word-focused");
+                lastFocusedSpan = null;
+            }
+            box.classList?.remove("is-focus-mode");
             box.innerHTML = "";
             box.style.setProperty("opacity", "0", "important");
             box.style.setProperty("pointer-events", "none", "important");
@@ -868,6 +1157,62 @@
             box.appendChild(lineEl);
         }
 
+        const isYouTube = isYouTubeHost();
+        const isAsr = Boolean(
+            options.isAsr ||
+            (Array.isArray(cue?.segs) && cue.segs.some((s) => s?.tOffsetMs != null || s?.tAbsMs != null))
+        );
+        const hasTimestamps = cueHasWordTimestamps(cue);
+        const shouldEnableFocusMode = Boolean(youtubeFocusModeActive && isYouTube && isAsr && hasTimestamps);
+
+        if (shouldEnableFocusMode) {
+            box.classList?.add("is-focus-mode");
+            ensureFocusSlider(box);
+            if (focusSliderEl) {
+                focusSliderEl.classList?.remove("is-active");
+                focusSliderEl.style.opacity = "0";
+            }
+            lastFocusedSpan = null;
+            const segments = extractSegmentTimings(cue);
+            activeWordTimings = mapSpansToTimings(activeWordSpans, segments, cue);
+
+            if (focusSliderEl && activeWordSpans.length > 0) {
+                const firstSpan = activeWordSpans[0];
+                if (typeof firstSpan.getBoundingClientRect === "function" && typeof box.getBoundingClientRect === "function") {
+                    const boxRect = box.getBoundingClientRect();
+                    const spanRect = firstSpan.getBoundingClientRect();
+                    const paddingX = 4;
+                    const paddingY = 2;
+                    const left = Math.round(spanRect.left - boxRect.left - paddingX);
+                    const top = Math.round(spanRect.top - boxRect.top - paddingY);
+                    const width = Math.max(12, Math.round(spanRect.width + paddingX * 2));
+                    const height = Math.max(12, Math.round(spanRect.height + paddingY * 2));
+                    focusSliderEl.style.setProperty("transition", "none", "important");
+                    focusSliderEl.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+                    focusSliderEl.style.width = `${width}px`;
+                    focusSliderEl.style.height = `${height}px`;
+                    if (typeof focusSliderEl.offsetWidth === "number") {
+                        void focusSliderEl.offsetWidth;
+                    }
+                    focusSliderEl.style.removeProperty("transition");
+                }
+            }
+
+            const currentMs = (video?.currentTime || 0) * 1000;
+            updateFocusTiming(currentMs);
+        } else {
+            box.classList?.remove("is-focus-mode");
+            activeWordTimings = [];
+            if (focusSliderEl) {
+                focusSliderEl.style.opacity = "0";
+                focusSliderEl.classList?.remove("is-active");
+            }
+            if (lastFocusedSpan) {
+                lastFocusedSpan.classList?.remove("__qt_word-focused");
+                lastFocusedSpan = null;
+            }
+        }
+
         box.style.setProperty("opacity", "1", "important");
         box.style.setProperty("pointer-events", "auto", "important");
         syncCustomSubtitlePosition();
@@ -905,12 +1250,16 @@
     const subPosKey = C.STORAGE_KEYS.SUBTITLE_POSITION;
     const subBgKey = C.STORAGE_KEYS.SUBTITLE_BG_OPACITY;
     const subFontSizeKey = C.STORAGE_KEYS.SUBTITLE_FONT_SIZE;
+    const ytFocusModeKey = C.STORAGE_KEYS.YOUTUBE_FOCUS_MODE || "youtubeFocusMode";
+    const ytFocusColorKey = C.STORAGE_KEYS.YOUTUBE_FOCUS_COLOR || "youtubeFocusColor";
 
     chrome.storage.local.get(
         {
             [subPosKey]: C.DEFAULT_SUBTITLE_SETTINGS.POSITION,
             [subBgKey]: C.DEFAULT_SUBTITLE_SETTINGS.BG_OPACITY,
             [subFontSizeKey]: C.DEFAULT_SUBTITLE_SETTINGS.FONT_SIZE,
+            [ytFocusModeKey]: false,
+            [ytFocusColorKey]: C.DEFAULT_READING_SETTINGS?.youtubeFocusColor || "#6366f1",
         },
         (data) => {
             if (data && typeof data[subPosKey] === "number") {
@@ -921,6 +1270,13 @@
             }
             if (data && data[subFontSizeKey]) {
                 currentSubFontSize = data[subFontSizeKey];
+            }
+            if (data && typeof data[ytFocusModeKey] === "boolean") {
+                youtubeFocusModeActive = data[ytFocusModeKey];
+            }
+            if (data && typeof data[ytFocusColorKey] === "string") {
+                youtubeFocusColor = data[ytFocusColorKey];
+                applyFocusColorStyles();
             }
             if (customSubLayerEl) {
                 applySubtitleStyles(customSubLayerEl);
@@ -957,6 +1313,17 @@
             currentSubFontSize = changes[subFontSizeKey].newValue;
             shouldSync = true;
         }
+        if (changes[ytFocusModeKey]) {
+            youtubeFocusModeActive = Boolean(changes[ytFocusModeKey].newValue);
+            if (activeLines.length) {
+                activeText = "";
+                renderCustomSubtitles(activeSubtitleInput.lines, activeSubtitleInput.options);
+            }
+        }
+        if (changes[ytFocusColorKey] && typeof changes[ytFocusColorKey].newValue === "string") {
+            youtubeFocusColor = changes[ytFocusColorKey].newValue;
+            applyFocusColorStyles();
+        }
         if (changes.targetLang) {
             if (activeLines.length) renderCustomSubtitles(activeSubtitleInput.lines, activeSubtitleInput.options);
         }
@@ -968,10 +1335,11 @@
     // Connect to PlayerRegistry subtitle changes (Single Source of Truth)
     getPlayerRegistry().onSubtitleChange((payload) => {
         const cue = payload?.cue || payload?.lines?.cue || null;
+        const isAsr = Boolean(payload?.isAsr || payload?.options?.isAsr);
         if (Array.isArray(payload)) {
-            renderCustomSubtitles(LectoroBaseAdapter.extractCueLines(payload), { cue });
+            renderCustomSubtitles(LectoroBaseAdapter.extractCueLines(payload), { cue, isAsr });
         } else if (payload && Array.isArray(payload.lines)) {
-            renderCustomSubtitles(payload.lines, { cue });
+            renderCustomSubtitles(payload.lines, { cue, isAsr });
         } else if (payload && typeof payload.fullText === "string") {
             const lines = payload.fullText
                 ? payload.fullText
@@ -979,7 +1347,7 @@
                     .map((l) => l.trim())
                     .filter(Boolean)
                 : [];
-            renderCustomSubtitles(lines, { cue });
+            renderCustomSubtitles(lines, { cue, isAsr });
         }
     });
 
@@ -4298,6 +4666,10 @@
 
     const SubtitleOverlay = {
         renderCustomSubtitles,
+        updateFocusTiming,
+        isFocusModeActive: () => youtubeFocusModeActive,
+        getFocusSliderElement: () => focusSliderEl,
+        getFocusColor: () => youtubeFocusColor,
         getCustomSubtitleElements: () => activeWordSpans,
         getActiveLines: () => activeLines,
         getActiveText: () => activeText,

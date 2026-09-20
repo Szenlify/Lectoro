@@ -971,23 +971,28 @@ const MESSAGE_HANDLERS = Object.freeze({
     profile: await SubscriptionService.refreshProfile(!!message.force),
   }),
 
-  [MSG.ELEVENLABS_SYNTHESIZE]: async (message) => {
-    const blob = await SubscriptionService.synthesizeElevenLabs(
+  [MSG.GEMINI_TTS_SYNTHESIZE]: async (message) => {
+    const blob = await SubscriptionService.synthesizeGeminiTts(
       message.text,
       message.voiceId,
-      message.context || "review"
+      message.context || "review",
+      message.language || "en",
+      {
+        onlyIfCached: !!message.onlyIfCached,
+        skipCacheCheck: !!message.skipCacheCheck,
+      }
     );
     const bytes = new Uint8Array(await blob.arrayBuffer());
     return {
       ok: true,
       base64: bytesToBase64(bytes),
-      mimeType: blob.type || "audio/mpeg",
+      mimeType: blob.type || "audio/wav",
     };
   },
 
-  [MSG.ELEVENLABS_VOICES]: async (message) => ({
+  [MSG.GEMINI_TTS_VOICES]: async (message) => ({
     ok: true,
-    voices: await SubscriptionService.getElevenLabsVoices(
+    voices: await SubscriptionService.getGeminiTtsVoices(
       message.context || "review"
     ),
   }),

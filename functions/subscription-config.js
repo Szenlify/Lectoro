@@ -26,7 +26,7 @@
             priceMonthly: Object.freeze({ amount: 0, currency: "USD" }),
             ai: Object.freeze({ usesPerMonth: 15 }),
             srs: Object.freeze({ maxSavedCards: 25 }),
-            elevenLabs: Object.freeze({
+            geminiTts: Object.freeze({
                 enabled: false,
                 maxCharactersPerRequest: 0,
                 charactersPerMonth: 0,
@@ -46,7 +46,7 @@
             priceMonthly: Object.freeze({ amount: 7.99, currency: "USD" }),
             ai: Object.freeze({ usesPerMonth: 1000 }),
             srs: Object.freeze({ maxSavedCards: 3000 }),
-            elevenLabs: Object.freeze({
+            geminiTts: Object.freeze({
                 enabled: true,
                 maxCharactersPerRequest: 500,
                 charactersPerMonth: 15000,
@@ -67,7 +67,7 @@
             priceMonthly: Object.freeze({ amount: 19.99, currency: "USD" }),
             ai: Object.freeze({ usesPerMonth: 10000 }),
             srs: Object.freeze({ maxSavedCards: 10000 }),
-            elevenLabs: Object.freeze({
+            geminiTts: Object.freeze({
                 enabled: true,
                 maxCharactersPerRequest: 1000,
                 charactersPerMonth: 100000,
@@ -87,9 +87,9 @@
     const LIMIT_ERROR_CODES = Object.freeze({
         AI_LIMIT_REACHED: "AI_LIMIT_REACHED",
         SRS_LIMIT_REACHED: "SRS_LIMIT_REACHED",
-        ELEVENLABS_NOT_INCLUDED: "ELEVENLABS_NOT_INCLUDED",
-        ELEVENLABS_REQUEST_TOO_LONG: "ELEVENLABS_REQUEST_TOO_LONG",
-        ELEVENLABS_MONTHLY_LIMIT_REACHED: "ELEVENLABS_MONTHLY_LIMIT_REACHED",
+        GEMINI_TTS_NOT_INCLUDED: "GEMINI_TTS_NOT_INCLUDED",
+        GEMINI_TTS_REQUEST_TOO_LONG: "GEMINI_TTS_REQUEST_TOO_LONG",
+        GEMINI_TTS_MONTHLY_LIMIT_REACHED: "GEMINI_TTS_MONTHLY_LIMIT_REACHED",
         SUBTITLES_HOURLY_LIMIT_REACHED: "SUBTITLES_HOURLY_LIMIT_REACHED",
         EXPORT_LIMIT_REACHED: "EXPORT_LIMIT_REACHED",
     });
@@ -164,49 +164,49 @@
         });
     }
 
-    function checkElevenLabsLimit({ plan, text, usedCharacters = 0 }) {
+    function checkGeminiTtsLimit({ plan, text, usedCharacters = 0 }) {
         const normalizedPlan = normalizePlan(plan);
-        const limits = getPlanLimits(normalizedPlan).elevenLabs;
+        const limits = getPlanLimits(normalizedPlan).geminiTts;
         const used = Math.max(0, Number(usedCharacters) || 0);
         const requested = countCharacters(text);
 
         if (!limits.enabled) {
             return result({
                 allowed: false,
-                code: LIMIT_ERROR_CODES.ELEVENLABS_NOT_INCLUDED,
-                feature: "elevenLabs",
+                code: LIMIT_ERROR_CODES.GEMINI_TTS_NOT_INCLUDED,
+                feature: "geminiTts",
                 plan: normalizedPlan,
                 limit: 0,
                 used,
                 requested,
-                message: "ElevenLabs nie jest dostępny w planie FREE. Ulepsz plan, aby włączyć tę funkcję.",
+                message: "Gemini TTS nie jest dostępny w planie FREE. Ulepsz plan, aby włączyć tę funkcję.",
             });
         }
         if (requested > limits.maxCharactersPerRequest) {
             return result({
                 allowed: false,
-                code: LIMIT_ERROR_CODES.ELEVENLABS_REQUEST_TOO_LONG,
-                feature: "elevenLabs",
+                code: LIMIT_ERROR_CODES.GEMINI_TTS_REQUEST_TOO_LONG,
+                feature: "geminiTts",
                 plan: normalizedPlan,
                 limit: limits.maxCharactersPerRequest,
                 used: 0,
                 requested,
-                message: `Tekst ma ${requested} znaków. Limit jednego żądania ElevenLabs w planie ${normalizedPlan.toUpperCase()} wynosi ${limits.maxCharactersPerRequest}.`,
+                message: `Tekst ma ${requested} znaków. Limit jednego żądania Gemini TTS w planie ${normalizedPlan.toUpperCase()} wynosi ${limits.maxCharactersPerRequest}.`,
             });
         }
 
         const allowed = requested > 0 && used + requested <= limits.charactersPerMonth;
         return result({
             allowed,
-            code: allowed ? null : LIMIT_ERROR_CODES.ELEVENLABS_MONTHLY_LIMIT_REACHED,
-            feature: "elevenLabs",
+            code: allowed ? null : LIMIT_ERROR_CODES.GEMINI_TTS_MONTHLY_LIMIT_REACHED,
+            feature: "geminiTts",
             plan: normalizedPlan,
             limit: limits.charactersPerMonth,
             used,
             requested,
             message: allowed
-                ? "Synteza ElevenLabs jest dostępna."
-                : `Przekroczono miesięczny limit ${limits.charactersPerMonth} znaków ElevenLabs dla planu ${normalizedPlan.toUpperCase()}.`,
+                ? "Synteza Gemini TTS jest dostępna."
+                : `Przekroczono miesięczny limit ${limits.charactersPerMonth} znaków Gemini TTS dla planu ${normalizedPlan.toUpperCase()}.`,
         });
     }
 
@@ -300,7 +300,7 @@
         countCharacters,
         checkAiLimit,
         checkSrsLimit,
-        checkElevenLabsLimit,
+        checkGeminiTtsLimit,
         checkSubtitleLimit,
         checkExportLimit,
         assertAllowed,
