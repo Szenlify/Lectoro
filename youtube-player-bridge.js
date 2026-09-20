@@ -12,6 +12,7 @@
   const TRACK_RESPONSE_EVENT = "__lectoro_youtube_track_response";
   const FETCH_REQUEST_EVENT = "__lectoro_youtube_fetch_request";
   const FETCH_RESPONSE_EVENT = "__lectoro_youtube_fetch_response";
+  const SET_TRACK_EVENT = "__lectoro_youtube_set_track";
   const SEEK_EVENT = "__lectoro_youtube_seek";
   const PAUSE_EVENT = "__lectoro_youtube_pause";
   const PLAY_EVENT = "__lectoro_youtube_play";
@@ -472,6 +473,21 @@
     if (typeof player?.playVideo === "function") {
       player.playVideo();
     }
+  });
+
+  window.addEventListener(SET_TRACK_EVENT, (event) => {
+    const track = event?.detail?.track;
+    if (!track) return;
+    const player = getYouTubePlayer();
+    try {
+      if (typeof player?.setOption === "function") {
+        player.setOption("captions", "track", {
+          languageCode: track.languageCode,
+          kind: track.kind || "",
+          vssId: track.vssId || "",
+        });
+      }
+    } catch (_) {}
   });
 
   // ── YouTube SPA Navigation Observers ──────────────────────────

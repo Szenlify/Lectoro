@@ -15,6 +15,7 @@
     const TRACK_RESPONSE_EVENT = EVT.YOUTUBE_TRACK_RESPONSE;
     const FETCH_REQUEST_EVENT = EVT.YOUTUBE_FETCH_REQUEST;
     const FETCH_RESPONSE_EVENT = EVT.YOUTUBE_FETCH_RESPONSE;
+    const SET_TRACK_EVENT = EVT.YOUTUBE_SET_TRACK || "__lectoro_youtube_set_track";
     const SEEK_EVENT = EVT.YOUTUBE_SEEK;
     const PAUSE_EVENT = EVT.YOUTUBE_PAUSE;
     const PLAY_EVENT = EVT.YOUTUBE_PLAY;
@@ -34,6 +35,64 @@
     let boundVideo = null;
     let trackRequestSeq = 0;
     let isCcActive = false;
+    let youtubeFocusModeActive = false;
+
+    const ytFocusKey =
+        globalThis.LectoroConstants?.STORAGE_KEYS?.YOUTUBE_FOCUS_MODE ||
+        "youtubeFocusMode";
+
+    function isFocusModeEnabled() {
+        return Boolean(
+            youtubeFocusModeActive ||
+            globalThis.LectoroSubtitleOverlay?.isFocusModeActive?.(),
+        );
+    }
+
+    if (typeof chrome !== "undefined" && chrome?.storage?.local?.get) {
+        chrome.storage.local.get({ [ytFocusKey]: false }, (data) => {
+            if (data && typeof data[ytFocusKey] === "boolean") {
+                youtubeFocusModeActive = data[ytFocusKey];
+            }
+        });
+
+        chrome.storage.onChanged?.addListener((changes, area) => {
+            if (area === "local" && changes[ytFocusKey]) {
+                const newVal = Boolean(changes[ytFocusKey].newValue);
+                if (newVal !== youtubeFocusModeActive) {
+                    youtubeFocusModeActive = newVal;
+                    if (availableTracks.length > 0 && isCcActive) {
+                        const videoId = currentVideoId || getVideoIdFromUrl();
+                        const chosen = selectBestCaptionTrack(
+                            availableTracks,
+                            activeTrack?.languageCode,
+                            youtubeFocusModeActive,
+                        );
+                        if (chosen && (!activeTrack || chosen.baseUrl !== activeTrack.baseUrl)) {
+                            loadCaptionTrack(chosen, videoId);
+                            if (youtubeFocusModeActive && (chosen.kind === "asr" || chosen.vssId?.startsWith("a."))) {
+                                dispatchSetTrackToBridge(chosen);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function dispatchSetTrackToBridge(track) {
+        if (!track) return;
+        window.dispatchEvent(
+            new CustomEvent(SET_TRACK_EVENT, {
+                detail: {
+                    track: {
+                        languageCode: track.languageCode,
+                        kind: track.kind || "",
+                        vssId: track.vssId || "",
+                    },
+                },
+            }),
+        );
+    }
 
     function getSubtitleService() {
         return globalThis.SharedSubtitleService;
@@ -94,17 +153,20 @@
     }
 
     function getVideoIdFromUrl() {
+        if (typeof window === "undefined" || !window?.location) return "";
         try {
             const params = new URLSearchParams(window.location.search);
             const v = params.get("v");
             if (v) return v;
         } catch (_) {}
 
-        const shortsMatch = window.location.pathname.match(/\/shorts\/([a-zA-Z0-9_-]+)/);
-        if (shortsMatch) return shortsMatch[1];
+        try {
+            const shortsMatch = window.location.pathname?.match(/\/shorts\/([a-zA-Z0-9_-]+)/);
+            if (shortsMatch) return shortsMatch[1];
 
-        const embedMatch = window.location.pathname.match(/\/embed\/([a-zA-Z0-9_-]+)/);
-        if (embedMatch) return embedMatch[1];
+            const embedMatch = window.location.pathname?.match(/\/embed\/([a-zA-Z0-9_-]+)/);
+            if (embedMatch) return embedMatch[1];
+        } catch (_) {}
 
         return "";
     }
@@ -313,16 +375,47 @@
 
     // ── Track Selection & Multi-Format Timedtext Fetching ─────────
 
-    function selectBestCaptionTrack(tracks, preferredLang = "") {
+    function selectBestCaptionTrack(tracks, preferredLang = "", preferAsr = false) {
         if (!Array.isArray(tracks) || tracks.length === 0) return null;
 
         const lang = (preferredLang || "").toLowerCase();
 
+        if (preferAsr) {
+            // Prioritize auto-generated (ASR) tracks with word-level timestamps (timelabs)
+            // 1. Exact match for preferred language (ASR track)
+            if (lang) {
+                const prefAsr = tracks.find(
+                    (t) =>
+                        (t.kind === "asr" || t.vssId?.toLowerCase()?.startsWith("a.")) &&
+                        (t.languageCode?.toLowerCase() === lang ||
+                         t.vssId?.toLowerCase()?.includes(`.${lang}`)),
+                );
+                if (prefAsr) return prefAsr;
+            }
+
+            // 2. English ASR track
+            const enAsr = tracks.find(
+                (t) =>
+                    (t.kind === "asr" || t.vssId?.toLowerCase()?.startsWith("a.")) &&
+                    (t.languageCode?.toLowerCase() === "en" ||
+                     t.vssId?.toLowerCase()?.includes(".en")),
+            );
+            if (enAsr) return enAsr;
+
+            // 3. Any available ASR track
+            const anyAsr = tracks.find(
+                (t) => t.kind === "asr" || t.vssId?.toLowerCase()?.startsWith("a."),
+            );
+            if (anyAsr) return anyAsr;
+        }
+
+        // Standard track selection (or fallback if no ASR tracks exist):
         // 1. Exact match for preferred language (manual track)
         if (lang) {
             const prefManual = tracks.find(
                 (t) =>
                     t.kind !== "asr" &&
+                    !t.vssId?.toLowerCase()?.startsWith("a.") &&
                     (t.languageCode?.toLowerCase() === lang ||
                      t.vssId?.toLowerCase()?.includes(`.${lang}`)),
             );
@@ -333,7 +426,7 @@
         if (lang) {
             const prefAsr = tracks.find(
                 (t) =>
-                    t.kind === "asr" &&
+                    (t.kind === "asr" || t.vssId?.toLowerCase()?.startsWith("a.")) &&
                     (t.languageCode?.toLowerCase() === lang ||
                      t.vssId?.toLowerCase()?.includes(`.${lang}`)),
             );
@@ -344,19 +437,22 @@
         const enManual = tracks.find(
             (t) =>
                 t.kind !== "asr" &&
+                !t.vssId?.toLowerCase()?.startsWith("a.") &&
                 (t.languageCode?.toLowerCase() === "en" ||
                  t.vssId?.toLowerCase()?.includes(".en")),
         );
         if (enManual) return enManual;
 
         // 4. Any manual track
-        const anyManual = tracks.find((t) => t.kind !== "asr");
+        const anyManual = tracks.find(
+            (t) => t.kind !== "asr" && !t.vssId?.toLowerCase()?.startsWith("a."),
+        );
         if (anyManual) return anyManual;
 
         // 5. English ASR track
         const enAsr = tracks.find(
             (t) =>
-                t.kind === "asr" &&
+                (t.kind === "asr" || t.vssId?.toLowerCase()?.startsWith("a.")) &&
                 (t.languageCode?.toLowerCase() === "en" ||
                  t.vssId?.toLowerCase()?.includes(".en")),
         );
@@ -551,11 +647,38 @@
         if (Array.isArray(tracks) && tracks.length > 0) {
             availableTracks = tracks;
             const active = detail.activeTrack;
-            const chosen = (active && tracks.find((track) =>
-                (active.vssId && track.vssId === active.vssId) ||
-                (track.languageCode === active.languageCode && track.kind === active.kind))) || selectBestCaptionTrack(tracks, active?.languageCode);
+            const focusMode = isFocusModeEnabled();
+
+            let chosen = null;
+            if (focusMode) {
+                // If Focus Mode is active and current active track is already ASR, keep it
+                if (active && (active.kind === "asr" || active.vssId?.startsWith("a."))) {
+                    chosen = tracks.find(
+                        (track) =>
+                            (active.vssId && track.vssId === active.vssId) ||
+                            (track.languageCode === active.languageCode && track.kind === active.kind),
+                    );
+                }
+                // If active is not ASR or not found, pick the best ASR track
+                if (!chosen) {
+                    chosen = selectBestCaptionTrack(tracks, active?.languageCode, true);
+                }
+            } else {
+                chosen =
+                    (active &&
+                        tracks.find(
+                            (track) =>
+                                (active.vssId && track.vssId === active.vssId) ||
+                                (track.languageCode === active.languageCode && track.kind === active.kind),
+                        )) ||
+                    selectBestCaptionTrack(tracks, active?.languageCode, false);
+            }
+
             if (chosen && (!activeTrack || chosen.baseUrl !== activeTrack.baseUrl || videoId !== currentVideoId)) {
                 loadCaptionTrack(chosen, videoId);
+                if (focusMode && (chosen.kind === "asr" || chosen.vssId?.startsWith("a."))) {
+                    dispatchSetTrackToBridge(chosen);
+                }
             }
             const video = boundVideo || document.querySelector("video");
             if (video && !video.paused) startPlaybackLoop(video);
@@ -673,13 +796,16 @@
     }, { passive: true });
 
     // Initial check on load
-    setTimeout(() => {
-        currentVideoId = getVideoIdFromUrl();
-        observeContentCcButton();
-        requestTracklistFromBridge();
-        const video = document.querySelector("video");
-        if (video) bindVideoEvents(video);
-    }, 400);
+    if (typeof window !== "undefined" && isPage()) {
+        setTimeout(() => {
+            if (typeof window === "undefined" || !window?.location) return;
+            currentVideoId = getVideoIdFromUrl();
+            observeContentCcButton();
+            requestTracklistFromBridge();
+            const video = document?.querySelector?.("video");
+            if (video) bindVideoEvents(video);
+        }, 400);
+    }
 
     // ── Navigation & Player Control ───────────────────────────────
 
@@ -813,6 +939,8 @@
         playVideo,
         setCueIndex,
         loadCaptionTrack,
+        selectBestCaptionTrack,
+        isFocusModeEnabled,
     };
 
     globalThis.LectoroYouTubeAdapter = YouTubeAdapter;

@@ -77,6 +77,7 @@
             YOUTUBE_TRACK_RESPONSE: "__lectoro_youtube_track_response",
             YOUTUBE_FETCH_REQUEST: "__lectoro_youtube_fetch_request",
             YOUTUBE_FETCH_RESPONSE: "__lectoro_youtube_fetch_response",
+            YOUTUBE_SET_TRACK: "__lectoro_youtube_set_track",
             YOUTUBE_SEEK: "__lectoro_youtube_seek",
             YOUTUBE_PAUSE: "__lectoro_youtube_pause",
             YOUTUBE_PLAY: "__lectoro_youtube_play",

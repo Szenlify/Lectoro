@@ -322,3 +322,54 @@ test("YouTube Focus Mode: Subtitle overlay sliding highlighter and timestamp val
         globalThis.cancelAnimationFrame = origCaf;
     }
 });
+
+test("YouTube Focus Mode: Always selects auto-generated (ASR) track when Focus Mode is active", () => {
+    assert.strictEqual(C.EVENT_NAMES.YOUTUBE_SET_TRACK, "__lectoro_youtube_set_track");
+
+    const origWindow = globalThis.window;
+    const origDocument = globalThis.document;
+    try {
+        globalThis.window = {
+            location: { hostname: "www.youtube.com" },
+            addEventListener: () => {},
+            removeEventListener: () => {},
+            dispatchEvent: () => {},
+        };
+        globalThis.document = {
+            addEventListener: () => {},
+            removeEventListener: () => {},
+            querySelector: () => null,
+            querySelectorAll: () => [],
+        };
+        delete require.cache[require.resolve("../adapters/youtube-adapter.js")];
+        require("../adapters/youtube-adapter.js");
+        const Adapter = globalThis.LectoroYouTubeAdapter;
+        assert.ok(Adapter?.selectBestCaptionTrack, "selectBestCaptionTrack should be exposed");
+
+        const sampleTracks = [
+            { languageCode: "en", kind: "", name: "English", baseUrl: "https://.../en-manual", vssId: ".en" },
+            { languageCode: "en", kind: "asr", name: "English (auto-generated)", baseUrl: "https://.../en-asr", vssId: "a.en" },
+            { languageCode: "es", kind: "", name: "Spanish", baseUrl: "https://.../es-manual", vssId: ".es" },
+        ];
+
+        // 1. When Focus Mode is OFF (preferAsr = false): chooses manual track
+        const chosenNormal = Adapter.selectBestCaptionTrack(sampleTracks, "en", false);
+        assert.strictEqual(chosenNormal.kind, "", "Normal mode should prefer manual track");
+        assert.strictEqual(chosenNormal.vssId, ".en");
+
+        // 2. When Focus Mode is ON (preferAsr = true): ALWAYS chooses auto-generated (ASR) track
+        const chosenFocus = Adapter.selectBestCaptionTrack(sampleTracks, "en", true);
+        assert.strictEqual(chosenFocus.kind, "asr", "Focus mode must prefer auto-generated ASR track");
+        assert.strictEqual(chosenFocus.vssId, "a.en");
+
+        // 3. Fallback when video only has manual tracks: returns manual track without crashing
+        const manualOnlyTracks = [
+            { languageCode: "en", kind: "", name: "English", baseUrl: "https://.../en-manual", vssId: ".en" },
+        ];
+        const chosenFallback = Adapter.selectBestCaptionTrack(manualOnlyTracks, "en", true);
+        assert.strictEqual(chosenFallback.kind, "", "Should fall back to manual track if no ASR tracks exist");
+    } finally {
+        globalThis.window = origWindow;
+        globalThis.document = origDocument;
+    }
+});
