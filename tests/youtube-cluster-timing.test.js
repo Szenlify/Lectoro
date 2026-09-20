@@ -1139,4 +1139,105 @@ test("YouTube sentence alignment preserves individual timed cues for run-on spee
     assert.equal(aligned[2].translation, "Tau, język, którym nigdy nie mówię,");
 });
 
+test("YouTube ASR: cascades sentence boundaries across rolling cues so cues end cleanly at periods", () => {
+    const events = [
+        {
+            tStartMs: 1000,
+            dDurationMs: 4000,
+            segs: [
+                { utf8: "against" },
+                { utf8: " Darius", tOffsetMs: 400 },
+                { utf8: " in", tOffsetMs: 800 },
+                { utf8: " the", tOffsetMs: 1000 },
+                { utf8: " top", tOffsetMs: 1200 },
+                { utf8: " lane.", tOffsetMs: 1500 },
+                { utf8: " One", tOffsetMs: 2500 },
+                { utf8: " of", tOffsetMs: 2700 },
+            ],
+        },
+        {
+            tStartMs: 3800,
+            dDurationMs: 100,
+            aAppend: 1,
+            segs: [{ utf8: "\n" }],
+        },
+        {
+            tStartMs: 3850,
+            dDurationMs: 4000,
+            segs: [
+                { utf8: "the" },
+                { utf8: " hardest", tOffsetMs: 300 },
+                { utf8: " matchups", tOffsetMs: 600 },
+                { utf8: " for", tOffsetMs: 900 },
+                { utf8: " mastery.", tOffsetMs: 1200 },
+                { utf8: " Today", tOffsetMs: 2200 },
+            ],
+        },
+        {
+            tStartMs: 6100,
+            dDurationMs: 3000,
+            segs: [
+                { utf8: "we" },
+                { utf8: " are", tOffsetMs: 200 },
+                { utf8: " playing.", tOffsetMs: 400 },
+            ],
+        },
+    ];
+
+    const json = JSON.stringify({ wireMagic: "pb3", events });
+    const cues = SubtitleService.parseTimedText(json, "", "", { preserveTiming: true });
+
+    assert.equal(cues.length, 3);
+    assert.equal(cues[0].text, "against Darius in the top lane.");
+    assert.equal(cues[0].startTime, 1);
+    assert.equal(cues[0].endTime, 3.5);
+
+    assert.equal(cues[1].text, "One of the hardest matchups for mastery.");
+    assert.equal(cues[1].startTime, 3.5);
+    assert.equal(cues[1].endTime, 6.05);
+
+    assert.equal(cues[2].text, "Today we are playing.");
+    assert.equal(cues[2].startTime, 6.05);
+    assert.equal(cues[2].endTime, 9.1);
+});
+
+test("YouTube ASR: pushes lowercase orphan head forward even when curr starts with uppercase word", () => {
+    const events = [
+        {
+            tStartMs: 1000,
+            dDurationMs: 3000,
+            segs: [
+                { utf8: "against" },
+                { utf8: " Darius", tOffsetMs: 200 },
+                { utf8: " in", tOffsetMs: 400 },
+                { utf8: " the", tOffsetMs: 600 },
+                { utf8: " top", tOffsetMs: 800 },
+                { utf8: " lane.", tOffsetMs: 1000 },
+                { utf8: " one", tOffsetMs: 1500 },
+                { utf8: " of", tOffsetMs: 1700 },
+            ],
+        },
+        {
+            tStartMs: 2700,
+            dDurationMs: 3000,
+            segs: [
+                { utf8: "Darius'" },
+                { utf8: " hardest", tOffsetMs: 300 },
+                { utf8: " matchups.", tOffsetMs: 600 },
+            ],
+        },
+    ];
+
+    const json = JSON.stringify({ wireMagic: "pb3", events });
+    const cues = SubtitleService.parseTimedText(json, "", "", { preserveTiming: true });
+
+    assert.equal(cues.length, 2);
+    assert.equal(cues[0].text, "against Darius in the top lane.");
+    assert.equal(cues[0].startTime, 1);
+    assert.equal(cues[0].endTime, 2.5);
+
+    assert.equal(cues[1].text, "one of Darius' hardest matchups.");
+    assert.equal(cues[1].startTime, 2.5);
+});
+
 

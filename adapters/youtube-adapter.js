@@ -416,7 +416,7 @@
                 throw new Error(result.error || `HTTP ${result.status}`);
             }
             if (result.ok && result.text && service) {
-                const cues = service.parseTimedText(result.text, "", "", { preserveTiming: true, preserveCueBoundaries: true });
+                const cues = service.parseTimedText(result.text, "", "", { preserveTiming: true });
                 if (cues.length) return cues;
             }
         }
@@ -620,7 +620,7 @@
         const videoId = source.searchParams.get("v") || detail.videoId || currentVideoId;
         if (videoId && getVideoIdFromUrl() && videoId !== getVideoIdFromUrl()) return;
         if (activeTrack?.languageCode && source.searchParams.get("lang") !== activeTrack.languageCode) return;
-        const cues = getSubtitleService()?.parseTimedText(detail.text, "", "", { preserveTiming: true, preserveCueBoundaries: true }) || [];
+        const cues = getSubtitleService()?.parseTimedText(detail.text, "", "", { preserveTiming: true }) || [];
         if (cues.length) processCaptionTrack(cues, videoId);
     });
 

@@ -62,7 +62,7 @@ function getR2Config() {
 // In-memory sliding window rate limiter per UID (anti-abuse / DDoS protection)
 const userRateLimits = new Map();
 const RATE_LIMIT_WINDOW_MS = 60_000;
-const MAX_REQUESTS_PER_MINUTE = 20;
+const MAX_REQUESTS_PER_MINUTE = 50;
 
 function isUserRateLimited(uid) {
     const now = Date.now();

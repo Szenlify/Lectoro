@@ -638,7 +638,7 @@
                 // Match complete sentence ending in terminal punctuation followed by orphan head.
                 // Terminal punctuation always takes priority over internal commas so clauses like "8 months ago,"
                 // are not split in half when preceded by a completed sentence.
-                let match = prev.text.match(/^([\s\S]+[.!?。！？]["'»”’)\]]?)\s+([A-ZÀ-ÿ0-9]\S*(?:\s+\S+)*)$/);
+                let match = prev.text.match(/^([\s\S]+[.!?。！？]["'»”’)\]]?)\s+(\S+(?:\s+\S+)*)$/);
                 if (!match) {
                     match = prev.text.match(/^([\s\S]+[,;]["'»”’)\]]?)\s+([A-ZÀ-ÿ0-9]\S*(?:\s+\S+)*)$/);
                 }
@@ -661,9 +661,6 @@
 
                 if (isCommaPunct) {
                     if (currStartsWithUpper && !/^(?:so|now|but|and|then|however|therefore|also)\b/i.test(orphanHead)) continue;
-                } else if (currStartsWithUpper && orphanWords > 1) {
-                    // If curr starts with a capital letter (a new sentence), only push a single isolated word like "So"
-                    continue;
                 }
 
                 // Determine split timestamp corresponding to start of orphanHead in prev
