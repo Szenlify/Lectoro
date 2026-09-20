@@ -1032,7 +1032,7 @@
             }, 700);
 
             // The bridge executes the seek via Netflix player API
-            globalThis.LectoroNetflixAdapter?.requestSeek?.(targetTime, video);
+            globalThis.LectoroNetflixAdapter?.requestSeek?.(targetTime, video, { subtitleNavigation: true });
             if (wasPlaying) {
                 setTimeout(() => {
                     if (video && video.paused) {

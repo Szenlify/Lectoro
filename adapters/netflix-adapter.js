@@ -77,7 +77,7 @@
         return SharedUtils.sendRuntimeMessage(message);
     }
 
-    function requestSeek(targetSeconds, videoFallback = null) {
+    function requestSeek(targetSeconds, videoFallback = null, options = {}) {
         if (!Number.isFinite(targetSeconds)) return;
         const targetMs = Math.round(Math.max(0, targetSeconds) * 1000);
         const video =
@@ -91,10 +91,14 @@
         // on the same frame as the keyboard action.
         optimisticSeek = {
             targetTime: targetMs / 1000,
+            previewCue: options.subtitleNavigation
+                ? cueIndex.find((cue) => Math.abs(Math.max(0, cue.startTime - 0.125) - targetMs / 1000) < 0.002) || null
+                : null,
             createdAt: performance.now(),
             expiresAt: performance.now() + OPTIMISTIC_SEEK_MAX_MS,
         };
 
+        renderIndexedCue();
         window.dispatchEvent(
             new CustomEvent(SEEK_EVENT, {
                 detail: { targetMs, play: wasPlaying },
@@ -119,6 +123,7 @@
             expiresAt: performance.now() + OPTIMISTIC_SEEK_MAX_MS,
         };
 
+        renderIndexedCue();
         window.dispatchEvent(
             new CustomEvent(SEEK_DELTA_EVENT, {
                 detail: { deltaSeconds },
@@ -570,31 +575,37 @@
         let lookupTime = Number(video?.currentTime ?? NaN);
 
         if (optimisticSeek) {
-            const closeToTarget =
-                Number.isFinite(lookupTime) &&
-                Math.abs(lookupTime - optimisticSeek.targetTime) < 0.45;
-            const oldEnoughToConfirm = now - optimisticSeek.createdAt > 60;
+            // Keep the latest destination authoritative until the media clock
+            // stays there. Netflix can briefly report an earlier seek's time.
+            const elapsedSinceArrival = optimisticSeek.confirmedAt == null
+                ? 0 : (now - optimisticSeek.confirmedAt) / 1000;
+            const atDestination = Number.isFinite(lookupTime) &&
+                lookupTime >= optimisticSeek.targetTime - 0.05 &&
+                lookupTime <= optimisticSeek.targetTime + 0.45 +
+                    elapsedSinceArrival * Math.max(1, Number(video?.playbackRate) || 1);
 
-            if (now >= optimisticSeek.expiresAt) {
+            if (now >= optimisticSeek.expiresAt &&
+                !(atDestination && !video?.seeking && optimisticSeek.previewCue &&
+                    lookupTime < optimisticSeek.previewCue.startTime)) {
                 optimisticSeek = null;
-            } else if (closeToTarget && oldEnoughToConfirm && !video?.seeking) {
-                optimisticSeek.confirmed = true;
-                optimisticSeek.confirmedAt ??= now;
-            } else if (
-                optimisticSeek.confirmedAt &&
-                now - optimisticSeek.confirmedAt >= POST_SEEK_DOM_GRACE_MS
-            ) {
-                optimisticSeek = null;
-            } else if (video && !video.paused && Number.isFinite(lookupTime) && (now - optimisticSeek.createdAt > 450)) {
-                if (
-                    lookupTime > optimisticSeek.targetTime + 0.35 ||
-                    lookupTime < optimisticSeek.targetTime - 1.5
-                ) {
-                    optimisticSeek = null;
+            } else {
+                if (atDestination && !video?.seeking) {
+                    optimisticSeek.confirmedAt ??= now;
+                } else {
+                    optimisticSeek.confirmedAt = null;
                 }
-            }
-            if (optimisticSeek && !optimisticSeek.confirmed) {
-                lookupTime = optimisticSeek.targetTime;
+                if (optimisticSeek.confirmedAt != null &&
+                    now - optimisticSeek.confirmedAt >= POST_SEEK_DOM_GRACE_MS &&
+                    (!optimisticSeek.previewCue || lookupTime >= optimisticSeek.previewCue.startTime)) {
+                    optimisticSeek = null;
+                } else {
+                    if (!atDestination || video?.seeking) lookupTime = optimisticSeek.targetTime;
+                    // Navigation has an audio pre-roll. Show the selected line
+                    // immediately instead of flashing the preceding cue or a gap.
+                    if (optimisticSeek.previewCue) {
+                        lookupTime = Math.max(lookupTime, optimisticSeek.previewCue.startTime);
+                    }
+                }
             }
         }
 
@@ -612,6 +623,9 @@
             // we are in a dialogue pause. Return empty to prevent ghost subtitles or stale fallback.
             return [];
         }
+
+        // Native text can still describe the old frame during a seek.
+        if (optimisticSeek || video?.seeking) return [];
 
         // 2. Direct DOM fallback from .player-timedtext (only when cueIndex is not yet loaded)
         try {

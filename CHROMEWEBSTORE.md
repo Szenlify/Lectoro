@@ -2,7 +2,7 @@
 
 ## General Information
 
-- **Last Updated:** 2026-09-17
+- **Last Updated:** 2026-09-20
 - **Extension Name:** Lectoro AI - Language Learning & Subtitles
 - **Short Name:** Lectoro AI
 - **Current Version:** 1.0.0
@@ -94,6 +94,7 @@ Every permission declared in `manifest.json` adheres to the Principle of Least P
 ## Version History
 
 - **1.0.0 (Current):**
+  - Stable Netflix subtitles when skipping forward or backward between dialogue lines.
   - Contextual word and phrase translations on S, with fast automatic fallback and reusable results.
   - Initial Manifest V3 release for Chrome Web Store.
   - Paired consecutive subtitle fragments on YouTube and Netflix with length validation in both languages.
