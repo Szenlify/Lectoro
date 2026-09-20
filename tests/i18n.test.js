@@ -288,3 +288,76 @@ test('SharedI18n.applyToDOM pre-translates elements inside template tags', () =>
     assert.equal(templateHeading.textContent, '動画の視聴');
 });
 
+test('SharedI18n.getPrivacyUrl returns locale-specific URLs with root en fallback', () => {
+    assert.equal(SharedI18n.getPrivacyUrl('pl'), 'https://lectoroai.vercel.app/pl/privacy');
+    assert.equal(SharedI18n.getPrivacyUrl('en'), 'https://lectoroai.vercel.app/privacy');
+    assert.equal(SharedI18n.getPrivacyUrl('ja'), 'https://lectoroai.vercel.app/ja/privacy');
+    assert.equal(SharedI18n.getPrivacyUrl('de'), 'https://lectoroai.vercel.app/de/privacy');
+    assert.equal(SharedI18n.getPrivacyUrl('es'), 'https://lectoroai.vercel.app/es/privacy');
+    assert.equal(SharedI18n.getPrivacyUrl('fr'), 'https://lectoroai.vercel.app/fr/privacy');
+    assert.equal(SharedI18n.getPrivacyUrl('it'), 'https://lectoroai.vercel.app/it/privacy');
+    assert.equal(SharedI18n.getPrivacyUrl('ko'), 'https://lectoroai.vercel.app/ko/privacy');
+    assert.equal(SharedI18n.getPrivacyUrl('nl'), 'https://lectoroai.vercel.app/nl/privacy');
+    assert.equal(SharedI18n.getPrivacyUrl('cs'), 'https://lectoroai.vercel.app/cs/privacy');
+    assert.equal(SharedI18n.getPrivacyUrl('pt'), 'https://lectoroai.vercel.app/pt/privacy');
+    assert.equal(SharedI18n.getPrivacyUrl('pl_PL'), 'https://lectoroai.vercel.app/pl/privacy');
+    assert.equal(SharedI18n.getPrivacyUrl('en-US'), 'https://lectoroai.vercel.app/privacy');
+    assert.equal(SharedI18n.getPrivacyUrl('unknown'), 'https://lectoroai.vercel.app/privacy');
+
+    assert.equal(SharedI18n.getTermsUrl('pl'), 'https://lectoroai.vercel.app/pl/terms');
+    assert.equal(SharedI18n.getTermsUrl('en'), 'https://lectoroai.vercel.app/terms');
+    assert.equal(SharedI18n.getTermsUrl('ja'), 'https://lectoroai.vercel.app/ja/terms');
+});
+
+test('SharedI18n.applyToDOM updates privacy and terms links to match current language', () => {
+    function createElement(tagName, attrs = {}) {
+        const attributes = new Map(Object.entries(attrs));
+        return {
+            tagName,
+            textContent: '',
+            getAttribute(k) { return attributes.get(k); },
+            setAttribute(k, v) { attributes.set(k, v); },
+            hasAttribute(k) { return attributes.has(k); }
+        };
+    }
+
+    const privacyLink = createElement('a', {
+        href: 'https://lectoroai.vercel.app/privacy',
+        'data-i18n': 'footer_privacy',
+        'data-i18n-href': 'privacy'
+    });
+    const termsLink = createElement('a', {
+        href: 'https://lectoroai.vercel.app/terms',
+        'data-i18n': 'footer_terms',
+        'data-i18n-href': 'terms'
+    });
+
+    const root = {
+        querySelectorAll(selector) {
+            if (selector === '[data-i18n]') return [privacyLink, termsLink];
+            if (selector === '[data-i18n-href]') return [privacyLink, termsLink];
+            if (selector === 'a[data-i18n="footer_privacy"], #footerPrivacyLink, #privacyLink') return [privacyLink];
+            if (selector === 'a[data-i18n="footer_terms"], #footerTermsLink, #termsLink') return [termsLink];
+            return [];
+        }
+    };
+
+    // When language is Polish:
+    SharedI18n.applyToDOM(root, 'pl');
+    assert.equal(privacyLink.textContent, 'Polityka Prywatności');
+    assert.equal(privacyLink.getAttribute('href'), 'https://lectoroai.vercel.app/pl/privacy');
+    assert.equal(termsLink.getAttribute('href'), 'https://lectoroai.vercel.app/pl/terms');
+
+    // When language is English:
+    SharedI18n.applyToDOM(root, 'en');
+    assert.equal(privacyLink.textContent, 'Privacy Policy');
+    assert.equal(privacyLink.getAttribute('href'), 'https://lectoroai.vercel.app/privacy');
+    assert.equal(termsLink.getAttribute('href'), 'https://lectoroai.vercel.app/terms');
+
+    // When language is Japanese:
+    SharedI18n.applyToDOM(root, 'ja');
+    assert.equal(privacyLink.textContent, 'プライバシーポリシー');
+    assert.equal(privacyLink.getAttribute('href'), 'https://lectoroai.vercel.app/ja/privacy');
+    assert.equal(termsLink.getAttribute('href'), 'https://lectoroai.vercel.app/ja/terms');
+});
+

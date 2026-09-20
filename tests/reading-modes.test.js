@@ -490,19 +490,19 @@ test("word clouds skip simple words and highlight every token of a dictionary ph
 
 test("S requests the complete context and renders get up as one expression", async () => {
     const state = app({ wordCloudMode: true, subtitleTTS: false });
-    const words = ["Get", "up", "now"];
+    const words = ["Get", "up", "early"];
     const spans = words.map(element);
     const line = element();
     spans.forEach(span => { line.appendChild(span); line.appendChild(element(" ")); });
     state.context.activeWordSpans = spans;
-    state.context.activeText = "Get up now";
+    state.context.activeText = "Get up early";
     let calls = 0;
     state.context.SharedTranslatorService.lookupWords = async (tokens, target, source, options) => {
         calls++;
         assert.equal(options.contextual, true);
-        assert.equal(options.context, "Get up now");
+        assert.equal(options.context, "Get up early");
         assert.deepEqual(Array.from(tokens), words);
-        return [{ translated: "wstań", length: 2 }, null, { translated: "teraz", length: 1 }];
+        return [{ translated: "wstań", length: 2 }, null, { translated: "wcześnie", length: 1 }];
     };
     await state.start();
     assert.equal(calls, 1);
@@ -590,3 +590,36 @@ test("holding S keeps the session open; a second press closes it and resumes pla
     assert.equal(state.ui.isSubtitleUiOpen(), false);
     assert.equal(state.video.paused, false);
 });
+
+test("words that do not highlight (simple words, non-dictionary terms) are never translated or given clouds after clicking S", async () => {
+    const state = app({ wordCloudMode: true, subtitleTTS: false, learningLang: "en", targetLang: "pl" });
+    const words = ["I", "am", "reading", "the", "book", "in", "peace"];
+    const spans = words.map(element);
+    const line = element();
+    spans.forEach((span) => {
+        line.appendChild(span);
+        line.appendChild(element(" "));
+    });
+    state.context.activeWordSpans = spans;
+    state.context.activeText = words.join(" ");
+    // Even if lookupWords returns translations for ALL words (including simple ones):
+    state.context.SharedTranslatorService.lookupWords = async (tokens) => {
+        return tokens.map((t) => ({ translated: `pl:${t}`, length: 1 }));
+    };
+    await state.start();
+    // Only "reading", "book", "peace" must have word clouds!
+    // "I", "am", "the", "in" must NOT have word clouds and must NOT be highlighted!
+    const clouds = state.context.wordCloudEls;
+    assert.deepEqual(
+        clouds.map((c) => c.cloud.textContent),
+        ["pl:reading", "pl:book", "pl:peace"],
+    );
+    assert.equal(spans[0].classList.contains("highlight"), false, "'I' must not highlight");
+    assert.equal(spans[1].classList.contains("highlight"), false, "'am' must not highlight");
+    assert.equal(spans[2].classList.contains("highlight"), true, "'reading' must highlight");
+    assert.equal(spans[3].classList.contains("highlight"), false, "'the' must not highlight");
+    assert.equal(spans[4].classList.contains("highlight"), true, "'book' must highlight");
+    assert.equal(spans[5].classList.contains("highlight"), false, "'in' must not highlight");
+    assert.equal(spans[6].classList.contains("highlight"), true, "'peace' must highlight");
+});
+

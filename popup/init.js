@@ -28,6 +28,9 @@ function whenPopupReady(fn) {
 
 chrome.storage.local.get(POPUP_INIT_KEYS, (data) => {
     popupState = { ...POPUP_INIT_KEYS, ...data };
+    if (typeof SharedI18n !== "undefined") {
+        SharedI18n.applyToDOM(document, popupState.targetLang || "en");
+    }
     _popupReadyResolver(popupState);
 });
 

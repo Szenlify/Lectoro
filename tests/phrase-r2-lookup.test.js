@@ -53,11 +53,11 @@ test('GET UP is returned as one phrase from static phrase dictionary without R2 
 test('common phrases from dictionaries/phrase/en-pl.json match in word-by-word mode', async () => {
   const { context, requests } = createRuntime(); // Loads from file
   const testCases = [
-    { words: ['play', 'with', 'fire'], expected: 'igrać z ogniem', length: 3 },
-    { words: ['on', 'thin', 'ice'], expected: 'na cienkim lodzie', length: 3 },
-    { words: ['take', 'off'], expected: 'startować', length: 2 },
-    { words: ['take', 'out'], expected: 'wyjmować', length: 2 },
-    { words: ['take', 'over'], expected: 'przejmować kontrolę', length: 2 },
+    { words: ['look', 'for', 'it'], expected: 'szukać tego', length: 3 },
+    { words: ['give', 'up'], expected: 'poddać się', length: 2 },
+    { words: ['take', 'off'], expected: 'zdjąć', length: 2 },
+    { words: ['wake', 'up'], expected: 'obudzić się', length: 2 },
+    { words: ['stand', 'up'], expected: 'wstać', length: 2 },
   ];
 
   for (const { words, expected, length } of testCases) {

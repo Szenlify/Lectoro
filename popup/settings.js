@@ -11,6 +11,14 @@ function applyPopupTranslations(lang = null) {
     if (typeof SharedI18n !== "undefined") {
         SharedI18n.applyToDOM(document, activeLang);
     }
+    const privacyLink = document.getElementById("footerPrivacyLink") || document.querySelector('a[data-i18n="footer_privacy"]');
+    if (privacyLink && typeof SharedI18n !== "undefined" && typeof SharedI18n.getPrivacyUrl === "function") {
+        privacyLink.href = SharedI18n.getPrivacyUrl(activeLang);
+    }
+    const termsLink = document.getElementById("footerTermsLink") || document.querySelector('a[data-i18n="footer_terms"]');
+    if (termsLink && typeof SharedI18n !== "undefined" && typeof SharedI18n.getTermsUrl === "function") {
+        termsLink.href = SharedI18n.getTermsUrl(activeLang);
+    }
     const grid = document.getElementById("subscriptionPlansGrid");
     if (grid) {
         grid.dataset.renderedKey = "";

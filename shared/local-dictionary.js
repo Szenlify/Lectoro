@@ -224,7 +224,8 @@
                 i += match.tokens.length - 1;
                 continue;
             }
-            if (!source && (languages.get(target) || "en") === "en" && utils.isSimpleWord(words[i])) continue;
+            const srcLang = source || languages.get(target) || "en";
+            if (srcLang === "en" && utils.isSimpleWord(words[i])) continue;
             const translated = source ? singleTranslation(lookup(words[i], target, source)) : lookupDetails(words[i], target, words, i)?.primaryTranslation;
             if (translated) result[i] = { translated, length: 1 };
         }

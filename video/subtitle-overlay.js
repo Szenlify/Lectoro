@@ -3416,11 +3416,18 @@
 
         const pendingClass = `${PREFIX}word-cloud-loading`;
         const pendingOwner = String(modeRevision);
+
+        const isEligibleWord = (span) => {
+            if (!span) return false;
+            const wordText = span.dataset?.clean || span.textContent || "";
+            if (!SharedTranslatorService.dictionaryTerm(wordText)) return false;
+            if (learningLang === "en" && SharedUtils.isSimpleWord(wordText)) return false;
+            return true;
+        };
+
         let translations;
         for (const span of wordSpans) {
-            const wordText = span.dataset?.clean || span.textContent || "";
-            if (!SharedTranslatorService.dictionaryTerm(wordText)) continue;
-            if (learningLang === "en" && SharedUtils.isSimpleWord(wordText)) continue;
+            if (!isEligibleWord(span)) continue;
             span.dataset.wordCloudLoading = pendingOwner;
             span.classList.add(pendingClass);
             span.setAttribute?.("aria-busy", "true");
@@ -3485,6 +3492,12 @@
             const targetSpan = members[0];
             const rect = targetSpan.getBoundingClientRect();
             if (rect.width === 0 && rect.height === 0) return;
+
+            // Words that do not highlight (simple words / non-dictionary terms) must not be translated
+            if (length === 1 && !isEligibleWord(targetSpan)) {
+                return;
+            }
+
             const wrappers = length > 1
                 ? wrapMatchedSpans(members, WORD_CLOUD_HIGHLIGHT_CLASS, undefined, `${PREFIX}word-cloud-phrase`)
                 : [];
@@ -3506,10 +3519,7 @@
         });
         const missing = wordSpans.map((span, i) => ({ span, i }))
             .filter(({ span, i }) => {
-                const wordText = span.dataset?.clean || span.textContent || "";
-                return !translations[i] && !covered.has(i)
-                    && SharedTranslatorService.dictionaryTerm(wordText)
-                    && !(learningLang === "en" && SharedUtils.isSimpleWord(wordText));
+                return !translations[i] && !covered.has(i) && isEligibleWord(span);
             });
         const loadingClass = `${PREFIX}word-cloud-loading`;
         const loadingOwner = String(modeRevision);

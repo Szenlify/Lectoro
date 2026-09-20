@@ -3258,12 +3258,31 @@
         return text;
     }
 
+    const WEBSITE_BASE_URL = "https://lectoroai.vercel.app";
+
+    function getLocalizedUrl(path = "/privacy", lang = null) {
+        const target = normalizeLang(lang || currentLang);
+        const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+        if (target === "en") {
+            return `${WEBSITE_BASE_URL}${normalizedPath}`;
+        }
+        return `${WEBSITE_BASE_URL}/${target}${normalizedPath}`;
+    }
+
+    function getPrivacyUrl(lang = null) {
+        return getLocalizedUrl("/privacy", lang);
+    }
+
+    function getTermsUrl(lang = null) {
+        return getLocalizedUrl("/terms", lang);
+    }
+
     function applyToDOM(root = document, lang = null) {
         if (!root) return;
         const normalized = lang ? setLang(lang) : currentLang;
 
         // Text content
-        const elements = root.querySelectorAll("[data-i18n]");
+        const elements = root.querySelectorAll ? root.querySelectorAll("[data-i18n]") : [];
         for (const el of elements) {
             const key = el.getAttribute("data-i18n");
             if (key) {
@@ -3272,7 +3291,7 @@
         }
 
         // Title attributes
-        const titles = root.querySelectorAll("[data-i18n-title]");
+        const titles = root.querySelectorAll ? root.querySelectorAll("[data-i18n-title]") : [];
         for (const el of titles) {
             const key = el.getAttribute("data-i18n-title");
             if (key) {
@@ -3281,7 +3300,7 @@
         }
 
         // Placeholder attributes
-        const placeholders = root.querySelectorAll("[data-i18n-placeholder]");
+        const placeholders = root.querySelectorAll ? root.querySelectorAll("[data-i18n-placeholder]") : [];
         for (const el of placeholders) {
             const key = el.getAttribute("data-i18n-placeholder");
             if (key) {
@@ -3290,14 +3309,14 @@
         }
 
         // Aria-label attributes
-        const arias = root.querySelectorAll("[data-i18n-aria]");
+        const arias = root.querySelectorAll ? root.querySelectorAll("[data-i18n-aria]") : [];
         for (const el of arias) {
             const key = el.getAttribute("data-i18n-aria");
             if (key) {
                 el.setAttribute("aria-label", t(key, normalized));
             }
         }
-        const ariaLabels = root.querySelectorAll("[data-i18n-aria-label]");
+        const ariaLabels = root.querySelectorAll ? root.querySelectorAll("[data-i18n-aria-label]") : [];
         for (const el of ariaLabels) {
             const key = el.getAttribute("data-i18n-aria-label");
             if (key) {
@@ -3305,8 +3324,31 @@
             }
         }
 
+        // Href attributes / Localized links
+        const hrefs = root.querySelectorAll ? root.querySelectorAll("[data-i18n-href]") : [];
+        for (const el of hrefs) {
+            const key = el.getAttribute("data-i18n-href");
+            if (key === "privacy") {
+                el.setAttribute("href", getPrivacyUrl(normalized));
+            } else if (key === "terms") {
+                el.setAttribute("href", getTermsUrl(normalized));
+            } else if (key) {
+                el.setAttribute("href", getLocalizedUrl(key, normalized));
+            }
+        }
+
+        // Automatic fallback for footer_privacy and footer_terms links
+        const privacyLinks = root.querySelectorAll ? root.querySelectorAll('a[data-i18n="footer_privacy"], #footerPrivacyLink, #privacyLink') : [];
+        for (const el of privacyLinks) {
+            el.setAttribute("href", getPrivacyUrl(normalized));
+        }
+        const termsLinks = root.querySelectorAll ? root.querySelectorAll('a[data-i18n="footer_terms"], #footerTermsLink, #termsLink') : [];
+        for (const el of termsLinks) {
+            el.setAttribute("href", getTermsUrl(normalized));
+        }
+
         // Templates (pre-translate unmounted template contents)
-        const templates = root.querySelectorAll("template");
+        const templates = root.querySelectorAll ? root.querySelectorAll("template") : [];
         for (const tpl of templates) {
             if (tpl.content) {
                 applyToDOM(tpl.content, normalized);
@@ -3565,6 +3607,9 @@
         getLang,
         applyToDOM,
         normalizeLang,
+        getPrivacyUrl,
+        getTermsUrl,
+        getLocalizedUrl,
         getLocalizedPrice,
         LOCALIZED_PRICES,
         SUPPORTED_LOCALES: Object.keys(STRINGS),
