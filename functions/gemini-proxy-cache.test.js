@@ -711,26 +711,28 @@ test("SharedTranslatorService delegates googleTranslate to chrome.runtime.sendMe
     assert.equal(sentMessages[0].text, "Hello world");
 });
 
-test("SubscriptionConfig.checkSubtitleLimit enforces 15k limit on free plan and unlimited on paid plans", () => {
+test("SubscriptionConfig.checkSubtitleLimit guarantees unlimited subtitles on free and paid plans while supporting custom limits", () => {
     const SubscriptionConfig = require("./subscription-config");
 
-    // Free plan: 15,000 characters
+    // Free plan: Unlimited
     const allowedFree = SubscriptionConfig.checkSubtitleLimit({
         plan: "free",
         usedCharacters: 14000,
         requestedCharacters: 500,
     });
     assert.equal(allowedFree.allowed, true);
-    assert.equal(allowedFree.remaining, 1000);
+    assert.equal(allowedFree.remaining, Infinity);
 
-    const blockedFree = SubscriptionConfig.checkSubtitleLimit({
+    // Custom or finite limit enforcement
+    const blockedCustom = SubscriptionConfig.checkSubtitleLimit({
         plan: "free",
         usedCharacters: 14800,
         requestedCharacters: 300,
+        limit: 15000,
     });
-    assert.equal(blockedFree.allowed, false);
-    assert.equal(blockedFree.code, SubscriptionConfig.LIMIT_ERROR_CODES.SUBTITLES_HOURLY_LIMIT_REACHED);
-    assert.equal(blockedFree.upgradeRequired, true);
+    assert.equal(blockedCustom.allowed, false);
+    assert.equal(blockedCustom.code, SubscriptionConfig.LIMIT_ERROR_CODES.SUBTITLES_HOURLY_LIMIT_REACHED);
+    assert.equal(blockedCustom.upgradeRequired, true);
 
     // Basic and Pro plans: Unlimited
     const basicCheck = SubscriptionConfig.checkSubtitleLimit({
@@ -750,13 +752,18 @@ test("SubscriptionConfig.checkSubtitleLimit enforces 15k limit on free plan and 
     assert.equal(proCheck.remaining, Infinity);
 });
 
-test("SubscriptionService local subtitle quota tracking respects 15,000 characters/hour", async (t) => {
+test("SubscriptionService local subtitle quota tracking respects unlimited FREE subtitles and finite limits when configured", async (t) => {
     delete require.cache[require.resolve("./subscription-config")];
     delete require.cache[require.resolve("../shared/subscription-config")];
     delete require.cache[require.resolve("../shared/subscription-service")];
 
     const SubscriptionConfig = require("../shared/subscription-config");
-    global.SubscriptionConfig = SubscriptionConfig;
+    let customLimits = null;
+    const mockConfig = {
+        ...SubscriptionConfig,
+        getPlanLimits: (plan) => customLimits || SubscriptionConfig.getPlanLimits(plan),
+    };
+    global.SubscriptionConfig = mockConfig;
 
     const mockStorage = {
         subscriptionProfileCache: {
@@ -792,6 +799,16 @@ test("SubscriptionService local subtitle quota tracking respects 15,000 characte
     });
 
     const SubscriptionService = require("../shared/subscription-service");
+
+    // Standard Free plan is unlimited subtitles
+    const statusFree = await SubscriptionService.consumeSubtitleQuota(30);
+    assert.equal(statusFree.allowed, true);
+    assert.equal(statusFree.remaining, Infinity);
+
+    // When configured with a finite limit (e.g. custom metered quota)
+    customLimits = {
+        subtitles: { charactersPerHour: 15000 },
+    };
 
     // 14950 used + 30 chars requested => allowed (total 14980 <= 15000)
     const status1 = await SubscriptionService.consumeSubtitleQuota(30);

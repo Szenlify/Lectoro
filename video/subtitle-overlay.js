@@ -3094,9 +3094,108 @@
         copy.querySelector(`.${PREFIX}paywall-upgrade-btn`)?.addEventListener("click", () => {
             closeAiTooltip({ resumeVideo: false });
             if (typeof SubscriptionService !== "undefined") {
-                SubscriptionService.startCheckout("basic").catch(() => {
+                SubscriptionService.startCheckout("pro").catch(() => {
                     SubscriptionService.openPlans();
                 });
+            }
+        });
+    }
+
+    function showAiAuthOverlay(layout = aiExplainLayout, video = null) {
+        clearTimeout(aiAutoAdvanceTimer);
+        aiAutoAdvanceTimer = null;
+        aiAutoAdvanceDisabled = true;
+        aiExplainSpeechToken++;
+        SharedTtsService.cancel();
+
+        aiTooltipActive = true;
+        aiPaywallActive = true;
+        ensureAiExplainKeydownListener();
+
+        const lang = ((typeof SharedI18n !== "undefined" ? SharedI18n.getLang() : null) || subtitleTranslationLang || "en").toLowerCase().slice(0, 2);
+        const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, lang, p) : k);
+        const safeAttr = (s) =>
+            typeof QT !== "undefined" && QT?.escapeAttr
+                ? QT.escapeAttr(s)
+                : String(s || "").replace(/"/g, "&quot;");
+
+        const titleText = t("ai_auth_title");
+        const bannerTitle = t("ai_auth_banner_title");
+        const bannerSub = t("ai_auth_banner_sub");
+        const offerTitle = t("ai_auth_offer_title");
+        const perk1 = `<strong>${t("ai_auth_perk1")}</strong>`;
+        const perk2 = `<strong>${t("ai_auth_perk2")}</strong>`;
+        const perk3 = `<strong>${t("ai_auth_perk3")}</strong>`;
+        const resumeText = t("video_paywall_resume");
+        const signInText = t("sign_in_google");
+
+        const html = `
+            <div class="${PREFIX}header ${PREFIX}paywall-header">
+                <div class="${PREFIX}paywall-badge-title">
+                    <span class="${PREFIX}paywall-icon">🔑</span>
+                    <span>${titleText}</span>
+                </div>
+                <button type="button" class="${PREFIX}paywall-close-btn" aria-label="${safeAttr(t("close_and_resume_aria"))}" title="${safeAttr(t("video_paywall_close_title"))}">✕</button>
+            </div>
+            <div class="${PREFIX}body ${PREFIX}paywall-body">
+                <div class="${PREFIX}paywall-card">
+                    <div class="${PREFIX}paywall-status-banner">
+                        <span class="${PREFIX}paywall-check">✓</span>
+                        <div class="${PREFIX}paywall-status-text">
+                            <strong>${bannerTitle}</strong>
+                            <span>${bannerSub}</span>
+                        </div>
+                    </div>
+                    <div class="${PREFIX}paywall-offer-title">${offerTitle}</div>
+                    <ul class="${PREFIX}paywall-perks-list">
+                        <li><span class="${PREFIX}paywall-spark">✦</span> ${perk1}</li>
+                        <li><span class="${PREFIX}paywall-spark">✦</span> ${perk2}</li>
+                        <li><span class="${PREFIX}paywall-spark">✦</span> ${perk3}</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="${PREFIX}save-footer ${PREFIX}paywall-footer">
+                <button type="button" class="${PREFIX}paywall-btn-ghost ${PREFIX}paywall-resume-btn" title="${safeAttr(resumeText)}">
+                    ${resumeText}
+                </button>
+                <button type="button" class="${PREFIX}paywall-btn-primary ${PREFIX}auth-signin-btn">
+                    ${signInText}
+                </button>
+            </div>`;
+
+        const effectiveLayout =
+            layout || aiExplainLayout || translationAnchorLayout || captureSubtitleLayout();
+        const copy = applyAiExplanation(html, effectiveLayout, titleText);
+
+        copy.querySelector(`.${PREFIX}paywall-close-btn`)?.addEventListener("click", () => {
+            closeAiTooltip({ resumeVideo: true });
+        });
+
+        copy.querySelector(`.${PREFIX}paywall-resume-btn`)?.addEventListener("click", () => {
+            closeAiTooltip({ resumeVideo: true });
+        });
+
+        const signInBtn = copy.querySelector(`.${PREFIX}auth-signin-btn`);
+        signInBtn?.addEventListener("click", async () => {
+            if (signInBtn.disabled) return;
+            signInBtn.disabled = true;
+            signInBtn.textContent = t("signing_in");
+            try {
+                let ok = false;
+                if (typeof FirebaseSync !== "undefined" && typeof FirebaseSync.signIn === "function") {
+                    await FirebaseSync.signIn();
+                    ok = true;
+                } else if (typeof SharedUtils !== "undefined" && typeof SharedUtils.sendRuntimeMessage === "function") {
+                    const res = await SharedUtils.sendRuntimeMessage({ type: "QT_FIREBASE_SIGN_IN" });
+                    ok = !!res?.ok;
+                    if (!ok) throw new Error(res?.error || "Login failed");
+                }
+                closeAiTooltip({ resumeVideo: false });
+                handleAIExplain(video);
+            } catch (err) {
+                console.warn("[Lectoro] Sign in from video overlay failed:", err);
+                signInBtn.disabled = false;
+                signInBtn.textContent = signInText;
             }
         });
     }
@@ -3135,6 +3234,16 @@
             height: 50,
         };
         aiExplainLayout = layout || { rect };
+
+        if (typeof FirebaseSync !== "undefined" && typeof FirebaseSync.getUser === "function") {
+            try {
+                const user = await FirebaseSync.getUser();
+                if (!user || !user.uid) {
+                    showAiAuthOverlay(aiExplainLayout, activeAiVideo);
+                    return;
+                }
+            } catch (_) { }
+        }
 
         try {
             const cachedUsage = (await GeminiProxy?.getCachedUsage?.()) || null;
@@ -3176,6 +3285,11 @@
                 );
             } catch (err) {
                 if (typeof GeminiProxy !== "undefined" && GeminiProxy?.isLimitError?.(err)) {
+                    throw err;
+                }
+                const isAuthError = err?.code === "AUTH_REQUIRED" ||
+                    String(err?.message || "").includes("AUTH_REQUIRED");
+                if (isAuthError) {
                     throw err;
                 }
                 console.warn("[Lectoro] Gemini explainSentence failed, falling back to 1/1 sentence translation:", err);
@@ -3290,7 +3404,11 @@
         } catch (err) {
             console.error("[Lectoro] Gemini AI explain error:", err);
             if (isCurrent()) {
-                if (typeof GeminiProxy !== "undefined" && GeminiProxy?.isLimitError?.(err)) {
+                const isAuthError = err?.code === "AUTH_REQUIRED" ||
+                    String(err?.message || "").includes("AUTH_REQUIRED");
+                if (isAuthError) {
+                    showAiAuthOverlay(aiExplainLayout, activeAiVideo);
+                } else if (typeof GeminiProxy !== "undefined" && GeminiProxy?.isLimitError?.(err)) {
                     showAiPaywallOverlay(aiExplainLayout, err?.validation);
                 } else if (!aiExplainQueue.length) {
                     applyAiExplanation(
@@ -4688,6 +4806,7 @@
         closeAiTooltip,
         isAiTooltipActive: () => aiTooltipActive || aiPaywallActive,
         showAiPaywallOverlay,
+        showAiAuthOverlay,
         navigateAiExplain,
         nextAiExplainItem,
         prevAiExplainItem,

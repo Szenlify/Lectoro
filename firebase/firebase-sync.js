@@ -193,6 +193,16 @@
                 );
             }
 
+            if (SharedUtils.isContentScriptEnvironment()) {
+                const response = await SharedUtils.sendRuntimeMessage({
+                    type: MSG.FIREBASE_SIGN_IN,
+                });
+                if (!response?.ok) {
+                    throw new Error(response?.error || "Nie udało się zalogować");
+                }
+                return await getUser();
+            }
+
             const redirectUrl = chrome.identity.getRedirectURL();
             const scopes = encodeURIComponent("openid email profile");
 

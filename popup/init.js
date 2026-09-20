@@ -5,6 +5,7 @@ const POPUP_INIT_KEYS = Object.freeze({
     ...LectoroConstants.DEFAULT_READING_SETTINGS,
     ...LectoroConstants.DEFAULT_TTS_SETTINGS,
     reviewDirection: "normal",
+    reviewWebBannerDismissed: false,
     savedWords: [],
     lastFirebaseSync: null,
     pendingFirebaseChanges: {},
@@ -104,6 +105,10 @@ async function ensureTabLoaded(tabName) {
         if (typeof SharedI18n !== "undefined") {
             const lang = select?.value || popupState?.targetLang || "en";
             SharedI18n.applyToDOM(content, lang);
+        }
+
+        if (tabName === "review" && popupState?.reviewWebBannerDismissed) {
+            content.querySelector("#reviewWebBanner")?.remove();
         }
 
         if (tabName === "words") {

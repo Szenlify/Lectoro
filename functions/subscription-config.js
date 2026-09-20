@@ -32,7 +32,7 @@
                 charactersPerMonth: 0,
             }),
             subtitles: Object.freeze({
-                charactersPerHour: 15000,
+                charactersPerHour: Infinity,
             }),
             exports: Object.freeze({
                 ankiPerMonth: 3,
@@ -65,8 +65,8 @@
             displayName: "PRO",
             trialDays: 3,
             priceMonthly: Object.freeze({ amount: 19.99, currency: "USD" }),
-            ai: Object.freeze({ usesPerMonth: 10000 }),
-            srs: Object.freeze({ maxSavedCards: 10000 }),
+            ai: Object.freeze({ usesPerMonth: Infinity }),
+            srs: Object.freeze({ maxSavedCards: Infinity }),
             geminiTts: Object.freeze({
                 enabled: true,
                 maxCharactersPerRequest: 1000,
@@ -109,7 +109,7 @@
         return Array.from(String(text || "").trim()).length;
     }
 
-    function result({ allowed, code = null, feature, plan, limit, used, requested = 1, message }) {
+    function result({ allowed, code = null, feature, plan, limit, used, requested = 1, remaining, message }) {
         return {
             allowed,
             code,
@@ -118,7 +118,7 @@
             limit,
             used,
             requested,
-            remaining: Math.max(0, limit - used),
+            remaining: remaining !== undefined ? remaining : (Number.isFinite(limit) ? Math.max(0, limit - used) : Infinity),
             upgradeRequired: !allowed,
             message,
         };
@@ -127,9 +127,10 @@
     function checkAiLimit({ plan, used = 0, requested = 1 }) {
         const normalizedPlan = normalizePlan(plan);
         const limit = getPlanLimits(normalizedPlan).ai.usesPerMonth;
+        const isUnlimited = !Number.isFinite(limit);
         const safeUsed = Math.max(0, Number(used) || 0);
         const safeRequested = Math.max(1, Number(requested) || 1);
-        const allowed = safeUsed + safeRequested <= limit;
+        const allowed = isUnlimited || (safeUsed + safeRequested <= limit);
         return result({
             allowed,
             code: allowed ? null : LIMIT_ERROR_CODES.AI_LIMIT_REACHED,
@@ -138,18 +139,20 @@
             limit,
             used: safeUsed,
             requested: safeRequested,
+            remaining: isUnlimited ? Infinity : Math.max(0, limit - safeUsed),
             message: allowed
-                ? "Funkcja AI jest dostępna."
-                : `Wykorzystano miesięczny limit AI (${limit}) dla planu ${normalizedPlan.toUpperCase()}.`,
+                ? "AI feature is available."
+                : `Monthly AI limit (${limit}) reached for plan ${normalizedPlan.toUpperCase()}.`,
         });
     }
 
     function checkSrsLimit({ plan, savedCards = 0, additionalCards = 1 }) {
         const normalizedPlan = normalizePlan(plan);
         const limit = getPlanLimits(normalizedPlan).srs.maxSavedCards;
+        const isUnlimited = !Number.isFinite(limit);
         const used = Math.max(0, Number(savedCards) || 0);
         const requested = Math.max(1, Number(additionalCards) || 1);
-        const allowed = used + requested <= limit;
+        const allowed = isUnlimited || (used + requested <= limit);
         return result({
             allowed,
             code: allowed ? null : LIMIT_ERROR_CODES.SRS_LIMIT_REACHED,
@@ -158,9 +161,10 @@
             limit,
             used,
             requested,
+            remaining: isUnlimited ? Infinity : Math.max(0, limit - used),
             message: allowed
-                ? "Możesz zapisać fiszkę."
-                : `Osiągnięto limit ${limit} zapisanych fiszek dla planu ${normalizedPlan.toUpperCase()}.`,
+                ? "You can save a flashcard."
+                : `Saved card limit (${limit}) reached for plan ${normalizedPlan.toUpperCase()}.`,
         });
     }
 
@@ -179,7 +183,7 @@
                 limit: 0,
                 used,
                 requested,
-                message: "Gemini TTS nie jest dostępny w planie FREE. Ulepsz plan, aby włączyć tę funkcję.",
+                message: "Gemini TTS is not included in the FREE plan. Upgrade your plan to enable this feature.",
             });
         }
         if (requested > limits.maxCharactersPerRequest) {
@@ -191,7 +195,7 @@
                 limit: limits.maxCharactersPerRequest,
                 used: 0,
                 requested,
-                message: `Tekst ma ${requested} znaków. Limit jednego żądania Gemini TTS w planie ${normalizedPlan.toUpperCase()} wynosi ${limits.maxCharactersPerRequest}.`,
+                message: `Text has ${requested} characters. Max characters per Gemini TTS request in plan ${normalizedPlan.toUpperCase()} is ${limits.maxCharactersPerRequest}.`,
             });
         }
 
@@ -205,14 +209,14 @@
             used,
             requested,
             message: allowed
-                ? "Synteza Gemini TTS jest dostępna."
-                : `Przekroczono miesięczny limit ${limits.charactersPerMonth} znaków Gemini TTS dla planu ${normalizedPlan.toUpperCase()}.`,
+                ? "Gemini TTS synthesis is available."
+                : `Monthly Gemini TTS character limit (${limits.charactersPerMonth}) reached for plan ${normalizedPlan.toUpperCase()}.`,
         });
     }
 
-    function checkSubtitleLimit({ plan, usedCharacters = 0, requestedCharacters = 0 }) {
+    function checkSubtitleLimit({ plan, usedCharacters = 0, requestedCharacters = 0, limit: customLimit }) {
         const normalizedPlan = normalizePlan(plan);
-        const limit = getPlanLimits(normalizedPlan).subtitles?.charactersPerHour ?? 15000;
+        const limit = customLimit !== undefined ? customLimit : (getPlanLimits(normalizedPlan).subtitles?.charactersPerHour ?? Infinity);
         const isUnlimited = !Number.isFinite(limit);
         const safeUsed = Math.max(0, Number(usedCharacters) || 0);
         const safeRequested = Math.max(0, Number(requestedCharacters) || 0);
@@ -227,8 +231,8 @@
             requested: safeRequested,
             remaining: isUnlimited ? Infinity : Math.max(0, limit - safeUsed),
             message: allowed
-                ? "Tłumaczenie napisów jest dostępne."
-                : `Przekroczono godzinny limit (${limit.toLocaleString("pl-PL")} znaków) tłumaczenia napisów dla planu ${normalizedPlan.toUpperCase()}.`,
+                ? "Subtitle translation is available."
+                : `Hourly subtitle limit (${limit.toLocaleString("en-US")} characters) reached for plan ${normalizedPlan.toUpperCase()}.`,
         });
     }
 

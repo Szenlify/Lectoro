@@ -335,10 +335,10 @@ function renderSubscriptionPlans(subscription, signedIn = true) {
 </span>
                     <span>
     <i aria-hidden="true">✓</i>
-    <b>${limits.ai.usesPerMonth.toLocaleString(lang)}</b>
+    <b>${Number.isFinite(limits.ai.usesPerMonth) ? limits.ai.usesPerMonth.toLocaleString(lang) : t("unlimited")}</b>
     ${aiUsesText}
 </span>
-                    <span><i aria-hidden="true">✓</i><b>${limits.srs.maxSavedCards.toLocaleString(lang)}</b> ${t("feature_srs_flashcards")}</span>
+                    <span><i aria-hidden="true">✓</i><b>${Number.isFinite(limits.srs.maxSavedCards) ? limits.srs.maxSavedCards.toLocaleString(lang) : t("unlimited")}</b> ${t("feature_srs_flashcards")}</span>
                     <span><i aria-hidden="true">✓</i><b>${planId === SubscriptionConfig.SUBSCRIPTION_PLANS.FREE ? "3/mo" : t("unlimited")}</b> ${t("feature_export")}</span>
                     ${limits.geminiTts.enabled
                     ? `<span><i aria-hidden="true">✓</i><b>${t("feature_natural_voices")}</b></span>`

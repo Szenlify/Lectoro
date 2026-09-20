@@ -97,6 +97,48 @@ document.getElementById("reviewDirBtn")?.addEventListener("click", () => {
     renderReview();
 });
 
+function openWebReviews(e) {
+    if (e && typeof e.preventDefault === "function") e.preventDefault();
+    const url = "https://lectoroai.vercel.app/dashboard/reviews";
+    if (typeof chrome !== "undefined" && chrome.tabs?.create) {
+        chrome.tabs.create({ url });
+    } else {
+        window.open(url, "_blank");
+    }
+}
+function checkWebBannerDismissed() {
+    if (typeof popupState !== "undefined" && popupState.reviewWebBannerDismissed) {
+        document.getElementById("reviewWebBanner")?.remove();
+        return;
+    }
+    chrome.storage?.local?.get({ reviewWebBannerDismissed: false }, (data) => {
+        if (data.reviewWebBannerDismissed) {
+            document.getElementById("reviewWebBanner")?.remove();
+        }
+    });
+}
+checkWebBannerDismissed();
+
+document.getElementById("reviewWebBannerBtn")?.addEventListener("click", openWebReviews);
+document.getElementById("reviewWebBannerClose")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const banner = document.getElementById("reviewWebBanner");
+    if (banner) {
+        banner.style.opacity = "0";
+        banner.style.transform = "scale(0.96)";
+        setTimeout(() => banner.remove(), 150);
+    }
+    if (typeof popupState !== "undefined") {
+        popupState.reviewWebBannerDismissed = true;
+    }
+    chrome.storage?.local?.set({ reviewWebBannerDismissed: true });
+});
+document.getElementById("reviewCard")?.addEventListener("click", (e) => {
+    if (e.target.closest(".review-empty-web-link")) {
+        openWebReviews(e);
+    }
+});
+
 // ── Review Voice Picker ──────────────────────────────────────────
 // Compact voice picker for the review workflow.
 function setReviewVoiceStatus(message = "", type = "") {
@@ -574,11 +616,29 @@ function renderReview() {
         if (deleteAllBtn) deleteAllBtn.style.display = "none";
         const emptyTitle = typeof SharedI18n !== "undefined" ? SharedI18n.t("review_empty_title") : "No cards to review!";
         const emptySub = typeof SharedI18n !== "undefined" ? SharedI18n.t("review_empty_sub") : "Add new words or come back later.";
+        const cardTitle = typeof SharedI18n !== "undefined" ? SharedI18n.t("review_web_card_title") : "Practice anywhere, anytime";
+        const cardDesc = typeof SharedI18n !== "undefined" ? SharedI18n.t("review_web_card_desc") : "Your words sync across devices. Practice flashcards on mobile & web:";
         card.innerHTML = `
             <div class="review-empty">
                 <div class="review-empty-icon">✅</div>
                 <div class="review-empty-text">${emptyTitle}</div>
                 <div class="review-empty-sub">${emptySub}</div>
+                <div class="review-empty-web-card">
+                    <div class="review-empty-web-badge">
+                        <img src="icons/icon16.png" class="review-empty-web-logo" width="13" height="13" alt="Lectoro">
+                        <span>WEB & MOBILE</span>
+                    </div>
+                    <div class="review-empty-web-title">${cardTitle}</div>
+                    <div class="review-empty-web-desc">${cardDesc}</div>
+                    <a href="https://lectoroai.vercel.app/dashboard/reviews" target="_blank" rel="noopener noreferrer" class="review-empty-web-link">
+                        <span class="review-empty-web-url">lectoroai.vercel.app/dashboard/reviews</span>
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                            <polyline points="15 3 21 3 21 9"></polyline>
+                            <line x1="10" y1="14" x2="21" y2="3"></line>
+                        </svg>
+                    </a>
+                </div>
             </div>`;
         updateReviewTabBadge(0);
         return;
@@ -600,11 +660,29 @@ function renderReview() {
         const doneSub = typeof SharedI18n !== "undefined"
             ? SharedI18n.t("review_done_sub", null, { total: reviewTotalDue })
             : `You completed all ${reviewTotalDue} reviews for now!`;
+        const cardTitle = typeof SharedI18n !== "undefined" ? SharedI18n.t("review_web_card_title") : "Practice anywhere, anytime";
+        const cardDesc = typeof SharedI18n !== "undefined" ? SharedI18n.t("review_web_card_desc") : "Your words sync across devices. Practice flashcards on mobile & web:";
         card.innerHTML = `
             <div class="review-done">
                 <div class="review-done-icon">🎉</div>
                 <div class="review-done-text">${doneTitle}</div>
                 <div class="review-done-sub">${doneSub}</div>
+                <div class="review-empty-web-card">
+                    <div class="review-empty-web-badge">
+                        <img src="icons/icon16.png" class="review-empty-web-logo" width="13" height="13" alt="Lectoro">
+                        <span>WEB & MOBILE</span>
+                    </div>
+                    <div class="review-empty-web-title">${cardTitle}</div>
+                    <div class="review-empty-web-desc">${cardDesc}</div>
+                    <a href="https://lectoroai.vercel.app/dashboard/reviews" target="_blank" rel="noopener noreferrer" class="review-empty-web-link">
+                        <span class="review-empty-web-url">lectoroai.vercel.app/dashboard/reviews</span>
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                            <polyline points="15 3 21 3 21 9"></polyline>
+                            <line x1="10" y1="14" x2="21" y2="3"></line>
+                        </svg>
+                    </a>
+                </div>
             </div>`;
         updateReviewTabBadge(0);
         return;

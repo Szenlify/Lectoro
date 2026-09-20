@@ -35,15 +35,15 @@ Firma Google LLC nie jest stroną transakcji subskrypcyjnych, nie przetwarza Two
 
 1. **Plan Free (Bezpłatny):**
    - Dostępny bez opłat, bez limitu czasowego i bez konieczności podawania danych karty płatniczej.
-   - Obejmuje: dwujęzyczne napisy na YouTube i Netflix, tłumaczenia stron, nielimitowany zapis słówek w lokalnej pamięci urządzenia, do 25 fiszek synchronizowanych w chmurze, 15 zapytań Gemini AI na miesiąc, limit tłumaczenia napisów do 15 000 znaków na godzinę, do 3 eksportów do Anki/Excel miesięcznie oraz standardową syntezę mowy przeglądarki.
+   - Obejmuje: nielimitowane dwujęzyczne napisy na YouTube, Netflix i stronach wideo, nielimitowany słownik kontekstowy (skrót S), nielimitowany zapis słówek w pamięci urządzenia, do 25 fiszek synchronizowanych w chmurze, 15 bezpłatnych zapytań Gemini AI na miesiąc (wyjaśnienia gramatyczne, idiomy), do 3 eksportów do Anki/Excel miesięcznie oraz standardową syntezę mowy przeglądarki.
 
 2. **Plan Basic ($7.99 / miesiąc):**
    - 3-dniowy bezpłatny okres próbny ($0 za pierwsze 3 dni).
-   - Obejmuje: do 1 000 zapytań Gemini AI miesięcznie, do 3 000 fiszek SRS w chmurze, do 15 000 znaków naturalnej syntezy głosu Gemini TTS miesięcznie, nielimitowane tłumaczenie napisów, nielimitowany eksport do Anki i Excel/CSV oraz do 10 quizów AI na godzinę.
+   - Obejmuje: do 1 000 zapytań Gemini AI miesięcznie, do 3 000 fiszek SRS w chmurze, do 15 000 znaków naturalnej syntezy głosu Gemini TTS miesięcznie, nielimitowane napisy dwujęzyczne, nielimitowany eksport do Anki i Excel/CSV oraz do 10 quizów AI na godzinę.
 
 3. **Plan Pro ($19.99 / miesiąc):**
    - 3-dniowy bezpłatny okres próbny ($0 za pierwsze 3 dni).
-   - Obejmuje: do 10 000 zapytań Gemini AI miesięcznie, do 10 000 fiszek SRS w chmurze, do 100 000 znaków naturalnej syntezy głosu Gemini TTS miesięcznie, nielimitowane tłumaczenie napisów dwujęzycznych oraz nielimitowany eksport do Anki, Excel i quizów AI.
+   - Obejmuje: nielimitowane wyjaśnienia Gemini AI (idiomy, gramatyka, niuanse), nielimitowane fiszki SRS w chmurze, synchronizację w chmurze na wszystkich urządzeniach, do 100 000 znaków naturalnej syntezy głosu Gemini TTS miesięcznie, nielimitowane tłumaczenie napisów dwujęzycznych oraz nielimitowany eksport do Anki, Excel i quizów AI.
 
 *Uwaga: Ceny mogą być wyświetlane w walutach lokalnych (np. EUR, GBP, PLN, BRL) zgodnie z geolokalizacją i cennikiem Stripe.*
 

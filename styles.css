@@ -2022,6 +2022,13 @@ body[data-lectoro-sub-translate-active="true"]
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.5) !important;
 }
 
+#__qt_sentence_translation .__qt_paywall-btn-primary:disabled {
+  opacity: 0.6 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
 #__qt_sentence_translation[data-state="ai-loading"],
 #__qt_sentence_translation[data-state="loading"] {
   width: max-content !important;

@@ -528,7 +528,7 @@
             const profile = await getCachedProfile();
             const plan = Config.normalizePlan(profile?.plan);
             const limits = Config.getPlanLimits(plan);
-            const limit = limits.subtitles?.charactersPerHour ?? 15000;
+            const limit = limits.subtitles?.charactersPerHour ?? Infinity;
             const isUnlimited = !Number.isFinite(limit);
 
             if (isUnlimited) {
@@ -553,6 +553,7 @@
                 plan,
                 usedCharacters: record.used,
                 requestedCharacters,
+                limit,
             });
 
             const now = Date.now();

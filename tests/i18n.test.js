@@ -199,7 +199,14 @@ test('SharedI18n translates newly added keys across all 11 locales', () => {
         'status_stripe_trial',
         'status_stripe_opened',
         'status_stripe_error',
-        'status_plan_updated'
+        'status_plan_updated',
+        'ai_auth_title',
+        'ai_auth_banner_title',
+        'ai_auth_banner_sub',
+        'ai_auth_offer_title',
+        'ai_auth_perk1',
+        'ai_auth_perk2',
+        'ai_auth_perk3'
     ];
 
     for (const locale of SharedI18n.SUPPORTED_LOCALES) {
@@ -402,5 +409,25 @@ test('LectoroConstants detects browser UI language and normalizes regional diale
         global.chrome = origChrome;
     }
 });
+
+test('SharedI18n contains mobile and web reviews keys for all 11 languages', () => {
+    const requiredKeys = [
+        'review_web_banner_title',
+        'review_web_banner_desc',
+        'review_web_banner_btn',
+        'review_web_banner_btn_title',
+        'review_web_card_title',
+        'review_web_card_desc',
+        'sync_web_review_tip',
+        'guide_mobile_reviews',
+    ];
+    for (const locale of SharedI18n.SUPPORTED_LOCALES) {
+        for (const key of requiredKeys) {
+            const val = SharedI18n.t(key, locale);
+            assert.ok(val && typeof val === 'string' && val.length > 0, `Missing ${key} for locale ${locale}`);
+        }
+    }
+});
+
 
 

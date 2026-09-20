@@ -53,8 +53,8 @@ test("central configuration matches the three product plans", () => {
                 trialDays: 3,
                 price: 19.99,
                 currency: "USD",
-                ai: 10000,
-                srs: 10000,
+                ai: Infinity,
+                srs: Infinity,
                 ttsEnabled: true,
                 ttsRequest: 1000,
                 ttsMonth: 100000,
@@ -78,24 +78,29 @@ test("unknown plans safely fall back to FREE", () => {
 
 test("AI and SRS limits come from the central configuration", () => {
     for (const [plan, limits] of Object.entries(SUBSCRIPTION_LIMITS)) {
-        assert.equal(
-            checkAiLimit({ plan, used: limits.ai.usesPerMonth - 1 }).allowed,
-            true,
-        );
-        assert.equal(
-            checkAiLimit({ plan, used: limits.ai.usesPerMonth }).allowed,
-            false,
-        );
-        assert.equal(
-            checkSrsLimit({ plan, savedCards: limits.srs.maxSavedCards - 1 })
-                .allowed,
-            true,
-        );
-        assert.equal(
-            checkSrsLimit({ plan, savedCards: limits.srs.maxSavedCards })
-                .allowed,
-            false,
-        );
+        if (!Number.isFinite(limits.ai.usesPerMonth)) {
+            assert.equal(checkAiLimit({ plan, used: 999999 }).allowed, true);
+            assert.equal(checkSrsLimit({ plan, savedCards: 999999 }).allowed, true);
+        } else {
+            assert.equal(
+                checkAiLimit({ plan, used: limits.ai.usesPerMonth - 1 }).allowed,
+                true,
+            );
+            assert.equal(
+                checkAiLimit({ plan, used: limits.ai.usesPerMonth }).allowed,
+                false,
+            );
+            assert.equal(
+                checkSrsLimit({ plan, savedCards: limits.srs.maxSavedCards - 1 })
+                    .allowed,
+                true,
+            );
+            assert.equal(
+                checkSrsLimit({ plan, savedCards: limits.srs.maxSavedCards })
+                    .allowed,
+                false,
+            );
+        }
     }
 });
 

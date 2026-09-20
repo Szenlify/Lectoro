@@ -418,6 +418,39 @@
 
 
                 <div class="review-card" id="reviewCard"></div>
+
+                <!-- Web & Mobile Reviews Banner -->
+                <div class="review-web-banner" id="reviewWebBanner">
+                    <div class="review-web-banner-left">
+                        <div class="review-web-banner-icon-area">
+                            <img src="icons/icon48.png" alt="Lectoro" class="review-web-banner-logo" width="20" height="20">
+                        </div>
+                        <div class="review-web-banner-content">
+                            <div class="review-web-banner-head">
+                                <span class="review-web-banner-title" data-i18n="review_web_banner_title">Powtórki na mobile i website</span>
+                                <span class="review-web-banner-badge">WEB & MOBILE</span>
+                            </div>
+                            <div class="review-web-banner-desc" data-i18n="review_web_banner_desc">Ćwicz słówka w drodze na telefonie i w przeglądarce</div>
+                        </div>
+                    </div>
+                    <div class="review-web-banner-actions">
+                        <button type="button" class="review-web-banner-btn" id="reviewWebBannerBtn"
+                            title="Otwórz powtórki na mobile i website"
+                            data-i18n-title="review_web_banner_btn_title">
+                            <span data-i18n="review_web_banner_btn">Otwórz</span>
+                            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                <polyline points="15 3 21 3 21 9"></polyline>
+                                <line x1="10" y1="14" x2="21" y2="3"></line>
+                            </svg>
+                        </button>
+                        <button type="button" class="review-web-banner-close" id="reviewWebBannerClose"
+                            title="Close"
+                            aria-label="Close"
+                            data-i18n-title="close_label"
+                            data-i18n-aria="close_label">×</button>
+                    </div>
+                </div>
             </div>
         </div>
     </template>
@@ -522,6 +555,10 @@
                             <span class="help-tip-icon">💡</span>
                             <span data-i18n="guide_tip">The Review tab offers daily spaced repetition sessions to help you
                                 remember vocabulary long-term.</span>
+                        </div>
+                        <div class="help-tip" style="margin-top: 8px;">
+                            <span class="help-tip-icon">📱</span>
+                            <span><span data-i18n="guide_mobile_reviews">Powtórki możesz robić również na telefonie i na komputerze na</span> <a href="https://lectoroai.vercel.app/dashboard/reviews" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:underline;">lectoroai.vercel.app</a>.</span>
                         </div>
                     </div>
                 </div>

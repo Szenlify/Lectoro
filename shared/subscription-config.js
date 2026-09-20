@@ -32,7 +32,7 @@
                 charactersPerMonth: 0,
             }),
             subtitles: Object.freeze({
-                charactersPerHour: 15000,
+                charactersPerHour: Infinity,
             }),
             exports: Object.freeze({
                 ankiPerMonth: 3,
@@ -65,8 +65,8 @@
             displayName: "PRO",
             trialDays: 3,
             priceMonthly: Object.freeze({ amount: 19.99, currency: "USD" }),
-            ai: Object.freeze({ usesPerMonth: 10000 }),
-            srs: Object.freeze({ maxSavedCards: 10000 }),
+            ai: Object.freeze({ usesPerMonth: Infinity }),
+            srs: Object.freeze({ maxSavedCards: Infinity }),
             geminiTts: Object.freeze({
                 enabled: true,
                 maxCharactersPerRequest: 1000,
@@ -109,7 +109,7 @@
         return Array.from(String(text || "").trim()).length;
     }
 
-    function result({ allowed, code = null, feature, plan, limit, used, requested = 1, message }) {
+    function result({ allowed, code = null, feature, plan, limit, used, requested = 1, remaining, message }) {
         return {
             allowed,
             code,
@@ -118,7 +118,7 @@
             limit,
             used,
             requested,
-            remaining: Math.max(0, limit - used),
+            remaining: remaining !== undefined ? remaining : (Number.isFinite(limit) ? Math.max(0, limit - used) : Infinity),
             upgradeRequired: !allowed,
             message,
         };
@@ -127,9 +127,10 @@
     function checkAiLimit({ plan, used = 0, requested = 1 }) {
         const normalizedPlan = normalizePlan(plan);
         const limit = getPlanLimits(normalizedPlan).ai.usesPerMonth;
+        const isUnlimited = !Number.isFinite(limit);
         const safeUsed = Math.max(0, Number(used) || 0);
         const safeRequested = Math.max(1, Number(requested) || 1);
-        const allowed = safeUsed + safeRequested <= limit;
+        const allowed = isUnlimited || (safeUsed + safeRequested <= limit);
         return result({
             allowed,
             code: allowed ? null : LIMIT_ERROR_CODES.AI_LIMIT_REACHED,
@@ -138,6 +139,7 @@
             limit,
             used: safeUsed,
             requested: safeRequested,
+            remaining: isUnlimited ? Infinity : Math.max(0, limit - safeUsed),
             message: allowed
                 ? "AI feature is available."
                 : `Monthly AI limit (${limit}) reached for plan ${normalizedPlan.toUpperCase()}.`,
@@ -147,9 +149,10 @@
     function checkSrsLimit({ plan, savedCards = 0, additionalCards = 1 }) {
         const normalizedPlan = normalizePlan(plan);
         const limit = getPlanLimits(normalizedPlan).srs.maxSavedCards;
+        const isUnlimited = !Number.isFinite(limit);
         const used = Math.max(0, Number(savedCards) || 0);
         const requested = Math.max(1, Number(additionalCards) || 1);
-        const allowed = used + requested <= limit;
+        const allowed = isUnlimited || (used + requested <= limit);
         return result({
             allowed,
             code: allowed ? null : LIMIT_ERROR_CODES.SRS_LIMIT_REACHED,
@@ -158,6 +161,7 @@
             limit,
             used,
             requested,
+            remaining: isUnlimited ? Infinity : Math.max(0, limit - used),
             message: allowed
                 ? "You can save a flashcard."
                 : `Saved card limit (${limit}) reached for plan ${normalizedPlan.toUpperCase()}.`,
@@ -210,9 +214,9 @@
         });
     }
 
-    function checkSubtitleLimit({ plan, usedCharacters = 0, requestedCharacters = 0 }) {
+    function checkSubtitleLimit({ plan, usedCharacters = 0, requestedCharacters = 0, limit: customLimit }) {
         const normalizedPlan = normalizePlan(plan);
-        const limit = getPlanLimits(normalizedPlan).subtitles?.charactersPerHour ?? 15000;
+        const limit = customLimit !== undefined ? customLimit : (getPlanLimits(normalizedPlan).subtitles?.charactersPerHour ?? Infinity);
         const isUnlimited = !Number.isFinite(limit);
         const safeUsed = Math.max(0, Number(usedCharacters) || 0);
         const safeRequested = Math.max(0, Number(requestedCharacters) || 0);
