@@ -11,14 +11,24 @@
 
     // ── 0. Language Configuration & i18n Dictionary ────────────────────
     function getLangName(code) {
-        if (typeof LectoroConstants !== "undefined" && typeof LectoroConstants.getLanguageName === "function") {
+        if (
+            typeof LectoroConstants !== "undefined" &&
+            typeof LectoroConstants.getLanguageName === "function"
+        ) {
             return LectoroConstants.getLanguageName(code);
         }
-        if (typeof AIPrompts !== "undefined" && typeof AIPrompts.getLangName === "function") {
+        if (
+            typeof AIPrompts !== "undefined" &&
+            typeof AIPrompts.getLangName === "function"
+        ) {
             return AIPrompts.getLangName(code);
         }
         const c = String(code || "").toLowerCase();
-        return (typeof LectoroConstants !== "undefined" && LectoroConstants.LANG_NAMES?.[c]) || c.toUpperCase();
+        return (
+            (typeof LectoroConstants !== "undefined" &&
+                LectoroConstants.LANG_NAMES?.[c]) ||
+            c.toUpperCase()
+        );
     }
 
     // Polish adjectives & genitives for Polish exam headings
@@ -29,19 +39,11 @@
         fr: "francuskiego",
         it: "włoskiego",
         pt: "portugalskiego",
-        ru: "rosyjskiego",
         pl: "polskiego",
-        uk: "ukraińskiego",
         ja: "japońskiego",
         ko: "koreańskiego",
-        zh: "chińskiego",
         nl: "niderlandzkiego",
-        sv: "szwedzkiego",
-        tr: "tureckiego",
         cs: "czeskiego",
-        sk: "słowackiego",
-        ar: "arabskiego",
-        hi: "hindi",
     };
 
     const QUIZ_I18N = {
@@ -79,12 +81,32 @@
             result: "Wynik",
             pointsSuffix: "pkt",
             listenLabel: "Odczytaj na głos",
-            praise: ["Świetnie! 🎉", "Brawo! 👏", "Super! ⭐", "Rewelacja! 🚀", "Tak trzymaj! 💪", "Perfekcyjnie! ✨", "Ekstra! 🌟"],
-            encourage: ["Prawie! Spróbuj jeszcze raz 💭", "Nie poddawaj się! 🙂", "Blisko! Sprawdź jeszcze raz 🔍", "Ups! 🤔", "Kolejnym razem się uda! 🍀"],
-            grades: { 6: "celujący", 5: "bardzo dobry", 4: "dobry", 3: "dostateczny", 2: "dopuszczający", 1: "niedostateczny" },
+            praise: [
+                "Świetnie! 🎉",
+                "Brawo! 👏",
+                "Super! ⭐",
+                "Rewelacja! 🚀",
+                "Tak trzymaj! 💪",
+                "Perfekcyjnie! ✨",
+                "Ekstra! 🌟",
+            ],
+            encourage: [
+                "Prawie! Spróbuj jeszcze raz 💭",
+                "Nie poddawaj się! 🙂",
+                "Blisko! Sprawdź jeszcze raz 🔍",
+                "Ups! 🤔",
+                "Kolejnym razem się uda! 🍀",
+            ],
+            grades: {
+                6: "celujący",
+                5: "bardzo dobry",
+                4: "dobry",
+                3: "dostateczny",
+                2: "dopuszczający",
+                1: "niedostateczny",
+            },
             sectionTitles: {
                 multiple_choice: "Wielokrotny wybór",
-                fill_blank: "Uzupełnij luki",
                 matching: "Dopasuj pary",
 
                 true_false: "Prawda czy fałsz",
@@ -126,12 +148,32 @@
             result: "Result",
             pointsSuffix: "pts",
             listenLabel: "Listen aloud",
-            praise: ["Excellent! 🎉", "Great job! 👏", "Awesome! ⭐", "Brilliant! 🚀", "Keep it up! 💪", "Flawless! ✨", "Spot on! 🌟"],
-            encourage: ["Almost! Try once more 💭", "Keep going! 🙂", "Very close! Check spelling 🔍", "Oops! 🤔", "You'll get it next time! 🍀"],
-            grades: { 6: "Outstanding (A+)", 5: "Excellent (A)", 4: "Good (B)", 3: "Satisfactory (C)", 2: "Passing (D)", 1: "Needs Improvement (F)" },
+            praise: [
+                "Excellent! 🎉",
+                "Great job! 👏",
+                "Awesome! ⭐",
+                "Brilliant! 🚀",
+                "Keep it up! 💪",
+                "Flawless! ✨",
+                "Spot on! 🌟",
+            ],
+            encourage: [
+                "Almost! Try once more 💭",
+                "Keep going! 🙂",
+                "Very close! Check spelling 🔍",
+                "Oops! 🤔",
+                "You'll get it next time! 🍀",
+            ],
+            grades: {
+                6: "Outstanding (A+)",
+                5: "Excellent (A)",
+                4: "Good (B)",
+                3: "Satisfactory (C)",
+                2: "Passing (D)",
+                1: "Needs Improvement (F)",
+            },
             sectionTitles: {
                 multiple_choice: "Multiple Choice",
-                fill_blank: "Fill in the Blanks",
                 matching: "Match the Pairs",
 
                 true_false: "True or False",
@@ -173,12 +215,32 @@
             result: "Resultado",
             pointsSuffix: "pts",
             listenLabel: "Escuchar pronunciación",
-            praise: ["¡Excelente! 🎉", "¡Muy bien! 👏", "¡Genial! ⭐", "¡Fantástico! 🚀", "¡Sigue así! 💪", "¡Perfecto! ✨", "¡Maravilloso! 🌟"],
-            encourage: ["¡Casi! Inténtalo de nuevo 💭", "¡No te rindas! 🙂", "¡Muy cerca! Revisa la ortografía 🔍", "¡Ups! 🤔", "¡A la próxima lo logras! 🍀"],
-            grades: { 6: "Sobresaliente", 5: "Notable", 4: "Bien", 3: "Suficiente", 2: "Insuficiente", 1: "Muy deficiente" },
+            praise: [
+                "¡Excelente! 🎉",
+                "¡Muy bien! 👏",
+                "¡Genial! ⭐",
+                "¡Fantástico! 🚀",
+                "¡Sigue así! 💪",
+                "¡Perfecto! ✨",
+                "¡Maravilloso! 🌟",
+            ],
+            encourage: [
+                "¡Casi! Inténtalo de nuevo 💭",
+                "¡No te rindas! 🙂",
+                "¡Muy cerca! Revisa la ortografía 🔍",
+                "¡Ups! 🤔",
+                "¡A la próxima lo logras! 🍀",
+            ],
+            grades: {
+                6: "Sobresaliente",
+                5: "Notable",
+                4: "Bien",
+                3: "Suficiente",
+                2: "Insuficiente",
+                1: "Muy deficiente",
+            },
             sectionTitles: {
                 multiple_choice: "Opción múltiple",
-                fill_blank: "Completa los espacios",
                 matching: "Une las parejas",
 
                 true_false: "Verdadero o falso",
@@ -220,12 +282,32 @@
             result: "Ergebnis",
             pointsSuffix: "Pkt.",
             listenLabel: "Vorlesen",
-            praise: ["Ausgezeichnet! 🎉", "Super gemacht! 👏", "Klasse! ⭐", "Hervorragend! 🚀", "Weiter so! 💪", "Perfekt! ✨", "Spitze! 🌟"],
-            encourage: ["Fast! Versuch es noch einmal 💭", "Nicht aufgeben! 🙂", "Ganz nah dran! 🔍", "Hoppla! 🤔", "Beim nächsten Mal klappt es! 🍀"],
-            grades: { 6: "Sehr gut (1)", 5: "Gut (2)", 4: "Befriedigend (3)", 3: "Ausreichend (4)", 2: "Mangelhaft (5)", 1: "Ungenügend (6)" },
+            praise: [
+                "Ausgezeichnet! 🎉",
+                "Super gemacht! 👏",
+                "Klasse! ⭐",
+                "Hervorragend! 🚀",
+                "Weiter so! 💪",
+                "Perfekt! ✨",
+                "Spitze! 🌟",
+            ],
+            encourage: [
+                "Fast! Versuch es noch einmal 💭",
+                "Nicht aufgeben! 🙂",
+                "Ganz nah dran! 🔍",
+                "Hoppla! 🤔",
+                "Beim nächsten Mal klappt es! 🍀",
+            ],
+            grades: {
+                6: "Sehr gut (1)",
+                5: "Gut (2)",
+                4: "Befriedigend (3)",
+                3: "Ausreichend (4)",
+                2: "Mangelhaft (5)",
+                1: "Ungenügend (6)",
+            },
             sectionTitles: {
                 multiple_choice: "Multiple-Choice",
-                fill_blank: "Lückentext",
                 matching: "Paare zuordnen",
 
                 true_false: "Richtig oder Falsch",
@@ -267,12 +349,32 @@
             result: "Résultat",
             pointsSuffix: "pts",
             listenLabel: "Écouter la prononciation",
-            praise: ["Excellent ! 🎉", "Bravo ! 👏", "Super ! ⭐", "Remarquable ! 🚀", "Continue comme ça ! 💪", "Parfait ! ✨", "Génial ! 🌟"],
-            encourage: ["Presque ! Réessaie encore 💭", "Ne lâche rien ! 🙂", "Tout près ! Vérifie l'orthographe 🔍", "Oups ! 🤔", "La prochaine fois sera la bonne ! 🍀"],
-            grades: { 6: "Très bien (A+)", 5: "Bien (A)", 4: "Assez bien (B)", 3: "Passable (C)", 2: "Insuffisant (D)", 1: "Très insuffisant (F)" },
+            praise: [
+                "Excellent ! 🎉",
+                "Bravo ! 👏",
+                "Super ! ⭐",
+                "Remarquable ! 🚀",
+                "Continue comme ça ! 💪",
+                "Parfait ! ✨",
+                "Génial ! 🌟",
+            ],
+            encourage: [
+                "Presque ! Réessaie encore 💭",
+                "Ne lâche rien ! 🙂",
+                "Tout près ! Vérifie l'orthographe 🔍",
+                "Oups ! 🤔",
+                "La prochaine fois sera la bonne ! 🍀",
+            ],
+            grades: {
+                6: "Très bien (A+)",
+                5: "Bien (A)",
+                4: "Assez bien (B)",
+                3: "Passable (C)",
+                2: "Insuffisant (D)",
+                1: "Très insuffisant (F)",
+            },
             sectionTitles: {
                 multiple_choice: "Choix multiple",
-                fill_blank: "Texte à trous",
                 matching: "Associer les paires",
 
                 true_false: "Vrai ou Faux",
@@ -314,12 +416,32 @@
             result: "Risultato",
             pointsSuffix: "pti",
             listenLabel: "Ascolta pronuncia",
-            praise: ["Ottimo! 🎉", "Bravissimo! 👏", "Fantastico! ⭐", "Eccellente! 🚀", "Continua così! 💪", "Perfetto! ✨", "Splendido! 🌟"],
-            encourage: ["Quasi! Riprova ancora 💭", "Non mollare! 🙂", "Molto vicino! Controlla l'ortografia 🔍", "Ops! 🤔", "La prossima volta andrà bene! 🍀"],
-            grades: { 6: "Ottimo", 5: "Distinto", 4: "Buono", 3: "Discreto", 2: "Sufficiente", 1: "Insufficiente" },
+            praise: [
+                "Ottimo! 🎉",
+                "Bravissimo! 👏",
+                "Fantastico! ⭐",
+                "Eccellente! 🚀",
+                "Continua così! 💪",
+                "Perfetto! ✨",
+                "Splendido! 🌟",
+            ],
+            encourage: [
+                "Quasi! Riprova ancora 💭",
+                "Non mollare! 🙂",
+                "Molto vicino! Controlla l'ortografia 🔍",
+                "Ops! 🤔",
+                "La prossima volta andrà bene! 🍀",
+            ],
+            grades: {
+                6: "Ottimo",
+                5: "Distinto",
+                4: "Buono",
+                3: "Discreto",
+                2: "Sufficiente",
+                1: "Insufficiente",
+            },
             sectionTitles: {
                 multiple_choice: "Scelta multipla",
-                fill_blank: "Riempi gli spazi",
                 matching: "Abbina le coppie",
 
                 true_false: "Vero o Falso",
@@ -361,111 +483,37 @@
             result: "Resultado",
             pointsSuffix: "pts",
             listenLabel: "Ouvir pronúncia",
-            praise: ["Excelente! 🎉", "Muito bem! 👏", "Incrível! ⭐", "Sensacional! 🚀", "Continue assim! 💪", "Perfeito! ✨", "Fantástico! 🌟"],
-            encourage: ["Quase! Tente novamente 💭", "Não desista! 🙂", "Muito perto! Verifique a grafia 🔍", "Ops! 🤔", "Na próxima você consegue! 🍀"],
-            grades: { 6: "Excelente (A+)", 5: "Muito Bom (A)", 4: "Bom (B)", 3: "Satisfatório (C)", 2: "Regular (D)", 1: "Insuficiente (F)" },
+            praise: [
+                "Excelente! 🎉",
+                "Muito bem! 👏",
+                "Incrível! ⭐",
+                "Sensacional! 🚀",
+                "Continue assim! 💪",
+                "Perfeito! ✨",
+                "Fantástico! 🌟",
+            ],
+            encourage: [
+                "Quase! Tente novamente 💭",
+                "Não desista! 🙂",
+                "Muito perto! Verifique a grafia 🔍",
+                "Ops! 🤔",
+                "Na próxima você consegue! 🍀",
+            ],
+            grades: {
+                6: "Excelente (A+)",
+                5: "Muito Bom (A)",
+                4: "Bom (B)",
+                3: "Satisfatório (C)",
+                2: "Regular (D)",
+                1: "Insuficiente (F)",
+            },
             sectionTitles: {
                 multiple_choice: "Múltipla escolha",
-                fill_blank: "Preencha as lacunas",
                 matching: "Associe os pares",
 
                 true_false: "Verdadeiro ou Falso",
                 correct_form: "Forma correta da palavra",
                 odd_one_out: "Qual não pertence?",
-            },
-        },
-        uk: {
-            examTitlePrefix: "Контрольна робота зі словника",
-            defaultTitle: "Вікторина зі словникового запасу",
-            name: "Прізвище та ім'я",
-            class: "Клас / Група",
-            date: "Дата",
-            tasks: "завдань",
-            questions: "питань",
-            maxPoints: "Макс. балів",
-            score: "Отримано балів",
-            grade: "Оцінка",
-            answerKey: "Ключ відповідей",
-            gradingScale: "Шкала оцінювання",
-            pctPoints: "% балів",
-            goodLuck: "Успіхів!",
-            wordsCount: "слів",
-            printBtn: "🖨️ Друк / Зберегти як PDF",
-            checkAllBtn: "✅ Перевірити все",
-            resetBtn: "🔄 Почати заново",
-            answered: "Відповіді",
-            streak: "Серія",
-            streakInRow: "поспіль!",
-            yourAnswerPlaceholder: "Ваша відповідь… (Enter = перевірити)",
-            hint: "підказка",
-            trueLabel: "Правда",
-            falseLabel: "Хибно",
-            selectPlaceholder: "— обрати —",
-            correctLabel: "Правильна відповідь",
-            noAnswer: "Немає відповіді",
-            similarity: "схожість",
-            passed: "зараховано",
-            result: "Результат",
-            pointsSuffix: "бал.",
-            listenLabel: "Озвучити",
-            praise: ["Чудово! 🎉", "Молодець! 👏", "Супер! ⭐", "Блискуче! 🚀", "Так тримати! 💪", "Ідеально! ✨", "Відмінно! 🌟"],
-            encourage: ["Майже! Спробуй ще раз 💭", "Не здавайся! 🙂", "Дуже близько! Перевір написання 🔍", "Ой! 🤔", "Наступного разу вийде! 🍀"],
-            grades: { 6: "Відмінно (12)", 5: "Дуже добре (10-11)", 4: "Добре (7-9)", 3: "Задовільно (4-6)", 2: "Достатньо (3)", 1: "Початковий (1-2)" },
-            sectionTitles: {
-                multiple_choice: "Вибір відповіді",
-                fill_blank: "Заповніть пропуски",
-                matching: "Знайдіть пари",
-
-                true_false: "Правда чи хибно",
-                correct_form: "Правильна форма слова",
-                odd_one_out: "Що зайве?",
-            },
-        },
-        ru: {
-            examTitlePrefix: "Контрольная работа по словарю",
-            defaultTitle: "Словарный квиз",
-            name: "Фамилия и имя",
-            class: "Класс / Группа",
-            date: "Дата",
-            tasks: "заданий",
-            questions: "вопросов",
-            maxPoints: "Макс. баллов",
-            score: "Итоговый балл",
-            grade: "Оценка",
-            answerKey: "Ключ ответов",
-            gradingScale: "Шкала оценок",
-            pctPoints: "% баллов",
-            goodLuck: "Удачи!",
-            wordsCount: "слов",
-            printBtn: "🖨️ Печать / Сохранить в PDF",
-            checkAllBtn: "✅ Проверить всё",
-            resetBtn: "🔄 Сбросить",
-            answered: "Ответов",
-            streak: "Серия",
-            streakInRow: "подряд!",
-            yourAnswerPlaceholder: "Ваш ответ… (Enter = проверить)",
-            hint: "подсказка",
-            trueLabel: "Правда",
-            falseLabel: "Ложь",
-            selectPlaceholder: "— выбрать —",
-            correctLabel: "Правильный ответ",
-            noAnswer: "Нет ответа",
-            similarity: "сходство",
-            passed: "зачтено",
-            result: "Результат",
-            pointsSuffix: "балл.",
-            listenLabel: "Озвучить",
-            praise: ["Отлично! 🎉", "Молодец! 👏", "Супер! ⭐", "Прекрасно! 🚀", "Так держать! 💪", "Идеально! ✨", "Замечательно! 🌟"],
-            encourage: ["Почти! Попробуй ещё раз 💭", "Не сдавайся! 🙂", "Очень близко! 🔍", "Ой! 🤔", "В следующий раз получится! 🍀"],
-            grades: { 6: "Отлично (5+)", 5: "Отлично (5)", 4: "Хорошо (4)", 3: "Удовлетворительно (3)", 2: "Неудовлетворительно (2)", 1: "Плохо (1)" },
-            sectionTitles: {
-                multiple_choice: "Тест с вариантами",
-                fill_blank: "Вставьте пропущенное",
-                matching: "Сопоставьте пары",
-
-                true_false: "Правда или ложь",
-                correct_form: "Правильная форма слова",
-                odd_one_out: "Найдите лишнее",
             },
         },
         nl: {
@@ -502,64 +550,37 @@
             result: "Resultaat",
             pointsSuffix: "ptn",
             listenLabel: "Beluisteren",
-            praise: ["Uitstekend! 🎉", "Goed gedaan! 👏", "Super! ⭐", "Briljant! 🚀", "Ga zo door! 💪", "Vlekkeloos! ✨", "Geweldig! 🌟"],
-            encourage: ["Bijna! Probeer nog eens 💭", "Niet opgeven! 🙂", "Heel dichtbij! 🔍", "Oeps! 🤔", "Volgende keer lukt het! 🍀"],
-            grades: { 6: "Uitmuntend (10)", 5: "Zeer goed (9)", 4: "Goed (8)", 3: "Voldoende (6-7)", 2: "Matig (5)", 1: "Onvoldoende (<5)" },
+            praise: [
+                "Uitstekend! 🎉",
+                "Goed gedaan! 👏",
+                "Super! ⭐",
+                "Briljant! 🚀",
+                "Ga zo door! 💪",
+                "Vlekkeloos! ✨",
+                "Geweldig! 🌟",
+            ],
+            encourage: [
+                "Bijna! Probeer nog eens 💭",
+                "Niet opgeven! 🙂",
+                "Heel dichtbij! 🔍",
+                "Oeps! 🤔",
+                "Volgende keer lukt het! 🍀",
+            ],
+            grades: {
+                6: "Uitmuntend (10)",
+                5: "Zeer goed (9)",
+                4: "Goed (8)",
+                3: "Voldoende (6-7)",
+                2: "Matig (5)",
+                1: "Onvoldoende (<5)",
+            },
             sectionTitles: {
                 multiple_choice: "Meerkeuze",
-                fill_blank: "Invuloefening",
                 matching: "Koppel de paren",
 
                 true_false: "Waar of Niet waar",
                 correct_form: "Juiste woordvorm",
                 odd_one_out: "Welk woord hoort er niet bij?",
-            },
-        },
-        sv: {
-            examTitlePrefix: "Ordförrådstest",
-            defaultTitle: "Ordförrådsquiz",
-            name: "Namn",
-            class: "Klass / Grupp",
-            date: "Datum",
-            tasks: "delar",
-            questions: "frågor",
-            maxPoints: "Maxpoäng",
-            score: "Slutresultat",
-            grade: "Betyg",
-            answerKey: "Facit",
-            gradingScale: "Betygsskala",
-            pctPoints: "% poäng",
-            goodLuck: "Lycka till!",
-            wordsCount: "ord",
-            printBtn: "🖨️ Skriv ut / Spara som PDF",
-            checkAllBtn: "✅ Kontrollera svar",
-            resetBtn: "🔄 Börja om",
-            answered: "Besvarade",
-            streak: "Svit",
-            streakInRow: "i rad!",
-            yourAnswerPlaceholder: "Ditt svar… (Enter = kontrollera)",
-            hint: "ledtråd",
-            trueLabel: "Sant",
-            falseLabel: "Falskt",
-            selectPlaceholder: "— välj —",
-            correctLabel: "Rätt svar",
-            noAnswer: "Inget svar",
-            similarity: "likhet",
-            passed: "godkänd",
-            result: "Resultat",
-            pointsSuffix: "p",
-            listenLabel: "Lyssna",
-            praise: ["Utmärkt! 🎉", "Bra jobbat! 👏", "Fantastiskt! ⭐", "Strålande! 🚀", "Fortsätt så! 💪", "Perfekt! ✨", "Grymt! 🌟"],
-            encourage: ["Nära! Försök igen 💭", "Ge inte upp! 🙂", "Mycket nära! 🔍", "Hoppsan! 🤔", "Du fixar det nästa gång! 🍀"],
-            grades: { 6: "Utmärkt (A)", 5: "Mycket bra (B)", 4: "Bra (C)", 3: "Tillfredsställande (D)", 2: "Godkänd (E)", 1: "Underkänd (F)" },
-            sectionTitles: {
-                multiple_choice: "Flerval",
-                fill_blank: "Fyll i luckorna",
-                matching: "Para ihop",
-
-                true_false: "Sant eller Falskt",
-                correct_form: "Rätt ordform",
-                odd_one_out: "Vilket ord ska bort?",
             },
         },
         cs: {
@@ -596,111 +617,37 @@
             result: "Výsledek",
             pointsSuffix: "b.",
             listenLabel: "Přečíst nahlas",
-            praise: ["Skvělé! 🎉", "Výborně! 👏", "Super! ⭐", "Paráda! 🚀", "Jen tak dál! 💪", "Perfektní! ✨", "Úžasné! 🌟"],
-            encourage: ["Těsně! Zkus to ještě jednou 💭", "Nevzdávej to! 🙂", "Velmi blízko! 🔍", "Jejda! 🤔", "Příště to vyjde! 🍀"],
-            grades: { 6: "Výborný (1)", 5: "Chvalitebný (2)", 4: "Dobrý (3)", 3: "Dostatečný (4)", 2: "Dostatečný (4-)", 1: "Nedostatečný (5)" },
+            praise: [
+                "Skvělé! 🎉",
+                "Výborně! 👏",
+                "Super! ⭐",
+                "Paráda! 🚀",
+                "Jen tak dál! 💪",
+                "Perfektní! ✨",
+                "Úžasné! 🌟",
+            ],
+            encourage: [
+                "Těsně! Zkus to ještě jednou 💭",
+                "Nevzdávej to! 🙂",
+                "Velmi blízko! 🔍",
+                "Jejda! 🤔",
+                "Příště to vyjde! 🍀",
+            ],
+            grades: {
+                6: "Výborný (1)",
+                5: "Chvalitebný (2)",
+                4: "Dobrý (3)",
+                3: "Dostatečný (4)",
+                2: "Dostatečný (4-)",
+                1: "Nedostatečný (5)",
+            },
             sectionTitles: {
                 multiple_choice: "Výběr z možností",
-                fill_blank: "Doplňte do textu",
                 matching: "Spojte dvojice",
 
                 true_false: "Pravda nebo Nepravda",
                 correct_form: "Správný tvar slova",
                 odd_one_out: "Které slovo nepatří?",
-            },
-        },
-        tr: {
-            examTitlePrefix: "Kelime Sınavı",
-            defaultTitle: "Kelime Testi",
-            name: "Adı Soyadı",
-            class: "Sınıf / Grup",
-            date: "Tarih",
-            tasks: "bölüm",
-            questions: "soru",
-            maxPoints: "Maks. Puan",
-            score: "Alınan Puan",
-            grade: "Not",
-            answerKey: "Cevap Anahtarı",
-            gradingScale: "Puan Cetveli",
-            pctPoints: "% Başarı",
-            goodLuck: "Başarılar!",
-            wordsCount: "kelime",
-            printBtn: "🖨️ Yazdır / PDF Olarak Kaydet",
-            checkAllBtn: "✅ Hepsini Kontrol Et",
-            resetBtn: "🔄 Yeniden Başlat",
-            answered: "Cevaplanan",
-            streak: "Seri",
-            streakInRow: "üst üste!",
-            yourAnswerPlaceholder: "Cevabınız… (Enter = kontrol et)",
-            hint: "ipucu",
-            trueLabel: "Doğru",
-            falseLabel: "Yanlış",
-            selectPlaceholder: "— seçiniz —",
-            correctLabel: "Doğru Cevap",
-            noAnswer: "Cevaplanmadı",
-            similarity: "benzerlik",
-            passed: "geçti",
-            result: "Sonuç",
-            pointsSuffix: "puan",
-            listenLabel: "Sesli Dinle",
-            praise: ["Harika! 🎉", "Tebrikler! 👏", "Süper! ⭐", "Mükemmel! 🚀", "Aynen devam! 💪", "Kusursuz! ✨", "Şahane! 🌟"],
-            encourage: ["Çok yaklaştın! Tekrar dene 💭", "Pes etme! 🙂", "Neredeyse doğru! 🔍", "Bir dahaki sefere başaracaksın! 🍀"],
-            grades: { 6: "Pekiyi (5)", 5: "İyi (4)", 4: "Orta (3)", 3: "Geçer (2)", 2: "Şartlı Geçer (1)", 1: "Yetersiz (0)" },
-            sectionTitles: {
-                multiple_choice: "Çoktan Seçmeli",
-                fill_blank: "Boşluk Doldurma",
-                matching: "Eşleştirme",
-
-                true_false: "Doğru mu Yanlış mı?",
-                correct_form: "Doğru Kelime Hali",
-                odd_one_out: "Farklı Olanı Bul",
-            },
-        },
-        zh: {
-            examTitlePrefix: "词汇测验",
-            defaultTitle: "词汇测试",
-            name: "姓名",
-            class: "班级",
-            date: "日期",
-            tasks: "大题",
-            questions: "题",
-            maxPoints: "满分",
-            score: "得分",
-            grade: "评级",
-            answerKey: "参考答案",
-            gradingScale: "评分标准",
-            pctPoints: "% 得分率",
-            goodLuck: "祝你好运！",
-            wordsCount: "个单词",
-            printBtn: "🖨️ 打印 / 保存为PDF",
-            checkAllBtn: "✅ 检查全部答案",
-            resetBtn: "🔄 重新开始",
-            answered: "已回答",
-            streak: "连胜",
-            streakInRow: "连对！",
-            yourAnswerPlaceholder: "输入你的答案… (回车确认)",
-            hint: "提示",
-            trueLabel: "正确",
-            falseLabel: "错误",
-            selectPlaceholder: "— 请选择 —",
-            correctLabel: "正确答案",
-            noAnswer: "未作答",
-            similarity: "匹配度",
-            passed: "通过",
-            result: "成绩",
-            pointsSuffix: "分",
-            listenLabel: "朗读发音",
-            praise: ["太棒了！🎉", "做得好！👏", "非常出色！⭐", "完美！🚀", "继续保持！💪", "准确无误！✨", "太厉害了！🌟"],
-            encourage: ["差一点点！再试一次 💭", "别放弃！🙂", "非常接近了！🔍", "下次一定行！🍀"],
-            grades: { 6: "优秀 (A+)", 5: "优良 (A)", 4: "良好 (B)", 3: "及格 (C)", 2: "勉强及格 (D)", 1: "不及格 (F)" },
-            sectionTitles: {
-                multiple_choice: "单项选择题",
-                fill_blank: "选词填空",
-                matching: "连线匹配",
-
-                true_false: "正误判断",
-                correct_form: "词形填空",
-                odd_one_out: "找出不同类项",
             },
         },
         ja: {
@@ -737,12 +684,31 @@
             result: "結果",
             pointsSuffix: "点",
             listenLabel: "音声を聞く",
-            praise: ["素晴らしい！🎉", "よくできました！👏", "すごい！⭐", "完璧です！🚀", "その調子！💪", "見事！✨", "最高！🌟"],
-            encourage: ["惜しい！もう一度 💭", "諦めないで！🙂", "あと少し！🔍", "次はきっとできる！🍀"],
-            grades: { 6: "秀 (S)", 5: "優 (A)", 4: "良 (B)", 3: "可 (C)", 2: "認 (D)", 1: "不可 (F)" },
+            praise: [
+                "素晴らしい！🎉",
+                "よくできました！👏",
+                "すごい！⭐",
+                "完璧です！🚀",
+                "その調子！💪",
+                "見事！✨",
+                "最高！🌟",
+            ],
+            encourage: [
+                "惜しい！もう一度 💭",
+                "諦めないで！🙂",
+                "あと少し！🔍",
+                "次はきっとできる！🍀",
+            ],
+            grades: {
+                6: "秀 (S)",
+                5: "優 (A)",
+                4: "良 (B)",
+                3: "可 (C)",
+                2: "認 (D)",
+                1: "不可 (F)",
+            },
             sectionTitles: {
                 multiple_choice: "選択問題",
-                fill_blank: "空欄補充",
                 matching: "マッチング",
 
                 true_false: "正誤判定",
@@ -753,7 +719,9 @@
     };
 
     function getI18n(langCode) {
-        const raw = String(langCode || "en").toLowerCase().trim();
+        const raw = String(langCode || "en")
+            .toLowerCase()
+            .trim();
         const base = raw.split(/[-_]/)[0];
         const dict = QUIZ_I18N[raw] || QUIZ_I18N[base] || QUIZ_I18N.en;
         const fallback = QUIZ_I18N.en;
@@ -761,42 +729,53 @@
             ...fallback,
             ...dict,
             grades: { ...fallback.grades, ...(dict.grades || {}) },
-            sectionTitles: { ...fallback.sectionTitles, ...(dict.sectionTitles || {}) },
-            praise: (dict.praise && dict.praise.length) ? dict.praise : fallback.praise,
-            encourage: (dict.encourage && dict.encourage.length) ? dict.encourage : fallback.encourage,
+            sectionTitles: {
+                ...fallback.sectionTitles,
+                ...(dict.sectionTitles || {}),
+            },
+            praise:
+                dict.praise && dict.praise.length
+                    ? dict.praise
+                    : fallback.praise,
+            encourage:
+                dict.encourage && dict.encourage.length
+                    ? dict.encourage
+                    : fallback.encourage,
         };
     }
 
     function getExamTitle(srcLang, tgtLang) {
-        const defaultLearning = (typeof LectoroConstants !== "undefined" && LectoroConstants.DEFAULT_READING_SETTINGS?.learningLang) || "en";
-        const defaultTarget = (typeof LectoroConstants !== "undefined" && LectoroConstants.DEFAULT_READING_SETTINGS?.targetLang) || "pl";
+        const defaultLearning =
+            (typeof LectoroConstants !== "undefined" &&
+                LectoroConstants.DEFAULT_READING_SETTINGS?.learningLang) ||
+            "en";
+        const defaultTarget =
+            (typeof LectoroConstants !== "undefined" &&
+                LectoroConstants.DEFAULT_READING_SETTINGS?.targetLang) ||
+            "pl";
         const src = (srcLang || defaultLearning).toLowerCase();
         const tgt = (tgtLang || defaultTarget).toLowerCase().split(/[-_]/)[0];
         const srcName = getLangName(src);
 
         if (tgt === "pl") {
             const adj = QUIZ_LANG_ADJ_PL[src];
-            return adj ? `Sprawdzian z języka ${adj}` : `Sprawdzian ze słownictwa (${srcName})`;
+            return adj
+                ? `Sprawdzian z języka ${adj}`
+                : `Sprawdzian ze słownictwa (${srcName})`;
         }
         if (tgt === "es") return `Examen de vocabulario (${srcName})`;
         if (tgt === "de") return `Wortschatzprüfung – ${srcName}`;
         if (tgt === "fr") return `Contrôle de vocabulaire (${srcName})`;
         if (tgt === "it") return `Verifica di vocabolario (${srcName})`;
         if (tgt === "pt") return `Exame de vocabulário (${srcName})`;
-        if (tgt === "uk") return `Тест зі словникового запасу (${srcName})`;
-        if (tgt === "ru") return `Тест по словарному запасу (${srcName})`;
         if (tgt === "nl") return `Woordenschattoets (${srcName})`;
-        if (tgt === "sv") return `Ordförrådstest (${srcName})`;
         if (tgt === "cs") return `Test slovní zásoby (${srcName})`;
-        if (tgt === "tr") return `Kelime Bilgisi Sınavı (${srcName})`;
-        if (tgt === "zh") return `${srcName} 词汇测试`;
         if (tgt === "ja") return `${srcName} 単語テスト`;
         return `${srcName} Vocabulary Exam`;
     }
 
     const QUIZ_POINTS_PER_TYPE = {
         multiple_choice: 1,
-        fill_blank: 1,
         matching: 1,
 
         true_false: 1,
@@ -811,7 +790,10 @@
     }
 
     function quizSectionPoints(sec) {
-        return quizSectionQuestionCount(sec) * (QUIZ_POINTS_PER_TYPE[sec.type] ?? 1);
+        return (
+            quizSectionQuestionCount(sec) *
+            (QUIZ_POINTS_PER_TYPE[sec.type] ?? 1)
+        );
     }
 
     function quizTotalPoints(quiz) {
@@ -838,13 +820,23 @@
 
     // ── 1. Gemini AI Quiz Generator ─────────────────────────────────────
     async function generateQuizWithGemini(words, options = {}) {
-        if (!Array.isArray(words) || !words.length) throw new Error("Choose vocabulary for the quiz first.");
-        const defaultLearning = (typeof SharedTranslatorService !== "undefined" && typeof SharedTranslatorService.getLearningLang === "function")
-            ? (await SharedTranslatorService.getLearningLang())
-            : ((typeof LectoroConstants !== "undefined" && LectoroConstants.DEFAULT_READING_SETTINGS?.learningLang) || "en");
-        const defaultTarget = (typeof SharedTranslatorService !== "undefined" && typeof SharedTranslatorService.getTargetLang === "function")
-            ? (await SharedTranslatorService.getTargetLang())
-            : ((typeof LectoroConstants !== "undefined" && LectoroConstants.DEFAULT_READING_SETTINGS?.targetLang) || "pl");
+        if (!Array.isArray(words) || !words.length)
+            throw new Error("Choose vocabulary for the quiz first.");
+        const defaultLearning =
+            typeof SharedTranslatorService !== "undefined" &&
+            typeof SharedTranslatorService.getLearningLang === "function"
+                ? await SharedTranslatorService.getLearningLang()
+                : (typeof LectoroConstants !== "undefined" &&
+                      LectoroConstants.DEFAULT_READING_SETTINGS
+                          ?.learningLang) ||
+                  "en";
+        const defaultTarget =
+            typeof SharedTranslatorService !== "undefined" &&
+            typeof SharedTranslatorService.getTargetLang === "function"
+                ? await SharedTranslatorService.getTargetLang()
+                : (typeof LectoroConstants !== "undefined" &&
+                      LectoroConstants.DEFAULT_READING_SETTINGS?.targetLang) ||
+                  "pl";
         const srcLocale = words[0]?.srcLang || defaultLearning;
         const srcLang = AIPrompts.languageCode(srcLocale);
         let tgtLang = options.tgtLang;
@@ -853,37 +845,80 @@
         }
         const tgtLocale = tgtLang;
         tgtLang = AIPrompts.languageCode(tgtLang);
-        if (words.some((word) => AIPrompts.languageCode(word?.srcLang || defaultLearning) !== srcLang)) {
-            throw new Error("Choose vocabulary from one source language per quiz.");
+        if (
+            words.some(
+                (word) =>
+                    AIPrompts.languageCode(word?.srcLang || defaultLearning) !==
+                    srcLang,
+            )
+        ) {
+            throw new Error(
+                "Choose vocabulary from one source language per quiz.",
+            );
         }
-        const wordsPool = words.filter((w) => typeof w.original === "string" && w.original.trim()).slice(0, 25);
-        if (!wordsPool.length) throw new Error("Choose vocabulary for the quiz first.");
+        const wordsPool = words
+            .filter((w) => typeof w.original === "string" && w.original.trim())
+            .slice(0, 25);
+        if (!wordsPool.length)
+            throw new Error("Choose vocabulary for the quiz first.");
         const wordList = wordsPool.map((w) => ({
             word: w.original.trim().slice(0, 300),
             // Saved translations may use a different language than the current setting.
-            ...(w.tgtLang && AIPrompts.languageCode(w.tgtLang) !== tgtLang ? {} :
-                { meaning: cleanString(w.translated).slice(0, 300) }),
-            ...(w.sentence ? { context: cleanString(w.sentence).slice(0, 400) } : {}),
+            ...(w.tgtLang && AIPrompts.languageCode(w.tgtLang) !== tgtLang
+                ? {}
+                : { meaning: cleanString(w.translated).slice(0, 300) }),
+            ...(w.sentence
+                ? { context: cleanString(w.sentence).slice(0, 400) }
+                : {}),
         }));
-        const chosenTypes = [...new Set(options.chosenTypes?.length ? options.chosenTypes : AIPrompts.DEFAULT_QUIZ_TYPES)]
-            .filter((type) => type !== "matching" || new Set(wordList.map((w) => w.word.toLowerCase())).size >= 2);
-        if (!chosenTypes.length) throw new Error("Not enough vocabulary for the selected sections.");
-        const prompt = AIPrompts.quiz({ srcLang: srcLocale, tgtLang: tgtLocale, wordList, chosenTypes });
-        if (typeof GeminiProxy === "undefined") throw new Error("GeminiProxy is unavailable.");
+        const chosenTypes = [
+            ...new Set(
+                options.chosenTypes?.length
+                    ? options.chosenTypes
+                    : AIPrompts.DEFAULT_QUIZ_TYPES,
+            ),
+        ].filter(
+            (type) =>
+                type !== "matching" ||
+                new Set(wordList.map((w) => w.word.toLowerCase())).size >= 2,
+        );
+        if (!chosenTypes.length)
+            throw new Error("Not enough vocabulary for the selected sections.");
+        const prompt = AIPrompts.quiz({
+            srcLang: srcLocale,
+            tgtLang: tgtLocale,
+            wordList,
+            chosenTypes,
+        });
+        if (typeof GeminiProxy === "undefined")
+            throw new Error("GeminiProxy is unavailable.");
         const parsed = await GeminiProxy.requestJSON(prompt, {
             temperature: 0.3,
             maxOutputTokens: Math.min(6000, 500 + chosenTypes.length * 700),
             cache: false,
         });
-        if (AIPrompts.languageCode(parsed.source_language) !== srcLang ||
-            AIPrompts.languageCode(parsed.instruction_language) !== tgtLang) {
+        if (
+            AIPrompts.languageCode(parsed.source_language) !== srcLang ||
+            AIPrompts.languageCode(parsed.instruction_language) !== tgtLang
+        ) {
             throw new Error("AI returned unexpected quiz languages.");
         }
         const knownWords = new Set(wordList.map((w) => w.word.toLowerCase()));
         const quiz = normalizeQuizData(parsed, knownWords, tgtLang);
-        if (quiz.sections.length !== chosenTypes.length || chosenTypes.some((type) =>
-            !quiz.sections.some((section) => section.type === type && quizSectionQuestionCount(section) >= 2))) {
-            throw new Error("AI returned an incomplete quiz. Please generate it again.");
+        if (
+            quiz.sections.length !== chosenTypes.length ||
+            chosenTypes.some(
+                (type) =>
+                    !quiz.sections.some(
+                        (section) =>
+                            section.type === type &&
+                            quizSectionQuestionCount(section) >= 2,
+                    ),
+            )
+        ) {
+            throw new Error(
+                "AI returned an incomplete quiz. Please generate it again.",
+            );
         }
         return quiz;
     }
@@ -894,74 +929,149 @@
     }
 
     function normalizeQuizData(quiz, knownWords, tgtLang) {
-        if (!quiz || !Array.isArray(quiz.sections)) throw new Error("AI returned an invalid quiz.");
+        if (!quiz || !Array.isArray(quiz.sections))
+            throw new Error("AI returned an invalid quiz.");
         const i18n = getI18n(tgtLang);
         const seenSections = new Set();
-        const key = (value) => cleanString(value).normalize("NFC").toLowerCase();
-        const alternatives = (q) => [...new Set([cleanString(q.answer),
-            ...(Array.isArray(q.acceptable_answers) ? q.acceptable_answers.map(cleanString) : []),
-        ].filter(Boolean))].slice(0, 4);
+        const key = (value) =>
+            cleanString(value).normalize("NFC").toLowerCase();
+        const alternatives = (q) =>
+            [
+                ...new Set(
+                    [
+                        cleanString(q.answer),
+                        ...(Array.isArray(q.acceptable_answers)
+                            ? q.acceptable_answers.map(cleanString)
+                            : []),
+                    ].filter(Boolean),
+                ),
+            ].slice(0, 4);
         const oneBlank = (value) => (value.match(/___/g) || []).length === 1;
         const choice = (q, min, max) => {
             if (!Array.isArray(q.options)) return null;
             const options = q.options.map(cleanString);
-            if (options.length < min || options.length > max || options.some((o) => !o) ||
-                new Set(options.map(key)).size !== options.length) return null;
+            if (
+                options.length < min ||
+                options.length > max ||
+                options.some((o) => !o) ||
+                new Set(options.map(key)).size !== options.length
+            )
+                return null;
             const answer = options.find((o) => key(o) === key(q.answer));
             return answer ? { options, answer } : null;
         };
-        const types = new Set(["multiple_choice", "fill_blank", "matching", "true_false", "correct_form", "odd_one_out"]);
-        const sections = quiz.sections.map((sec) => {
-            const type = cleanString(sec?.type).toLowerCase();
-            if (!types.has(type) || seenSections.has(type)) return null;
-            seenSections.add(type);
-            const instructions = cleanString(sec.instructions) || i18n.sectionTitles[type] || "";
-            if (type === "matching") {
-                if (!Array.isArray(sec.pairs) || sec.pairs.length < 2 || sec.pairs.length > 6) return null;
-                const pairs = sec.pairs.map((p) => ({ a: cleanString(p?.a), b: cleanString(p?.b) }));
-                if (pairs.some((p) => !p.a || !p.b || (knownWords?.size && !knownWords.has(key(p.a)))) ||
-                    new Set(pairs.map((p) => key(p.a))).size !== pairs.length ||
-                    new Set(pairs.map((p) => key(p.b))).size !== pairs.length) return null;
-                return { type, instructions, pairs };
-            }
-            if (!Array.isArray(sec.questions)) return null;
-            const questions = sec.questions.map((q) => {
-                if (!q || typeof q !== "object") return null;
-                if (type === "fill_blank") {
-                    const sentence = cleanString(q.sentence), answer = cleanString(q.answer), hint = cleanString(q.hint);
-                    return oneBlank(sentence) && answer && hint ? { sentence, answer, hint, acceptable_answers: alternatives(q) } : null;
+        const types = new Set([
+            "multiple_choice",
+            "matching",
+            "true_false",
+            "correct_form",
+            "odd_one_out",
+        ]);
+        const sections = quiz.sections
+            .map((sec) => {
+                const type = cleanString(sec?.type).toLowerCase();
+                if (!types.has(type) || seenSections.has(type)) return null;
+                seenSections.add(type);
+                const instructions =
+                    cleanString(sec.instructions) ||
+                    i18n.sectionTitles[type] ||
+                    "";
+                if (type === "matching") {
+                    if (
+                        !Array.isArray(sec.pairs) ||
+                        sec.pairs.length < 2 ||
+                        sec.pairs.length > 6
+                    )
+                        return null;
+                    const pairs = sec.pairs.map((p) => ({
+                        a: cleanString(p?.a),
+                        b: cleanString(p?.b),
+                    }));
+                    if (
+                        pairs.some(
+                            (p) =>
+                                !p.a ||
+                                !p.b ||
+                                (knownWords?.size && !knownWords.has(key(p.a))),
+                        ) ||
+                        new Set(pairs.map((p) => key(p.a))).size !==
+                            pairs.length ||
+                        new Set(pairs.map((p) => key(p.b))).size !==
+                            pairs.length
+                    )
+                        return null;
+                    return { type, instructions, pairs };
                 }
-                if (type === "true_false") {
-                    const statement = cleanString(q.statement);
-                    return statement && typeof q.answer === "boolean" ? { statement, answer: q.answer } : null;
-                }
-                const valid = choice(q, type === "correct_form" ? 3 : 4, 4);
-                if (!valid) return null;
-                if (type === "correct_form") {
-                    const sentence = cleanString(q.sentence);
-                    return oneBlank(sentence) ? { sentence, ...valid } : null;
-                }
-                if (type === "multiple_choice") {
-                    const question = cleanString(q.question);
-                    return question ? { question, ...valid } : null;
-                }
-                return valid;
-            }).filter(Boolean);
-            return questions.length ? { type, instructions, questions } : null;
-        }).filter(Boolean);
-        if (!sections.length) throw new Error("AI returned no valid quiz questions.");
+                if (!Array.isArray(sec.questions)) return null;
+                const questions = sec.questions
+                    .map((q) => {
+                        if (!q || typeof q !== "object") return null;
+                        if (type === "true_false") {
+                            const statement = cleanString(q.statement);
+                            return statement && typeof q.answer === "boolean"
+                                ? { statement, answer: q.answer }
+                                : null;
+                        }
+                        const valid = choice(
+                            q,
+                            type === "correct_form" ? 3 : 4,
+                            4,
+                        );
+                        if (!valid) return null;
+                        if (type === "correct_form") {
+                            const sentence = cleanString(q.sentence);
+                            return oneBlank(sentence)
+                                ? { sentence, ...valid }
+                                : null;
+                        }
+                        if (type === "multiple_choice") {
+                            const question = cleanString(q.question);
+                            return question ? { question, ...valid } : null;
+                        }
+                        return valid;
+                    })
+                    .filter(Boolean);
+                return questions.length
+                    ? { type, instructions, questions }
+                    : null;
+            })
+            .filter(Boolean);
+        if (!sections.length)
+            throw new Error("AI returned no valid quiz questions.");
         return { ...quiz, title: cleanString(quiz.title), sections };
     }
 
     function buildQuizHtml(quiz, words, options = {}) {
-        quiz = { ...quiz, sections: (quiz.sections || []).filter((sec) =>
-            Object.prototype.hasOwnProperty.call(QUIZ_POINTS_PER_TYPE, sec?.type)) };
-        const { escapeHtml } = (typeof SharedUtils !== "undefined" ? SharedUtils : {
-            escapeHtml: (s) => (s || "").toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"),
-        });
+        quiz = {
+            ...quiz,
+            sections: (quiz.sections || []).filter((sec) =>
+                Object.prototype.hasOwnProperty.call(
+                    QUIZ_POINTS_PER_TYPE,
+                    sec?.type,
+                ),
+            ),
+        };
+        const { escapeHtml } =
+            typeof SharedUtils !== "undefined"
+                ? SharedUtils
+                : {
+                      escapeHtml: (s) =>
+                          (s || "")
+                              .toString()
+                              .replace(/&/g, "&amp;")
+                              .replace(/</g, "&lt;")
+                              .replace(/>/g, "&gt;")
+                              .replace(/"/g, "&quot;"),
+                  };
 
-        const defaultLearning = (typeof LectoroConstants !== "undefined" && LectoroConstants.DEFAULT_READING_SETTINGS?.learningLang) || "en";
-        const defaultTarget = (typeof LectoroConstants !== "undefined" && LectoroConstants.DEFAULT_READING_SETTINGS?.targetLang) || "pl";
+        const defaultLearning =
+            (typeof LectoroConstants !== "undefined" &&
+                LectoroConstants.DEFAULT_READING_SETTINGS?.learningLang) ||
+            "en";
+        const defaultTarget =
+            (typeof LectoroConstants !== "undefined" &&
+                LectoroConstants.DEFAULT_READING_SETTINGS?.targetLang) ||
+            "pl";
         const srcLang = (words[0]?.srcLang || defaultLearning).toLowerCase();
         const tgtLang = (options.tgtLang || defaultTarget).toLowerCase();
         const i18n = getI18n(tgtLang);
@@ -980,11 +1090,16 @@
                 const secPoints = quizSectionPoints(sec);
                 let body = "";
 
-                if (sec.type === "multiple_choice" || sec.type === "odd_one_out") {
+                if (
+                    sec.type === "multiple_choice" ||
+                    sec.type === "odd_one_out"
+                ) {
                     body = (sec.questions || [])
                         .map((q) => {
                             qNum++;
-                            const qText = q.question ? `<p class="q-title"><b>${qNum}.</b> ${escapeHtml(q.question)}</p>` : `<p class="q-title"><b>${qNum}.</b></p>`;
+                            const qText = q.question
+                                ? `<p class="q-title"><b>${qNum}.</b> ${escapeHtml(q.question)}</p>`
+                                : `<p class="q-title"><b>${qNum}.</b></p>`;
                             const opts = (q.options || [])
                                 .map(
                                     (o, i) =>
@@ -994,19 +1109,12 @@
                             return `<div class="quiz-item">${qText}<div class="quiz-options-grid">${opts}</div></div>`;
                         })
                         .join("");
-                } else if (sec.type === "fill_blank") {
-                    body = (sec.questions || [])
-                        .map((q) => {
-                            qNum++;
-                            const hint = q.hint
-                                ? ` <span class="quiz-hint">(${i18n.hint}: ${escapeHtml(q.hint)})</span>`
-                                : "";
-                            return `<div class="quiz-item"><p class="q-title"><b>${qNum}.</b> ${escapeHtml(q.sentence)}${hint}</p></div>`;
-                        })
-                        .join("");
                 } else if (sec.type === "matching") {
                     const aList = (sec.pairs || [])
-                        .map((p, i) => `<li><b>${i + 1}.</b> ${escapeHtml(p.a)}</li>`)
+                        .map(
+                            (p, i) =>
+                                `<li><b>${i + 1}.</b> ${escapeHtml(p.a)}</li>`,
+                        )
                         .join("");
                     const bList = [...(sec.pairs || [])]
                         .sort(() => Math.random() - 0.5)
@@ -1053,7 +1161,6 @@
             .map((sec) => {
                 if (
                     sec.type === "multiple_choice" ||
-                    sec.type === "fill_blank" ||
                     sec.type === "correct_form" ||
                     sec.type === "odd_one_out"
                 ) {
@@ -1063,19 +1170,28 @@
                 }
                 if (sec.type === "true_false") {
                     return (sec.questions || [])
-                        .map((q) => `<li>${q.answer ? i18n.trueLabel : i18n.falseLabel}</li>`)
+                        .map(
+                            (q) =>
+                                `<li>${q.answer ? i18n.trueLabel : i18n.falseLabel}</li>`,
+                        )
                         .join("");
                 }
                 if (sec.type === "matching") {
                     return (sec.pairs || [])
-                        .map((p) => `<li>${escapeHtml(p.a)} → ${escapeHtml(p.b)}</li>`)
+                        .map(
+                            (p) =>
+                                `<li>${escapeHtml(p.a)} → ${escapeHtml(p.b)}</li>`,
+                        )
                         .join("");
                 }
                 return "";
             })
             .join("");
 
-        const dateString = typeof SharedUtils !== "undefined" && SharedUtils.dateTag ? SharedUtils.dateTag() : new Date().toISOString().slice(0, 10);
+        const dateString =
+            typeof SharedUtils !== "undefined" && SharedUtils.dateTag
+                ? SharedUtils.dateTag()
+                : new Date().toISOString().slice(0, 10);
 
         return `<!DOCTYPE html>
 <html lang="${escapeHtml(tgtLang)}">
@@ -1180,15 +1296,41 @@
 
     // ── 4. Interactive, Gamified Quiz Engine ────────────────────────────
     function buildInteractiveQuizHtml(quiz, words, options = {}) {
-        quiz = { ...quiz, sections: (quiz.sections || []).filter((sec) =>
-            Object.prototype.hasOwnProperty.call(QUIZ_POINTS_PER_TYPE, sec?.type)) };
-        const { escapeHtml, escapeAttr } = (typeof SharedUtils !== "undefined" ? SharedUtils : {
-            escapeHtml: (s) => (s || "").toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"),
-            escapeAttr: (s) => (s || "").toString().replace(/"/g, "&quot;").replace(/'/g, "&#39;"),
-        });
+        quiz = {
+            ...quiz,
+            sections: (quiz.sections || []).filter((sec) =>
+                Object.prototype.hasOwnProperty.call(
+                    QUIZ_POINTS_PER_TYPE,
+                    sec?.type,
+                ),
+            ),
+        };
+        const { escapeHtml, escapeAttr } =
+            typeof SharedUtils !== "undefined"
+                ? SharedUtils
+                : {
+                      escapeHtml: (s) =>
+                          (s || "")
+                              .toString()
+                              .replace(/&/g, "&amp;")
+                              .replace(/</g, "&lt;")
+                              .replace(/>/g, "&gt;")
+                              .replace(/"/g, "&quot;"),
+                      escapeAttr: (s) =>
+                          (s || "")
+                              .toString()
+                              .replace(/"/g, "&quot;")
+                              .replace(/'/g, "&#39;"),
+                  };
 
-        const defaultLearning = (typeof LectoroConstants !== "undefined" && LectoroConstants.DEFAULT_READING_SETTINGS?.learningLang) || "en";
-        const defaultTarget = (typeof LectoroConstants !== "undefined" && LectoroConstants.DEFAULT_READING_SETTINGS?.targetLang) || "pl";
+        const defaultLearning =
+            (typeof LectoroConstants !== "undefined" &&
+                LectoroConstants.DEFAULT_READING_SETTINGS?.learningLang) ||
+            "en";
+        const defaultTarget =
+            (typeof LectoroConstants !== "undefined" &&
+                LectoroConstants.DEFAULT_READING_SETTINGS?.targetLang) ||
+            "pl";
         const srcLang = (words[0]?.srcLang || defaultLearning).toLowerCase();
         const tgtLang = (options.tgtLang || defaultTarget).toLowerCase();
         const i18n = getI18n(tgtLang);
@@ -1212,7 +1354,10 @@
                 const secPoints = QUIZ_POINTS_PER_TYPE[sec.type] ?? 1;
                 let body = "";
 
-                if (sec.type === "multiple_choice" || sec.type === "odd_one_out") {
+                if (
+                    sec.type === "multiple_choice" ||
+                    sec.type === "odd_one_out"
+                ) {
                     body = (sec.questions || [])
                         .map((q) => {
                             qNum++;
@@ -1228,27 +1373,6 @@
                             return `<div class="q" data-qtype="choice" data-qid="${qNum}" data-points="${secPoints}" data-answer="${escapeAttr(q.answer)}">
                                 ${qText}
                                 <div class="opts">${opts}</div>
-                                <div class="q-feedback"></div>
-                            </div>`;
-                        })
-                        .join("");
-                } else if (sec.type === "fill_blank") {
-                    body = (sec.questions || [])
-                        .map((q) => {
-                            qNum++;
-                            const hint = q.hint
-                                ? `<span class="hint-badge">💡 ${escapeHtml(q.hint)}</span>`
-                                : "";
-                            const alts = Array.isArray(q.acceptable_answers) && q.acceptable_answers.length
-                                ? q.acceptable_answers
-                                : (Array.isArray(q.alternatives) ? q.alternatives : []);
-                            return `<div class="q" data-qtype="text" data-qid="${qNum}" data-points="${secPoints}" data-answer="${escapeAttr(q.answer)}" data-alternatives="${escapeAttr(JSON.stringify(alts))}">
-                                <div class="q-text-row"><p class="q-text"><b>${qNum}.</b> ${escapeHtml(q.sentence)} ${hint} <span class="pts-badge">${secPoints} ${escapeHtml(i18n.pointsSuffix)}</span></p>${ttsBtn(q.sentence, srcLang)}</div>
-                                <div class="input-row">
-                                    <input type="text" class="q-input" placeholder="${escapeAttr(i18n.yourAnswerPlaceholder)}" onkeydown="if(event.key==='Enter'){event.preventDefault();gradeQuestion(this.closest('.q'));}">
-                                    <button type="button" class="btn-mini" onclick="gradeQuestion(this.closest('.q'))">✓</button>
-                                </div>
-                                <div class="q-match-bar"><div class="q-match-fill"></div><span class="q-match-label"></span></div>
                                 <div class="q-feedback"></div>
                             </div>`;
                         })
@@ -1288,7 +1412,9 @@
                     body = (sec.questions || [])
                         .map((q) => {
                             qNum++;
-                            const expectedText = q.answer ? i18n.trueLabel : i18n.falseLabel;
+                            const expectedText = q.answer
+                                ? i18n.trueLabel
+                                : i18n.falseLabel;
                             return `<div class="q" data-qtype="choice" data-qid="${qNum}" data-points="${secPoints}" data-answer="${escapeAttr(expectedText)}">
                                 <div class="q-text-row"><p class="q-text"><b>${qNum}.</b> ${escapeHtml(q.statement)} <span class="pts-badge">${secPoints} ${escapeHtml(i18n.pointsSuffix)}</span></p>${ttsBtn(q.statement, tgtLang)}</div>
                                 <div class="opts">
@@ -1329,7 +1455,10 @@
             })
             .join("");
 
-        const dateString = typeof SharedUtils !== "undefined" && SharedUtils.dateTag ? SharedUtils.dateTag() : new Date().toISOString().slice(0, 10);
+        const dateString =
+            typeof SharedUtils !== "undefined" && SharedUtils.dateTag
+                ? SharedUtils.dateTag()
+                : new Date().toISOString().slice(0, 10);
 
         return `<!DOCTYPE html>
 <html lang="${escapeHtml(tgtLang)}">
@@ -2252,7 +2381,13 @@
     }
 
     // ── 5. High-Level Export Orchestrator ──────────────────────────────
-    async function runExport({ words, scope = "5", source = "recent", mode = "interactive", targetLang = "en" }) {
+    async function runExport({
+        words,
+        scope = "5",
+        source = "recent",
+        mode = "interactive",
+        targetLang = "en",
+    }) {
         if (!words || !words.length) {
             throw new Error("No words available to generate quiz.");
         }
@@ -2263,13 +2398,21 @@
         const count = Math.min(Math.max(1, parseInt(scope, 10) || 5), 25);
         const quizWords = pickQuizWords(sorted, count, source);
 
-        const quiz = await generateQuizWithGemini(quizWords, { tgtLang: targetLang });
+        const quiz = await generateQuizWithGemini(quizWords, {
+            tgtLang: targetLang,
+        });
         const html =
             mode === "interactive"
-                ? buildInteractiveQuizHtml(quiz, quizWords, { tgtLang: targetLang })
+                ? buildInteractiveQuizHtml(quiz, quizWords, {
+                      tgtLang: targetLang,
+                  })
                 : buildQuizHtml(quiz, quizWords, { tgtLang: targetLang });
 
-        if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+        if (
+            typeof chrome !== "undefined" &&
+            chrome.storage &&
+            chrome.storage.local
+        ) {
             await new Promise((resolve) => {
                 chrome.storage.local.set(
                     {
