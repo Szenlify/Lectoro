@@ -52,6 +52,7 @@
         chrome.storage.local.get({ [ytFocusKey]: false }, (data) => {
             if (data && typeof data[ytFocusKey] === "boolean") {
                 youtubeFocusModeActive = data[ytFocusKey];
+                applyFocusTrackPreference();
             }
         });
 
@@ -60,9 +61,20 @@
                 const newVal = Boolean(changes[ytFocusKey].newValue);
                 if (newVal !== youtubeFocusModeActive) {
                     youtubeFocusModeActive = newVal;
+                    applyFocusTrackPreference();
                 }
             }
         });
+    }
+
+    function applyFocusTrackPreference() {
+        if (!youtubeFocusModeActive || !isCcActive || availableTracks.length === 0) return;
+        const chosen = selectBestCaptionTrack(availableTracks, activeTrack?.languageCode, true);
+        if (!chosen || !(chosen.kind === "asr" || chosen.vssId?.startsWith("a."))) return;
+        if (!activeTrack || chosen.baseUrl !== activeTrack.baseUrl) {
+            loadCaptionTrack(chosen, currentVideoId || getVideoIdFromUrl());
+            dispatchSetTrackToBridge(chosen);
+        }
     }
 
     function dispatchSetTrackToBridge(track) {
@@ -632,16 +644,24 @@
         if (Array.isArray(tracks) && tracks.length > 0) {
             availableTracks = tracks;
             const active = detail.activeTrack;
-            // Focus only decorates the selected automatic track; never change
-            // the viewer's caption language or replace their manual captions.
-            const chosen =
+            const focusMode = isFocusModeEnabled();
+            const selectedTrack =
                 (active && tracks.find((track) =>
                     (active.vssId && track.vssId === active.vssId) ||
                     (track.languageCode === active.languageCode && track.kind === active.kind)
                 )) || selectBestCaptionTrack(tracks, active?.languageCode, false);
+            const automaticTrack = focusMode
+                ? selectBestCaptionTrack(tracks, active?.languageCode, true)
+                : null;
+            const chosen = automaticTrack &&
+                (automaticTrack.kind === "asr" || automaticTrack.vssId?.startsWith("a."))
+                ? automaticTrack : selectedTrack;
 
             if (chosen && (!activeTrack || chosen.baseUrl !== activeTrack.baseUrl || videoId !== currentVideoId)) {
                 loadCaptionTrack(chosen, videoId);
+                if (focusMode && (chosen.kind === "asr" || chosen.vssId?.startsWith("a."))) {
+                    dispatchSetTrackToBridge(chosen);
+                }
             }
             const video = boundVideo || document.querySelector("video");
             if (video && !video.paused) startPlaybackLoop(video);
