@@ -1,6 +1,6 @@
 const { onRequest } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
-const { prepaidCheckoutOptions, fulfillPrepaidSession } = require("./prepaid-access");
+const { prepaidCheckoutOptions, fulfillPrepaidSession, handlePrepaidRefund } = require("./prepaid-access");
 let adminInstance = null;
 function getAdmin() {
     if (!adminInstance) {
@@ -515,6 +515,8 @@ exports.stripeWebhook = onRequest(
                         session.client_reference_id || session.metadata?.firebaseUid || "",
                     );
                 }
+            } else if (["charge.refunded", "refund.created", "refund.updated", "charge.refund.updated"].includes(event.type)) {
+                await handlePrepaidRefund(stripe, getAdmin().firestore(), event);
             } else if (
                 event.type === "customer.subscription.created" ||
                 event.type === "customer.subscription.updated" ||

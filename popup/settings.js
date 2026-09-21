@@ -818,13 +818,14 @@ if (location.hash === "#plans") {
 let _subscriptionUiRefreshPromise = null;
 let _subscriptionUiLastRefresh = 0;
 
-function refreshSubscriptionUi() {
+function refreshSubscriptionUi(force = false) {
     if (_subscriptionUiRefreshPromise) return _subscriptionUiRefreshPromise;
     if (Date.now() - _subscriptionUiLastRefresh < 1000) {
         return Promise.resolve();
     }
     _subscriptionUiLastRefresh = Date.now();
     _subscriptionUiRefreshPromise = (async () => {
+        if (force) await SubscriptionService.refreshProfile(true);
         await refreshAiUsageUI();
         await SubscriptionService.applyPlanToUI();
     })()
@@ -837,16 +838,16 @@ function refreshSubscriptionUi() {
     return _subscriptionUiRefreshPromise;
 }
 
-// One startup refresh. Focus, visibility and storage events reuse this same flight.
-void refreshSubscriptionUi();
+// Refresh authoritative billing state on entry; storage events reuse the cache.
+void refreshSubscriptionUi(true);
 
 window.addEventListener("focus", () => {
-    void refreshSubscriptionUi();
+    void refreshSubscriptionUi(true);
 });
 
 document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
-        void refreshSubscriptionUi();
+        void refreshSubscriptionUi(true);
     }
 });
 

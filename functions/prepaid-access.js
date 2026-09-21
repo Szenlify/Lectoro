@@ -67,7 +67,7 @@ async function fulfillPrepaidSession(db, session, now = Date.now()) {
             order.amount !== session.amount_total || order.customerId !== session.customer) {
             throw new Error("Prepaid order does not match payment");
         }
-        if (order.fulfilledAt) return false;
+        if (order.fulfilledAt || order.refundedAt) return false;
         const user = userSnapshot.data() || {};
         const endsAt = extendAccess(user.prepaidAccess?.[purchase.plan], now);
         transaction.set(userRef, {
@@ -80,4 +80,75 @@ async function fulfillPrepaidSession(db, session, now = Date.now()) {
         return true;
     });
 }
-module.exports = { ACCESS_DAYS, prepaidCheckoutOptions, paidPurchase, extendAccess, fulfillPrepaidSession };
+/** Rebuild the paid timeline instead of deleting unrelated renewals or subscriptions. */
+function remainingAccessEnd(orders, plan) {
+    return orders
+        .filter((order) => order.plan === plan && order.fulfilledAt && !order.refundedAt)
+        .sort((left, right) => left.fulfilledAt - right.fulfilledAt)
+        .reduce((end, order) => extendAccess(end, Number(order.fulfilledAt)), 0);
+}
+
+async function revokePrepaidSession(db, session, now = Date.now()) {
+    const purchase = paidPurchase(session);
+    if (!purchase) return false;
+    const orderRef = db.collection("prepaidOrders").doc(session.id);
+    const userRef = db.collection("users").doc(purchase.uid);
+    // A single-field query needs no additional composite index.
+    const ordersQuery = db.collection("prepaidOrders").where("uid", "==", purchase.uid);
+    return db.runTransaction(async (transaction) => {
+        const [orderSnapshot, userSnapshot, allOrders] = await Promise.all([
+            transaction.get(orderRef), transaction.get(userRef), transaction.get(ordersQuery),
+        ]);
+        const order = orderSnapshot.data();
+        if (!order || order.uid !== purchase.uid || order.plan !== purchase.plan ||
+            order.amount !== session.amount_total || order.customerId !== session.customer ||
+            (order.paymentIntentId && order.paymentIntentId !== session.payment_intent)) {
+            throw new Error("Refund does not match prepaid order");
+        }
+        if (order.refundedAt) return false;
+        const remaining = allOrders.docs
+            .filter((doc) => doc.id !== session.id)
+            .map((doc) => doc.data());
+        const endsAt = remainingAccessEnd(remaining, purchase.plan);
+        transaction.set(orderRef, {
+            refundedAt: now, paymentIntentId: session.payment_intent,
+        }, { merge: true });
+        // A refund may arrive before the purchase webhook, or after account deletion.
+        if (order.fulfilledAt && userSnapshot.exists) {
+            transaction.set(userRef, {
+                prepaidAccess: { [purchase.plan]: endsAt },
+            }, { merge: true });
+        }
+        return true;
+    });
+}
+
+/** Use current Stripe state, not a possibly delayed webhook payload. */
+async function handlePrepaidRefund(stripe, db, event) {
+    const object = event.data.object;
+    const chargeId = event.type === "charge.refunded" ? object.id :
+        (typeof object.charge === "string" ? object.charge : object.charge?.id);
+    if (!chargeId) return false;
+    const charge = await stripe.charges.retrieve(chargeId);
+    const paymentIntentId = typeof charge.payment_intent === "string"
+        ? charge.payment_intent : charge.payment_intent?.id;
+    if (!paymentIntentId || charge.currency !== "pln" || !(charge.amount > 0)) return false;
+    const sessions = await stripe.checkout.sessions.list({ payment_intent: paymentIntentId, limit: 100 });
+    const session = sessions.data.find((item) => item.metadata?.purchaseType === "prepaid");
+    if (!session) return false;
+    // Pending/failed refunds never revoke access. Several partial refunds may add up to a full refund.
+    let refundedAmount = 0;
+    for await (const refund of stripe.refunds.list({ charge: chargeId, limit: 100 })) {
+        if (refund.status === "succeeded") refundedAmount += refund.amount;
+    }
+    if (refundedAmount < charge.amount) return false;
+    if (session.amount_total !== charge.amount || session.payment_intent !== paymentIntentId) {
+        throw new Error("Refund amount does not match Checkout session");
+    }
+    return revokePrepaidSession(db, session);
+}
+
+module.exports = {
+    ACCESS_DAYS, prepaidCheckoutOptions, paidPurchase, extendAccess,
+    fulfillPrepaidSession, remainingAccessEnd, revokePrepaidSession, handlePrepaidRefund,
+};

@@ -369,7 +369,7 @@
             checking_usage: "Sprawdzanie zużycia...",
             credits_used: "Wykorzystano {used} z {limit} kredytów AI",
             credits_remaining: "Pozostało {left} kredytów w tym miesiącu",
-            blik_pay: "Zapłać BLIKIEM",
+            blik_pay: "BLIK",
             blik_extend: "Przedłuż BLIKIEM",
             blik_terms: "30 dni · Jednorazowo · Bez karty i automatycznego odnowienia",
             blik_access_until: "Dostęp do {date}",

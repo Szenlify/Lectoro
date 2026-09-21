@@ -3980,7 +3980,7 @@ html[data-lectoro-ai-limit-reached] #exportQuiz {
 .subscription-trial-note {
     margin-top: 6px;
     color: var(--text-muted);
-    font-size: 8px;
+    font-size: 9px;
     line-height: 1.35;
     text-align: center;
 }
