@@ -32,7 +32,7 @@ Master new languages naturally while watching your favorite videos and reading a
 - **Word-by-Word Translation Clouds:** Press S for contextual word and phrase translations above subtitles, with automatic fallback when the primary service is unavailable. Repeated subtitles load from saved results.
 - **AI Context Explanations:** Receive in-depth breakdowns of complex sentences, idioms, and grammar structures directly in the video player or reading pane.
 - **Natural Speech Pronunciation:** Listen to crystal-clear speech pronunciation tuned to your learning language.
-- **Spaced Repetition (SRS) Flashcards:** Save words and context sentences with a single shortcut or click. Daily review reminders help you retain vocabulary in long-term memory.
+- **Spaced Repetition (SRS) Flashcards:** Save words and context sentences with a single shortcut or click. Listen to either side at normal speed or 0.75×. Daily review reminders help you retain vocabulary in long-term memory.
 - **Flexible Vocabulary Export:** Export minimalist Anki cards with saved translations, original context and pronunciation, without AI examples or explanations. Export to Excel or take interactive AI-generated quizzes.
 - **Cross-Device Cloud Sync:** Optionally connect your account to keep your vocabulary, learning history, and flashcards synchronized across all your devices.
 
@@ -92,6 +92,7 @@ Every permission declared in `manifest.json` adheres to the Principle of Least P
   - 4. SRS Review & Vocabulary Cards
   - 5. Anki / Quiz Export
   - Refresh the Anki screenshot: plain expression and translation, without gradients, branding or AI examples.
+  - Refresh the review card screenshot to show the turtle icon for 0.75× playback.
   - Refresh the review voice-picker screenshot to show Sulafat and Algieba.
 
 ---
@@ -99,6 +100,7 @@ Every permission declared in `manifest.json` adheres to the Principle of Least P
 ## Version History
 
 - **1.0.0 (Current):**
+  - Added 0.75× speech playback beside the speaker on both sides of review cards (2026-09-21).
   - Simplified Anki export to Basic expression/translation cards with original context, optional media and no AI examples or explanations (2026-09-21).
   - Focus Mode applies only to auto-generated YouTube captions, highlights single words, and automatically selects an available auto-generated track when enabled.
   - On other video sites, rewinding past the first available subtitle continues in three-second steps.

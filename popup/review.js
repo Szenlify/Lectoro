@@ -967,6 +967,9 @@ function renderQuestion(w) {
                         <button class="review-speak-btn" data-text="${escapeAttr(
                             buildReviewSpeakText(showWord, showSentence),
                         )}" data-lang="${escapeAttr(showLang)}" ${forceBrowserAttr} ${cacheAttrs} title="Odczytaj">${SPEAK_SVG}</button>
+                    <button class="review-speak-btn review-speak-slow-btn" type="button" data-rate="0.75" data-text="${escapeAttr(
+                            buildReviewSpeakText(showWord, showSentence),
+                        )}" data-lang="${escapeAttr(showLang)}" ${forceBrowserAttr} ${cacheAttrs} title="Listen slowly (0.75×)" aria-label="Listen slowly (0.75×)">${SLOW_SPEAK_SVG}</button>
                     </div>
                     ${sentenceHtml}
                     ${reviewScreenshotHtml(w.screenshot)}
@@ -1096,6 +1099,9 @@ function renderAnswer(w) {
                     <button class="review-speak-btn" data-text="${escapeAttr(
                         buildReviewSpeakText(aWord, aSentence),
                     )}" data-lang="${escapeAttr(aLang)}" ${forceBrowserAttr} ${cacheAttrs} title="Listen">${SPEAK_SVG}</button>
+                    <button class="review-speak-btn review-speak-slow-btn" type="button" data-rate="0.75" data-text="${escapeAttr(
+                        buildReviewSpeakText(aWord, aSentence),
+                    )}" data-lang="${escapeAttr(aLang)}" ${forceBrowserAttr} ${cacheAttrs} title="Listen slowly (0.75×)" aria-label="Listen slowly (0.75×)">${SLOW_SPEAK_SVG}</button>
                 </div>
                 ${
                     aSentence && !isRedundantA

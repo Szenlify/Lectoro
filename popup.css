@@ -2277,6 +2277,11 @@ body::before {
     flex-shrink: 0;
 }
 
+.review-speak-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+}
+
 .review-speak-btn:hover {
     background: var(--accent-mid);
     border-color: rgba(129, 140, 248, 0.4);
@@ -2301,6 +2306,11 @@ body::before {
 .review-speak-btn svg {
     width: 15px;
     height: 15px;
+}
+
+.review-speak-slow-btn svg {
+    width: 20px;
+    height: 20px;
 }
 
 .review-speak-sm {

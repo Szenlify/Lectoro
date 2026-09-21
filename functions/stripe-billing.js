@@ -503,28 +503,86 @@ exports.stripeWebhook = onRequest(
 function resultPage(status) {
     const messages = {
         trial_success: {
-            icon: "✓",
             title: "3 dni za darmo rozpoczęte",
-            text: "Karta została zapisana, ale dziś nic nie pobraliśmy. Zamknij tę kartę i wróć do Lectoro — plan pojawi się po kilku sekundach.",
+            text: "Karta została zapisana, ale dziś nic nie pobraliśmy. Przed Tobą 3 dni odkrywania nowych możliwości Lectoro.",
         },
         success: {
-            icon: "✓",
             title: "Płatność zakończona",
-            text: "Stripe przyjął płatność. Zamknij tę kartę i ponownie otwórz Lectoro. Plan pojawi się po kilku sekundach.",
+            text: "Dziękujemy, że rozwijasz z nami swoje językowe możliwości. Twoja płatność została przyjęta.",
         },
         cancel: {
-            icon: "←",
             title: "Płatność anulowana",
-            text: "Nic nie pobraliśmy. Możesz zamknąć tę kartę i wrócić do Lectoro.",
+            text: "Nic nie pobraliśmy. Wróć do nauki i wybierz plan wtedy, kiedy będziesz gotowy.",
         },
         portal: {
-            icon: "✓",
             title: "Ustawienia płatności zapisane",
-            text: "Zamknij tę kartę i ponownie otwórz Lectoro, aby zobaczyć aktualny plan.",
+            text: "Wszystko gotowe. Otwórz ponownie Lectoro, aby zobaczyć aktualny plan.",
         },
     };
     const message = messages[status] || messages.portal;
-    return `<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lectoro — Stripe</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#090b16;color:#eef2ff;font-family:system-ui,sans-serif}.card{max-width:520px;margin:24px;padding:36px;border:1px solid #30365b;border-radius:22px;background:#13162a;text-align:center;box-shadow:0 24px 70px #0008}.icon{display:grid;place-items:center;width:56px;height:56px;margin:auto;border-radius:50%;background:#6366f1;color:white;font-size:30px}h1{font-size:25px;margin:20px 0 10px}p{color:#b8bfd9;line-height:1.6;margin:0}</style></head><body><main class="card"><div class="icon">${message.icon}</div><h1>${message.title}</h1><p>${message.text}</p></main></body></html>`;
+    const celebrate = status === "success" || status === "trial_success";
+    const confetti = celebrate
+        ? Array.from({ length: 64 }, (_, i) => `<i style="--x:${(i * 37) % 100}%;--delay:${(i % 9) * 0.09}s;--duration:${2.8 + (i % 7) * 0.16}s;--drift:${((i * 29) % 180) - 90}px;--spin:${i % 2 ? 620 : -540}deg;--color:${["#a5a0ff", "#74e4be", "#f5d78e", "#f6accd"][i % 4]}"></i>`).join("")
+        : "";
+    return `<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${message.title} — Lectoro</title>
+<style>
+:root { color-scheme: dark; --text: #f5f5fc; --muted: #a9adc4; --mint: #8de8c5; --line: #ffffff14; }
+body { margin: 0; min-height: 100vh; min-height: 100dvh; display: grid; grid-template-rows: auto 1fr auto; background: radial-gradient(ellipse at 50% 35%, #252344 0, #10111e 45%, #0b0c15 80%); color: var(--text); font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.brand { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 36px 24px 20px; font-size: 1.3rem; font-weight: 750; letter-spacing: -.04em; }
+.brand-mark { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid #a9a0ff55; border-radius: 10px; background: #9e90ff20; color: #c4bdff; font-size: 1rem; }
+main { display: grid; place-items: center; padding: 24px; }
+.card { box-sizing: border-box; position: relative; width: 100%; max-width: 600px; padding: 48px 48px 32px; border: 1px solid #ffffff1c; border-radius: 32px; background: linear-gradient(155deg, #202136, #151622 65%); box-shadow: 0 32px 100px #0005, inset 0 1px #ffffff08; text-align: center; animation: arrive .65s ease-out both; }
+.card::before { content: ""; position: absolute; top: -1px; left: 20%; right: 20%; height: 1px; background: linear-gradient(90deg, transparent, #bbb0ffb0, transparent); }
+.seal { display: grid; place-items: center; width: 88px; height: 88px; margin: 0 auto 28px; border: 1px solid #8de8c533; border-radius: 50%; background: radial-gradient(circle at 30% 20%, #8de8c530, #8de8c508); color: var(--mint); box-shadow: 0 0 0 10px #8de8c504, 0 0 60px #8de8c50c; }
+.seal svg { width: 40px; height: 40px; }
+.eyebrow { margin: 0 0 14px; color: var(--mint); font-size: .7rem; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; }
+h1 { margin: 0; font-size: clamp(2rem, 1.5rem + 2vw, 2.8rem); line-height: 1.12; font-weight: 700; letter-spacing: -.055em; text-wrap: balance; }
+.description { max-width: 410px; margin: 20px auto 0; color: var(--muted); font-size: 1rem; line-height: 1.75; text-wrap: pretty; }
+.next { margin-top: 32px; padding: 22px 24px; border: 1px solid var(--line); border-radius: 18px; background: #0b0c152e; text-align: start; }
+.next-title { margin: 0 0 14px; font-size: .85rem; font-weight: 650; }
+.steps { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.steps li { display: flex; align-items: center; gap: 12px; color: #c3c6d9; font-size: .84rem; line-height: 1.5; }
+.step-number { display: grid; place-items: center; flex-shrink: 0; width: 24px; height: 24px; border: 1px solid #a9a0ff30; border-radius: 8px; color: #c4bdff; background: #a9a0ff0d; font-size: .7rem; }
+.note { margin: 22px 0 0; color: var(--muted); font-size: .75rem; line-height: 1.6; }
+footer { padding: 24px 20px 30px; text-align: center; color: #9297af; font-size: .75rem; letter-spacing: .02em; }
+footer span { color: #beb5ee; }
+.confetti { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 2; }
+.confetti i { position: absolute; top: -20px; left: var(--x); width: 7px; height: 12px; border-radius: 2px; background: var(--color); animation: confetti-fall var(--duration) var(--delay) cubic-bezier(.2,.55,.6,1) both; }
+.confetti i:nth-child(3n) { width: 7px; height: 7px; border-radius: 50%; }
+.confetti i:nth-child(5n) { width: 4px; height: 15px; }
+@keyframes confetti-fall { 0% { opacity: 0; transform: translate3d(0,-20px,0) rotate(0); } 8% { opacity: .9; } 75% { opacity: .75; } 100% { opacity: 0; transform: translate3d(var(--drift),105vh,0) rotate(var(--spin)); } }
+@keyframes arrive { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 480px) { .brand { padding-top: 24px; } main { padding: 16px; } .card { padding: 36px 24px 28px; border-radius: 24px; } .next { padding: 20px 16px; } }
+@media (prefers-reduced-motion: reduce) { .confetti { display: none; } .confetti i, .card { animation: none; } }
+</style>
+</head>
+<body>
+<header class="brand"><span class="brand-mark" aria-hidden="true">L</span>Lectoro</header>
+${celebrate ? `<div class="confetti" aria-hidden="true">${confetti}</div>` : ""}
+<main>
+<section class="card" aria-labelledby="result-title">
+<div class="seal" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${status === "cancel" ? '<path d="m14 8-8 8 8 8M6 16h20"/>' : '<path d="m8 16 5.5 5.5L25 10"/>'}</svg></div>
+<p class="eyebrow">${celebrate ? "Dobry krok. Więcej możliwości." : "Twoje konto Lectoro"}</p>
+<h1 id="result-title">${message.title}</h1>
+<p class="description">${message.text}</p>
+<div class="next">
+<p class="next-title">${celebrate ? "Wracamy do nauki?" : "Wróć do Lectoro"}</p>
+<ol class="steps">
+<li><span class="step-number" aria-hidden="true">1</span><span>Zamknij tę kartę.</span></li>
+<li><span class="step-number" aria-hidden="true">2</span><span>Otwórz Lectoro z paska rozszerzeń Chrome.</span></li>
+</ol>
+</div>
+<p class="note">${status === "cancel" ? "Możesz wrócić do wyboru planu w dowolnej chwili." : "Aktualizacja planu może potrwać kilka sekund."}</p>
+</section>
+</main>
+<footer>Małe kroki. <span>Coraz więcej rozumiesz.</span></footer>
+</body>
+</html>`;
 }
 
 exports.stripeCheckoutResult = onRequest(

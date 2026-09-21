@@ -583,6 +583,7 @@
             {
                 forceBrowser = false,
                 useConfiguredRate = true,
+                rate = null,
                 cacheNotBefore = 0,
                 isCancelled = null,
                 sourceLang = null,
@@ -603,6 +604,9 @@
                 return { type: "none", obj: null };
             }
 
+            const playbackRate = Number.isFinite(rate) && rate > 0
+                ? rate
+                : (useConfiguredRate ? settings.speechRate : 1);
             const segments = parseSpeechSegments(cleaned, lang, {
                 sourceLang,
                 originalText,
@@ -642,7 +646,7 @@
                         const url = URL.createObjectURL(audioResult.blob);
                         const audio = new Audio(url);
                         audio.volume = settings.ttsVolume;
-                        audio.playbackRate = useConfiguredRate ? settings.speechRate : 1;
+                        audio.playbackRate = playbackRate;
                         activeAudio = audio;
                         audio.addEventListener(
                             "ended",
@@ -667,7 +671,7 @@
 
             // Fallback or default to Browser Speech
             const utter = speakBrowserDirect(cleaned, lang, settings, {
-                rate: useConfiguredRate ? settings.speechRate : 1.0,
+                rate: playbackRate,
                 volume: settings.ttsVolume,
                 voices,
                 sourceLang,
