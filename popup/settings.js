@@ -251,6 +251,7 @@ function renderSubscriptionPlans(subscription, signedIn = true) {
         : SubscriptionConfig.SUBSCRIPTION_PLANS.FREE;
     const hasPaidPlan =
         signedIn && activePlan !== SubscriptionConfig.SUBSCRIPTION_PLANS.FREE;
+    const isPrepaid = signedIn && subscription?.accessType === "prepaid";
     const trialEligible = !signedIn || subscription?.trialEligible !== false;
     const isTrialing =
         signedIn && subscription?.subscriptionStatus === "trialing";
@@ -259,7 +260,7 @@ function renderSubscriptionPlans(subscription, signedIn = true) {
 
     const lang = getPopupLang();
     const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, lang, p) : k);
-    const renderKey = `${activePlan}:${signedIn}:${hasPaidPlan}:${trialEligible}:${isTrialing}:${lang}`;
+    const renderKey = `${activePlan}:${signedIn}:${hasPaidPlan}:${trialEligible}:${isTrialing}:${isPrepaid}:${subscription?.accessExpiresAt || 0}:${lang}`;
     if (grid.dataset.renderedKey === renderKey && grid.children.length > 0) {
         return;
     }
@@ -302,6 +303,29 @@ function renderSubscriptionPlans(subscription, signedIn = true) {
             } else if (hasPaidPlan) {
                 action =
                     `<button type="button" class="subscription-plan-button is-secondary" data-billing-action="portal"><span class="subscription-button-label">${t("manage_plan")}</span><span aria-hidden="true">→</span></button>`;
+            }
+            if (isPrepaid) {
+                action = isCurrent
+                    ? `<span class="subscription-plan-current">${t("plan_current")}</span>`
+                    : `<span class="subscription-trial-note">${t("blik_change_after_expiry")}</span>`;
+            }
+            let blikAction = "";
+            const showBlik = limits.prepaid && (lang === "pl" || isPrepaid) &&
+                (!hasPaidPlan || (isPrepaid && isCurrent));
+            if (showBlik) {
+                const blikPrice = (limits.prepaid.amountMinor / 100).toLocaleString("pl-PL", {
+                    style: "currency", currency: "PLN",
+                });
+                blikAction = `<div class="subscription-blik-option">
+                    <button type="button" class="subscription-plan-button is-blik" data-billing-action="blik" data-plan="${planId}">
+                        <span class="subscription-button-label">${t(isPrepaid ? "blik_extend" : "blik_pay")}</span>
+                        <span>${blikPrice}</span>
+                    </button>
+                    <span class="subscription-trial-note">${t("blik_terms")}</span>
+                    ${isPrepaid ? `<span class="subscription-trial-note">${t("blik_access_until", {
+                        date: new Date(Number(subscription.accessExpiresAt)).toLocaleDateString(lang),
+                    })}</span>` : ""}
+                </div>`;
             }
             const billingNote = hasTrialOffer
                 ? `<span class="subscription-trial-note">${t("billing_note_trial", { price })}</span>`
@@ -350,7 +374,7 @@ function renderSubscriptionPlans(subscription, signedIn = true) {
                 }
                     <span class="${limits.geminiTts.enabled ? "" : "is-muted"}"><i aria-hidden="true">${limits.geminiTts.enabled ? "✓" : "—"}</i>${tts}</span>
                 </div>
-                <div class="subscription-plan-action">${action}${billingNote}</div>
+                <div class="subscription-plan-action">${action}${billingNote}${blikAction}</div>
             </article>`;
         })
         .join("");
@@ -696,7 +720,7 @@ document
 
             if (
                 !user &&
-                (action === "checkout" || action === "sign-in-and-checkout")
+                (action === "checkout" || action === "blik" || action === "sign-in-and-checkout")
             ) {
                 if (status) {
                     status.className = "stripe-billing-status is-loading";
@@ -718,7 +742,7 @@ document
             const result =
                 action === "portal"
                     ? await SubscriptionService.openBillingPortal()
-                    : await SubscriptionService.startCheckout(targetPlan);
+                    : await SubscriptionService.startCheckout(targetPlan, action === "blik" ? "blik" : "subscription");
 
             if (status) {
                 const lang = getPopupLang();

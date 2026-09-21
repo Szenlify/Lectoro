@@ -4103,3 +4103,25 @@ html[data-lectoro-ai-limit-reached] #exportQuiz {
     }
 }
 
+
+/* One-time BLIK purchase, separate from recurring card subscriptions. */
+.subscription-blik-option {
+    display: grid;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 14px;
+    border-top: 1px solid var(--glass-border);
+}
+.subscription-plan-button.is-blik {
+    background: #171820;
+    color: #fff;
+    border: 1px solid #515362;
+}
+.subscription-plan-button.is-blik:hover:not(:disabled) {
+    background: #272936;
+    border-color: #a4a7bd;
+}
+.subscription-plan-button.is-blik:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+}

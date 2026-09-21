@@ -44,6 +44,7 @@
             displayName: "BASIC",
             trialDays: 3,
             priceMonthly: Object.freeze({ amount: 7.99, currency: "USD" }),
+            prepaid: Object.freeze({ amountMinor: 2999, currency: "PLN", days: 30 }),
             ai: Object.freeze({ usesPerMonth: 800 }),
             srs: Object.freeze({ maxSavedCards: 2500 }),
             geminiTts: Object.freeze({
@@ -65,6 +66,7 @@
             displayName: "PRO",
             trialDays: 3,
             priceMonthly: Object.freeze({ amount: 19.99, currency: "USD" }),
+            prepaid: Object.freeze({ amountMinor: 7999, currency: "PLN", days: 30 }),
             ai: Object.freeze({ usesPerMonth: Infinity }),
             srs: Object.freeze({ maxSavedCards: Infinity }),
             geminiTts: Object.freeze({
@@ -99,6 +101,24 @@
         return Object.prototype.hasOwnProperty.call(SUBSCRIPTION_LIMITS, normalized)
             ? normalized
             : SUBSCRIPTION_PLANS.FREE;
+    }
+
+    /** Keep recurring and prepaid entitlements separate so webhooks cannot erase either. */
+    function resolveAccess(data = {}, fallbackPlan = "free", now = Date.now()) {
+        const recurringPlan = normalizePlan(data.subscriptionPlan ?? data.plan ?? fallbackPlan);
+        const prepaid = data.prepaidAccess || {};
+        const proEnd = Number(prepaid.pro || 0);
+        const basicEnd = Number(prepaid.basic || 0);
+        const prepaidPlan = proEnd > now ? "pro" : basicEnd > now ? "basic" : "free";
+        const ranks = { free: 0, basic: 1, pro: 2 };
+        const usePrepaid = ranks[prepaidPlan] > ranks[recurringPlan];
+        return {
+            plan: usePrepaid ? prepaidPlan : recurringPlan,
+            subscriptionPlan: recurringPlan,
+            prepaidAccess: { basic: basicEnd, pro: proEnd },
+            accessType: usePrepaid ? "prepaid" : recurringPlan !== "free" ? "subscription" : "free",
+            accessExpiresAt: usePrepaid ? prepaid[prepaidPlan] : null,
+        };
     }
 
     function getPlanLimits(plan) {
@@ -301,6 +321,7 @@
         currentMonth,
         normalizePlan,
         getPlanLimits,
+        resolveAccess,
         countCharacters,
         checkAiLimit,
         checkSrsLimit,

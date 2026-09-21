@@ -26,22 +26,26 @@ service cloud.firestore {
       allow read: if isOwner(userId);
 
       // Subscription, Stripe and usage fields are server/admin-owned. The
-      // authoritative plan is a Firebase Auth Custom Claim; this document only
-      // contains its optional admin-written mirror for display/auditing.
+      // backend resolves the plan from this profile and the prepaid expiry dates.
+      // Clients must never grant or extend their own access.
       allow create: if isOwner(userId)
                     && !request.resource.data.keys().hasAny([
                       'plan',
                       'aiCallsThisMonth', 'aiCallsResetDate',
                       'elevenLabsCharactersThisMonth', 'elevenLabsResetDate',
                       'subscriptionStatus', 'stripeCustomerId', 'stripeSubscriptionId',
-                      'stripeCancelAtPeriodEnd', 'stripeCurrentPeriodEnd'
+                      'stripeCancelAtPeriodEnd', 'stripeCurrentPeriodEnd',
+                      'subscriptionPlan', 'prepaidAccess', 'stripeHasSubscribed',
+                      'stripeTrialUsed', 'stripeTrialEnd'
                     ]);
       allow update: if isOwner(userId)
                     && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
                       'plan', 'aiCallsThisMonth', 'aiCallsResetDate',
                       'elevenLabsCharactersThisMonth', 'elevenLabsResetDate',
                       'subscriptionStatus', 'stripeCustomerId', 'stripeSubscriptionId',
-                      'stripeCancelAtPeriodEnd', 'stripeCurrentPeriodEnd'
+                      'stripeCancelAtPeriodEnd', 'stripeCurrentPeriodEnd',
+                      'subscriptionPlan', 'prepaidAccess', 'stripeHasSubscribed',
+                      'stripeTrialUsed', 'stripeTrialEnd'
                     ]);
       // Deleting the profile would reset server-owned monthly counters.
       allow delete: if false;

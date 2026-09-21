@@ -13,6 +13,8 @@
 const admin = require("firebase-admin");
 
 const SUBSCRIPTION_FIELDS = [
+    "subscriptionPlan",
+    "prepaidAccess",
     "plan",
     "subscriptionStatus",
     "stripeCustomerId",

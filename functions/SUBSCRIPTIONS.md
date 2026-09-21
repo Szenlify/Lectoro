@@ -6,7 +6,7 @@ Poniższa ręczna zmiana planu jest przeznaczona wyłącznie do administracyjnyc
 testów i napraw — zwykłe płatne plany nadaje webhook Stripe.
 
 Nowy użytkownik może rozpocząć jeden 3-dniowy okres próbny planu BASIC albo
-PRO. Stripe Checkout zawsze wymaga podania karty, ustawia dziś należność na
+PRO. Stripe Checkout w trybie subskrypcji wymaga podania karty, ustawia dziś należność na
 0 i rozpoczyna miesięczne rozliczenie po zakończeniu trialu. Backend sprawdza
 historię subskrypcji klienta oraz pola `stripeTrialUsed` i
 `stripeHasSubscribed`, aby nie przyznać kolejnego trialu po anulowaniu.
@@ -97,7 +97,7 @@ i Firebase Functions.
 | Plan | Trial | AI / miesiąc | Zapisane fiszki SRS | Gemini TTS / żądanie | Gemini TTS / miesiąc |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | FREE | — | 15 | 25 | niedostępne | niedostępne |
-| BASIC | 3 dni | 1 000 | 3 000 | 500 znaków | 15 000 znaków |
+| BASIC | 3 dni | 800 | 2 500 | 500 znaków | 10 000 znaków |
 | PRO | 3 dni | 10 000 | 10 000 | 1 000 znaków | 100 000 znaków |
 
 `priceMonthly` steruje ceną wyświetlaną w rozszerzeniu. Kwota pobierana od
@@ -111,3 +111,43 @@ Pola Firestore `elevenLabsCharactersThisMonth` i `elevenLabsResetDate` oraz
 nie resetowała wykorzystanego limitu. Kwoty użytkownika nadal liczymy w znakach,
 a koszt dostawcy zależy od tokenów wejściowych i długości audio.
 Szczegóły: [Gemini TTS](../docs/Gemini-TTS.md).
+
+
+## Jednorazowy dostęp BLIK — 30 dni
+
+W polskim interfejsie obok subskrypcji kartowej jest osobny przycisk BLIK:
+BASIC 29,99 PLN, PRO 79,99 PLN. Ceny są określone na serwerze w
+`SUBSCRIPTION_LIMITS.*.prepaid` (kwoty w groszach), a klient ma ich kopię do wyświetlania.
+BLIK nie obejmuje okresu próbnego, zapisania karty ani automatycznego odnowienia.
+Limity AI/TTS nadal odnawiają się miesięcznie według dotychczasowych zasad.
+
+Checkout używa `mode: payment`, `payment_method_types: [blik]` i PLN.
+Endpoint `createStripeCheckoutSession` przyjmuje `paymentMode: blik`.
+Przed zwróceniem URL zapisuje zamówienie w prywatnej kolekcji `prepaidOrders`.
+Webhook sprawdza status `paid`, UID, kwotę, plan i klienta, a transakcja Firestore
+nalicza zakup dokładnie raz na identyfikator sesji Stripe. Ten sam plan przedłuża
+ważność od późniejszej z dat: teraz lub dotychczasowy koniec dostępu.
+
+Pola `users.prepaidAccess.basic/pro` zawierają koniec dostępu w milisekundach Unix.
+Są chronione regułami Firestore; zamówienia nie są dostępne bezpośrednio z klienta.
+Subskrypcja kartowa i dostęp BLIK są rozliczane oddzielnie. Serwer i cache klienta
+sprawdzają ważność przy użyciu planu — nie jest potrzebne zadanie cykliczne.
+Podczas aktywnego dostępu BLIK można przedłużać ten sam plan; zmianę planu lub
+przejście na subskrypcję udostępniamy po wygaśnięciu. Aktywną subskrypcją zarządza
+się w Stripe Portal.
+
+Przed udostępnieniem produkcyjnym:
+
+1. W Stripe Dashboard → Settings → Payment methods włącz BLIK (osobno sprawdź sandbox i live).
+2. Webhook `stripeWebhook` musi odbierać `checkout.session.completed` oraz
+   `checkout.session.async_payment_succeeded`, oprócz dotychczasowych zdarzeń subskrypcji.
+3. Wdróż reguły i funkcje z katalogu głównego repozytorium:
+   `firebase deploy --project extension-eng --config firebase/firebase.json --only firestore:rules,functions:createStripeCheckoutSession,functions:stripeWebhook,functions:stripeCheckoutResult,functions:geminiProxy`
+4. Przeładuj rozszerzenie, aby zaktualizować przyciski i lokalne limity.
+5. W sandboxie sprawdź zakup kodem `123456`, anulowanie, ponowne dostarczenie webhooka,
+   przedłużenie oraz wygaśnięcie dostępu. Nie używaj prawdziwej płatności do testu.
+
+Zwroty BLIK wykonuje się w Stripe. Na tym etapie odebranie dostępu po zwrocie
+wymaga korekty pola `prepaidAccess` przez administratora; webhook zwrotów nie zmienia dostępu.
+
+Dokumentacja: https://docs.stripe.com/payments/blik/accept-a-payment?payment-ui=checkout

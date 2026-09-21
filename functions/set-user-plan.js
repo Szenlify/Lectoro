@@ -25,6 +25,7 @@ if (!uid || !Object.prototype.hasOwnProperty.call(SUBSCRIPTION_LIMITS, plan)) {
         await admin.firestore().collection("users").doc(uid).set(
             {
                 plan,
+                subscriptionPlan: plan,
                 subscriptionStatus: "active",
                 planUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
             },

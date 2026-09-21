@@ -92,6 +92,7 @@ Every permission declared in `manifest.json` adheres to the Principle of Least P
   - 4. SRS Review & Vocabulary Cards
   - 5. Anki / Quiz Export
   - Refresh the Anki screenshot: plain expression and translation, without gradients, branding or AI examples.
+  - Refresh Polish plan screenshots to show the one-time BLIK option.
   - Refresh the review card screenshot to show the turtle icon for 0.75× playback.
   - Refresh the review voice-picker screenshot to show Sulafat and Algieba.
 
@@ -100,6 +101,7 @@ Every permission declared in `manifest.json` adheres to the Principle of Least P
 ## Version History
 
 - **1.0.0 (Current):**
+  - Added one-time BLIK purchases for 30 days of BASIC or PRO access in the Polish interface, without a card or automatic renewal.
   - Added 0.75× speech playback beside the speaker on both sides of review cards (2026-09-21).
   - Simplified Anki export to Basic expression/translation cards with original context, optional media and no AI examples or explanations (2026-09-21).
   - Focus Mode applies only to auto-generated YouTube captions, highlights single words, and automatically selects an available auto-generated track when enabled.

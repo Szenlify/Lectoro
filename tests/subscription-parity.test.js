@@ -15,6 +15,7 @@ test("subscription plan keys and pricing match between client and backend config
         const serverPlan = serverConfig.SUBSCRIPTION_LIMITS[plan];
 
         assert.equal(clientPlan.trialDays, serverPlan.trialDays, `Trial days mismatch for ${plan}`);
+        assert.deepEqual(clientPlan.prepaid, serverPlan.prepaid, `Prepaid price mismatch for ${plan}`);
         assert.deepEqual(clientPlan.priceMonthly, serverPlan.priceMonthly, `Price mismatch for ${plan}`);
         assert.deepEqual(clientPlan.ai, serverPlan.ai, `AI limits mismatch for ${plan}`);
         assert.deepEqual(clientPlan.srs, serverPlan.srs, `SRS limits mismatch for ${plan}`);

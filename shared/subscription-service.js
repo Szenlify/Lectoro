@@ -56,7 +56,10 @@
             const data = await chrome.storage.local.get({
                 [PROFILE_KEY]: null,
             });
-            return data[PROFILE_KEY];
+            const cached = data[PROFILE_KEY];
+            return cached?.prepaidAccess
+                ? { ...cached, ...Config.resolveAccess(cached) }
+                : cached;
         }
 
         async function setCachedProfile(profile, aiUsage = null) {
@@ -387,7 +390,7 @@
             };
         }
 
-        function startCheckout(plan) {
+        function startCheckout(plan, paymentMode = "subscription") {
             const normalizedPlan = Config.normalizePlan(plan);
             if (
                 normalizedPlan !== Config.SUBSCRIPTION_PLANS.BASIC &&
@@ -401,6 +404,7 @@
             return billingRequest("createStripeCheckoutSession", {
                 plan: normalizedPlan,
                 lang: currentLang,
+                paymentMode,
             });
         }
 

@@ -8,6 +8,7 @@ const {
     currentMonth,
     normalizePlan,
     getPlanLimits,
+    resolveAccess,
     checkAiLimit,
     checkGeminiTtsLimit,
 } = require("./subscription-config");
@@ -261,11 +262,11 @@ exports.geminiProxy = onRequest(
         // The Firestore user record is updated immediately in real time by the
         // Stripe webhook, whereas decodedToken.plan from client JWT claims can
         // lag until the client refreshes its token. Use authoritative plan from Firestore/claims.
-        const authoritativePlan = normalizePlan(
-            userData.plan !== undefined ? userData.plan : decodedToken.plan,
-        );
-
-        const profile = subscriptionProfile(uid, authoritativePlan, userData, month);
+        const access = resolveAccess(userData, decodedToken.plan);
+        const profile = {
+            ...subscriptionProfile(uid, access.plan, userData, month),
+            ...access,
+        };
         const plan = profile.plan || SUBSCRIPTION_PLANS.FREE;
         const aiLimit = getPlanLimits(plan).ai.usesPerMonth;
         const aiUsed = profile.usage.ai.used;

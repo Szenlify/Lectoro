@@ -1,5 +1,6 @@
 const { onRequest } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
+const { prepaidCheckoutOptions, fulfillPrepaidSession } = require("./prepaid-access");
 let adminInstance = null;
 function getAdmin() {
     if (!adminInstance) {
@@ -22,6 +23,7 @@ const {
     SUBSCRIPTION_PLANS,
     getPlanLimits,
     normalizePlan,
+    resolveAccess,
 } = require("./subscription-config");
 
 const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");
@@ -274,6 +276,7 @@ async function applySubscriptionState(uid, customerId, subscription) {
         .set(
             {
                 plan,
+                subscriptionPlan: plan,
                 subscriptionStatus: status,
                 stripeCustomerId: customerId,
                 stripeSubscriptionId: subscription?.id || getAdmin().firestore.FieldValue.delete(),
@@ -341,6 +344,11 @@ exports.createStripeCheckoutSession = onRequest(
             return res.status(400).json({ error: "Wybierz plan BASIC albo PRO." });
         }
 
+        const paymentMode = req.body?.paymentMode || "subscription";
+        if (!["subscription", "blik"].includes(paymentMode)) {
+            return res.status(400).json({ error: "Nieprawidłowa metoda płatności." });
+        }
+
         try {
             const stripe = stripeClient();
             const customer = await ensureStripeCustomer(stripe, decodedToken);
@@ -370,6 +378,38 @@ exports.createStripeCheckoutSession = onRequest(
                 .collection("users")
                 .doc(decodedToken.uid)
                 .get();
+            const access = resolveAccess(userSnapshot.data() || {});
+            const activePrepaidPlan = ["pro", "basic"].find(
+                (plan) => Number(access.prepaidAccess[plan]) > Date.now(),
+            );
+            if (activePrepaidPlan && (paymentMode !== "blik" || activePrepaidPlan !== requestedPlan)) {
+                return res.status(409).json({
+                    error: "Masz aktywny dostęp BLIK. Możesz przedłużyć ten sam plan; inny wybierzesz po jego wygaśnięciu.",
+                    code: "PREPAID_ALREADY_ACTIVE",
+                });
+            }
+            if (paymentMode === "blik") {
+                const offer = getPlanLimits(requestedPlan).prepaid;
+                const session = await stripe.checkout.sessions.create({
+                    ...prepaidCheckoutOptions({
+                        customerId: customer.id,
+                        uid: decodedToken.uid,
+                        plan: requestedPlan,
+                        amountPlnMinor: offer.amountMinor,
+                        resultUrl: CHECKOUT_RESULT_URL,
+                    }),
+                    expires_at: Math.floor(Date.now() / 1000) + 1800,
+                });
+                // Persist the server-priced order before exposing its payment URL.
+                await getAdmin().firestore().collection("prepaidOrders").doc(session.id).set({
+                    uid: decodedToken.uid,
+                    plan: requestedPlan,
+                    amount: offer.amountMinor,
+                    customerId: customer.id,
+                    createdAt: Date.now(),
+                });
+                return res.status(200).json({ url: session.url, trialDays: 0, paymentMode: "blik" });
+            }
             const trialDays = (await isTrialEligible(
                 stripe,
                 decodedToken.email || "",
@@ -463,8 +503,11 @@ exports.stripeWebhook = onRequest(
         }
 
         try {
-            if (event.type === "checkout.session.completed") {
+            if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
                 const session = event.data.object;
+                if (session.metadata?.purchaseType === "prepaid") {
+                    await fulfillPrepaidSession(getAdmin().firestore(), session);
+                }
                 if (session.mode === "subscription" && session.customer) {
                     await syncCustomerSubscriptions(
                         stripe,
@@ -506,6 +549,10 @@ function resultPage(status) {
             title: "3 dni za darmo rozpoczęte",
             text: "Karta została zapisana, ale dziś nic nie pobraliśmy. Przed Tobą 3 dni odkrywania nowych możliwości Lectoro.",
         },
+        prepaid_success: {
+            title: "Dziękujemy za płatność BLIK!",
+            text: "Po potwierdzeniu płatności dodamy 30 dni dostępu do Twojego planu. Bez podpinania karty i automatycznego odnowienia.",
+        },
         success: {
             title: "Płatność zakończona",
             text: "Dziękujemy, że rozwijasz z nami swoje językowe możliwości. Twoja płatność została przyjęta.",
@@ -520,7 +567,7 @@ function resultPage(status) {
         },
     };
     const message = messages[status] || messages.portal;
-    const celebrate = status === "success" || status === "trial_success";
+    const celebrate = status === "success" || status === "trial_success" || status === "prepaid_success";
     const confetti = celebrate
         ? Array.from({ length: 64 }, (_, i) => `<i style="--x:${(i * 37) % 100}%;--delay:${(i % 9) * 0.09}s;--duration:${2.8 + (i % 7) * 0.16}s;--drift:${((i * 29) % 180) - 90}px;--spin:${i % 2 ? 620 : -540}deg;--color:${["#a5a0ff", "#74e4be", "#f5d78e", "#f6accd"][i % 4]}"></i>`).join("")
         : "";
