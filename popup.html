@@ -211,13 +211,13 @@
                         <div class="toggle-row">
                             <div>
                                 <div class="toggle-label" data-i18n="youtube_focus_mode">YouTube Focus Mode</div>
-                                <div class="toggle-desc" data-i18n="youtube_focus_mode_desc">Smoothly slide animated background highlight across spoken words for YouTube captions with word timing.</div>
                             </div>
                             <label class="toggle-switch">
-                                <input type="checkbox" id="ytFocusModeToggle" aria-label="YouTube Focus Mode">
+                                <input type="checkbox" id="ytFocusModeToggle" aria-label="YouTube Focus Mode" aria-describedby="ytFocusModeNotice">
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
+                        <div class="toggle-desc focus-mode-notice" id="ytFocusModeNotice" data-i18n="youtube_focus_mode_desc">Turn on YouTube captions (CC) and select an auto-generated caption track.</div>
                         <div class="focus-color-wrap" id="ytFocusColorWrap" style="display: none;">
                             <div class="focus-color-header">
                                 <span class="focus-color-label" data-i18n="youtube_focus_color">Highlight Color</span>
