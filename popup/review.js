@@ -1,11 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════
 //  SPACED REPETITION  –  see shared/srs.js for the Anki SM-2 algorithm
 // ═══════════════════════════════════════════════════════════════════
-const {
-    update: srUpdate,
-    previewLabel,
-    ensure: ensureSR,
-} = SRS; // shared/srs.js
+const { update: srUpdate, previewLabel, ensure: ensureSR } = SRS; // shared/srs.js
 
 // ── Review state ──────────────────────────────────────────────────
 let reviewQueue = [];
@@ -31,8 +27,11 @@ let reviewLearningLang = LectoroConstants.DEFAULT_READING_SETTINGS.learningLang;
 
 whenPopupReady((data) => {
     reviewDirection = data.reviewDirection || "normal";
-    reviewTargetLang = data.targetLang || LectoroConstants.DEFAULT_READING_SETTINGS.targetLang;
-    reviewLearningLang = data.learningLang || LectoroConstants.DEFAULT_READING_SETTINGS.learningLang;
+    reviewTargetLang =
+        data.targetLang || LectoroConstants.DEFAULT_READING_SETTINGS.targetLang;
+    reviewLearningLang =
+        data.learningLang ||
+        LectoroConstants.DEFAULT_READING_SETTINGS.learningLang;
     reviewSystemVoice =
         data.speechVoice === "random" ? "" : data.speechVoice || "";
     if (data.speechVoice === "random") {
@@ -48,11 +47,15 @@ if (typeof chrome !== "undefined" && chrome.storage?.onChanged) {
     chrome.storage.onChanged.addListener((changes, area) => {
         if (area !== "local") return;
         if (changes.targetLang) {
-            reviewTargetLang = changes.targetLang.newValue || LectoroConstants.DEFAULT_READING_SETTINGS.targetLang;
+            reviewTargetLang =
+                changes.targetLang.newValue ||
+                LectoroConstants.DEFAULT_READING_SETTINGS.targetLang;
             updateDirBtnLabel();
         }
         if (changes.learningLang) {
-            reviewLearningLang = changes.learningLang.newValue || LectoroConstants.DEFAULT_READING_SETTINGS.learningLang;
+            reviewLearningLang =
+                changes.learningLang.newValue ||
+                LectoroConstants.DEFAULT_READING_SETTINGS.learningLang;
             updateDirBtnLabel();
         }
     });
@@ -73,12 +76,20 @@ function updateDirBtnLabel() {
     const btn = document.getElementById("reviewDirBtn");
     if (!btn) return;
     const { srcTag, tgtTag } = getActiveReviewLangs();
-    const titleNormal = typeof SharedI18n !== "undefined"
-        ? SharedI18n.t("review_dir_title", null, { src: srcTag, tgt: tgtTag })
-        : `Change review direction (${srcTag} → ${tgtTag})`;
-    const titleReverse = typeof SharedI18n !== "undefined"
-        ? SharedI18n.t("review_dir_title", null, { src: tgtTag, tgt: srcTag })
-        : `Change review direction (${tgtTag} → ${srcTag})`;
+    const titleNormal =
+        typeof SharedI18n !== "undefined"
+            ? SharedI18n.t("review_dir_title", null, {
+                  src: srcTag,
+                  tgt: tgtTag,
+              })
+            : `Change review direction (${srcTag} → ${tgtTag})`;
+    const titleReverse =
+        typeof SharedI18n !== "undefined"
+            ? SharedI18n.t("review_dir_title", null, {
+                  src: tgtTag,
+                  tgt: srcTag,
+              })
+            : `Change review direction (${tgtTag} → ${srcTag})`;
     if (reviewDirection === "normal") {
         btn.innerHTML = `${srcTag} <span class="dir-arrow">→</span> ${tgtTag}`;
         btn.title = titleNormal;
@@ -107,7 +118,10 @@ function openWebReviews(e) {
     }
 }
 function checkWebBannerDismissed() {
-    if (typeof popupState !== "undefined" && popupState.reviewWebBannerDismissed) {
+    if (
+        typeof popupState !== "undefined" &&
+        popupState.reviewWebBannerDismissed
+    ) {
         document.getElementById("reviewWebBanner")?.remove();
         return;
     }
@@ -119,20 +133,24 @@ function checkWebBannerDismissed() {
 }
 checkWebBannerDismissed();
 
-document.getElementById("reviewWebBannerBtn")?.addEventListener("click", openWebReviews);
-document.getElementById("reviewWebBannerClose")?.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const banner = document.getElementById("reviewWebBanner");
-    if (banner) {
-        banner.style.opacity = "0";
-        banner.style.transform = "scale(0.96)";
-        setTimeout(() => banner.remove(), 150);
-    }
-    if (typeof popupState !== "undefined") {
-        popupState.reviewWebBannerDismissed = true;
-    }
-    chrome.storage?.local?.set({ reviewWebBannerDismissed: true });
-});
+document
+    .getElementById("reviewWebBannerBtn")
+    ?.addEventListener("click", openWebReviews);
+document
+    .getElementById("reviewWebBannerClose")
+    ?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const banner = document.getElementById("reviewWebBanner");
+        if (banner) {
+            banner.style.opacity = "0";
+            banner.style.transform = "scale(0.96)";
+            setTimeout(() => banner.remove(), 150);
+        }
+        if (typeof popupState !== "undefined") {
+            popupState.reviewWebBannerDismissed = true;
+        }
+        chrome.storage?.local?.set({ reviewWebBannerDismissed: true });
+    });
 document.getElementById("reviewCard")?.addEventListener("click", (e) => {
     if (e.target.closest(".review-empty-web-link")) {
         openWebReviews(e);
@@ -157,8 +175,9 @@ function closeReviewVoiceMenu() {
 
 function selectedReviewVoice() {
     return (
-        reviewGeminiVoices.find((voice) => voice.voice_id === reviewGeminiVoiceId) ||
-        null
+        reviewGeminiVoices.find(
+            (voice) => voice.voice_id === reviewGeminiVoiceId,
+        ) || null
     );
 }
 
@@ -184,8 +203,15 @@ function syncReviewVoiceButton() {
     systemOption?.classList.toggle("active", !usingGeminiTts);
     badge.classList.toggle("is-locked", !enabled);
     badge.textContent = usingGeminiTts ? "G" : "AI";
-    const voiceIcon = voice?.voice_id === "Sulafat" ? "👩 " : voice?.voice_id === "Algieba" ? "👨 " : "";
-    label.textContent = usingGeminiTts ? `${voiceIcon}${voice?.name || "Gemini TTS"}` : "Voice";
+    const voiceIcon =
+        voice?.voice_id === "Sulafat"
+            ? "👩 "
+            : voice?.voice_id === "Algieba"
+              ? "👨 "
+              : "";
+    label.textContent = usingGeminiTts
+        ? `${voiceIcon}${voice?.name || "Gemini TTS"}`
+        : "Voice";
     btn.title = usingGeminiTts
         ? `Gemini TTS: ${voice?.name || "selected voice"}`
         : "Choose review voice";
@@ -195,7 +221,8 @@ function renderFreeVoiceTeaser() {
     const content = document.getElementById("reviewGeminiTtsContent");
     if (!content) return;
     if (content.querySelector(".review-voice-teaser")) return;
-    const t = (k, d) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k) : d);
+    const t = (k, d) =>
+        typeof SharedI18n !== "undefined" ? SharedI18n.t(k) : d;
     content.innerHTML = `
         <div class="review-voice-teaser">
             <div class="review-voice-teaser-title"><span>${t("review_voice_natural_title", "Natural AI voices")}</span><span>🔒</span></div>
@@ -251,7 +278,8 @@ function renderGeminiTtsVoiceSelect() {
     const list = document.createElement("div");
     list.className = "review-voice-list";
 
-    const t = (k, d) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k) : d);
+    const t = (k, d) =>
+        typeof SharedI18n !== "undefined" ? SharedI18n.t(k) : d;
 
     reviewGeminiVoices.forEach((voice) => {
         const item = document.createElement("button");
@@ -301,9 +329,12 @@ function renderGeminiTtsVoiceSelect() {
             });
             syncGeminiTtsVoiceActiveState();
             syncReviewVoiceButton();
-            const voiceMsg = typeof SharedI18n !== "undefined"
-                ? SharedI18n.t("review_voice_selected", null, { name: voice.name })
-                : `✓ Voice selected: ${voice.name}`;
+            const voiceMsg =
+                typeof SharedI18n !== "undefined"
+                    ? SharedI18n.t("review_voice_selected", null, {
+                          name: voice.name,
+                      })
+                    : `✓ Voice selected: ${voice.name}`;
             setReviewVoiceStatus(voiceMsg, "ok");
         });
 
@@ -316,9 +347,10 @@ function renderGeminiTtsVoiceSelect() {
 async function loadReviewGeminiTtsVoices() {
     if (reviewVoicesLoading || reviewGeminiVoices.length) return;
     reviewVoicesLoading = true;
-    const loadingMsg = typeof SharedI18n !== "undefined"
-        ? SharedI18n.t("review_voice_loading")
-        : "Loading voices…";
+    const loadingMsg =
+        typeof SharedI18n !== "undefined"
+            ? SharedI18n.t("review_voice_loading")
+            : "Loading voices…";
     setReviewVoiceStatus(loadingMsg);
     try {
         const rawVoices =
@@ -339,25 +371,25 @@ async function loadReviewGeminiTtsVoices() {
         }
         renderGeminiTtsVoiceSelect();
         const availMsg = reviewGeminiVoices.length
-            ? (typeof SharedI18n !== "undefined"
-                ? SharedI18n.t("review_voice_available", null, { count: reviewGeminiVoices.length })
-                : `${reviewGeminiVoices.length} voices available`)
-            : (typeof SharedI18n !== "undefined"
-                ? SharedI18n.t("review_voice_none")
-                : "No voices available.");
+            ? typeof SharedI18n !== "undefined"
+                ? SharedI18n.t("review_voice_available", null, {
+                      count: reviewGeminiVoices.length,
+                  })
+                : `${reviewGeminiVoices.length} voices available`
+            : typeof SharedI18n !== "undefined"
+              ? SharedI18n.t("review_voice_none")
+              : "No voices available.";
         setReviewVoiceStatus(
             availMsg,
             reviewGeminiVoices.length ? "" : "error",
         );
         syncReviewVoiceButton();
     } catch (error) {
-        const fetchFailedMsg = typeof SharedI18n !== "undefined"
-            ? SharedI18n.t("review_voice_fetch_failed")
-            : (error.message || "Failed to fetch voices.");
-        setReviewVoiceStatus(
-            fetchFailedMsg,
-            "error",
-        );
+        const fetchFailedMsg =
+            typeof SharedI18n !== "undefined"
+                ? SharedI18n.t("review_voice_fetch_failed")
+                : error.message || "Failed to fetch voices.";
+        setReviewVoiceStatus(fetchFailedMsg, "error");
     } finally {
         reviewVoicesLoading = false;
     }
@@ -368,9 +400,10 @@ async function updateReviewVoiceUI() {
         reviewVoiceProfile = await SubscriptionService.effectiveProfile(false);
     } catch (error) {
         reviewVoiceProfile = null;
-        const planFailedMsg = typeof SharedI18n !== "undefined"
-            ? SharedI18n.t("review_voice_plan_failed")
-            : (error.message || "Failed to check plan.");
+        const planFailedMsg =
+            typeof SharedI18n !== "undefined"
+                ? SharedI18n.t("review_voice_plan_failed")
+                : error.message || "Failed to check plan.";
         setReviewVoiceStatus(planFailedMsg, "error");
     }
 
@@ -432,9 +465,10 @@ document
         });
         syncGeminiTtsVoiceActiveState();
         syncReviewVoiceButton();
-        const sysMsg = typeof SharedI18n !== "undefined"
-            ? SharedI18n.t("review_voice_system_used")
-            : "✓ Using system voice.";
+        const sysMsg =
+            typeof SharedI18n !== "undefined"
+                ? SharedI18n.t("review_voice_system_used")
+                : "✓ Using system voice.";
         setReviewVoiceStatus(sysMsg, "ok");
     });
 
@@ -455,16 +489,16 @@ document.addEventListener("keydown", (event) => {
 
 // ── Delete review words & queue management ────────────────────────
 async function deleteReviewWord(w) {
-    const confirmMsg = typeof SharedI18n !== "undefined"
-        ? SharedI18n.t("review_delete_word_confirm", null, { word: w.original })
-        : `Delete "${w.original}" from database?`;
+    const confirmMsg =
+        typeof SharedI18n !== "undefined"
+            ? SharedI18n.t("review_delete_word_confirm", null, {
+                  word: w.original,
+              })
+            : `Delete "${w.original}" from database?`;
     if (!confirm(confirmMsg)) return;
     if (typeof stopPopupSpeak === "function") stopPopupSpeak();
     try {
-        await SharedWordRepository.deleteWord(
-            w.id || w.original,
-            w.timestamp,
-        );
+        await SharedWordRepository.deleteWord(w.id || w.original, w.timestamp);
     } catch (err) {
         console.error("[Lectoro] Failed to delete word:", err);
     }
@@ -478,9 +512,10 @@ async function deleteReviewWord(w) {
 }
 
 async function deleteAllReviews() {
-    const confirmMsg = typeof SharedI18n !== "undefined"
-        ? SharedI18n.t("review_delete_all_confirm")
-        : "Delete ALL words in the review queue?";
+    const confirmMsg =
+        typeof SharedI18n !== "undefined"
+            ? SharedI18n.t("review_delete_all_confirm")
+            : "Delete ALL words in the review queue?";
     if (!confirm(confirmMsg)) return;
     if (typeof stopPopupSpeak === "function") stopPopupSpeak();
     try {
@@ -614,31 +649,42 @@ function renderReview() {
         countEl.textContent = "";
         progressBar.style.width = "100%";
         if (deleteAllBtn) deleteAllBtn.style.display = "none";
-        const emptyTitle = typeof SharedI18n !== "undefined" ? SharedI18n.t("review_empty_title") : "No cards to review!";
-        const emptySub = typeof SharedI18n !== "undefined" ? SharedI18n.t("review_empty_sub") : "Add new words or come back later.";
-        const cardTitle = typeof SharedI18n !== "undefined" ? SharedI18n.t("review_web_card_title") : "Practice anywhere, anytime";
-        const cardDesc = typeof SharedI18n !== "undefined" ? SharedI18n.t("review_web_card_desc") : "Your words sync across devices. Practice flashcards on mobile & web:";
+        const emptyTitle =
+            typeof SharedI18n !== "undefined"
+                ? SharedI18n.t("review_empty_title")
+                : "No cards to review!";
+        const emptySub =
+            typeof SharedI18n !== "undefined"
+                ? SharedI18n.t("review_empty_sub")
+                : "Add new words or come back later.";
+        const cardTitle =
+            typeof SharedI18n !== "undefined"
+                ? SharedI18n.t("review_web_card_title")
+                : "Practice anywhere, anytime";
+        const cardDesc =
+            typeof SharedI18n !== "undefined"
+                ? SharedI18n.t("review_web_card_desc")
+                : "Your words sync across devices. Practice flashcards on mobile & web:";
         card.innerHTML = `
             <div class="review-empty">
                 <div class="review-empty-icon">✅</div>
                 <div class="review-empty-text">${emptyTitle}</div>
                 <div class="review-empty-sub">${emptySub}</div>
-                <div class="review-empty-web-card">
-                    <div class="review-empty-web-badge">
+
+                    <div style="margin-top: 16px;" class="review-empty-web-badge">
                         <img src="icons/icon16.png" class="review-empty-web-logo" width="13" height="13" alt="Lectoro">
                         <span>WEB & MOBILE</span>
                     </div>
-                    <div class="review-empty-web-title">${cardTitle}</div>
-                    <div class="review-empty-web-desc">${cardDesc}</div>
+                    <div class="review-empty-sub">${cardDesc}</div>
                     <a href="https://lectoroai.vercel.app/dashboard/reviews" target="_blank" rel="noopener noreferrer" class="review-empty-web-link">
-                        <span class="review-empty-web-url">lectoroai.vercel.app/dashboard/reviews</span>
+                        <span class="ai-loader-label">lectoroai.com</span>
                         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
                             <polyline points="15 3 21 3 21 9"></polyline>
                             <line x1="10" y1="14" x2="21" y2="3"></line>
                         </svg>
                     </a>
-                </div>
+ 
             </div>`;
         updateReviewTabBadge(0);
         return;
@@ -656,33 +702,42 @@ function renderReview() {
         }
         countEl.textContent = `${reviewTotalDue}/${reviewTotalDue}`;
         progressBar.style.width = "100%";
-        const doneTitle = typeof SharedI18n !== "undefined" ? SharedI18n.t("review_done_title") : "Congratulations!";
-        const doneSub = typeof SharedI18n !== "undefined"
-            ? SharedI18n.t("review_done_sub", null, { total: reviewTotalDue })
-            : `You completed all ${reviewTotalDue} reviews for now!`;
-        const cardTitle = typeof SharedI18n !== "undefined" ? SharedI18n.t("review_web_card_title") : "Practice anywhere, anytime";
-        const cardDesc = typeof SharedI18n !== "undefined" ? SharedI18n.t("review_web_card_desc") : "Your words sync across devices. Practice flashcards on mobile & web:";
+        const doneTitle =
+            typeof SharedI18n !== "undefined"
+                ? SharedI18n.t("review_done_title")
+                : "Congratulations!";
+        const doneSub =
+            typeof SharedI18n !== "undefined"
+                ? SharedI18n.t("review_done_sub", null, {
+                      total: reviewTotalDue,
+                  })
+                : `You completed all ${reviewTotalDue} reviews for now!`;
+        const cardTitle =
+            typeof SharedI18n !== "undefined"
+                ? SharedI18n.t("review_web_card_title")
+                : "Practice anywhere, anytime";
+        const cardDesc =
+            typeof SharedI18n !== "undefined"
+                ? SharedI18n.t("review_web_card_desc")
+                : "Your words sync across devices. Practice flashcards on mobile & web:";
         card.innerHTML = `
             <div class="review-done">
                 <div class="review-done-icon">🎉</div>
                 <div class="review-done-text">${doneTitle}</div>
                 <div class="review-done-sub">${doneSub}</div>
-                <div class="review-empty-web-card">
-                    <div class="review-empty-web-badge">
+                 <div style="margin-top: 16px;" class="review-empty-web-badge">
                         <img src="icons/icon16.png" class="review-empty-web-logo" width="13" height="13" alt="Lectoro">
                         <span>WEB & MOBILE</span>
                     </div>
-                    <div class="review-empty-web-title">${cardTitle}</div>
-                    <div class="review-empty-web-desc">${cardDesc}</div>
+                    <div class="review-done-sub">${cardDesc}</div>
                     <a href="https://lectoroai.vercel.app/dashboard/reviews" target="_blank" rel="noopener noreferrer" class="review-empty-web-link">
-                        <span class="review-empty-web-url">lectoroai.vercel.app/dashboard/reviews</span>
+                        <span class="ai-loader-label">lectoroai.com</span>
                         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
                             <polyline points="15 3 21 3 21 9"></polyline>
                             <line x1="10" y1="14" x2="21" y2="3"></line>
                         </svg>
                     </a>
-                </div>
             </div>`;
         updateReviewTabBadge(0);
         return;
@@ -702,7 +757,8 @@ function renderReview() {
 
 function reviewControlsHtml(sr, answerShown) {
     const labels = [1, 2].map((grade) => previewLabel(sr, grade));
-    const t = (k, d) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k) : d);
+    const t = (k, d) =>
+        typeof SharedI18n !== "undefined" ? SharedI18n.t(k) : d;
     const flipText = answerShown
         ? t("review_show_question", "Show question")
         : t("review_show_answer", "Show answer");
@@ -816,19 +872,27 @@ const _prefetchedCardKeys = new Set();
 
 function prefetchReviewCardAudio(w) {
     if (!w) return;
-    if (typeof SharedTtsService === "undefined" || typeof SharedTtsService.getAudioBlob !== "function") return;
+    if (
+        typeof SharedTtsService === "undefined" ||
+        typeof SharedTtsService.getAudioBlob !== "function"
+    )
+        return;
 
     // Check TTS settings: only prefetch if Gemini TTS mode is enabled
     if (ttsMode !== "gemini") return;
 
-    const defaultLearning = typeof popupState !== "undefined" && popupState.learningLang
-        ? popupState.learningLang
-        : (typeof LectoroConstants !== "undefined" && LectoroConstants.DEFAULT_READING_SETTINGS?.learningLang) || "en";
+    const defaultLearning =
+        typeof popupState !== "undefined" && popupState.learningLang
+            ? popupState.learningLang
+            : (typeof LectoroConstants !== "undefined" &&
+                  LectoroConstants.DEFAULT_READING_SETTINGS?.learningLang) ||
+              "en";
     const srcL = w.srcLang || reviewLearningLang || defaultLearning;
 
-    const speakText = typeof buildReviewSpeakText === "function"
-        ? buildReviewSpeakText(w.original, w.sentence || "")
-        : (w.original || "");
+    const speakText =
+        typeof buildReviewSpeakText === "function"
+            ? buildReviewSpeakText(w.original, w.sentence || "")
+            : w.original || "";
 
     if (!speakText || !speakText.trim()) return;
 
@@ -849,12 +913,16 @@ function prefetchReviewCardAudio(w) {
         context: "review",
         cacheNotBefore: Number(w.ttsCacheInvalidatedAt || 0),
     }).catch((err) => {
-        console.debug("[Lectoro Review] Prefetch card audio:", err?.message || err);
+        console.debug(
+            "[Lectoro Review] Prefetch card audio:",
+            err?.message || err,
+        );
     });
 }
 
 function prefetchNextReviewCardAudio() {
-    if (!Array.isArray(reviewQueue) || reviewIndex + 1 >= reviewQueue.length) return;
+    if (!Array.isArray(reviewQueue) || reviewIndex + 1 >= reviewQueue.length)
+        return;
     const nextCard = reviewQueue[reviewIndex + 1];
     prefetchReviewCardAudio(nextCard);
 }
@@ -1188,10 +1256,7 @@ function showReviewEditForm(w, returnToAnswer = reviewAnswerShown) {
                 onDone();
             })
             .catch((err) => {
-                console.error(
-                    "[Lectoro] Failed to save review edits:",
-                    err,
-                );
+                console.error("[Lectoro] Failed to save review edits:", err);
                 onDone();
             });
     });
@@ -1214,10 +1279,7 @@ async function rateWord(grade) {
     _reviewSaving = true;
 
     try {
-        const updated = await SharedWordRepository.recordReviewRating(
-            w,
-            grade,
-        );
+        const updated = await SharedWordRepository.recordReviewRating(w, grade);
         if (updated?.sr) {
             w.sr = updated.sr;
         } else {

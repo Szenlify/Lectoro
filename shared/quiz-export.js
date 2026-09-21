@@ -81,6 +81,19 @@
             result: "Wynik",
             pointsSuffix: "pkt",
             listenLabel: "Odczytaj na głos",
+            dontKnow: "Nie pamiętam",
+            reviewTitle: "Powtórka błędów",
+            reviewInstructions: "Błędne słowa wracają po kilku pytaniach. Odpowiedz poprawnie bez podpowiedzi, aby je utrwalić.",
+            masteryTitle: "Pamięć słówek",
+            masteryMastered: "Opanowane",
+            masteryAlmost: "Prawie znam",
+            masteryLearning: "Uczę się",
+            masteryWeak: "Do nauki",
+            reviewReady: "Czas na powtórkę",
+            recallInstructions: "Wpisz słowo lub zwrot z pamięci. Bez odpowiedzi A/B/C/D — liczy się samodzielne przypomnienie.",
+            contextRecallInstructions: "Wpisz brakujące słowo lub zwrot z pamięci. Błędne odpowiedzi wrócą później.",
+            matchingInstructions: "Dopasuj słowa do znaczeń. To krótka rozgrzewka przed aktywnym przypominaniem.",
+            choiceInstructions: "Wybierz właściwe słowo. Ta część ma mniejszą wagę niż samodzielne wpisywanie.",
             praise: [
                 "Świetnie! 🎉",
                 "Brawo! 👏",
@@ -107,6 +120,8 @@
             },
             sectionTitles: {
                 multiple_choice: "Wielokrotny wybór",
+                recall: "Przypomnij sobie",
+                context_recall: "Przypomnij w kontekście",
                 matching: "Dopasuj pary",
 
                 true_false: "Prawda czy fałsz",
@@ -148,6 +163,19 @@
             result: "Result",
             pointsSuffix: "pts",
             listenLabel: "Listen aloud",
+            dontKnow: "I don't remember",
+            reviewTitle: "Mistake Review",
+            reviewInstructions: "Missed words return after a few questions. Recall them correctly without hints to strengthen memory.",
+            masteryTitle: "Vocabulary Memory",
+            masteryMastered: "Mastered",
+            masteryAlmost: "Almost there",
+            masteryLearning: "Learning",
+            masteryWeak: "Needs work",
+            reviewReady: "Review ready",
+            recallInstructions: "Type the word or phrase from memory. No A/B/C/D options — active recall matters most.",
+            contextRecallInstructions: "Recall the missing word or phrase from memory. Missed items will return later.",
+            matchingInstructions: "Match words to meanings as a short warm-up before active recall.",
+            choiceInstructions: "Choose the correct word. This warm-up counts less than producing the answer yourself.",
             praise: [
                 "Excellent! 🎉",
                 "Great job! 👏",
@@ -174,6 +202,8 @@
             },
             sectionTitles: {
                 multiple_choice: "Multiple Choice",
+                recall: "Active Recall",
+                context_recall: "Recall in Context",
                 matching: "Match the Pairs",
 
                 true_false: "True or False",
@@ -241,6 +271,8 @@
             },
             sectionTitles: {
                 multiple_choice: "Opción múltiple",
+                recall: "Recuerdo activo",
+                context_recall: "Recuerdo en contexto",
                 matching: "Une las parejas",
 
                 true_false: "Verdadero o falso",
@@ -308,6 +340,8 @@
             },
             sectionTitles: {
                 multiple_choice: "Multiple-Choice",
+                recall: "Aktives Erinnern",
+                context_recall: "Erinnern im Kontext",
                 matching: "Paare zuordnen",
 
                 true_false: "Richtig oder Falsch",
@@ -375,6 +409,8 @@
             },
             sectionTitles: {
                 multiple_choice: "Choix multiple",
+                recall: "Rappel actif",
+                context_recall: "Rappel en contexte",
                 matching: "Associer les paires",
 
                 true_false: "Vrai ou Faux",
@@ -442,6 +478,8 @@
             },
             sectionTitles: {
                 multiple_choice: "Scelta multipla",
+                recall: "Richiamo attivo",
+                context_recall: "Richiamo nel contesto",
                 matching: "Abbina le coppie",
 
                 true_false: "Vero o Falso",
@@ -509,6 +547,8 @@
             },
             sectionTitles: {
                 multiple_choice: "Múltipla escolha",
+                recall: "Recordação ativa",
+                context_recall: "Recordação em contexto",
                 matching: "Associe os pares",
 
                 true_false: "Verdadeiro ou Falso",
@@ -576,6 +616,8 @@
             },
             sectionTitles: {
                 multiple_choice: "Meerkeuze",
+                recall: "Actief herinneren",
+                context_recall: "Herinneren in context",
                 matching: "Koppel de paren",
 
                 true_false: "Waar of Niet waar",
@@ -643,6 +685,8 @@
             },
             sectionTitles: {
                 multiple_choice: "Výběr z možností",
+                recall: "Aktivní vybavení",
+                context_recall: "Vybavení v kontextu",
                 matching: "Spojte dvojice",
 
                 true_false: "Pravda nebo Nepravda",
@@ -709,6 +753,8 @@
             },
             sectionTitles: {
                 multiple_choice: "選択問題",
+                recall: "能動的想起",
+                context_recall: "文脈で思い出す",
                 matching: "マッチング",
 
                 true_false: "正誤判定",
@@ -775,12 +821,13 @@
     }
 
     const QUIZ_POINTS_PER_TYPE = {
+        matching: 0.5,
         multiple_choice: 1,
-        matching: 1,
-
-        true_false: 1,
+        recall: 3,
+        context_recall: 3,
+        true_false: 0.5,
         correct_form: 2,
-        odd_one_out: 1,
+        odd_one_out: 0.5,
     };
 
     function quizSectionQuestionCount(sec) {
@@ -810,15 +857,279 @@
         );
     }
 
-    function pickQuizWords(sorted, count, source) {
-        if (source !== "random") return sorted.slice(0, count);
-        const excludeCount = Math.min(sorted.length, count);
-        let pool = sorted.slice(excludeCount);
-        if (pool.length < count) pool = sorted;
-        return [...pool].sort(() => Math.random() - 0.5).slice(0, count);
+    function cleanString(str) {
+        return typeof str === "string" ? str.trim() : "";
     }
 
-    // ── 1. Gemini AI Quiz Generator ─────────────────────────────────────
+    function makeQuizCardId(word, fallbackLang = "en") {
+        const lang = String(word?.srcLang || fallbackLang || "en").toLowerCase();
+        const original = cleanString(word?.original).normalize("NFC").toLowerCase();
+        const seed = `${lang}|${original}`;
+        let hash = 2166136261;
+        for (let i = 0; i < seed.length; i++) {
+            hash ^= seed.charCodeAt(i);
+            hash = Math.imul(hash, 16777619);
+        }
+        return `card_${(hash >>> 0).toString(36)}`;
+    }
+
+    function pickQuizWords(sorted, count, source, masteryStore = {}) {
+        if (source === "random") {
+            const excludeCount = Math.min(sorted.length, count);
+            let pool = sorted.slice(excludeCount);
+            if (pool.length < count) pool = sorted;
+            return [...pool].sort(() => Math.random() - 0.5).slice(0, count);
+        }
+        if (source === "smart") {
+            const now = Date.now();
+            return [...sorted]
+                .map((word, index) => {
+                    const rec = masteryStore?.[makeQuizCardId(word)] || {};
+                    const score = Math.max(0, Math.min(100, Number(rec.score) || 0));
+                    const wrongs = Math.max(0, Number(rec.wrongs) || 0);
+                    const nextReview = Number(rec.nextReview) || 0;
+                    const overdue = !nextReview || nextReview <= now;
+                    return {
+                        word,
+                        index,
+                        priority: 100 - score + (overdue ? 25 : -10) + Math.min(20, wrongs * 2),
+                    };
+                })
+                .sort((a, b) => b.priority - a.priority || a.index - b.index)
+                .slice(0, count)
+                .map((x) => x.word);
+        }
+        return sorted.slice(0, count);
+    }
+
+    function hasTargetMeaning(word, tgtLang) {
+        if (!word?.tgtLang) return true;
+        try {
+            return AIPrompts.languageCode(word.tgtLang) === tgtLang;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function buildFallbackLearningUnits(wordsPool, tgtLang, defaultLearning) {
+        return wordsPool.map((word, index) => {
+            const source = cleanString(word.original).slice(0, 300);
+            const wordCount = source.split(/\s+/).filter(Boolean).length;
+            const meaning = hasTargetMeaning(word, tgtLang)
+                ? cleanString(word.translated).slice(0, 300)
+                : "";
+            const savedContext = cleanString(word.sentence).slice(0, 400);
+            return {
+                card_id: makeQuizCardId(word, defaultLearning),
+                term: source,
+                meaning,
+                context: savedContext || (wordCount >= 3 ? source : ""),
+                source,
+                source_index: index,
+            };
+        });
+    }
+
+    function exactSourceSpan(source, candidate) {
+        const src = cleanString(source).normalize("NFC").replace(/[’‘]/g, "'");
+        const term = cleanString(candidate).normalize("NFC").replace(/[’‘]/g, "'");
+        if (!src || !term) return "";
+        const idx = src.toLocaleLowerCase().indexOf(term.toLocaleLowerCase());
+        return idx >= 0 ? src.slice(idx, idx + term.length) : "";
+    }
+
+    async function refineLearningUnitsWithGemini(cards, srcLocale, tgtLocale) {
+        if (
+            typeof GeminiProxy === "undefined" ||
+            typeof AIPrompts?.quizLearningUnits !== "function"
+        ) {
+            return cards;
+        }
+        const candidates = cards.filter((card) => {
+            const count = card.source.split(/\s+/).filter(Boolean).length;
+            return count >= 3 && card.meaning;
+        });
+        if (!candidates.length) return cards;
+        try {
+            const prompt = AIPrompts.quizLearningUnits({
+                srcLang: srcLocale,
+                tgtLang: tgtLocale,
+                wordList: candidates.map((card) => ({
+                    card_id: card.card_id,
+                    source: card.source,
+                    saved_meaning: card.meaning,
+                    context: card.context,
+                })),
+            });
+            const parsed = await GeminiProxy.requestJSON(prompt, {
+                temperature: 0.1,
+                maxOutputTokens: Math.min(3200, 400 + candidates.length * 110),
+                cache: false,
+            });
+            if (!Array.isArray(parsed?.cards)) return cards;
+            const byId = new Map(parsed.cards.map((item) => [cleanString(item?.card_id), item]));
+            return cards.map((card) => {
+                const item = byId.get(card.card_id);
+                if (!item) return card;
+                const exactTerm = exactSourceSpan(card.source, item.term);
+                if (!exactTerm) return card;
+                return {
+                    ...card,
+                    term: exactTerm.slice(0, 160),
+                    meaning: cleanString(item.meaning).slice(0, 300) || card.meaning,
+                    // The saved context is authoritative. AI only chooses the learning unit.
+                    context: card.context,
+                };
+            });
+        } catch (error) {
+            console.warn("Quiz learning-unit refinement failed; using saved cards.", error);
+            return cards;
+        }
+    }
+
+    function uniqueCards(cards) {
+        const seenTerms = new Set();
+        const seenMeanings = new Set();
+        return cards.filter((card) => {
+            const term = cleanString(card.term).toLowerCase();
+            const meaning = cleanString(card.meaning).toLowerCase();
+            if (!term || !meaning || seenTerms.has(term) || seenMeanings.has(meaning)) return false;
+            seenTerms.add(term);
+            seenMeanings.add(meaning);
+            return true;
+        });
+    }
+
+    function buildRecallSection(cards, i18n) {
+        const questions = cards
+            .filter((card) => card.term && card.meaning)
+            .map((card) => ({
+                card_id: card.card_id,
+                prompt: card.meaning,
+                answer: card.term,
+                acceptable_answers: [],
+            }));
+        return questions.length
+            ? {
+                  type: "recall",
+                  instructions:
+                      i18n.recallInstructions ||
+                      "Przypomnij sobie słowo lub zwrot bez podglądania odpowiedzi.",
+                  questions,
+              }
+            : null;
+    }
+
+    function buildMatchingSection(cards, i18n) {
+        const pool = uniqueCards(cards).slice(0, 6);
+        if (pool.length < 2) return null;
+        return {
+            type: "matching",
+            instructions:
+                i18n.matchingInstructions ||
+                "Dopasuj słowa do ich znaczeń. To tylko rozgrzewka przed aktywnym przypominaniem.",
+            pairs: pool.map((card) => ({
+                card_id: card.card_id,
+                a: card.term,
+                b: card.meaning,
+            })),
+        };
+    }
+
+    function buildMultipleChoiceSection(cards, i18n) {
+        const pool = uniqueCards(cards);
+        if (pool.length < 4) return null;
+        const count = Math.min(4, Math.max(2, Math.ceil(pool.length * 0.2)));
+        const questions = pool.slice(0, count).map((card, index) => {
+            const distractors = [];
+            for (let offset = 1; offset < pool.length && distractors.length < 3; offset++) {
+                const candidate = pool[(index + offset) % pool.length];
+                if (candidate.card_id !== card.card_id) distractors.push(candidate.term);
+            }
+            const options = [card.term, ...distractors].sort(() => Math.random() - 0.5);
+            return {
+                card_id: card.card_id,
+                question: card.meaning,
+                options,
+                answer: card.term,
+            };
+        });
+        return questions.length
+            ? {
+                  type: "multiple_choice",
+                  instructions:
+                      i18n.choiceInstructions ||
+                      "Wybierz właściwe słowo. Ta część jest rozgrzewką i ma mniejszą wagę niż samodzielne wpisywanie.",
+                  questions,
+              }
+            : null;
+    }
+
+    function blankSavedContext(card) {
+        const context = cleanString(card.context);
+        const term = cleanString(card.term);
+        if (!context || !term) return "";
+        if (context.normalize("NFC").toLocaleLowerCase() === term.normalize("NFC").toLocaleLowerCase()) return "";
+        const idx = context.toLocaleLowerCase().indexOf(term.toLocaleLowerCase());
+        if (idx < 0) return "";
+        return `${context.slice(0, idx)}___${context.slice(idx + term.length)}`;
+    }
+
+    function buildFallbackContextQuestions(cards, count, excludedCardIds = new Set()) {
+        const questions = [];
+        for (const card of cards) {
+            if (questions.length >= count) break;
+            if (excludedCardIds.has(card.card_id)) continue;
+            const question = blankSavedContext(card);
+            if (!question) continue;
+            questions.push({
+                card_id: card.card_id,
+                question,
+                answer: card.term,
+                acceptable_answers: [],
+            });
+        }
+        return questions;
+    }
+
+    function mergeSectionQuestions(primary, fallback, maxQuestions = Infinity) {
+        const result = [];
+        const seen = new Set();
+        for (const source of [primary, fallback]) {
+            for (const q of source || []) {
+                if (result.length >= maxQuestions) break;
+                const id = cleanString(q?.card_id) || `${cleanString(q?.answer)}|${cleanString(q?.question || q?.prompt)}`;
+                if (!id || seen.has(id)) continue;
+                seen.add(id);
+                result.push(q);
+            }
+        }
+        return result;
+    }
+
+    async function requestAiQuizSections(cards, chosenTypes, srcLocale, tgtLocale, contextCount) {
+        if (!chosenTypes.length || typeof GeminiProxy === "undefined") return null;
+        const prompt = AIPrompts.quiz({
+            srcLang: srcLocale,
+            tgtLang: tgtLocale,
+            chosenTypes,
+            contextCount,
+            choiceCount: Math.min(4, Math.max(2, Math.ceil(cards.length * 0.2))),
+            wordList: cards.map((card) => ({
+                card_id: card.card_id,
+                word: card.term,
+                meaning: card.meaning,
+                ...(card.context ? { context: card.context } : {}),
+            })),
+        });
+        return GeminiProxy.requestJSON(prompt, {
+            temperature: 0.25,
+            maxOutputTokens: Math.min(5200, 500 + chosenTypes.length * 900),
+            cache: false,
+        });
+    }
+
+    // ── 1. High-retention Quiz Generator ────────────────────────────────
     async function generateQuizWithGemini(words, options = {}) {
         if (!Array.isArray(words) || !words.length)
             throw new Error("Choose vocabulary for the quiz first.");
@@ -827,8 +1138,7 @@
             typeof SharedTranslatorService.getLearningLang === "function"
                 ? await SharedTranslatorService.getLearningLang()
                 : (typeof LectoroConstants !== "undefined" &&
-                      LectoroConstants.DEFAULT_READING_SETTINGS
-                          ?.learningLang) ||
+                      LectoroConstants.DEFAULT_READING_SETTINGS?.learningLang) ||
                   "en";
         const defaultTarget =
             typeof SharedTranslatorService !== "undefined" &&
@@ -839,114 +1149,199 @@
                   "pl";
         const srcLocale = words[0]?.srcLang || defaultLearning;
         const srcLang = AIPrompts.languageCode(srcLocale);
-        let tgtLang = options.tgtLang;
-        if (!tgtLang) {
-            tgtLang = defaultTarget;
-        }
-        const tgtLocale = tgtLang;
-        tgtLang = AIPrompts.languageCode(tgtLang);
+        const tgtLocale = options.tgtLang || defaultTarget;
+        const tgtLang = AIPrompts.languageCode(tgtLocale);
         if (
             words.some(
                 (word) =>
-                    AIPrompts.languageCode(word?.srcLang || defaultLearning) !==
-                    srcLang,
+                    AIPrompts.languageCode(word?.srcLang || defaultLearning) !== srcLang,
             )
         ) {
-            throw new Error(
-                "Choose vocabulary from one source language per quiz.",
-            );
+            throw new Error("Choose vocabulary from one source language per quiz.");
         }
+
         const wordsPool = words
             .filter((w) => typeof w.original === "string" && w.original.trim())
             .slice(0, 25);
         if (!wordsPool.length)
             throw new Error("Choose vocabulary for the quiz first.");
-        const wordList = wordsPool.map((w) => ({
-            word: w.original.trim().slice(0, 300),
-            // Saved translations may use a different language than the current setting.
-            ...(w.tgtLang && AIPrompts.languageCode(w.tgtLang) !== tgtLang
-                ? {}
-                : { meaning: cleanString(w.translated).slice(0, 300) }),
-            ...(w.sentence
-                ? { context: cleanString(w.sentence).slice(0, 400) }
-                : {}),
-        }));
+
+        let cards = buildFallbackLearningUnits(wordsPool, tgtLang, defaultLearning);
+        cards = await refineLearningUnitsWithGemini(cards, srcLocale, tgtLocale);
+        const i18n = getI18n(tgtLang);
+
         const chosenTypes = [
             ...new Set(
                 options.chosenTypes?.length
                     ? options.chosenTypes
                     : AIPrompts.DEFAULT_QUIZ_TYPES,
             ),
-        ].filter(
-            (type) =>
-                type !== "matching" ||
-                new Set(wordList.map((w) => w.word.toLowerCase())).size >= 2,
-        );
+        ].filter((type) => AIPrompts.QUIZ_TYPES.includes(type));
         if (!chosenTypes.length)
             throw new Error("Not enough vocabulary for the selected sections.");
-        const prompt = AIPrompts.quiz({
-            srcLang: srcLocale,
-            tgtLang: tgtLocale,
-            wordList,
-            chosenTypes,
-        });
-        if (typeof GeminiProxy === "undefined")
-            throw new Error("GeminiProxy is unavailable.");
-        const parsed = await GeminiProxy.requestJSON(prompt, {
-            temperature: 0.3,
-            maxOutputTokens: Math.min(6000, 500 + chosenTypes.length * 700),
-            cache: false,
-        });
-        if (
-            AIPrompts.languageCode(parsed.source_language) !== srcLang ||
-            AIPrompts.languageCode(parsed.instruction_language) !== tgtLang
-        ) {
-            throw new Error("AI returned unexpected quiz languages.");
+
+        const sectionByType = new Map();
+        if (chosenTypes.includes("matching")) {
+            const section = buildMatchingSection(cards, i18n);
+            if (section) sectionByType.set(section.type, section);
         }
-        const knownWords = new Set(wordList.map((w) => w.word.toLowerCase()));
-        const quiz = normalizeQuizData(parsed, knownWords, tgtLang);
-        if (
-            quiz.sections.length !== chosenTypes.length ||
-            chosenTypes.some(
-                (type) =>
-                    !quiz.sections.some(
-                        (section) =>
-                            section.type === type &&
-                            quizSectionQuestionCount(section) >= 2,
-                    ),
-            )
-        ) {
-            throw new Error(
-                "AI returned an incomplete quiz. Please generate it again.",
+        if (chosenTypes.includes("multiple_choice")) {
+            const section = buildMultipleChoiceSection(cards, i18n);
+            if (section) sectionByType.set(section.type, section);
+        }
+        if (chosenTypes.includes("recall")) {
+            const section = buildRecallSection(cards, i18n);
+            if (section) sectionByType.set(section.type, section);
+        }
+
+        const contextCount = Math.min(
+            10,
+            Math.max(2, Math.ceil(cards.filter((card) => card.meaning).length * 0.5)),
+        );
+        const aiTypes = chosenTypes.filter(
+            (type) => !["matching", "multiple_choice", "recall"].includes(type),
+        );
+        const knownWords = new Set(cards.map((card) => card.term.toLowerCase()));
+        const cardMap = new Map(cards.map((card) => [card.card_id, card]));
+        let aiTitle = "";
+        let validAiSections = [];
+
+        if (aiTypes.length) {
+            try {
+                const parsed = await requestAiQuizSections(
+                    cards,
+                    aiTypes,
+                    srcLocale,
+                    tgtLocale,
+                    contextCount,
+                );
+                if (parsed) {
+                    if (
+                        parsed.source_language &&
+                        AIPrompts.languageCode(parsed.source_language) !== srcLang
+                    ) {
+                        throw new Error("AI returned unexpected quiz source language.");
+                    }
+                    if (
+                        parsed.instruction_language &&
+                        AIPrompts.languageCode(parsed.instruction_language) !== tgtLang
+                    ) {
+                        throw new Error("AI returned unexpected quiz instruction language.");
+                    }
+                    const normalized = normalizeQuizData(parsed, knownWords, tgtLang, cardMap);
+                    validAiSections = normalized.sections;
+                    aiTitle = normalized.title;
+                }
+            } catch (error) {
+                console.warn("AI quiz enrichment failed; using deterministic learning quiz.", error);
+            }
+
+            // One small repair attempt for missing AI-only sections. Failure no longer kills the quiz.
+            const missing = aiTypes.filter(
+                (type) => !validAiSections.some((section) => section.type === type),
             );
+            if (missing.length) {
+                try {
+                    const repair = await requestAiQuizSections(
+                        cards,
+                        missing,
+                        srcLocale,
+                        tgtLocale,
+                        contextCount,
+                    );
+                    if (repair) {
+                        const normalizedRepair = normalizeQuizData(
+                            repair,
+                            knownWords,
+                            tgtLang,
+                            cardMap,
+                        );
+                        const existing = new Set(validAiSections.map((section) => section.type));
+                        validAiSections.push(
+                            ...normalizedRepair.sections.filter((section) => !existing.has(section.type)),
+                        );
+                        aiTitle = aiTitle || normalizedRepair.title;
+                    }
+                } catch (error) {
+                    console.warn("AI quiz repair failed; continuing with valid sections.", error);
+                }
+            }
         }
-        return quiz;
+
+        for (const section of validAiSections) {
+            if (section.type === "context_recall") {
+                const used = new Set(
+                    (section.questions || []).map((q) => cleanString(q.card_id)).filter(Boolean),
+                );
+                const fallback = buildFallbackContextQuestions(
+                    cards,
+                    contextCount,
+                    used,
+                );
+                section.questions = mergeSectionQuestions(
+                    section.questions,
+                    fallback,
+                    contextCount,
+                );
+            }
+            sectionByType.set(section.type, section);
+        }
+
+        // If AI could not make context questions, saved examples become a safe fallback.
+        if (chosenTypes.includes("context_recall") && !sectionByType.has("context_recall")) {
+            const fallbackQuestions = buildFallbackContextQuestions(cards, contextCount);
+            if (fallbackQuestions.length) {
+                sectionByType.set("context_recall", {
+                    type: "context_recall",
+                    instructions:
+                        i18n.contextRecallInstructions ||
+                        "Wpisz brakujące słowo lub zwrot z pamięci. Błędne odpowiedzi wrócą później.",
+                    questions: fallbackQuestions,
+                });
+            }
+        }
+
+        const sections = chosenTypes.map((type) => sectionByType.get(type)).filter(Boolean);
+        if (!sections.length)
+            throw new Error("No valid quiz questions could be created from these flashcards.");
+
+        return {
+            title: aiTitle || i18n.defaultTitle,
+            source_language: srcLang,
+            instruction_language: tgtLang,
+            cards,
+            sections,
+        };
     }
 
-    // Validate model data without inventing answers or repairing an answer key.
-    function cleanString(str) {
-        return typeof str === "string" ? str.trim() : "";
-    }
-
-    function normalizeQuizData(quiz, knownWords, tgtLang) {
+    // Validate AI enrichment without throwing away already-valid questions.
+    function normalizeQuizData(quiz, knownWords, tgtLang, cardMap = null) {
         if (!quiz || !Array.isArray(quiz.sections))
             throw new Error("AI returned an invalid quiz.");
         const i18n = getI18n(tgtLang);
         const seenSections = new Set();
-        const key = (value) =>
-            cleanString(value).normalize("NFC").toLowerCase();
+        const key = (value) => cleanString(value).normalize("NFC").toLowerCase();
         const alternatives = (q) =>
             [
                 ...new Set(
                     [
-                        cleanString(q.answer),
                         ...(Array.isArray(q.acceptable_answers)
                             ? q.acceptable_answers.map(cleanString)
+                            : []),
+                        ...(Array.isArray(q.alternatives)
+                            ? q.alternatives.map(cleanString)
                             : []),
                     ].filter(Boolean),
                 ),
             ].slice(0, 4);
-        const oneBlank = (value) => (value.match(/___/g) || []).length === 1;
+        const oneBlank = (value) => (cleanString(value).match(/___/g) || []).length === 1;
+        const resolveCardId = (q, answer) => {
+            const supplied = cleanString(q?.card_id);
+            if (supplied && (!cardMap || cardMap.has(supplied))) return supplied;
+            if (!cardMap) return supplied;
+            const match = [...cardMap.values()].find((card) => key(card.term) === key(answer));
+            return match?.card_id || "";
+        };
         const choice = (q, min, max) => {
             if (!Array.isArray(q.options)) return null;
             const options = q.options.map(cleanString);
@@ -961,8 +1356,10 @@
             return answer ? { options, answer } : null;
         };
         const types = new Set([
-            "multiple_choice",
             "matching",
+            "multiple_choice",
+            "recall",
+            "context_recall",
             "true_false",
             "correct_form",
             "odd_one_out",
@@ -972,68 +1369,93 @@
                 const type = cleanString(sec?.type).toLowerCase();
                 if (!types.has(type) || seenSections.has(type)) return null;
                 seenSections.add(type);
-                const instructions =
-                    cleanString(sec.instructions) ||
-                    i18n.sectionTitles[type] ||
-                    "";
+                const instructions = cleanString(sec.instructions) || i18n.sectionTitles[type] || "";
                 if (type === "matching") {
-                    if (
-                        !Array.isArray(sec.pairs) ||
-                        sec.pairs.length < 2 ||
-                        sec.pairs.length > 6
-                    )
-                        return null;
-                    const pairs = sec.pairs.map((p) => ({
-                        a: cleanString(p?.a),
-                        b: cleanString(p?.b),
-                    }));
-                    if (
-                        pairs.some(
-                            (p) =>
-                                !p.a ||
-                                !p.b ||
-                                (knownWords?.size && !knownWords.has(key(p.a))),
-                        ) ||
-                        new Set(pairs.map((p) => key(p.a))).size !==
-                            pairs.length ||
-                        new Set(pairs.map((p) => key(p.b))).size !==
-                            pairs.length
-                    )
-                        return null;
-                    return { type, instructions, pairs };
+                    if (!Array.isArray(sec.pairs)) return null;
+                    const pairs = sec.pairs
+                        .map((p) => {
+                            const a = cleanString(p?.a);
+                            const b = cleanString(p?.b);
+                            const card_id = resolveCardId(p, a);
+                            return a && b && (!knownWords?.size || knownWords.has(key(a)))
+                                ? { card_id, a, b }
+                                : null;
+                        })
+                        .filter(Boolean)
+                        .slice(0, 6);
+                    if (pairs.length < 2) return null;
+                    const unique =
+                        new Set(pairs.map((p) => key(p.a))).size === pairs.length &&
+                        new Set(pairs.map((p) => key(p.b))).size === pairs.length;
+                    return unique ? { type, instructions, pairs } : null;
                 }
                 if (!Array.isArray(sec.questions)) return null;
                 const questions = sec.questions
                     .map((q) => {
                         if (!q || typeof q !== "object") return null;
+                        if (type === "recall") {
+                            const prompt = cleanString(q.prompt || q.question);
+                            const answer = cleanString(q.answer);
+                            if (!prompt || !answer || (knownWords?.size && !knownWords.has(key(answer)))) return null;
+                            return {
+                                card_id: resolveCardId(q, answer),
+                                prompt,
+                                answer,
+                                acceptable_answers: alternatives(q),
+                            };
+                        }
+                        if (type === "context_recall") {
+                            const question = cleanString(q.question || q.sentence);
+                            const answer = cleanString(q.answer);
+                            if (
+                                !oneBlank(question) ||
+                                !answer ||
+                                (knownWords?.size && !knownWords.has(key(answer)))
+                            )
+                                return null;
+                            return {
+                                card_id: resolveCardId(q, answer),
+                                question,
+                                answer,
+                                acceptable_answers: alternatives(q),
+                            };
+                        }
                         if (type === "true_false") {
                             const statement = cleanString(q.statement);
                             return statement && typeof q.answer === "boolean"
-                                ? { statement, answer: q.answer }
+                                ? {
+                                      card_id: cleanString(q.card_id),
+                                      statement,
+                                      answer: q.answer,
+                                  }
                                 : null;
                         }
-                        const valid = choice(
-                            q,
-                            type === "correct_form" ? 3 : 4,
-                            4,
-                        );
+                        const valid = choice(q, type === "correct_form" ? 3 : 4, 4);
                         if (!valid) return null;
                         if (type === "correct_form") {
                             const sentence = cleanString(q.sentence);
                             return oneBlank(sentence)
-                                ? { sentence, ...valid }
+                                ? {
+                                      card_id: cleanString(q.card_id),
+                                      sentence,
+                                      ...valid,
+                                  }
                                 : null;
                         }
                         if (type === "multiple_choice") {
                             const question = cleanString(q.question);
-                            return question ? { question, ...valid } : null;
+                            return question
+                                ? {
+                                      card_id: resolveCardId(q, valid.answer),
+                                      question,
+                                      ...valid,
+                                  }
+                                : null;
                         }
-                        return valid;
+                        return { ...valid, card_id: cleanString(q.card_id) };
                     })
                     .filter(Boolean);
-                return questions.length
-                    ? { type, instructions, questions }
-                    : null;
+                return questions.length ? { type, instructions, questions } : null;
             })
             .filter(Boolean);
         if (!sections.length)
@@ -1109,6 +1531,20 @@
                             return `<div class="quiz-item">${qText}<div class="quiz-options-grid">${opts}</div></div>`;
                         })
                         .join("");
+                } else if (sec.type === "recall") {
+                    body = (sec.questions || [])
+                        .map((q) => {
+                            qNum++;
+                            return `<div class="quiz-item"><p class="q-title"><b>${qNum}.</b> ${escapeHtml(q.prompt)}</p><div class="quiz-answer-line"></div></div>`;
+                        })
+                        .join("");
+                } else if (sec.type === "context_recall") {
+                    body = (sec.questions || [])
+                        .map((q) => {
+                            qNum++;
+                            return `<div class="quiz-item"><p class="q-title"><b>${qNum}.</b> ${escapeHtml(q.question)}</p><div class="quiz-answer-line"></div></div>`;
+                        })
+                        .join("");
                 } else if (sec.type === "matching") {
                     const aList = (sec.pairs || [])
                         .map(
@@ -1161,6 +1597,8 @@
             .map((sec) => {
                 if (
                     sec.type === "multiple_choice" ||
+                    sec.type === "recall" ||
+                    sec.type === "context_recall" ||
                     sec.type === "correct_form" ||
                     sec.type === "odd_one_out"
                 ) {
@@ -1227,6 +1665,7 @@
     .quiz-instructions { font-size: 13px; color: #64748b; margin-bottom: 14px; font-style: italic; }
     
     .quiz-item { margin: 12px 0 16px; }
+    .quiz-answer-line { height: 24px; border-bottom: 1px solid #94a3b8; margin: 8px 0 2px; }
     .q-title { font-size: 14px; color: #1e293b; line-height: 1.5; margin-bottom: 8px; }
     .quiz-options-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px 14px; margin-top: 6px; }
     .quiz-option { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: #334155; }
@@ -1338,6 +1777,13 @@
         const examTitle = escapeHtml(getExamTitle(srcLang, tgtLang));
 
         const totalPoints = quizTotalPoints(quiz);
+        const quizCards = Array.isArray(quiz.cards) ? quiz.cards : [];
+        const cardById = new Map(quizCards.map((card) => [card.card_id, card]));
+        const cardAttrs = (q, kind) => {
+            const cardId = cleanString(q?.card_id);
+            const card = cardById.get(cardId);
+            return ` data-card-id="${escapeAttr(cardId)}" data-learning-kind="${escapeAttr(kind)}" data-review-prompt="${escapeAttr(card?.meaning || "")}"`;
+        };
 
         const ttsIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`;
         const ttsBtn = (text, lang) =>
@@ -1354,15 +1800,12 @@
                 const secPoints = QUIZ_POINTS_PER_TYPE[sec.type] ?? 1;
                 let body = "";
 
-                if (
-                    sec.type === "multiple_choice" ||
-                    sec.type === "odd_one_out"
-                ) {
+                if (sec.type === "multiple_choice" || sec.type === "odd_one_out") {
                     body = (sec.questions || [])
                         .map((q) => {
                             qNum++;
                             const qText = q.question
-                                ? `<div class="q-text-row"><p class="q-text"><b>${qNum}.</b> ${escapeHtml(q.question)} <span class="pts-badge">${secPoints} ${escapeHtml(i18n.pointsSuffix)}</span></p>${ttsBtn(q.question, srcLang)}</div>`
+                                ? `<div class="q-text-row"><p class="q-text"><b>${qNum}.</b> ${escapeHtml(q.question)} <span class="pts-badge">${secPoints} ${escapeHtml(i18n.pointsSuffix)}</span></p></div>`
                                 : `<p class="q-text"><b>${qNum}.</b> <span class="pts-badge">${secPoints} ${escapeHtml(i18n.pointsSuffix)}</span></p>`;
                             const opts = (q.options || [])
                                 .map(
@@ -1370,9 +1813,37 @@
                                         `<span class="opt-row"><button type="button" class="opt" onclick="selectOpt(this)">${escapeHtml(o)}</button>${ttsBtn(o, srcLang)}</span>`,
                                 )
                                 .join("");
-                            return `<div class="q" data-qtype="choice" data-qid="${qNum}" data-points="${secPoints}" data-answer="${escapeAttr(q.answer)}">
+                            return `<div class="q" data-qtype="choice" data-qid="${qNum}" data-points="${secPoints}" data-answer="${escapeAttr(q.answer)}"${cardAttrs(q, sec.type)}>
                                 ${qText}
                                 <div class="opts">${opts}</div>
+                                <div class="q-feedback"></div>
+                            </div>`;
+                        })
+                        .join("");
+                } else if (sec.type === "recall" || sec.type === "context_recall") {
+                    body = (sec.questions || [])
+                        .map((q) => {
+                            qNum++;
+                            const isContext = sec.type === "context_recall";
+                            const prompt = isContext ? q.question : q.prompt;
+                            const alts = Array.isArray(q.acceptable_answers)
+                                ? q.acceptable_answers
+                                : Array.isArray(q.alternatives)
+                                  ? q.alternatives
+                                  : [];
+                            const speak = isContext ? ttsBtn(prompt, srcLang) : "";
+                            return `<div class="q active-recall" data-qtype="text" data-qid="${qNum}" data-points="${secPoints}" data-answer="${escapeAttr(q.answer)}" data-alternatives="${escapeAttr(JSON.stringify(alts))}"${cardAttrs(q, sec.type)}>
+                                <div class="q-text-row"><p class="q-text"><b>${qNum}.</b> ${escapeHtml(prompt)} <span class="pts-badge">${secPoints} ${escapeHtml(i18n.pointsSuffix)}</span></p>${speak}</div>
+                                <div class="input-row">
+                                    <input type="text" class="q-input" autocomplete="off" spellcheck="false" placeholder="${escapeAttr(i18n.yourAnswerPlaceholder)}" onkeydown="if(event.key==='Enter'){event.preventDefault();gradeQuestion(this.closest('.q'));}">
+                                    <button type="button" class="btn-mini" onclick="gradeQuestion(this.closest('.q'))">✓</button>
+                                </div>
+                                <div class="memory-actions">
+                                    <button type="button" class="btn-memory" onclick="showMemoryHint(this.closest('.q'))">💡 ${escapeHtml(i18n.hint)}</button>
+                                    <button type="button" class="btn-memory btn-dontknow" onclick="dontKnow(this.closest('.q'))">${escapeHtml(i18n.dontKnow || "I don't remember")}</button>
+                                    <span class="memory-hint" aria-live="polite"></span>
+                                </div>
+                                <div class="q-match-bar"><div class="q-match-fill"></div><span class="q-match-label"></span></div>
                                 <div class="q-feedback"></div>
                             </div>`;
                         })
@@ -1384,16 +1855,14 @@
                         (sec.pairs || [])
                             .map((p) => {
                                 qNum++;
-                                const shuffled = [...rightOptions].sort(
-                                    () => Math.random() - 0.5,
-                                );
+                                const shuffled = [...rightOptions].sort(() => Math.random() - 0.5);
                                 const opts = shuffled
                                     .map(
                                         (b) =>
                                             `<option value="${escapeAttr(b)}">${escapeHtml(b)}</option>`,
                                     )
                                     .join("");
-                                return `<div class="q match-card" data-qtype="select" data-qid="${qNum}" data-points="${secPoints}" data-answer="${escapeAttr(p.b)}">
+                                return `<div class="q match-card" data-qtype="select" data-qid="${qNum}" data-points="${secPoints}" data-answer="${escapeAttr(p.b)}"${cardAttrs(p, sec.type)}>
                                     <div class="match-row">
                                         <div class="match-left-wrap">
                                             <span class="match-left"><b>${qNum}.</b> ${escapeHtml(p.a)}</span>${ttsBtn(p.a, srcLang)}
@@ -1412,10 +1881,8 @@
                     body = (sec.questions || [])
                         .map((q) => {
                             qNum++;
-                            const expectedText = q.answer
-                                ? i18n.trueLabel
-                                : i18n.falseLabel;
-                            return `<div class="q" data-qtype="choice" data-qid="${qNum}" data-points="${secPoints}" data-answer="${escapeAttr(expectedText)}">
+                            const expectedText = q.answer ? i18n.trueLabel : i18n.falseLabel;
+                            return `<div class="q" data-qtype="choice" data-qid="${qNum}" data-points="${secPoints}" data-answer="${escapeAttr(expectedText)}"${cardAttrs(q, sec.type)}>
                                 <div class="q-text-row"><p class="q-text"><b>${qNum}.</b> ${escapeHtml(q.statement)} <span class="pts-badge">${secPoints} ${escapeHtml(i18n.pointsSuffix)}</span></p>${ttsBtn(q.statement, tgtLang)}</div>
                                 <div class="opts">
                                     <button type="button" class="opt" onclick="selectOpt(this)">${escapeHtml(i18n.trueLabel)}</button>
@@ -1435,7 +1902,7 @@
                                         `<span class="opt-row"><button type="button" class="opt" onclick="selectOpt(this)">${escapeHtml(o)}</button>${ttsBtn(o, srcLang)}</span>`,
                                 )
                                 .join("");
-                            return `<div class="q" data-qtype="choice" data-qid="${qNum}" data-points="${secPoints}" data-answer="${escapeAttr(q.answer)}">
+                            return `<div class="q" data-qtype="choice" data-qid="${qNum}" data-points="${secPoints}" data-answer="${escapeAttr(q.answer)}"${cardAttrs(q, sec.type)}>
                                 <div class="q-text-row"><p class="q-text"><b>${qNum}.</b> ${escapeHtml(q.sentence)} <span class="pts-badge">${secPoints} ${escapeHtml(i18n.pointsSuffix)}</span></p>${ttsBtn(q.sentence, srcLang)}</div>
                                 <div class="opts">${opts}</div>
                                 <div class="q-feedback"></div>
@@ -1713,6 +2180,26 @@
     @keyframes tts-pulse { 0%, 100% { opacity: .4; } 50% { opacity: 1; } }
     
     .hint-badge { display: inline-block; background: var(--accent-light); color: var(--accent-hover); border: 1px solid var(--accent-border); border-radius: 999px; padding: 2px 10px; font-size: 11.5px; font-weight: 600; white-space: nowrap; vertical-align: middle; }
+
+    .memory-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .btn-memory { border: 1px solid var(--border); background: #fff; color: var(--text-secondary); border-radius: 9px; padding: 6px 10px; font-size: 11.5px; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .btn-memory:hover { border-color: var(--accent); color: var(--accent-hover); background: var(--accent-light); }
+    .btn-dontknow { color: #9f1239; }
+    .memory-hint { font-size: 12px; font-weight: 800; color: var(--accent-hover); letter-spacing: .8px; }
+
+    .mastery-panel { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; margin: 0 0 24px; box-shadow: 0 2px 8px -2px rgba(15,23,42,.04); }
+    .mastery-panel h2 { margin-bottom: 10px; }
+    .mastery-grid { display: grid; gap: 8px; }
+    .mastery-row { display: grid; grid-template-columns: minmax(110px, 1fr) minmax(120px, 1.4fr) auto; gap: 10px; align-items: center; font-size: 12px; }
+    .mastery-term { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .mastery-track { height: 8px; border-radius: 999px; background: #e2e8f0; overflow: hidden; }
+    .mastery-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), #10b981); transition: width .3s ease; }
+    .mastery-status { min-width: 86px; text-align: right; font-weight: 700; color: var(--muted); }
+
+    .review-section { border-top: 1px dashed var(--border-hover); padding-top: 20px; margin-top: 8px; }
+    .review-section .sec-header h2 { color: #9a3412; }
+    .review-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa; font-size: 11px; font-weight: 800; margin-left: 6px; }
+    .review-card { border-color: #fed7aa; }
     
     .confetti-piece { position: fixed; top: -12px; width: 8px; height: 14px; z-index: 9999; pointer-events: none; animation: confetti-fall linear forwards; border-radius: 2px; }
     @keyframes confetti-fall { to { transform: translateY(110vh) rotate(360deg); opacity: 0.85; } }
@@ -1749,7 +2236,18 @@
         <span class="hud-streak" id="hudStreak">🔥 ${escapeHtml(i18n.streak)}: 0</span>
     </div>
     <span class="streak-badge" id="streakBadge"></span>
+    <section class="mastery-panel">
+        <h2>🧠 ${escapeHtml(i18n.masteryTitle || "Vocabulary Memory")}</h2>
+        <div class="mastery-grid" id="masteryGrid"></div>
+    </section>
     ${sectionsHtml}
+    <section class="quiz-section review-section" id="reviewSection" style="display:none;">
+        <div class="sec-header">
+            <h2>↻ ${escapeHtml(i18n.reviewTitle || "Mistake Review")} <span class="review-chip" id="reviewCount">0</span></h2>
+        </div>
+        <p class="instructions">${escapeHtml(i18n.reviewInstructions || "Missed words return after a few questions.")}</p>
+        <div id="reviewContainer"></div>
+    </section>
     <div class="actions">
         <button type="button" class="btn-check" onclick="checkAllAnswers()">${escapeHtml(i18n.checkAllBtn)}</button>
         <button type="button" class="btn-reset" onclick="resetQuiz()">${escapeHtml(i18n.resetBtn)}</button>
@@ -1757,6 +2255,9 @@
     <div id="scoreBox" class="score-box" style="display:none;"></div>
     <script>
     var I18N = ${JSON.stringify(i18n)};
+    var CARD_LIST = ${JSON.stringify(quizCards).replace(/</g, "\\u003c")};
+    var CARD_META = {};
+    for (var ci = 0; ci < CARD_LIST.length; ci++) { CARD_META[CARD_LIST[ci].card_id] = CARD_LIST[ci]; }
     var PASS_THRESHOLD = 100;
 
     function selectOpt(btn) {
@@ -2048,14 +2549,191 @@
         return html;
     }
 
-    var totalQuestions = document.querySelectorAll('.q').length;
     var answeredIds = {};
     var currentStreak = 0;
     var liveScore = 0;
+    var answerEventCount = 0;
+    var reviewQueue = [];
+    var reviewSerial = 0;
+    var masteryState = {};
     var PRAISE = I18N.praise || ['Great! 🎉'];
     var ENCOURAGE = I18N.encourage || ['Try again! 💭'];
 
     function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+    function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
+
+    for (var mi = 0; mi < CARD_LIST.length; mi++) {
+        var mc = CARD_LIST[mi];
+        var saved = mc.mastery || {};
+        masteryState[mc.card_id] = {
+            score: clamp(Number(saved.score) || 0, 0, 100),
+            recallWins: Math.max(0, Number(saved.recallWins) || 0),
+            contextWins: Math.max(0, Number(saved.contextWins) || 0),
+            wrongs: Math.max(0, Number(saved.wrongs) || 0),
+            lastReviewed: Number(saved.lastReviewed) || 0,
+            nextReview: Number(saved.nextReview) || 0
+        };
+    }
+
+    function masteryStatus(rec) {
+        if (rec.score >= 80 && rec.recallWins >= 2) return I18N.masteryMastered || 'Mastered';
+        if (rec.score >= 55) return I18N.masteryAlmost || 'Almost there';
+        if (rec.score >= 25) return I18N.masteryLearning || 'Learning';
+        return I18N.masteryWeak || 'Needs work';
+    }
+
+    function renderMastery() {
+        var grid = document.getElementById('masteryGrid');
+        if (!grid) return;
+        var html = '';
+        for (var i = 0; i < CARD_LIST.length; i++) {
+            var card = CARD_LIST[i];
+            var rec = masteryState[card.card_id] || { score: 0, recallWins: 0 };
+            html += '<div class="mastery-row">' +
+                '<span class="mastery-term" title="' + escapeHtmlClient(card.term || '') + '">' + escapeHtmlClient(card.term || '') + '</span>' +
+                '<span class="mastery-track"><span class="mastery-fill" style="display:block;width:' + clamp(rec.score, 0, 100) + '%"></span></span>' +
+                '<span class="mastery-status">' + Math.round(rec.score) + '% · ' + escapeHtmlClient(masteryStatus(rec)) + '</span>' +
+                '</div>';
+        }
+        grid.innerHTML = html;
+    }
+
+    function persistMastery(cardId) {
+        var rec = masteryState[cardId];
+        if (!cardId || !rec) return;
+        try {
+            window.parent.postMessage({
+                action: 'QUIZ_MASTERY_UPDATE',
+                card_id: cardId,
+                mastery: rec
+            }, '*');
+        } catch (_) {}
+    }
+
+    function applyMastery(q, isCorrect) {
+        if (!q || q.dataset.masteryRegistered === '1') return;
+        var cardId = q.dataset.cardId || '';
+        if (!cardId || !masteryState[cardId]) return;
+        var rec = masteryState[cardId];
+        var kind = q.dataset.learningKind || '';
+        var hints = Math.max(0, Number(q.dataset.hintsUsed) || 0);
+        var weights = {
+            recall: 22,
+            context_recall: 18,
+            recall_review: 24,
+            multiple_choice: 5,
+            matching: 3,
+            correct_form: 8,
+            true_false: 2,
+            odd_one_out: 2
+        };
+        if (isCorrect) {
+            var factor = hints === 0 ? 1 : hints === 1 ? 0.65 : hints === 2 ? 0.35 : 0.1;
+            rec.score = clamp(rec.score + Math.round((weights[kind] || 4) * factor), 0, 100);
+            if ((kind === 'recall' || kind === 'recall_review') && hints === 0) rec.recallWins++;
+            if (kind === 'context_recall' && hints === 0) rec.contextWins++;
+        } else {
+            rec.score = clamp(rec.score - 12, 0, 100);
+            rec.wrongs++;
+        }
+        rec.lastReviewed = Date.now();
+        var interval = rec.score >= 80 && rec.recallWins >= 2
+            ? 7 * 24 * 60 * 60 * 1000
+            : rec.score >= 55
+              ? 2 * 24 * 60 * 60 * 1000
+              : 12 * 60 * 60 * 1000;
+        rec.nextReview = rec.lastReviewed + interval;
+        q.dataset.masteryRegistered = '1';
+        persistMastery(cardId);
+        renderMastery();
+    }
+
+    function maskAnswer(answer, level) {
+        var words = (answer || '').split(/(\s+)/);
+        return words.map(function(part) {
+            if (/^\s+$/.test(part)) return part;
+            if (!part) return part;
+            if (level >= 3) return part;
+            var visible = level === 1 ? 1 : Math.max(1, Math.ceil(part.length / 2));
+            return part.slice(0, visible) + Array(Math.max(0, part.length - visible) + 1).join('_');
+        }).join('');
+    }
+
+    function showMemoryHint(q) {
+        if (!q) return;
+        var level = Math.min(3, (Number(q.dataset.hintsUsed) || 0) + 1);
+        q.dataset.hintsUsed = String(level);
+        var out = q.querySelector('.memory-hint');
+        if (out) out.textContent = maskAnswer(q.dataset.answer || '', level);
+    }
+
+    function dontKnow(q) {
+        if (!q) return;
+        gradeQuestion(q, false, true);
+    }
+
+    function scheduleReview(cardId, q) {
+        if (!cardId || !CARD_META[cardId]) return;
+        for (var i = 0; i < reviewQueue.length; i++) {
+            if (reviewQueue[i].cardId === cardId) return;
+        }
+        var delay = q && q.dataset.learningKind === 'recall_review' ? 2 : 3;
+        reviewQueue.push({ cardId: cardId, dueAt: answerEventCount + delay });
+    }
+
+    function appendReviewQuestion(cardId) {
+        var card = CARD_META[cardId];
+        var container = document.getElementById('reviewContainer');
+        var section = document.getElementById('reviewSection');
+        if (!card || !container || !section) return;
+        reviewSerial++;
+        var q = document.createElement('div');
+        q.className = 'q active-recall review-card';
+        q.dataset.qtype = 'text';
+        q.dataset.qid = 'review_' + cardId + '_' + reviewSerial;
+        q.dataset.points = '0';
+        q.dataset.answer = card.term || '';
+        q.dataset.alternatives = '[]';
+        q.dataset.cardId = cardId;
+        q.dataset.learningKind = 'recall_review';
+        q.dataset.reviewPrompt = card.meaning || '';
+        q.innerHTML =
+            '<div class="q-text-row"><p class="q-text"><b>↻</b> ' + escapeHtmlClient(card.meaning || '') +
+            ' <span class="review-chip">' + escapeHtmlClient(I18N.reviewReady || 'Review ready') + '</span></p></div>' +
+            '<div class="input-row"><input type="text" class="q-input" autocomplete="off" spellcheck="false" placeholder="' + escapeHtmlClient(I18N.yourAnswerPlaceholder || 'Your answer') + '">' +
+            '<button type="button" class="btn-mini">✓</button></div>' +
+            '<div class="memory-actions"><button type="button" class="btn-memory review-hint">💡 ' + escapeHtmlClient(I18N.hint || 'hint') + '</button>' +
+            '<button type="button" class="btn-memory btn-dontknow review-dont">' + escapeHtmlClient(I18N.dontKnow || "I don't remember") + '</button>' +
+            '<span class="memory-hint"></span></div>' +
+            '<div class="q-match-bar"><div class="q-match-fill"></div><span class="q-match-label"></span></div><div class="q-feedback"></div>';
+        var input = q.querySelector('.q-input');
+        var check = q.querySelector('.btn-mini');
+        var hint = q.querySelector('.review-hint');
+        var dont = q.querySelector('.review-dont');
+        if (input) input.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); gradeQuestion(q); } });
+        if (check) check.addEventListener('click', function() { gradeQuestion(q); });
+        if (hint) hint.addEventListener('click', function() { showMemoryHint(q); });
+        if (dont) dont.addEventListener('click', function() { dontKnow(q); });
+        container.appendChild(q);
+        section.style.display = 'block';
+        var count = document.getElementById('reviewCount');
+        if (count) count.textContent = container.querySelectorAll('.q').length;
+        updateProgress();
+    }
+
+    function processReviewQueue(force) {
+        if (!reviewQueue.length) return;
+        var due = [];
+        var later = [];
+        for (var i = 0; i < reviewQueue.length; i++) {
+            if (force || reviewQueue[i].dueAt <= answerEventCount) due.push(reviewQueue[i]);
+            else later.push(reviewQueue[i]);
+        }
+        reviewQueue = later;
+        for (var j = 0; j < due.length; j++) appendReviewQuestion(due[j].cardId);
+    }
+
+    function flushReviewQueue() { processReviewQueue(true); }
 
     function playTone(freq, duration) {
         try {
@@ -2077,10 +2755,11 @@
         if (qid) answeredIds[qid] = true;
         var bar = document.getElementById('progressBar');
         var label = document.getElementById('progressLabel');
+        var totalQuestions = document.querySelectorAll('.q').length;
         if (!bar || !label || !totalQuestions) return;
         var answered = Object.keys(answeredIds).length;
         var pct = Math.round((answered / totalQuestions) * 100);
-        bar.style.width = pct + '%';
+        bar.style.width = Math.min(100, pct) + '%';
         label.textContent = (I18N.answered || 'Answered') + ': ' + answered + ' / ' + totalQuestions;
     }
 
@@ -2099,6 +2778,8 @@
             }
         }
     }
+
+    renderMastery();
 
     function spawnParticles(x, y, count) {
         var emojis = ['🎉', '✨', '⭐', '💥', '🔥', '👏', '🌟', '💫'];
@@ -2192,7 +2873,12 @@
         }
     }
 
-    function gradeQuestion(q, silent) {
+    function questionPoints(q) {
+        var n = parseFloat(q && q.dataset ? q.dataset.points : '');
+        return Number.isFinite(n) ? n : 1;
+    }
+
+    function gradeQuestion(q, silent, forceWrong) {
         if (!q) return false;
         var type = q.dataset.qtype;
         var answer = q.dataset.answer || '';
@@ -2211,24 +2897,22 @@
             var sel = q.querySelector('.q-select');
             userVal = sel ? sel.value : '';
         }
-        if (!userVal) return false;
+        if (!userVal && !forceWrong) return false;
 
         var pct = null;
-        var isCorrect;
+        var isCorrect = false;
         var bestAnswer = answer;
         if (type === 'text') {
             var matchRes = matchPercentWithBest(userVal, answer, alternatives);
-            pct = matchRes.pct;
+            pct = forceWrong ? 0 : matchRes.pct;
             bestAnswer = matchRes.bestAnswer;
-            isCorrect = [answer].concat(alternatives).some(function(candidate) {
+            isCorrect = !forceWrong && [answer].concat(alternatives).some(function(candidate) {
                 return normalize(userVal) === normalize(candidate);
             });
-            // Expanded contractions are useful for comparison, but can change meaning.
-            // Never show 100% agreement for an answer that failed the exact key.
             pct = isCorrect ? 100 : Math.min(pct, 99);
         } else {
-            isCorrect = normalize(userVal) === normalize(answer);
-            if (!isCorrect && alternatives.length > 0) {
+            isCorrect = !forceWrong && normalize(userVal) === normalize(answer);
+            if (!isCorrect && !forceWrong && alternatives.length > 0) {
                 for (var aIdx = 0; aIdx < alternatives.length; aIdx++) {
                     if (normalize(userVal) === normalize(alternatives[aIdx])) {
                         isCorrect = true;
@@ -2239,7 +2923,7 @@
             }
         }
 
-        var pts = parseFloat(q.dataset.points) || 1;
+        var pts = questionPoints(q);
         var wasCorrect = q.dataset.wasCorrect === '1';
         q.classList.remove('correct', 'incorrect');
         q.classList.add(isCorrect ? 'correct' : 'incorrect');
@@ -2248,24 +2932,20 @@
         if (fb) {
             var pctSuffix = pct !== null ? (' (' + (I18N.similarity || 'similarity') + ': ' + pct + '%)') : '';
             if (type === 'text') {
-                var diffHtml = diffAnswerHtml(userVal, bestAnswer);
                 if (isCorrect) {
-                    if (pct !== null && pct < 100) {
-                        fb.innerHTML = '✓ ' + escapeHtmlClient(pick(PRAISE)) + pctSuffix +
-                            '<br><span class="fb-answer-label">' + (I18N.correctLabel || 'Correct answer') + ':</span> <span class="fb-answer-diff">' + diffHtml + '</span>';
-                    } else {
-                        fb.innerHTML = '✓ ' + escapeHtmlClient(pick(PRAISE)) + pctSuffix;
-                    }
+                    fb.innerHTML = '✓ ' + escapeHtmlClient(pick(PRAISE)) + pctSuffix;
+                } else if (forceWrong || !userVal) {
+                    fb.innerHTML = '✗ ' + escapeHtmlClient(I18N.dontKnow || I18N.noAnswer || 'No answer') +
+                        '<br><span class="fb-answer-label">' + (I18N.correctLabel || 'Correct answer') + ':</span> <span class="fb-answer-diff">' + escapeHtmlClient(bestAnswer) + '</span>';
                 } else {
+                    var diffHtml = diffAnswerHtml(userVal, bestAnswer);
                     fb.innerHTML = '✗ ' + escapeHtmlClient(pick(ENCOURAGE)) + pctSuffix +
                         '<br><span class="fb-answer-label">' + (I18N.correctLabel || 'Correct answer') + ':</span> <span class="fb-answer-diff">' + diffHtml + '</span>';
                 }
+            } else if (isCorrect) {
+                fb.innerHTML = '✓ ' + escapeHtmlClient(pick(PRAISE));
             } else {
-                if (isCorrect) {
-                    fb.innerHTML = '✓ ' + escapeHtmlClient(pick(PRAISE));
-                } else {
-                    fb.innerHTML = '✗ ' + escapeHtmlClient(pick(ENCOURAGE)) + ' — <span class="fb-answer-label">' + (I18N.correctLabel || 'Correct answer') + ':</span> ' + escapeHtmlClient(bestAnswer);
-                }
+                fb.innerHTML = '✗ ' + escapeHtmlClient(pick(ENCOURAGE)) + ' — <span class="fb-answer-label">' + (I18N.correctLabel || 'Correct answer') + ':</span> ' + escapeHtmlClient(bestAnswer);
             }
         }
 
@@ -2292,11 +2972,20 @@
         }
 
         updateProgress(q.dataset.qid);
+        applyMastery(q, isCorrect);
+
+        var cardId = q.dataset.cardId || '';
+        var hintsUsed = Number(q.dataset.hintsUsed) || 0;
+        if (!isCorrect || (isCorrect && hintsUsed >= 3)) scheduleReview(cardId, q);
 
         if (!silent) {
+            if (q.dataset.eventCounted !== '1') {
+                answerEventCount++;
+                q.dataset.eventCounted = '1';
+            }
             playTone(isCorrect ? 880 : 220, isCorrect ? 0.16 : 0.28);
             updateStreak(isCorrect);
-            if (isCorrect && !wasCorrect) {
+            if (isCorrect && !wasCorrect && pts > 0) {
                 celebrateCorrect(q, pts);
             } else if (!isCorrect) {
                 shakeWrong(q);
@@ -2307,20 +2996,20 @@
             liveScore += pts;
             q.dataset.wasCorrect = '1';
         } else if (!isCorrect && wasCorrect) {
-            liveScore -= pts;
+            liveScore = Math.max(0, liveScore - pts);
             q.dataset.wasCorrect = '0';
         }
 
         updateHUD();
+        if (!silent) processReviewQueue(false);
         return isCorrect;
     }
 
     function checkAllAnswers() {
         var qs = document.querySelectorAll('.q');
-        var total = 0, correct = 0, totalPoints = 0, earnedPoints = 0;
+        var totalPoints = 0, earnedPoints = 0;
         for (var i = 0; i < qs.length; i++) {
-            total++;
-            var pts = parseFloat(qs[i].dataset.points) || 1;
+            var pts = questionPoints(qs[i]);
             totalPoints += pts;
             var input = qs[i].querySelector('.q-input, .q-select');
             var hasAnswer = qs[i].dataset.qtype === 'choice'
@@ -2331,21 +3020,37 @@
                 qs[i].classList.add('incorrect');
                 var fb2 = qs[i].querySelector('.q-feedback');
                 if (fb2) fb2.textContent = '✗ ' + (I18N.noAnswer || 'No answer') + ' — ' + (I18N.correctLabel || 'Correct answer') + ': ' + qs[i].dataset.answer;
+                updateProgress(qs[i].dataset.qid);
+                applyMastery(qs[i], false);
+                scheduleReview(qs[i].dataset.cardId || '', qs[i]);
                 continue;
             }
-            if (gradeQuestion(qs[i], true)) { correct++; earnedPoints += pts; }
+            if (gradeQuestion(qs[i], true, false)) earnedPoints += pts;
         }
+        flushReviewQueue();
         var box = document.getElementById('scoreBox');
         var pct = totalPoints ? Math.round((earnedPoints / totalPoints) * 100) : 0;
         var gradeName = I18N.grades[pct >= 95 ? 6 : pct >= 85 ? 5 : pct >= 70 ? 4 : pct >= 55 ? 3 : pct >= 40 ? 2 : 1];
+        var reviewCount = document.querySelectorAll('#reviewContainer .q').length;
         box.style.display = 'block';
-        box.textContent = (I18N.result || 'Result') + ': ' + earnedPoints + ' / ' + totalPoints + ' ' + (I18N.pointsSuffix || 'pts') + ' (' + pct + '%) — ' + (I18N.grade || 'Grade') + ': ' + gradeName;
+        box.textContent = (I18N.result || 'Result') + ': ' + earnedPoints + ' / ' + totalPoints + ' ' + (I18N.pointsSuffix || 'pts') + ' (' + pct + '%) — ' + (I18N.grade || 'Grade') + ': ' + gradeName +
+            (reviewCount ? ' • ↻ ' + (I18N.reviewTitle || 'Mistake Review') + ': ' + reviewCount : '');
         box.className = 'score-box ' + (pct >= 70 ? 'good' : pct >= 40 ? 'mid' : 'bad');
         box.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        if (pct >= 70) launchConfetti();
+        if (pct >= 70 && reviewCount === 0) launchConfetti();
     }
 
     function resetQuiz() {
+        var reviewContainer = document.getElementById('reviewContainer');
+        if (reviewContainer) reviewContainer.innerHTML = '';
+        var reviewSection = document.getElementById('reviewSection');
+        if (reviewSection) reviewSection.style.display = 'none';
+        var reviewCount = document.getElementById('reviewCount');
+        if (reviewCount) reviewCount.textContent = '0';
+        reviewQueue = [];
+        reviewSerial = 0;
+        answerEventCount = 0;
+
         var opts = document.querySelectorAll('.opt');
         for (var i = 0; i < opts.length; i++) { opts[i].classList.remove('selected', 'opt-correct', 'opt-incorrect'); }
         var inputs = document.querySelectorAll('.q-input');
@@ -2357,8 +3062,13 @@
             qs[m].classList.remove('correct', 'incorrect', 'pop-correct', 'shake-wrong');
             qs[m].dataset.selected = '';
             qs[m].dataset.wasCorrect = '';
+            qs[m].dataset.masteryRegistered = '';
+            qs[m].dataset.eventCounted = '';
+            qs[m].dataset.hintsUsed = '';
             var fb = qs[m].querySelector('.q-feedback');
             if (fb) fb.textContent = '';
+            var hintOut = qs[m].querySelector('.memory-hint');
+            if (hintOut) hintOut.textContent = '';
             var matchBar = qs[m].querySelector('.q-match-bar');
             if (matchBar) matchBar.style.display = 'none';
             var matchFill = qs[m].querySelector('.q-match-fill');
@@ -2366,7 +3076,8 @@
             var matchLabel = qs[m].querySelector('.q-match-label');
             if (matchLabel) matchLabel.textContent = '';
         }
-        document.getElementById('scoreBox').style.display = 'none';
+        var scoreBox = document.getElementById('scoreBox');
+        if (scoreBox) scoreBox.style.display = 'none';
         answeredIds = {};
         currentStreak = 0;
         liveScore = 0;
@@ -2374,6 +3085,7 @@
         var streakBadge = document.getElementById('streakBadge');
         if (streakBadge) streakBadge.classList.remove('show');
         updateProgress();
+        renderMastery();
     }
     </script>
 </body>
@@ -2381,10 +3093,30 @@
     }
 
     // ── 5. High-Level Export Orchestrator ──────────────────────────────
+    async function loadQuizMasteryStore() {
+        if (
+            typeof chrome === "undefined" ||
+            !chrome.storage?.local
+        ) {
+            return {};
+        }
+        try {
+            return await new Promise((resolve) => {
+                chrome.storage.local.get(["quizMasteryV2"], (data) => {
+                    resolve(data?.quizMasteryV2 && typeof data.quizMasteryV2 === "object"
+                        ? data.quizMasteryV2
+                        : {});
+                });
+            });
+        } catch (_) {
+            return {};
+        }
+    }
+
     async function runExport({
         words,
         scope = "5",
-        source = "recent",
+        source = "smart",
         mode = "interactive",
         targetLang = "en",
     }) {
@@ -2396,11 +3128,16 @@
             (a, b) => (b.timestamp || 0) - (a.timestamp || 0),
         );
         const count = Math.min(Math.max(1, parseInt(scope, 10) || 5), 25);
-        const quizWords = pickQuizWords(sorted, count, source);
+        const masteryStore = await loadQuizMasteryStore();
+        const quizWords = pickQuizWords(sorted, count, source, masteryStore);
 
         const quiz = await generateQuizWithGemini(quizWords, {
             tgtLang: targetLang,
         });
+        quiz.cards = (quiz.cards || []).map((card) => ({
+            ...card,
+            mastery: masteryStore[card.card_id] || null,
+        }));
         const html =
             mode === "interactive"
                 ? buildInteractiveQuizHtml(quiz, quizWords, {
@@ -2444,6 +3181,8 @@
         buildQuizHtml,
         buildInteractiveQuizHtml,
         pickQuizWords,
+        makeQuizCardId,
+        loadQuizMasteryStore,
         runExport,
         getI18n,
         getExamTitle,

@@ -7,6 +7,7 @@
   let cachedTitle = "Lectoro_Quiz";
   let isLoaded = false;
   let retryInterval = null;
+  let masteryWriteQueue = Promise.resolve();
 
   function sendQuizToFrame() {
     if (!cachedHtml) return;
@@ -62,6 +63,36 @@
     }
   }
 
+
+  function queueMasteryUpdate(cardId, mastery) {
+    if (!cardId || !mastery || typeof mastery !== "object") return;
+    const clean = {
+      score: Math.max(0, Math.min(100, Number(mastery.score) || 0)),
+      recallWins: Math.max(0, Number(mastery.recallWins) || 0),
+      contextWins: Math.max(0, Number(mastery.contextWins) || 0),
+      wrongs: Math.max(0, Number(mastery.wrongs) || 0),
+      lastReviewed: Math.max(0, Number(mastery.lastReviewed) || 0),
+      nextReview: Math.max(0, Number(mastery.nextReview) || 0),
+    };
+    masteryWriteQueue = masteryWriteQueue
+      .then(async () => {
+        const data = await new Promise((resolve) => {
+          chrome.storage.local.get(["quizMasteryV2"], resolve);
+        });
+        const store =
+          data.quizMasteryV2 && typeof data.quizMasteryV2 === "object"
+            ? { ...data.quizMasteryV2 }
+            : {};
+        store[cardId] = clean;
+        await new Promise((resolve) => {
+          chrome.storage.local.set({ quizMasteryV2: store }, resolve);
+        });
+      })
+      .catch((err) => {
+        console.error("Failed to save quiz mastery:", err);
+      });
+  }
+
   function initListeners() {
     const frame = document.getElementById("quizFrame");
     if (frame) {
@@ -82,6 +113,8 @@
           clearInterval(retryInterval);
           retryInterval = null;
         }
+      } else if (event.data.action === "QUIZ_MASTERY_UPDATE") {
+        queueMasteryUpdate(event.data.card_id, event.data.mastery);
       }
     });
 

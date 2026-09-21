@@ -2729,20 +2729,11 @@ body::before {
     letter-spacing: -0.2px;
 }
 
-.review-empty-web-desc {
-    font-size: 11px;
-    color: var(--text-secondary);
-    line-height: 1.45;
-    margin-bottom: 11px;
-    max-width: 320px;
-    margin-left: auto;
-    margin-right: auto;
-}
-
 .review-empty-web-link {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    margin: 12px auto;
     gap: 6px;
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(129, 140, 248, 0.35);
@@ -2760,7 +2751,6 @@ body::before {
     background: rgba(129, 140, 248, 0.16);
     border-color: rgba(129, 140, 248, 0.6);
     color: #ffffff;
-    transform: translateY(-1px);
     box-shadow: 0 3px 10px rgba(129, 140, 248, 0.25);
 }
 
