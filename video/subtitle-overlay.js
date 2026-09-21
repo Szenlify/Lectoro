@@ -774,7 +774,7 @@
     function isYouTubeHost() {
         try {
             const host = (typeof window !== "undefined" && window.location?.hostname) || "";
-            return host.includes("youtube.com") || host.includes("youtu.be");
+            return /(^|\.)(youtube\.com|youtu\.be)$/i.test(host);
         } catch (_) {
             return false;
         }
@@ -887,7 +887,7 @@
     }
 
     function cueHasWordTimestamps(cue) {
-        if (!cue || !Array.isArray(cue.segs) || cue.segs.length <= 1) {
+        if (!cue || !Array.isArray(cue.segs) || cue.segs.length === 0) {
             return false;
         }
         let timedWordsCount = 0;
@@ -898,7 +898,7 @@
                 const offset = seg.tOffsetMs != null
                     ? Number(seg.tOffsetMs)
                     : (seg.tAbsMs != null ? Number(seg.tAbsMs) : null);
-                if (offset != null && offset !== lastOffset) {
+                if (Number.isFinite(offset) && offset !== lastOffset) {
                     timedWordsCount++;
                     lastOffset = offset;
                 }
@@ -1091,8 +1091,16 @@
         const displayLines = rawCleanLines;
         const newText = displayLines.join(" ").replace(/\s+/g, " ").trim();
         const cue = options.cue || lines.cue || null;
+        const isAsr = options.isAsr === true;
+        const shouldEnableFocusMode = Boolean(
+            youtubeFocusModeActive && isYouTubeHost() && isAsr &&
+            (cueHasWordTimestamps(cue) ||
+                (/^\S+$/u.test(newText) && Number.isFinite(cue?.startTime) &&
+                    Number.isFinite(cue?.endTime) && cue.endTime > cue.startTime))
+        );
 
-        if (newText === activeText && activeLines.length > 0 && activeUnifiedCue === cue) {
+        if (newText === activeText && activeLines.length > 0 && activeUnifiedCue === cue &&
+            Boolean(box.classList?.contains("is-focus-mode")) === shouldEnableFocusMode) {
             if (displayLines.length === activeLines.length) {
                 syncCustomSubtitlePosition();
                 return;
@@ -1164,14 +1172,6 @@
             }
             box.appendChild(lineEl);
         }
-
-        const isYouTube = isYouTubeHost();
-        const isAsr = Boolean(
-            options.isAsr ||
-            (Array.isArray(cue?.segs) && cue.segs.some((s) => s?.tOffsetMs != null || s?.tAbsMs != null))
-        );
-        const hasTimestamps = cueHasWordTimestamps(cue);
-        const shouldEnableFocusMode = Boolean(youtubeFocusModeActive && isYouTube && isAsr && hasTimestamps);
 
         if (shouldEnableFocusMode) {
             box.classList?.add("is-focus-mode");

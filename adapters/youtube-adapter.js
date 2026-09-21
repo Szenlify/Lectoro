@@ -60,20 +60,6 @@
                 const newVal = Boolean(changes[ytFocusKey].newValue);
                 if (newVal !== youtubeFocusModeActive) {
                     youtubeFocusModeActive = newVal;
-                    if (availableTracks.length > 0 && isCcActive) {
-                        const videoId = currentVideoId || getVideoIdFromUrl();
-                        const chosen = selectBestCaptionTrack(
-                            availableTracks,
-                            activeTrack?.languageCode,
-                            youtubeFocusModeActive,
-                        );
-                        if (chosen && (!activeTrack || chosen.baseUrl !== activeTrack.baseUrl)) {
-                            loadCaptionTrack(chosen, videoId);
-                            if (youtubeFocusModeActive && (chosen.kind === "asr" || chosen.vssId?.startsWith("a."))) {
-                                dispatchSetTrackToBridge(chosen);
-                            }
-                        }
-                    }
                 }
             }
         });
@@ -294,8 +280,7 @@
             if (globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
                 const isAsr = Boolean(
                     activeTrack?.kind === "asr" ||
-                    activeTrack?.vssId?.startsWith("a.") ||
-                    (activeCue && Array.isArray(activeCue.segs) && activeCue.segs.some((s) => s?.tOffsetMs != null || s?.tAbsMs != null))
+                    activeTrack?.vssId?.startsWith("a.")
                 );
                 globalThis.LectoroSubtitleOverlay.renderCustomSubtitles(
                     targetLines,
@@ -647,38 +632,16 @@
         if (Array.isArray(tracks) && tracks.length > 0) {
             availableTracks = tracks;
             const active = detail.activeTrack;
-            const focusMode = isFocusModeEnabled();
-
-            let chosen = null;
-            if (focusMode) {
-                // If Focus Mode is active and current active track is already ASR, keep it
-                if (active && (active.kind === "asr" || active.vssId?.startsWith("a."))) {
-                    chosen = tracks.find(
-                        (track) =>
-                            (active.vssId && track.vssId === active.vssId) ||
-                            (track.languageCode === active.languageCode && track.kind === active.kind),
-                    );
-                }
-                // If active is not ASR or not found, pick the best ASR track
-                if (!chosen) {
-                    chosen = selectBestCaptionTrack(tracks, active?.languageCode, true);
-                }
-            } else {
-                chosen =
-                    (active &&
-                        tracks.find(
-                            (track) =>
-                                (active.vssId && track.vssId === active.vssId) ||
-                                (track.languageCode === active.languageCode && track.kind === active.kind),
-                        )) ||
-                    selectBestCaptionTrack(tracks, active?.languageCode, false);
-            }
+            // Focus only decorates the selected automatic track; never change
+            // the viewer's caption language or replace their manual captions.
+            const chosen =
+                (active && tracks.find((track) =>
+                    (active.vssId && track.vssId === active.vssId) ||
+                    (track.languageCode === active.languageCode && track.kind === active.kind)
+                )) || selectBestCaptionTrack(tracks, active?.languageCode, false);
 
             if (chosen && (!activeTrack || chosen.baseUrl !== activeTrack.baseUrl || videoId !== currentVideoId)) {
                 loadCaptionTrack(chosen, videoId);
-                if (focusMode && (chosen.kind === "asr" || chosen.vssId?.startsWith("a."))) {
-                    dispatchSetTrackToBridge(chosen);
-                }
             }
             const video = boundVideo || document.querySelector("video");
             if (video && !video.paused) startPlaybackLoop(video);

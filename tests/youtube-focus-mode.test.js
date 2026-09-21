@@ -306,6 +306,43 @@ test("YouTube Focus Mode: Subtitle overlay sliding highlighter and timestamp val
         SubtitleOverlay.updateFocusTiming(3200);
         assert.strictEqual(slider.style.opacity, "0", "Focus mode should not be active for captions without timestamps");
 
+        // Manual tracks must not become ASR merely because JSON3 has timings.
+        SubtitleOverlay.renderCustomSubtitles(sampleCueWithTimings.lines, {
+            cue: sampleCueWithTimings, isAsr: false,
+        });
+        SubtitleOverlay.updateFocusTiming(600);
+        assert.strictEqual(slider.style.opacity, "0");
+        // Changing only the track type must invalidate the rendering cache.
+        SubtitleOverlay.renderCustomSubtitles(sampleCueWithTimings.lines, {
+            cue: sampleCueWithTimings, isAsr: true,
+        });
+        SubtitleOverlay.updateFocusTiming(600);
+        assert.strictEqual(slider.style.opacity, "1");
+        SubtitleOverlay.renderCustomSubtitles(sampleCueWithTimings.lines, {
+            cue: sampleCueWithTimings, isAsr: false,
+        });
+        SubtitleOverlay.updateFocusTiming(600);
+        assert.strictEqual(slider.style.opacity, "0");
+
+        for (const segs of [[{ utf8: "Hello!", tOffsetMs: 0 }], [{ utf8: "Hello!" }], undefined]) {
+            const singleWordCue = { startTime: 6, endTime: 7, segs };
+            mockVideo.currentTime = 6.2;
+            SubtitleOverlay.renderCustomSubtitles(["Hello!"], { cue: singleWordCue, isAsr: true });
+            assert.strictEqual(slider.style.opacity, "1", "Single ASR word is highlighted immediately");
+            SubtitleOverlay.updateFocusTiming(7100);
+            assert.strictEqual(slider.style.opacity, "0", "Single-word highlight ends with the cue");
+        }
+
+        for (const hostname of ["www.netflix.com", "example.com", "youtube.com.example.com", "notyoutube.com"]) {
+            globalThis.window.location.hostname = hostname;
+            SubtitleOverlay.renderCustomSubtitles(sampleCueWithTimings.lines, {
+                cue: sampleCueWithTimings, isAsr: true,
+            });
+            SubtitleOverlay.updateFocusTiming(600);
+            assert.strictEqual(slider.style.opacity, "0", `Focus must stay off on ${hostname}`);
+        }
+        globalThis.window.location.hostname = "www.youtube.com";
+
         // 3. Color synchronization
         mockChrome.storage.local.set({ [C.STORAGE_KEYS.YOUTUBE_FOCUS_COLOR]: "#f59e0b" });
         assert.strictEqual(SubtitleOverlay.getFocusColor(), "#f59e0b", "Focus color should update in overlay");
@@ -323,7 +360,7 @@ test("YouTube Focus Mode: Subtitle overlay sliding highlighter and timestamp val
     }
 });
 
-test("YouTube Focus Mode: Always selects auto-generated (ASR) track when Focus Mode is active", () => {
+test("YouTube caption selection supports explicit ASR preference", () => {
     assert.strictEqual(C.EVENT_NAMES.YOUTUBE_SET_TRACK, "__lectoro_youtube_set_track");
 
     const origWindow = globalThis.window;

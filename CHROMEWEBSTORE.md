@@ -26,6 +26,7 @@ Learn languages faster with smart video subtitles, instant web translation, SRS 
 Master new languages naturally while watching your favorite videos and reading articles online. Lectoro AI transforms YouTube, Netflix, and any webpage into an interactive, bilingual learning environment.
 
 **Key Features:**
+- **YouTube Focus Mode:** Highlights spoken words in selected auto-generated YouTube captions, including single-word subtitles.
 - **Consistent Subtitle Navigation:** A and Left Arrow return to the previous dialogue near its start and replay it after its midpoint across supported video players.
 - **Dual Bilingual Subtitles:** Watch YouTube and Netflix with synchronized dual-language subtitles. Consecutive short fragments are paired together for effortless reading.
 - **Word-by-Word Translation Clouds:** Press S for contextual word and phrase translations above subtitles, with automatic fallback when the primary service is unavailable. Repeated subtitles load from saved results.
@@ -97,6 +98,7 @@ Every permission declared in `manifest.json` adheres to the Principle of Least P
 ## Version History
 
 - **1.0.0 (Current):**
+  - Focus Mode applies only to auto-generated YouTube captions, highlights single words, and respects the selected caption track.
   - On other video sites, rewinding past the first available subtitle continues in three-second steps.
   - Aligned backward subtitle navigation on other video sites with YouTube and Netflix (2026-09-21).
   - Natural pronunciation with two multilingual voices, Sulafat and Algieba; saved recordings remain available for Anki export. The Review voice choices appear without a separate voice-list download.
