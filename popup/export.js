@@ -33,51 +33,28 @@ async function fetchAudioBlob(text, lang, {allowFallback = true} = {}) {
   }
 }
 
-// ── Smart keyword extractor for whole sentences (e.g. saved via key Z) ──
-function findBestClozeWord(sentence) {
-  if (!sentence || typeof sentence !== "string") return null;
-
-  // Tokenize into words while stripping punctuation
-  const tokens = sentence.match(/[a-zA-Z\u00C0-\u024F]+(?:'[a-zA-Z]+)?/g) || [];
-  if (tokens.length === 0) return null;
-
-  const stopWords = LectoroConstants.CLOZE_STOP_WORDS;
-  const candidates = [];
-  for (let i = 0; i < tokens.length; i++) {
-    const rawWord = tokens[i];
-    const lower = rawWord.toLowerCase();
-
-    // Skip contractions and very short words
-    if (lower.startsWith("'") || lower.length < 3) continue;
-    if (stopWords.has(lower)) continue;
-
-    // Score based on length and linguistic suffixes
-    let score = lower.length * 2;
-    if (
-      /(tion|ment|able|ible|ous|ful|less|ive|ly|ize|ise|ity|est|ence|ance)$/i.test(
-        lower
-      )
-    ) {
-      score += 6;
+// One saved expression per card. Only saved translations and original context
+// belong here; AI examples and explanations are deliberately excluded.
+function buildAnkiCard(word) {
+  const original = String(word.original || "").trim();
+  const translated = String(word.translated || "").trim();
+  const sentence = String(word.sentence || "").trim();
+  const sentenceTranslated = String(word.sentenceTranslated || "").trim();
+  const layout = "font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 560px; margin: 24px auto; padding: 0 16px; text-align: center; color: inherit; line-height: 1.6; overflow-wrap: anywhere;";
+  const front = '<div class="lectoro-anki-card" style="' + layout + '"><div dir="auto" style="font-size: 28px; font-weight: 500;">' + escapeHtml(original) + '</div></div>';
+  const parts = ['<div dir="auto" style="font-size: 24px; font-weight: 500;">' + escapeHtml(translated) + '</div>'];
+  if (sentence && sentence !== original) {
+    parts.push('<div dir="auto" style="margin-top: 24px; font-size: 17px;">' + escapeHtml(sentence) + '</div>');
+    if (sentenceTranslated && sentenceTranslated !== translated) {
+      parts.push('<div dir="auto" style="margin-top: 6px; font-size: 15px;">' + escapeHtml(sentenceTranslated) + '</div>');
     }
-    if (i > 0 && i < tokens.length - 1) {
-      score += 2;
-    }
-
-    candidates.push({word: rawWord, score});
   }
+  return { front, parts, layout };
+}
 
-  if (candidates.length > 0) {
-    candidates.sort((a, b) => b.score - a.score);
-    return candidates[0].word;
-  }
-
-  // Fallback: pick the longest word in the sentence
-  let longest = tokens[0];
-  for (const t of tokens) {
-    if (t.length > longest.length) longest = t;
-  }
-  return longest;
+// Quote TSV fields because HTML attributes and saved text can contain quotes.
+function ankiTsvField(value) {
+  return '"' + String(value ?? '').replace(/[\r\n\t]+/g, ' ').replace(/"/g, '""') + '"';
 }
 
 // ── Convert image to standard JPEG for 100% mobile phone (iOS / Android) compatibility ──
@@ -372,7 +349,7 @@ if (
   });
 }
 
-// ── Export: Anki Cloze with audio (.zip) ──────────────────────────
+// ── Export: Anki Basic with audio (.zip) ──────────────────────────
 document.getElementById("exportAnki").addEventListener("click", async () => {
   const btn = document.getElementById("exportAnki");
   const labelEl = btn.querySelector(".export-btn-label");
@@ -395,7 +372,7 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
 
   try {
     const allWords = await SharedWordRepository.getStoredWords();
-    const words = filterWords(allWords);
+    const words = filterWords(allWords).filter((word) => String(word.original || "").trim() && String(word.translated || "").trim());
     if (words.length === 0) {
       setBtnText(origText);
       btn.disabled = false;
@@ -416,93 +393,9 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
       );
 
 
-      const sentenceSource = (w.aiSentence || w.sentence || "").trim();
-      const cleanOriginal = (w.original || "").trim();
-      const cleanTranslated = (w.translated || "").trim();
-
-      const wordsCount = cleanOriginal.split(/\s+/).filter(Boolean).length;
-
-      let clozeSentenceHtml = "";
-      let sentencePromptTop = "";
-
-      if (sentenceSource && cleanOriginal && sentenceSource !== cleanOriginal) {
-        // Case 1: Word or phrase selected from a separate context sentence
-        const escapedSentence = escapeHtml(sentenceSource);
-        const escapedOriginal = escapeHtml(cleanOriginal);
-        const escapedTranslated = escapeHtml(cleanTranslated);
-
-        const regex = new RegExp(
-          `(${cleanOriginal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
-          "i"
-        );
-        if (regex.test(sentenceSource)) {
-          clozeSentenceHtml = escapedSentence.replace(
-            regex,
-            `{{c1::$1::${escapedTranslated}}}`
-          );
-        } else {
-          clozeSentenceHtml = `{{c1::${escapedOriginal}::${escapedTranslated}}}<div style="margin-top: 14px; font-size: 15px; line-height: 1.5; color: #94a3b8; font-style: italic; text-align: center;">"${escapedSentence}"</div>`;
-        }
-      } else if (wordsCount === 1) {
-        // Case 2: Standalone single word
-        clozeSentenceHtml = `{{c1::${escapeHtml(cleanOriginal)}::${escapeHtml(cleanTranslated)}}}`;
-      } else {
-        // Case 3: Full sentence saved via key Z or whole subtitle line!
-        // Smart Cloze: Identify the most meaningful content keyword in the sentence,
-        // generate a cloze deletion with a first-letter hint [k...],
-        // and display the full sentence translation above as context.
-        const keyWord = findBestClozeWord(cleanOriginal);
-        if (keyWord) {
-          const escapedSentence = escapeHtml(cleanOriginal);
-          const regex = new RegExp(
-            `(${keyWord.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
-            "i"
-          );
-          const firstChar = keyWord.charAt(0);
-          const hint = `${firstChar}...`;
-          clozeSentenceHtml = escapedSentence.replace(
-            regex,
-            `{{c1::$1::${hint}}}`
-          );
-        } else {
-          clozeSentenceHtml = `{{c1::${escapeHtml(cleanOriginal)}::${escapeHtml(cleanTranslated)}}}`;
-        }
-
-        if (cleanTranslated) {
-          sentencePromptTop = `<div style="font-size: 15px; line-height: 1.55; color: #cbd5e1; font-style: italic; margin: 0 auto 16px; text-align: center; max-width: 500px; padding: 8px 16px; background: rgba(0, 0, 0, 0.3); border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.06);">"${escapeHtml(cleanTranslated)}"</div>`;
-        }
-      }
-
-      // Wrap Front Side in modern centered Lectoro card container with cloze styling
-      const frontCardHtml = `<style>.lectoro-anki-card .cloze { color: #38bdf8 !important; font-weight: 700; text-decoration: none; border-bottom: 2px solid #38bdf8; padding-bottom: 1px; }</style><div class="lectoro-anki-card" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 16px auto; padding: 26px 28px; background: linear-gradient(180deg, #0f172a 0%, #090d16 100%); border: 1px solid rgba(56, 189, 248, 0.22); border-radius: 20px; box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05); color: #f8fafc; text-align: center;"><div style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 18px;"><span style="background: rgba(255, 255, 255, 0.06); color: #94a3b8; font-size: 11px; font-weight: 600; padding: 4px 12px; border-radius: 20px; letter-spacing: 0.08em; border: 1px solid rgba(255, 255, 255, 0.08);">LectoroAI.com</span></div>${sentencePromptTop}<div style="font-size: 20px; line-height: 1.65; color: #f8fafc; font-weight: 500; text-align: center; max-width: 500px; margin: 0 auto;">${clozeSentenceHtml}</div></div>`;
-
-      // Build Extra (Back side details)
-      const extraParts = [];
-
-      // 1. Translation row (Centered hero title)
-      extraParts.push(
-        `<div style="margin-bottom: 18px; text-align: center;"><div style="font-size: 11px; text-transform: uppercase; color: #38bdf8; font-weight: 700; letter-spacing: 0.12em; margin-bottom: 4px;">TRANSLATION</div><div style="font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em; text-shadow: 0 2px 12px rgba(56, 189, 248, 0.25);">${escapeHtml(cleanTranslated)}</div></div>`
-      );
-
-      // 2. Original context sentence translation (Centered)
-      if (
-        w.sentenceTranslated &&
-        w.sentenceTranslated !== w.aiSentenceTranslated &&
-        w.sentenceTranslated !== cleanTranslated
-      ) {
-        extraParts.push(
-          `<div style="font-size: 14px; line-height: 1.55; color: #94a3b8; font-style: italic; margin: 0 auto 16px; text-align: center; max-width: 480px; padding: 8px 16px; background: rgba(0, 0, 0, 0.25); border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.06);">"${escapeHtml(w.sentenceTranslated)}"</div>`
-        );
-      }
-
-      // 3. AI sentence & translation (Centered)
-      if (w.aiSentence || w.aiSentenceTranslated) {
-        const aiSent = escapeHtml(w.aiSentence || "");
-        const aiSentTr = escapeHtml(w.aiSentenceTranslated || "");
-        extraParts.push(
-          `<div style="margin: 0 auto 16px; max-width: 480px; padding: 12px 16px; background: rgba(168, 85, 247, 0.08); border: 1px solid rgba(168, 85, 247, 0.22); border-radius: 14px; text-align: center;"><div style="font-size: 11px; font-weight: 700; color: #c084fc; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px;">✨ AI Example</div>${aiSent ? `<div style="font-size: 14px; color: #f1f5f9; font-weight: 500; line-height: 1.5;">${aiSent}</div>` : ""}${aiSentTr ? `<div style="font-size: 13px; color: #cbd5e1; font-style: italic; margin-top: 4px;">${aiSentTr}</div>` : ""}</div>`
-        );
-      }
+      const card = buildAnkiCard(w);
+      const frontCardHtml = card.front;
+      const extraParts = card.parts;
 
       const ts =
         (w.id
@@ -511,7 +404,7 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
         "_" +
         (i + 1);
 
-      // 4. Screenshot image: convert to standard JPEG (.jpg) for 100% mobile (iOS/Android) compatibility
+      // Keep saved screenshots as portable Anki media.
       let screenshotSrc = null;
       if (w.screenshot) {
         let rawSrc = null;
@@ -535,7 +428,7 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
               ? await imageToJpeg(rawSrc)
               : null;
           if (jpegRes?.blob) {
-            screenshotSrc = jpegRes.dataUrl;
+            screenshotSrc = imgFile;
             const imgBuffer = await jpegRes.blob.arrayBuffer();
             files.push({name: imgFile, data: new Uint8Array(imgBuffer)});
           } else if (rawSrc.startsWith("data:")) {
@@ -547,29 +440,17 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
 
         if (screenshotSrc) {
           extraParts.push(
-            `<div style="margin: 16px auto 0; text-align: center;"><div style="display: inline-block; max-width: 100%; border-radius: 14px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.12); background: #000000; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);"><img src="${escapeAttr(screenshotSrc)}" style="max-width: 100%; max-height: 250px; width: auto; height: auto; display: block; margin: 0 auto; object-fit: contain;"></div></div>`
+            `<img src="${escapeAttr(screenshotSrc)}" alt="" style="display: block; max-width: 100%; max-height: 220px; width: auto; height: auto; margin: 24px auto 0; border-radius: 4px;">`
           );
         }
       }
 
-      // 5. Audio: priority search for Gemini TTS recording in R2 CDN / AudioCache
+      // Prefer existing pronunciation recordings.
       let audioFile = null;
-      let audioDataUri = null;
       const ttsLang = w.srcLang || defaultLearningLang;
 
-      // Candidate texts in priority order:
-      // 1) Original subtitle sentence from video (w.sentence)
-      // 2) Original saved word/sentence (w.original)
-      // 3) Combined word + sentence (e.g. from review session)
-      // 4) AI example sentence (w.aiSentence)
-      const textCandidates = [
-        w.sentence,
-        w.original,
-        w.sentence && w.original && w.sentence !== w.original
-          ? `${w.original}. ${w.sentence}`
-          : null,
-        w.aiSentence,
-      ].filter((t) => t && typeof t === "string" && t.trim().length > 0);
+      // Pronunciation of the exact expression being learned.
+      const textCandidates = [w.original].filter((text) => typeof text === "string" && text.trim());
 
       let audioRes = null;
       let usedAudioText = "";
@@ -588,7 +469,7 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
 
       // If no Gemini TTS recording exists in R2 or cache, fallback to Google TTS
       if (!audioRes) {
-        usedAudioText = w.sentence || w.original || w.aiSentence || "";
+        usedAudioText = w.original || "";
         if (usedAudioText) {
           audioRes = await fetchAudioBlob(usedAudioText, ttsLang, {
             allowFallback: true,
@@ -611,40 +492,14 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
         const audioBuffer = await audioRes.blob.arrayBuffer();
         files.push({name: audioFile, data: new Uint8Array(audioBuffer)});
 
-        // Read blob as base64 data URI for instant playable in-card audio
-        audioDataUri = await new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result);
-          reader.onerror = () => resolve(null);
-          reader.readAsDataURL(audioRes.blob);
-        });
       }
 
-      if (audioDataUri) {
-        extraParts.push(
-          `<div style="margin: 16px auto 0; max-width: 380px; padding: 8px 16px; background: rgba(0, 0, 0, 0.35); border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.1); display: flex; align-items: center; justify-content: center; gap: 10px;"><span style="font-size: 11px; color: #38bdf8; font-weight: 700; letter-spacing: 0.05em;">AUDIO</span><audio controls src="${audioDataUri}" style="height: 32px; width: 100%; max-width: 300px; outline: none;"></audio></div>`
-        );
-      }
-
-      // Wrap Extra in matching centered companion card container
-      const backCardHtml = `<div class="lectoro-anki-extra" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 14px auto 0; padding: 24px 28px; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px; box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.5); color: #f8fafc; text-align: center;">${extraParts.join("")}</div>`;
-
-      // Clean newlines and tabs to guarantee valid TSV lines
-      const cleanField = (str) =>
-        String(str || "")
-          .replace(/[\r\n]+/g, "")
-          .replace(/\t/g, " ");
-
-      let finalBack = cleanField(backCardHtml);
-      if (audioFile) {
-        // Native Anki audio tag outside HTML tags so Anki's parser detects it
-        finalBack += ` [sound:${audioFile}]`;
-      }
-
-      lines.push(`${cleanField(frontCardHtml)}\t${finalBack}`);
+      const backCardHtml = '<div class="lectoro-anki-extra" style="' + card.layout + '">' + extraParts.join('') + '</div>';
+      const finalBack = backCardHtml + (audioFile ? ' [sound:' + audioFile + ']' : '');
+      lines.push(ankiTsvField(frontCardHtml) + '\t' + ankiTsvField(finalBack));
     }
 
-    // Add single unified Anki Cloze file
+    // Add a two-field Anki Basic file
     const dt =
       typeof dateTag === "function"
         ? dateTag()
@@ -656,11 +511,12 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
       "#html:true",
       "#tags:lectoro",
       "#deck:Lectoro",
-      "#notetype:Cloze",
+      "#notetype:Basic",
+      "#columns:Front\tBack",
     ];
     const txtContent = headerLines.join("\n") + "\n" + lines.join("\n");
     const txtData = new TextEncoder().encode(txtContent);
-    files.push({name: `anki-cloze-${dt}.txt`, data: txtData});
+    files.push({name: `anki-${dt}.txt`, data: txtData});
 
     // Add helpful Anki Import Guide in ZIP (English)
     const readmeContent = [
@@ -673,7 +529,7 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
       "",
       "Follow these simple steps to import your flashcards into Anki:",
       "",
-      "STEP 1 (Recommended for full offline audio sync):",
+      "STEP 1:",
       "Copy media files to Anki's 'collection.media' folder",
       "---------------------------------------------------------------",
       "All image files (.jpg) and audio files (.wav / .mp3) from this archive",
@@ -697,11 +553,11 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
       "---------------------------------------------------------------",
       "1. Open Anki.",
       "2. Click: File -> Import... (or press Ctrl+I / Cmd+I).",
-      `3. Select the file: 'anki-cloze-${dt}.txt' from this archive.`,
-      "4. Anki will automatically map the card fields and assign them to the 'Lectoro' deck.",
+      `3. Select the file: 'anki-${dt}.txt' from this archive.`,
+      "4. Choose Basic (or its localized equivalent), with column 1 as Front and column 2 as Back. Enable HTML and select the Lectoro deck.",
       "5. Click 'Import'.",
       "",
-      "Done! Your cards are now ready for study on Desktop, iOS, and Android with centered modern visuals and clear pronunciation.",
+      "Each card shows your saved expression first, then its translation and original context. No AI examples or explanations.",
       "===============================================================",
     ].join("\r\n");
     files.push({
@@ -716,7 +572,7 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `anki-cloze-${dt}.zip`;
+    a.download = `anki-${dt}.zip`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
