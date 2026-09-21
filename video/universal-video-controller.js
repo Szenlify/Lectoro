@@ -179,7 +179,7 @@
             const prevIndex = activeIndex - 1;
             return prevIndex >= 0
                 ? Math.max(0, cues[prevIndex].startTime - advanceOffset)
-                : Math.max(0, cues[0].startTime - advanceOffset);
+                : options.allowBackwardFallback ? null : Math.max(0, cues[0].startTime - advanceOffset);
         }
 
         if (lastStartedIndex !== -1) {
@@ -188,7 +188,7 @@
         }
 
         // Przed pierwszym dialogiem: skaczemy do początku pierwszego dialogu
-        return Math.max(0, cues[0].startTime - advanceOffset);
+        return options.allowBackwardFallback ? null : Math.max(0, cues[0].startTime - advanceOffset);
     }
 
     /**
@@ -212,7 +212,10 @@
         // Standardowy fallback dla dowolnego HTML5 <video>
         const activeStartTime = getOverlay()?.getActiveSubtitleStartTime?.();
         let targetTime = null;
-        if (direction < 0 && Number.isFinite(activeStartTime) && targetVideo.currentTime > activeStartTime + 0.35) {
+        // With no cue end available, use the same 2.5s duration estimate as
+        // calculateAdjacentCueTime instead of replaying after only 350ms.
+        const replayThreshold = Math.max(MIN_REPLAY_SECONDS, 2.5 * REPLAY_THRESHOLD_RATIO);
+        if (direction < 0 && Number.isFinite(activeStartTime) && targetVideo.currentTime - activeStartTime >= replayThreshold) {
             targetTime = activeStartTime;
         } else {
             const fallbackDelta = direction > 0 ? FALLBACK_SEEK_SECONDS : -FALLBACK_SEEK_SECONDS;

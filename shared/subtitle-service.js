@@ -1139,7 +1139,9 @@
                 }
                 // Before 50% threshold: jump to previous sentence
                 const prevIndex = currentOrPreviousIndex - 1;
-                return prevIndex >= 0 ? Math.max(0, cues[prevIndex].startTime - advanceOffset) : 0;
+                return prevIndex >= 0
+                    ? Math.max(0, cues[prevIndex].startTime - advanceOffset)
+                    : options.allowBackwardFallback ? null : 0;
             }
 
             // Between cues: jump to the cue that just ended

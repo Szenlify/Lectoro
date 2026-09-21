@@ -2,7 +2,7 @@
 
 ## General Information
 
-- **Last Updated:** 2026-09-20
+- **Last Updated:** 2026-09-21
 - **Extension Name:** Lectoro AI - Language Learning & Subtitles
 - **Short Name:** Lectoro AI
 - **Current Version:** 1.0.0
@@ -26,6 +26,7 @@ Learn languages faster with smart video subtitles, instant web translation, SRS 
 Master new languages naturally while watching your favorite videos and reading articles online. Lectoro AI transforms YouTube, Netflix, and any webpage into an interactive, bilingual learning environment.
 
 **Key Features:**
+- **Consistent Subtitle Navigation:** A and Left Arrow return to the previous dialogue near its start and replay it after its midpoint across supported video players.
 - **Dual Bilingual Subtitles:** Watch YouTube and Netflix with synchronized dual-language subtitles. Consecutive short fragments are paired together for effortless reading.
 - **Word-by-Word Translation Clouds:** Press S for contextual word and phrase translations above subtitles, with automatic fallback when the primary service is unavailable. Repeated subtitles load from saved results.
 - **AI Context Explanations:** Receive in-depth breakdowns of complex sentences, idioms, and grammar structures directly in the video player or reading pane.
@@ -96,6 +97,8 @@ Every permission declared in `manifest.json` adheres to the Principle of Least P
 ## Version History
 
 - **1.0.0 (Current):**
+  - On other video sites, rewinding past the first available subtitle continues in three-second steps.
+  - Aligned backward subtitle navigation on other video sites with YouTube and Netflix (2026-09-21).
   - Natural pronunciation with two multilingual voices, Sulafat and Algieba; saved recordings remain available for Anki export. The Review voice choices appear without a separate voice-list download.
   - Stable Netflix subtitles when skipping forward or backward between dialogue lines.
   - Contextual word and phrase translations on S, with fast automatic fallback and reusable results.

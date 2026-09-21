@@ -1005,6 +1005,7 @@
                 cues,
                 currentTime,
                 direction,
+                { allowBackwardFallback: !isNetflixPage() },
             );
         }
         if (globalThis.SharedSubtitleService?.findAdjacentCueTime) {
@@ -1012,6 +1013,7 @@
                 cues,
                 currentTime,
                 direction,
+                { allowBackwardFallback: !isNetflixPage() },
             );
         }
         if (direction > 0) {
@@ -1167,20 +1169,6 @@
                 video.currentTime,
                 direction,
             );
-        }
-
-        // If rewinding (direction < 0) while a subtitle is active on screen,
-        // jump directly to when that subtitle started!
-        const activeStartTime =
-            session?.activeSubtitleStartTime ??
-            globalThis.LectoroSubtitleOverlay?.getActiveSubtitleStartTime?.();
-
-        if (direction < 0 && Number.isFinite(activeStartTime)) {
-            // If the video has played more than 0.35s into the current subtitle,
-            // jump directly back to when it started!
-            if (video.currentTime > activeStartTime + 0.35) {
-                targetTime = activeStartTime;
-            }
         }
 
         // On Netflix, NEVER use +-3s fallback seeking
