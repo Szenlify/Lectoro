@@ -517,7 +517,6 @@ async function refreshAiUsageUI() {
     const value = document.getElementById("aiUsageValue");
     const track = document.getElementById("aiUsageTrack");
     const fill = document.getElementById("aiUsageFill");
-    const limitReached = !!(usage?.limit > 0 && usage.used >= usage.limit);
 
     usageCardContainer?.classList.remove("is-warning", "is-empty");
     card?.classList.remove("is-warning", "is-empty");
@@ -527,6 +526,8 @@ async function refreshAiUsageUI() {
         subscription?.plan || usage?.plan,
     );
     const isPaidPlan = currentPlan !== "free";
+    const isUnlimited = SubscriptionConfig.getPlanLimits(currentPlan)?.ai?.usesPerMonth === Infinity;
+    const limitReached = !isUnlimited && !!(usage?.limit > 0 && usage.used >= usage.limit);
 
     const lang = getPopupLang();
     const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, lang, p) : k);
@@ -544,7 +545,19 @@ async function refreshAiUsageUI() {
         }
     }
 
-    if (usage) {
+    if (isUnlimited) {
+        const used = usage ? Math.max(0, Number(usage.used || 0)) : "—";
+        const label = t("credits_unlimited");
+        if (title) title.textContent = label;
+        if (value) value.textContent = `${used} / ∞`;
+        if (fill) fill.style.width = "100%";
+        if (track) {
+            track.setAttribute("aria-valuenow", "100");
+            track.setAttribute("aria-valuetext", label);
+        }
+        info.textContent = label;
+        if (renewalDate) renewalDate.textContent = "";
+    } else if (usage) {
         const used = Math.max(0, Number(usage.used || 0));
         const limit = Math.max(0, Number(usage.limit || 0)) || 15;
         const left = Math.max(0, limit - used);

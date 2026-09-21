@@ -44,12 +44,12 @@
             displayName: "BASIC",
             trialDays: 3,
             priceMonthly: Object.freeze({ amount: 7.99, currency: "USD" }),
-            ai: Object.freeze({ usesPerMonth: 1000 }),
-            srs: Object.freeze({ maxSavedCards: 3000 }),
+            ai: Object.freeze({ usesPerMonth: 800 }),
+            srs: Object.freeze({ maxSavedCards: 2500 }),
             geminiTts: Object.freeze({
                 enabled: true,
                 maxCharactersPerRequest: 500,
-                charactersPerMonth: 15000,
+                charactersPerMonth: 10000,
             }),
             subtitles: Object.freeze({
                 charactersPerHour: Infinity,
@@ -78,7 +78,7 @@
             exports: Object.freeze({
                 ankiPerMonth: Infinity,
                 excelPerMonth: Infinity,
-                quizPerHour: 10,
+                quizPerHour: 20,
                 quizPerMonth: Infinity,
             }),
         }),
