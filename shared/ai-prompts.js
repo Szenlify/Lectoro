@@ -66,6 +66,20 @@
                 ? `\nContext (reference only; do not translate): ${JSON.stringify({ before, after })}`
                 : "";
         }
+        function subtitleFlashcard(subtitle, context, srcLang, tgtLang) {
+            return `${RULES}
+Turn the current film subtitle into exactly one short standalone flashcard sentence in ${getLangName(srcLang)} and translate that sentence naturally into ${getLangName(tgtLang)}.
+Use nearby subtitles only to recover missing context and complete an interrupted auto-generated caption. Focus on the current subtitle's meaning, not a summary of the surrounding dialogue. Remove filler and repetitions. Resolve unclear pronouns only when the supplied context supports it. Never invent facts or change negation, tense or intent. If context is missing, keep the closest faithful self-contained wording.
+Aim for 4–12 words and at most 16 words per side (for languages without spaces, an equally short sentence). No periods, commas, lists, quotes, commentary or terminal punctuation on either side. Spell out numbers if their punctuation is needed for meaning. Keep meaningful apostrophes and hyphens.
+JSON: {"sentence":"...","translation":"...","source_language":"${languageCode(srcLang)}","output_language":"${languageCode(tgtLang)}"}` + data({
+                subtitle: String(subtitle || "").slice(0, 2000),
+                context: {
+                    before: (context?.before || []).filter(line => typeof line === "string").slice(-2).map(line => line.slice(0, 500)),
+                    after: (context?.after || []).filter(line => typeof line === "string").slice(0, 2).map(line => line.slice(0, 500)),
+                },
+            });
+        }
+
         function sentenceExample(word, translated, srcLang, tgtLang) {
             return (
                 `${RULES}
@@ -204,6 +218,7 @@ ${requested.join("\n")}` +
             languageCode,
             formatSubtitleContext,
             sentenceExample,
+            subtitleFlashcard,
             explainSentence,
             standardTranslate,
             quizLearningUnits,

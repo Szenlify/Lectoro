@@ -104,6 +104,7 @@ function app(settings = {}) {
         subtitleModeStarting: false,
         eTranslateActive: false,
         wordCloudActive: false,
+        wordCloudSelectedSpan: null,
         wordCloudEls: [],
         activeText: "important example",
         activeWordSpans: [element("important"), element("example")],
@@ -623,3 +624,70 @@ test("words that do not highlight (simple words, non-dictionary terms) are never
     assert.equal(spans[6].classList.contains("highlight"), true, "'peace' must highlight");
 });
 
+
+test("S arrows select clouds in subtitle order, keep phrases intact and clamp at boundaries", async () => {
+    const state = app({ subtitleTTS: false });
+    await state.start();
+    const selected = [];
+    state.context.getSpanWord = span => span.textContent;
+    state.context.handleSubWordClick = (span, text) => selected.push(text);
+    loadFunction(state.context, overlayFile, "navigateWordCloud");
+    const first = state.context.wordCloudEls[0];
+    const second = state.context.wordCloudEls[1];
+    first.members = [element("get"), element("up")];
+    state.context.wordCloudEls = [second, first];
+    assert.equal(state.context.wordCloudSelectedSpan, null);
+    state.context.navigateWordCloud(1);
+    state.context.navigateWordCloud(1);
+    state.context.navigateWordCloud(1);
+    state.context.navigateWordCloud(-1);
+    assert.deepEqual(selected, ["get up", "example", "example", "get up"]);
+    assert.equal(state.video.paused, true);
+    state.context.wordCloudSelectedSpan = null;
+    state.context.navigateWordCloud(-1);
+    assert.equal(selected.at(-1), "example");
+    let closed = false;
+    state.context.closeSubTooltip = options => { closed = options.resumeVideo === false; };
+    state.context.document.querySelectorAll = () => [];
+    loadFunction(state.context, overlayFile, "removeWordClouds");
+    state.context.removeWordClouds();
+    assert.equal(closed, true);
+    assert.equal(state.context.wordCloudSelectedSpan, null);
+});
+
+test("S arrows and A/D preserve the reading session and Z/X keep defaults until selection", async () => {
+    const state = app({ subtitleTTS: false });
+    let keydown;
+    state.context.document.addEventListener = (type, handler) => { if (type === "keydown") keydown = handler; };
+    state.context.document.querySelector = () => null;
+    let sentenceSaves = 0;
+    const directions = [];
+    state.ui.isWordCloudActive = () => state.context.wordCloudActive;
+    state.ui.hasWordCloudSelection = () => directions.length > 0;
+    state.ui.navigateWordCloud = direction => directions.push(direction);
+    state.ui.saveCurrentSentenceToReview = () => sentenceSaves++;
+    load(state.context, "video/universal-video-controller.js");
+    await state.start();
+    const revision = state.ui.subtitleModeRevision;
+    const press = key => {
+        const event = { key, target: { tagName: "BODY" }, prevented: false,
+            preventDefault() { this.prevented = true; }, stopPropagation() {}, stopImmediatePropagation() {} };
+        keydown(event);
+        return event;
+    };
+    press("z");
+    assert.equal(sentenceSaves, 1);
+    assert.equal(press("x").prevented, false);
+    press("ArrowRight");
+    press("ArrowLeft");
+    press("d");
+    press("a");
+    press("D");
+    press("A");
+    assert.deepEqual(directions, [1, -1, 1, -1, 1, -1]);
+    assert.equal(state.ui.subtitleModeRevision, revision);
+    assert.equal(state.video.paused, true);
+    press("z");
+    assert.equal(sentenceSaves, 1, "loading a selected word must not save the whole sentence");
+    assert.equal(press("x").prevented, true);
+});

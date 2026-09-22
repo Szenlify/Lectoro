@@ -1,1 +1,0 @@
-Popraw przewijanie filmow poza Youtube i Netflixa aby tak samo sie przewijalo jak na Youtubie czyli jak klikne A lub strzalke w bok to na poczatku cofa odrazu a dopiero po takim czasei jakim jest youtube i netflix cofa do tego samego zdania jak odtworzenie ponownie

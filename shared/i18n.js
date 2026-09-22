@@ -15,6 +15,8 @@
 
     const STRINGS = {
         en: {
+            smart_subtitle_flashcard: "Smart AI flashcard (Z)",
+            smart_subtitle_flashcard_desc: "When saving a subtitle with Z, AI uses nearby lines to create one short standalone sentence without periods or commas and its translation. Uses AI credits. Selected words are saved as usual.",
             // Header & Navigation
             header_title: " Language Learning",
             tab_settings: "Settings",
@@ -349,6 +351,8 @@
             ai_auth_perk3: "Unlimited word saving and smart SRS reviews",
         },
         pl: {
+            smart_subtitle_flashcard: "Inteligentna fiszka AI (Z)",
+            smart_subtitle_flashcard_desc: "Przy zapisie napisu klawiszem Z AI korzysta z sąsiednich kwestii i tworzy krótkie samodzielne zdanie bez kropek i przecinków wraz z tłumaczeniem. Zużywa limit AI. Zaznaczone słowa zapisujesz jak dotąd.",
             // Header & Navigation
             header_title: " Nauka Języków",
             tab_settings: "Ustawienia",

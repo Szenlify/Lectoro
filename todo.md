@@ -3,20 +3,12 @@ https://console.cloud.google.com/apis/api/cloudscheduler.googleapis.com/overview
 
 firebase deploy --only functions:consolidateDictionaryDaily --project extension-eng --config functions/firebase.json
 
-1. nie aktualizuje sie live o 3 w nocy w R2
-2. 
-
-UX jesli ktos tlumaczy word by word lub enter jak za duzo zapytan do gemini
-
-3. sprawdz jak wyswietlaja sie ANKI po exporcie (zle, ma byc sam konkret bez tlumaczenia AI)
-
-4. sprawdz api jak w cloud firebase to wyglada przed publikacją
 
 5. guzik sync co ile czasu sie samo synchronizuje automatycznie
 
-6. zgodnosc z CWS
+1. glosy TTS naturalne od google TTS bardzo dlugo sie generuja 
 
-8. sprawdz quizy (TTS czesto zle czyta w złym głosie jak jest mieszane pytanie)
+2. opisz mi jak bede zmianial R2 cloudflare oraz API gemini oraz Stripe live co mam dokladnie zrobic w pliku @lectoro.md
 
 10. w trybie s slowo po slowie moge uzywac strzalek w bok zeby wybrac slowo do powtorek tak jak w trybie enter z chmurkami zrob ale jak nic nie nacisne strzalek w bok to jest tak jak jest teraz
 
@@ -32,26 +24,9 @@ UX jesli ktos tlumaczy word by word lub enter jak za duzo zapytan do gemini
 
 
 
-17. quizy czesto maja problem z wygenerowaniem quizu dopiero po kroryms kliknieciu załapuje // Successfully generated: update local quota
-      await recordExportSuccess("quiz");
-    } catch (err) {
-      console.error("Quiz export error:", err);
-      if (!GeminiProxy?.isLimitError?.(err)) {
-        alert("Quiz generation error: " + (err.message || err));
-
-        popup.html
-Stack Trace
-popup/export.js:1059 (anonymous function)
-
-
 
 
 18. usunac calkowicie 15,000 chars/h translate dla free
-19. usun calkowicie z projektu 
-        "https://translate.googleapis.com/*",
-        "https://translate.google.com/*",
-    niech zawsze liczy uzycia AI nie wazne czy tekst jest w R2 czy nie
-    dla kazdego planu
 
 
 17. opis wszystkich kosztów i zweryfikowanie marży projektu:

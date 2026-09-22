@@ -2,7 +2,7 @@
 
 ## General Information
 
-- **Last Updated:** 2026-09-21
+- **Last Updated:** 2026-09-22
 - **Extension Name:** Lectoro AI - Language Learning & Subtitles
 - **Short Name:** Lectoro AI
 - **Current Version:** 1.0.0
@@ -29,9 +29,10 @@ Master new languages naturally while watching your favorite videos and reading a
 - **YouTube Focus Mode:** Automatically selects available auto-generated YouTube captions and highlights spoken words, including single-word subtitles.
 - **Consistent Subtitle Navigation:** A and Left Arrow return to the previous dialogue near its start and replay it after its midpoint across supported video players.
 - **Dual Bilingual Subtitles:** Watch YouTube and Netflix with synchronized dual-language subtitles. Consecutive short fragments are paired together for effortless reading.
-- **Word-by-Word Translation Clouds:** Press S for contextual word and phrase translations above subtitles, with automatic fallback when the primary service is unavailable. Repeated subtitles load from saved results.
+- **Word-by-Word Translation Clouds:** Press S for contextual word and phrase translations above subtitles, with automatic fallback when the primary service is unavailable. Repeated subtitles load from saved results. Use Left/Right arrows or A/D to select a word or phrase, then Z to save it or X to save an AI sentence.
 - **AI Context Explanations:** Receive in-depth breakdowns of complex sentences, idioms, and grammar structures directly in the video player or reading pane.
 - **Natural Speech Pronunciation:** Listen to crystal-clear speech pronunciation tuned to your learning language.
+- **Smart AI Flashcards (optional):** Enable in Settings to turn a subtitle saved with Z into a short standalone sentence and translation using nearby dialogue for context, without periods or commas.
 - **Spaced Repetition (SRS) Flashcards:** Save words and context sentences with a single shortcut or click. Listen to either side at normal speed or 0.75×. Daily review reminders help you retain vocabulary in long-term memory.
 - **Flexible Vocabulary Export:** Export minimalist Anki cards with saved translations, original context and pronunciation, without AI examples or explanations. Export to Excel or take interactive AI-generated quizzes.
 - **Cross-Device Cloud Sync:** Optionally connect your account to keep your vocabulary, learning history, and flashcards synchronized across all your devices.
@@ -101,6 +102,8 @@ Every permission declared in `manifest.json` adheres to the Principle of Least P
 ## Version History
 
 - **1.0.0 (Current):**
+  - Added an opt-in smart AI subtitle flashcard setting for Z, using nearby subtitle context (2026-09-22).
+  - Added optional Left/Right or A/D word selection in S mode with Z/X saving and word tooltips above translation clouds; default behavior stays unchanged until navigation is used (2026-09-22).
   - Added one-time BLIK purchases for 30 days of BASIC or PRO access in the Polish interface, without a card or automatic renewal.
   - Added 0.75× speech playback beside the speaker on both sides of review cards (2026-09-21).
   - Simplified Anki export to Basic expression/translation cards with original context, optional media and no AI examples or explanations (2026-09-21).

@@ -336,7 +336,7 @@
             document.querySelector("#__qt_tooltip.visible, #lectoro-tooltip.visible")
         );
 
-        if (["x", "X"].includes(key) && !aiTooltipOpen && !wordTooltipOpen) {
+        if (["x", "X"].includes(key) && !aiTooltipOpen && !wordTooltipOpen && !overlay?.hasWordCloudSelection?.()) {
             return;
         }
 
@@ -394,6 +394,12 @@
             if (!isHorizontalSubtitleNavigation) return;
         }
 
+        // In S mode, arrows and A/D select a word without closing the clouds.
+        if (overlay?.isWordCloudActive?.() && isHorizontalSubtitleNavigation) {
+            overlay.navigateWordCloud?.(["ArrowRight", "d", "D"].includes(key) ? 1 : -1);
+            return;
+        }
+
         // Sterowanie otwartym podręcznym dymkiem słowa lub zaznaczenia (Z, X)
         if (wordTooltipOpen) {
             if (["z", "Z", "v", "V"].includes(key)) {
@@ -419,6 +425,9 @@
                 }
             }
         }
+
+        // While the selected word is loading, never save the whole subtitle instead.
+        if (overlay?.hasWordCloudSelection?.() && ["z", "Z", "v", "V", "x", "X"].includes(key)) return;
 
         // Zapisanie bieżącego zdania do powtórek SRS: Z / V / Home / PageUp
         if (["z", "Z", "v", "V", "Home", "PageUp"].includes(key)) {

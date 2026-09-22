@@ -479,6 +479,28 @@
         /**
          * AI Sentence generator for Anki / Spaced Repetition cards.
          */
+        async function generateSubtitleFlashcard(text, context, srcLang, tgtLang) {
+            const normalize = value => value.replace(/[.,，。、．…]/gu, " ").replace(/\s+/gu, " ").trim();
+            const parsed = await geminiRequest(AIPrompts.subtitleFlashcard(text, context, srcLang, tgtLang), {
+                temperature: 0.2,
+                maxOutputTokens: 350,
+                validate(result) {
+                    AIPrompts.validateLanguage(result, tgtLang);
+                    if (AIPrompts.languageCode(result.source_language) !== AIPrompts.languageCode(srcLang)) {
+                        throw new Error("AI returned an unexpected source language.");
+                    }
+                    requireTextFields(result, ["sentence", "translation"]);
+                    for (const field of ["sentence", "translation"]) {
+                        const value = normalize(result[field]);
+                        if (!value || value.length > 240 || value.split(/\s+/u).length > 16) {
+                            throw new Error("AI returned an invalid flashcard sentence.");
+                        }
+                    }
+                },
+            });
+            return { sentence: normalize(parsed.sentence), translation: normalize(parsed.translation) };
+        }
+
         async function generateSentence(word, translated, srcLang, tgtLang) {
             if (typeof AIPrompts === "undefined") {
                 throw new Error("AIPrompts is unavailable.");
@@ -723,6 +745,7 @@
                 transportCache.peek(text, lang, sourceLang),
             geminiRequest,
             generateSentence,
+            generateSubtitleFlashcard,
             explainSentence,
         });
     },

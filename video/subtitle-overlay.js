@@ -106,6 +106,7 @@
 
     let eTranslateActive = false;
     let wordCloudActive = false;
+    let wordCloudSelectedSpan = null;
     let wordCloudEls = [];
     let subtitleModeRevision = 0;
     let subtitleModeStarting = false;
@@ -1459,6 +1460,7 @@
                     }
                 } catch (_) {}
             }
+            if (!isSubHovering || lastHoveredSubWord !== wordSpan) return;
             if (!translated) {
                 QT.showTooltip(`<div class="${PREFIX}body">No dictionary entry yet.</div>`, rect, placement);
                 return;
@@ -1673,7 +1675,7 @@
         if (isSubHovering && !subClickLocked) closeSubTooltip();
     });
 
-    async function handleSubWordClick(wordSpan) {
+    async function handleSubWordClick(wordSpan, selectedText = null) {
         cleanupReading();
         clearTimeout(subHoverTimer);
         clearTimeout(subCloseTimer);
@@ -1689,7 +1691,7 @@
         if (!wasAlreadyHovering) subWasPlaying = video ? !video.paused : false;
         pauseIfPlaying(video);
 
-        const text = getSpanWord(wordSpan);
+        const text = selectedText || getSpanWord(wordSpan);
         if (!text) {
             closeSubTooltip();
             return;
@@ -3492,7 +3494,25 @@
 
     // ── Word Cloud & Sentence Overlay ──────────────────────────────
 
+    function navigateWordCloud(direction) {
+        if (!wordCloudActive) return;
+        const items = wordCloudEls
+            .filter(({ span }) => span?.isConnected)
+            .sort((a, b) => a.index - b.index);
+        if (!items.length) return;
+        const current = items.findIndex(({ span }) => span === wordCloudSelectedSpan);
+        const index = current < 0
+            ? (direction > 0 ? 0 : items.length - 1)
+            : Math.max(0, Math.min(items.length - 1, current + direction));
+        const item = items[index];
+        wordCloudSelectedSpan = item.span;
+        const text = (item.members || [item.span]).map(getSpanWord).join(" ");
+        void handleSubWordClick(item.span, text);
+    }
+
     function removeWordClouds() {
+        if (wordCloudSelectedSpan) closeSubTooltip({ resumeVideo: false });
+        wordCloudSelectedSpan = null;
         wordCloudEls.forEach(({ cloud, wrappers = [] }) => {
             cloud.remove();
             for (const wrapper of wrappers) {
@@ -3872,7 +3892,7 @@
             cloud.style.fontSize = cloudFontSize + "px";
             cloud.style.animationDelay = i * 0.02 + "s";
             parent.appendChild(cloud);
-            wordCloudEls.push({ cloud, span: targetSpan, members, wrappers });
+            wordCloudEls.push({ cloud, span: targetSpan, members, wrappers, index: i });
             positionWordCloud(cloud, targetSpan, members);
             members.forEach(stopLoading);
             if (typeof positionAllWordClouds === "function") positionAllWordClouds();
@@ -4744,22 +4764,31 @@
             pausedForSave = true;
         }
 
-        const cleanedText = cleanCardText(text) || text;
-
-        const screenshot = await registry.captureVideoReviewScreenshot(video);
-        flashCapture();
-        showSaveToast("saving", { text: cleanedText });
+        let cleanedText = cleanCardText(text) || text;
+        const sourceUrl = window.location.href;
 
         try {
-            const targetLang = await QT.getTargetLang();
-            const { translated, detectedLang } = await QT.translate(
-                cleanedText,
-                targetLang,
-            );
-            const srcLang =
-                typeof detectedLang === "string" ? detectedLang : "auto";
-            const cleanedTranslated =
-                cleanCardText(translated) || translated || cleanedText;
+            // Capture context before asynchronous work can advance or replace the cue.
+            const context = getActiveSubtitleContext(video, text);
+            showSaveToast("saving", { text: cleanedText });
+            const screenshot = await registry.captureVideoReviewScreenshot(video);
+            flashCapture();
+            const settings = await SharedTranslatorService.getReadingSettings();
+            const targetLang = settings.targetLang;
+            let srcLang;
+            let cleanedTranslated;
+            if (settings.smartSubtitleFlashcard) {
+                srcLang = settings.learningLang;
+                const card = await SharedTranslatorService.generateSubtitleFlashcard(
+                    text, context, srcLang, targetLang,
+                );
+                cleanedText = card.sentence;
+                cleanedTranslated = card.translation;
+            } else {
+                const { translated, detectedLang } = await QT.translate(cleanedText, targetLang);
+                srcLang = typeof detectedLang === "string" ? detectedLang : "auto";
+                cleanedTranslated = cleanCardText(translated) || translated || cleanedText;
+            }
 
             await QT.saveWord({
                 original: cleanedText,
@@ -4771,7 +4800,7 @@
                 aiSentence: "",
                 aiSentenceTranslated: "",
                 screenshot,
-                url: window.location.href,
+                url: sourceUrl,
                 timestamp: Date.now(),
                 downloaded: false,
             });
@@ -4826,6 +4855,9 @@
             subtitleModeStarting ||
             ((!aiTooltipActive && !aiPaywallActive) && (translationOverlay?.isConnected ?? false)),
         showWordClouds,
+        isWordCloudActive: () => wordCloudActive,
+        navigateWordCloud,
+        hasWordCloudSelection: () => wordCloudActive && !!wordCloudSelectedSpan,
         removeWordClouds,
         doSentenceTranslation,
         restoreOriginal,

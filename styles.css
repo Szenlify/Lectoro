@@ -145,7 +145,7 @@
 
 #__qt_tooltip {
   position: absolute;
-  z-index: 2147483647;
+  z-index: 2147483647 !important;
   max-width: min(500px, calc(100vw)) !important;
   height: auto !important;
   max-height: min(500px, calc(100vh - 20px)) !important;
@@ -2403,7 +2403,8 @@ html.__qt_netflix-capturing [id^="__qt_"] {
 
 .__qt_word-cloud {
   position: fixed;
-  z-index: 2147483647;
+  /* Above subtitles, below the interactive word tooltip regardless of DOM order. */
+  z-index: 2147483646;
   pointer-events: none;
   padding: 2px 7px;
   border-radius: 10px;
