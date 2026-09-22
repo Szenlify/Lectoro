@@ -28,14 +28,14 @@
      * - Jeśli chcesz, aby odnawiały się wcześniej (np. po 30% trwania napisów) -> ustaw 0.3
      * - Jeśli chcesz, aby odnawiały się później (np. po 70% trwania napisów) -> ustaw 0.7
      */
-    const REPLAY_THRESHOLD_RATIO = 0.5;
+    const REPLAY_THRESHOLD_RATIO = 0.4;
 
     /**
      * 2. MIN_REPLAY_SECONDS:
      * Minimalny czas (w sekundach) od początku napisów, po którym "A" / "ArrowLeft"
      * odnawia bieżące napisy (zabezpieczenie dla bardzo krótkich napisów).
      */
-    const MIN_REPLAY_SECONDS = 0.4;
+    const MIN_REPLAY_SECONDS = 1.1;
 
     /**
      * 3. FALLBACK_SEEK_SECONDS:
