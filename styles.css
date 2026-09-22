@@ -642,8 +642,15 @@ video::cue {
   contain: layout style !important;
   color: #ffffff !important;
   font-family:
-    "Netflix Sans Variable", "Netflix Sans", -apple-system, BlinkMacSystemFont,
-    "Helvetica Neue", "Segoe UI", Roboto, Arial, sans-serif !important;
+    "Netflix Sans Variable",
+    "Netflix Sans",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Helvetica Neue",
+    "Segoe UI",
+    Roboto,
+    Arial,
+    sans-serif !important;
   font-style: normal !important;
   font-weight: 600 !important;
   font-variant: normal !important;
@@ -657,15 +664,9 @@ video::cue {
   --lectoro-sub-bg-color: transparent;
   --lectoro-sub-bg-padding: 0 4px;
   --lectoro-sub-shadow:
-    -0.07em -0.07em 0 #000,
-    0.07em -0.07em 0 #000,
-    -0.07em 0.07em 0 #000,
-    0.07em 0.07em 0 #000,
-    -0.07em 0px 0 #000,
-    0.07em 0px 0 #000,
-    0px -0.07em 0 #000,
-    0px 0.07em 0 #000,
-    0px 0.15em 0.35em rgba(0, 0, 0, 0.95);
+    -0.07em -0.07em 0 #000, 0.07em -0.07em 0 #000, -0.07em 0.07em 0 #000,
+    0.07em 0.07em 0 #000, -0.07em 0px 0 #000, 0.07em 0px 0 #000,
+    0px -0.07em 0 #000, 0px 0.07em 0 #000, 0px 0.15em 0.35em rgba(0, 0, 0, 0.95);
 }
 
 /* Layer state during active vertical dragging */
@@ -1241,8 +1242,6 @@ body[data-lectoro-sub-translate-active="true"]
     transform: scaleX(0);
   }
 }
-
-
 
 /* ═══════════════════════════════════════════════════════════════
    Speed Overlay HUD ("[", "]" hotkeys) – fullscreen-safe indicator
@@ -2480,8 +2479,13 @@ html.__qt_netflix-capturing [id^="__qt_"] {
 }
 
 @keyframes __qt_word-loading-pulse {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2519,7 +2523,9 @@ html.__qt_netflix-capturing [id^="__qt_"] {
 /* Neutralize individual word borders/backgrounds inside the unified phrase wrapper */
 .__qt_word-cloud-phrase .__qt_sub-word,
 #__qt_custom_subtitles_layer .__qt_word-cloud-phrase .__qt_sub-word:hover,
-#__qt_custom_subtitles_layer .__qt_word-cloud-phrase .__qt_sub-word.__qt_word-hover,
+#__qt_custom_subtitles_layer
+  .__qt_word-cloud-phrase
+  .__qt_sub-word.__qt_word-hover,
 .__qt_ai-sub-wrap .__qt_sub-word,
 #__qt_custom_subtitles_layer .__qt_ai-sub-wrap .__qt_sub-word:hover,
 #__qt_custom_subtitles_layer .__qt_ai-sub-wrap .__qt_sub-word.__qt_word-hover,
