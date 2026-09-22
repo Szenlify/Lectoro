@@ -2689,7 +2689,7 @@ body[data-lectoro-ai-active="true"]
   margin-top: 16px;
   padding-top: 14px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
@@ -2807,7 +2807,7 @@ body[data-lectoro-ai-active="true"]
 #__qt_tooltip .__qt_dictionary-caption {
   display: block;
   margin-bottom: 6px;
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -2825,14 +2825,14 @@ body[data-lectoro-ai-active="true"]
   padding-inline-start: 8px;
   border-inline-start: 2px solid #a78bfa;
   color: #e4e7ef;
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 700;
 }
 #__qt_tooltip .__qt_dictionary-caption:has(+ .__qt_dictionary-definition) {
   padding-inline-start: 8px;
   border-inline-start: 2px solid #4ecdc4;
   color: #e4e7ef;
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 700;
 }
 #__qt_tooltip .__qt_save-example:focus-visible {
