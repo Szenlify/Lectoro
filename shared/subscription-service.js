@@ -462,10 +462,10 @@
             <div class="${P}ai_limit_orb">✨</div>
             <div class="${P}ai_limit_copy">
                 <strong>${toastTitle}</strong>
-                <span>${Utils.escapeHtml(String(validation?.message || defaultMsg))}</span>
+                <span>${Utils.escapeHtml(defaultMsg)}</span>
             </div>
             <button type="button" class="${P}ai_upgrade_link">${tryProLabel}</button>
-            <button type="button" class="${P}ai_limit_close" aria-label="Close">×</button>
+            <button type="button" class="${P}ai_limit_close" aria-label="${Utils.escapeHtml(i18n?.t("close_label") || "×")}">×</button>
             <div class="${P}ai_limit_timer"></div>`;
             document.documentElement.appendChild(toast);
             const dismiss = () => {

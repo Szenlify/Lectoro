@@ -10,7 +10,7 @@
     <!-- Header -->
     <div class="header">
         <div class="header-icon">
-            <img src="/icons/icon48.png" height="32" width="32" alt="Lectoro Icon">
+            <img src="/icons/icon48.png" height="32" width="32" alt="Lectoro">
         </div>
         <h1><span>Lectoro <span style="color: rgb(0, 232, 193);">AI</span> - <span data-i18n="header_title">Language Learning</span></span></h1>
     </div>
@@ -98,7 +98,7 @@
                             <div class="ai-usage-value" id="aiUsageValue">— / —</div>
                         </div>
                         <div class="ai-usage-track" role="progressbar" aria-label="AI Credits" aria-valuemin="0"
-                            aria-valuemax="100" aria-valuenow="0" id="aiUsageTrack">
+                            aria-valuemax="100" aria-valuenow="0" id="aiUsageTrack" data-i18n-aria="ai_credits_pill">
                             <div class="ai-usage-fill is-loading" id="aiUsageFill"></div>
                         </div>
                     </div>
@@ -116,7 +116,7 @@
                             <div class="ai-usage-value" id="geminiTtsUsageValue">—</div>
                         </div>
                         <div class="ai-usage-track" role="progressbar" aria-label="Gemini TTS Character Usage"
-                            aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="geminiTtsUsageTrack">
+                            aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="geminiTtsUsageTrack" data-i18n-aria="ui_gemini_tts_character_usage">
                             <div class="ai-usage-fill is-loading" id="geminiTtsUsageFill"></div>
                         </div>
                     </div>
@@ -226,7 +226,7 @@
                                 <div class="toggle-label" data-i18n="youtube_focus_mode">YouTube Focus Mode</div>
                             </div>
                             <label class="toggle-switch">
-                                <input type="checkbox" id="ytFocusModeToggle" aria-label="YouTube Focus Mode" aria-describedby="ytFocusModeNotice">
+                                <input type="checkbox" id="ytFocusModeToggle" aria-label="YouTube Focus Mode" aria-describedby="ytFocusModeNotice" data-i18n-aria="youtube_focus_mode">
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
@@ -236,14 +236,14 @@
                                 <span class="focus-color-label" data-i18n="youtube_focus_color">Highlight Color</span>
                             </div>
                             <div class="focus-color-palette" id="ytFocusColorPalette">
-                                <button type="button" class="color-swatch" data-color="#6366f1" style="--swatch-color: #6366f1;" title="Indigo" aria-label="Indigo"></button>
-                                <button type="button" class="color-swatch" data-color="#0ea5e9" style="--swatch-color: #0ea5e9;" title="Sky Blue" aria-label="Sky Blue"></button>
-                                <button type="button" class="color-swatch" data-color="#10b981" style="--swatch-color: #10b981;" title="Emerald" aria-label="Emerald"></button>
-                                <button type="button" class="color-swatch" data-color="#f59e0b" style="--swatch-color: #f59e0b;" title="Amber" aria-label="Amber"></button>
-                                <button type="button" class="color-swatch" data-color="#f43f5e" style="--swatch-color: #f43f5e;" title="Rose" aria-label="Rose"></button>
-                                <button type="button" class="color-swatch" data-color="#a855f7" style="--swatch-color: #a855f7;" title="Violet" aria-label="Violet"></button>
-                                <label class="color-picker-label" id="ytFocusColorPickerLabel" title="Custom color">
-                                    <input type="color" id="ytFocusColorPicker" class="color-picker-native" value="#6366f1" aria-label="Custom color picker">
+                                <button type="button" class="color-swatch" data-color="#6366f1" style="--swatch-color: #6366f1;" title="Indigo" aria-label="Indigo" data-i18n-title="ui_indigo" data-i18n-aria="ui_indigo"></button>
+                                <button type="button" class="color-swatch" data-color="#0ea5e9" style="--swatch-color: #0ea5e9;" title="Sky Blue" aria-label="Sky Blue" data-i18n-title="ui_sky_blue" data-i18n-aria="ui_sky_blue"></button>
+                                <button type="button" class="color-swatch" data-color="#10b981" style="--swatch-color: #10b981;" title="Emerald" aria-label="Emerald" data-i18n-title="ui_emerald" data-i18n-aria="ui_emerald"></button>
+                                <button type="button" class="color-swatch" data-color="#f59e0b" style="--swatch-color: #f59e0b;" title="Amber" aria-label="Amber" data-i18n-title="ui_amber" data-i18n-aria="ui_amber"></button>
+                                <button type="button" class="color-swatch" data-color="#f43f5e" style="--swatch-color: #f43f5e;" title="Rose" aria-label="Rose" data-i18n-title="ui_rose" data-i18n-aria="ui_rose"></button>
+                                <button type="button" class="color-swatch" data-color="#a855f7" style="--swatch-color: #a855f7;" title="Violet" aria-label="Violet" data-i18n-title="ui_violet" data-i18n-aria="ui_violet"></button>
+                                <label class="color-picker-label" id="ytFocusColorPickerLabel" title="Custom color" data-i18n-title="ui_custom_color">
+                                    <input type="color" id="ytFocusColorPicker" class="color-picker-native" value="#6366f1" aria-label="Custom color picker" data-i18n-aria="ui_custom_color_picker">
                                     <span class="color-picker-icon">🎨</span>
                                 </label>
                             </div>
@@ -340,7 +340,7 @@
                                 data-i18n-title="quiz_ai_title">
                                 <span class="quiz-btn-label" data-i18n="quiz_ai_btn">✨ AI Quiz</span>
                                 <span class="quiz-free-badge" id="quizFreeBadge" style="display:none;"
-                                    title="Free quizzes">0/3</span>
+                                    title="Free quizzes" data-i18n-title="ui_free_quizzes">0/3</span>
                             </button>
                         </div>
 
@@ -351,14 +351,14 @@
                                 data-i18n-title="export_anki_title">
                                 <span class="export-btn-label" data-i18n="export_anki">📋 Anki</span>
                                 <span class="quiz-free-badge export-free-badge" id="ankiFreeBadge" style="display:none;"
-                                    title="Free Anki exports">0/3</span>
+                                    title="Free Anki exports" data-i18n-title="ui_free_anki_exports">0/3</span>
                             </button>
                             <button type="button" class="export-btn export-csv" id="exportCsv"
                                 title="Export to Excel (.csv)"
                                 data-i18n-title="export_csv_title">
                                 <span class="export-btn-label" data-i18n="export_excel">📊 Excel</span>
                                 <span class="quiz-free-badge export-free-badge" id="excelFreeBadge"
-                                    style="display:none;" title="Free Excel exports">0/3</span>
+                                    style="display:none;" title="Free Excel exports" data-i18n-title="ui_free_excel_exports">0/3</span>
                             </button>
                             <button type="button" class="export-btn export-clear" id="clearAll"
                                 title="Delete visible words"
@@ -417,7 +417,7 @@
                             </button>
                             <div class="review-voice-el-head">
                                 <span>Gemini TTS</span>
-                                <span class="review-voice-premium">PREMIUM</span>
+                                <span class="review-voice-premium" data-i18n="ui_premium">PREMIUM</span>
                             </div>
                             <div id="reviewGeminiTtsContent"></div>
                             <div class="review-voice-status" id="reviewVoiceStatus" aria-live="polite"></div>
@@ -438,7 +438,7 @@
                         <div class="review-web-banner-content">
                             <div class="review-web-banner-head">
                                 <span class="review-web-banner-title" data-i18n="review_web_banner_title">Powtórki na mobile i website</span>
-                                <span class="review-web-banner-badge">WEB & MOBILE</span>
+                                <span class="review-web-banner-badge" data-i18n="ui_web_mobile">WEB & MOBILE</span>
                             </div>
                             <div class="review-web-banner-desc" data-i18n="review_web_banner_desc">Ćwicz słówka w drodze na telefonie i w przeglądarce</div>
                         </div>

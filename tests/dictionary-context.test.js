@@ -50,7 +50,7 @@ test('word-by-word uses the same ranking without changing span alignment', () =>
 });
 
 test('detailed lookup travels through the public service and rejects oversized context', async () => {
-  const context=vm.createContext({LectoroConstants:C,SharedUtils:U,DictionaryStore:{getLive:async()=>({
+  const context=vm.createContext({ SharedI18n: require("../shared/i18n"),LectoroConstants:C,SharedUtils:U,DictionaryStore:{getLive:async()=>({
     t:'lubić',d:{s:'To enjoy something.',t:'Czerpać z czegoś przyjemność.'},s:[],
     e:[{s:'I like music.',t:'Lubię muzykę.'}]
   })}});
@@ -71,7 +71,7 @@ test('pack validator bounds optional definitions and examples while accepting ol
 });
 
 test('hover renders definition and escaped source examples without example translations', () => {
-  const context=vm.createContext({PREFIX:'__qt_',SVG:C.SVG_ICONS,escapeHtml:U.escapeHtml,escapeAttr:U.escapeAttr,speakButtonHtml:(text,lang)=>`<button class="__qt_speak" data-lang="${lang}">TTS</button>`});
+  const context=vm.createContext({ SharedI18n: require("../shared/i18n"),PREFIX:'__qt_',SVG:C.SVG_ICONS,escapeHtml:U.escapeHtml,escapeAttr:U.escapeAttr,speakButtonHtml:(text,lang)=>`<button class="__qt_speak" data-lang="${lang}">TTS</button>`});
   loadFunction(context,'core.js','buildDictionaryDetailsHtml');
   const result=dictionary.lookupDetails('like',target,['I','like','music'],1);
   result.senses=result.senses.map(s=>({...s,examples:[{source:'<img src=x onerror=alert(1)>',target:'Przykład'}]}));
@@ -91,7 +91,7 @@ test('hover renders definition and escaped source examples without example trans
 });
 
 test('buildDictionaryDetailsHtml does not render Overview when definition is empty', () => {
-  const context = vm.createContext({
+  const context = vm.createContext({ SharedI18n: require("../shared/i18n"),
     PREFIX: '__qt_',
     SVG: C.SVG_ICONS,
     escapeHtml: U.escapeHtml,
@@ -126,7 +126,7 @@ test('example save translates the sentence once, prevents double clicks and allo
     disabled:false, classList:{add(){}}, setAttribute(){},
     closest:()=>({querySelector:()=>status}),
   };
-  const context = vm.createContext({
+  const context = vm.createContext({ SharedI18n: require("../shared/i18n"),
     PREFIX:'__qt_',SVG:C.SVG_ICONS, cleanCardText:s=>String(s || '').trim(),
     window:{location:{href:'https://example.com'}},
     SharedTranslatorService:{async translate(text, target, source){
@@ -141,7 +141,7 @@ test('example save translates the sentence once, prevents double clicks and allo
   await context.handleSaveExampleClick(btn);
   assert.equal(btn.disabled,false);
   assert.equal(saved.length,0);
-  assert.equal(status.textContent,'Network unavailable');
+  assert.equal(status.textContent, require('../shared/i18n').t('toast_could_not_save_sentence'));
   fail = false;
   await Promise.all([context.handleSaveExampleClick(btn),context.handleSaveExampleClick(btn)]);
   assert.equal(saved.length,1);
@@ -160,7 +160,7 @@ test('subtitle hover passes the exact word occurrence and ignores stale async re
   const second={isConnected:true,textContent:'like'};
   let request, rendered, resolve;
   const waiting=new Promise(r=>{resolve=r;});
-  const context=vm.createContext({
+  const context=vm.createContext({ SharedI18n: require("../shared/i18n"),
     PREFIX:'__qt_',SVG:C.SVG_ICONS, activeWordSpans:[first,second], activeText:'like like',
     isSubHovering:true,lastHoveredSubWord:second,
     ensureSubtitleUiTracking(){},
@@ -181,7 +181,7 @@ test('subtitle hover passes the exact word occurrence and ignores stale async re
 });
 
 test('same-language detailed lookup keeps the response shape consistent', async () => {
-  const context=vm.createContext({LectoroConstants:C,SharedUtils:U});
+  const context=vm.createContext({ SharedI18n: require("../shared/i18n"),LectoroConstants:C,SharedUtils:U});
   load(context,'shared/local-dictionary.js');
   const [result]=await context.LocalDictionary.lookupWords(['book'],'en','en',{details:true});
   assert.equal(result.translated,'book');
@@ -204,7 +204,7 @@ test('S shows one equivalent while hover shows lexical alternatives without gram
 
 test('buildTooltipHtml displays full translation with lexical alternatives on hover', () => {
   const C = require('../shared/constants');
-  const context = vm.createContext({
+  const context = vm.createContext({ SharedI18n: require("../shared/i18n"),
     C,
     PREFIX: '__qt_',
     SVG: C.SVG_ICONS,

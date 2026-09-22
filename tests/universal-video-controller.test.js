@@ -124,7 +124,7 @@ test("core.js buildSaveFooterHtml renders Z and X kbd hints and type='button'", 
     const C = require("../shared/constants");
     const U = require("../shared/utils");
 
-    const context = vm.createContext({
+    const context = vm.createContext({ SharedI18n: require("../shared/i18n"),
         LectoroConstants: C,
         C,
         SharedUtils: U,

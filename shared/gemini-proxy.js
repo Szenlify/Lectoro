@@ -233,9 +233,9 @@
                     button.setAttribute("aria-disabled", String(reached));
                     button.classList.toggle("ai-credits-empty", reached);
                     if (reached) {
-                        button.title = "AI limit reached — click to view plans";
+                        button.title = globalThis.SharedI18n?.t("ai_limit_title") || "";
                     } else {
-                        button.title = button.dataset.aiOriginalTitle;
+                        button.title = globalThis.SharedI18n?.t(button.id === "exportQuiz" ? "quiz_ai_btn" : "ai_sentence_title") || button.dataset.aiOriginalTitle;
                     }
                 });
         }

@@ -126,7 +126,7 @@ test("generated quiz grades full answers and explicit variants, not similar or n
     const quiz = { title: "Test", sections: [{ type: "fill_blank", instructions: "Fill the blank", questions: [{ sentence: "She said: ___", hint: "ready now", answer: "I am ready" }] }] };
     const html = Quiz.buildInteractiveQuizHtml(quiz, [{ original: "ready", srcLang: "en" }], { tgtLang: "en" });
     const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
-    const context = vm.createContext({ document: { querySelectorAll: () => [], getElementById: () => null }, window: {}, setTimeout: () => 0 });
+    const context = vm.createContext({ SharedI18n: require("../shared/i18n"), document: { querySelectorAll: () => [], getElementById: () => null }, window: {}, setTimeout: () => 0 });
     vm.runInContext(script, context);
     const grade = (value, answer = "I am ready", alts = ["I'm ready"]) => {
         const q = { dataset: { qtype: "text", answer, alternatives: JSON.stringify(alts), qid: "1" },
@@ -149,7 +149,7 @@ test("Enter ignores the previous request after closing and reopening the panel",
     const end = source.indexOf("    function getSpeedOverlayParent", start);
     const pending = [], displayed = [];
     const noop = () => {};
-    const context = vm.createContext({
+    const context = vm.createContext({ SharedI18n: require("../shared/i18n"),
         activeText: "First", aiExplainRequestId: 0, trackedVideo: null, eTranslateActive: false, wordCloudActive: false,
         aiSavedIndices: new Set(), aiAiSavedIndices: new Set(), document: { body: { setAttribute: noop } },
         getPlayerRegistry: () => ({}), cleanupReading: noop, closeSubTooltip: noop,
@@ -182,7 +182,7 @@ test("Enter falls back to 1/1 sentence translation when AI returns invalid JSON"
     const end = source.indexOf("    function getSpeedOverlayParent", start);
     const displayed = [];
     const noop = () => {};
-    const context = vm.createContext({
+    const context = vm.createContext({ SharedI18n: require("../shared/i18n"),
         activeText: "It is what it is.", aiExplainRequestId: 0, trackedVideo: null, eTranslateActive: false, wordCloudActive: false,
         aiSavedIndices: new Set(), aiAiSavedIndices: new Set(), document: { body: { setAttribute: noop } },
         getPlayerRegistry: () => ({}), cleanupReading: noop, closeSubTooltip: noop,
@@ -218,7 +218,7 @@ test("Enter preserves paywall overlay when credit limit error occurs", async () 
     const end = source.indexOf("    function getSpeedOverlayParent", start);
     let paywallShown = false;
     const noop = () => {};
-    const context = vm.createContext({
+    const context = vm.createContext({ SharedI18n: require("../shared/i18n"),
         activeText: "Test sentence", aiExplainRequestId: 0, trackedVideo: null, eTranslateActive: false, wordCloudActive: false,
         aiSavedIndices: new Set(), aiAiSavedIndices: new Set(), document: { body: { setAttribute: noop } },
         getPlayerRegistry: () => ({}), cleanupReading: noop, closeSubTooltip: noop,
@@ -245,7 +245,7 @@ test("Enter preserves paywall overlay when credit limit error occurs", async () 
 });
 
 function proxyHarness(sendRuntimeMessage) {
-    const context = vm.createContext({
+    const context = vm.createContext({ SharedI18n: require("../shared/i18n"),
         LectoroConstants: Constants,
         SharedUtils: { isContentScriptEnvironment: () => true, sendRuntimeMessage },
         chrome: { storage: { local: { get: async () => ({}) } } },

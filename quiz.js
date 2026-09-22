@@ -48,11 +48,12 @@
     try {
       const data = await new Promise((resolve) => {
         chrome.storage.local.get(
-          ["latestQuizHtml", "latestQuizTitle", "latestQuizMode"],
+          ["latestQuizHtml", "latestQuizTitle", "latestQuizMode", "targetLang"],
           resolve
         );
       });
 
+      SharedI18n.applyToDOM(document, data.targetLang || LectoroConstants.DEFAULT_READING_SETTINGS.targetLang);
       cachedHtml = data.latestQuizHtml || "";
       cachedTitle = data.latestQuizTitle || "Lectoro_Quiz";
 

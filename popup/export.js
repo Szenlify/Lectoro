@@ -200,9 +200,9 @@ function crc32(data) {
 // ── Unified Export Quota Management (SSOT with SubscriptionConfig & SubscriptionService) ──
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const EXPORT_TYPES_CONFIG = [
-  {type: "anki", badgeId: "ankiFreeBadge", title: "Free Anki exports"},
-  {type: "excel", badgeId: "excelFreeBadge", title: "Free Excel exports"},
-  {type: "quiz", badgeId: "quizFreeBadge", title: "Free quizzes"},
+  {type: "anki", badgeId: "ankiFreeBadge", titleKey: "ui_free_anki_exports"},
+  {type: "excel", badgeId: "excelFreeBadge", titleKey: "ui_free_excel_exports"},
+  {type: "quiz", badgeId: "quizFreeBadge", titleKey: "ui_free_quizzes"},
 ];
 
 async function getExportQuota(type) {
@@ -318,8 +318,8 @@ async function updateAllExportBadgesUI() {
         badge.style.display = "inline-block";
         badge.textContent = `${state.used}/${state.limit}`;
         badge.title = typeof SharedI18n !== "undefined"
-          ? SharedI18n.t("export_badge_tooltip", null, { title: item.title, used: state.used, limit: state.limit })
-          : `${item.title}: used ${state.used} of ${state.limit} this month`;
+          ? SharedI18n.t("export_badge_tooltip", null, { title: SharedI18n.t(item.titleKey), used: state.used, limit: state.limit })
+          : `${SharedI18n.t(item.titleKey)}: used ${state.used} of ${state.limit} this month`;
         badge.classList.toggle("is-limit", state.used >= state.limit);
       } else {
         badge.style.display = "none";
@@ -518,48 +518,21 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
     const txtData = new TextEncoder().encode(txtContent);
     files.push({name: `anki-${dt}.txt`, data: txtData});
 
-    // Add helpful Anki Import Guide in ZIP (English)
+    // Localized instructions travel with the exported cards.
     const readmeContent = [
-      "===============================================================",
-      "LECTORO - HOW TO IMPORT FLASHCARDS INTO ANKI",
-      "===============================================================",
-      "",
-      "Your ZIP archive contains generated flashcards (.txt), video screenshots (.jpg),",
-      "and crystal-clear audio recordings (.wav / .mp3).",
-      "",
-      "Follow these simple steps to import your flashcards into Anki:",
-      "",
-      "STEP 1:",
-      "Copy media files to Anki's 'collection.media' folder",
-      "---------------------------------------------------------------",
-      "All image files (.jpg) and audio files (.wav / .mp3) from this archive",
-      "should be copied to Anki's media folder: 'collection.media'.",
-      "",
-      "Where to find this folder on your computer:",
-      "• Windows:",
-      "  You can find this folder quickly:",
-      "  Press the Windows Key + R on your keyboard.",
-      "  Type %APPDATA%\Anki2 into the run box and press Enter.",
-      "  or",
-      "  %APPDATA%\\Anki2\\[ProfileName]\\collection.media",
-      "  (Paste the path above into the Windows Explorer address bar)",
-      "• macOS:",
-      "  ~/Library/Application Support/Anki2/[ProfileName]/collection.media",
-      "  (In Finder, press Cmd+Shift+G and paste the path above)",
-      "• Linux:",
-      "  ~/.local/share/Anki2/[ProfileName]/collection.media",
-      "",
-      "STEP 2: Import cards into Anki",
-      "---------------------------------------------------------------",
-      "1. Open Anki.",
-      "2. Click: File -> Import... (or press Ctrl+I / Cmd+I).",
-      `3. Select the file: 'anki-${dt}.txt' from this archive.`,
-      "4. Choose Basic (or its localized equivalent), with column 1 as Front and column 2 as Back. Enable HTML and select the Lectoro deck.",
-      "5. Click 'Import'.",
-      "",
-      "Each card shows your saved expression first, then its translation and original context. No AI examples or explanations.",
-      "===============================================================",
-    ].join("\r\n");
+      SharedI18n.t("anki_readme_title"),
+      SharedI18n.t("anki_readme_intro"),
+      SharedI18n.t("anki_readme_media"),
+      SharedI18n.t("anki_readme_paths"),
+      "Windows: %APPDATA%\\Anki2\\PROFILE\\collection.media",
+      "macOS: ~/Library/Application Support/Anki2/PROFILE/collection.media",
+      "Linux: ~/.local/share/Anki2/PROFILE/collection.media",
+      SharedI18n.t("anki_readme_import"),
+      SharedI18n.t("anki_readme_file", { date: dt }),
+      SharedI18n.t("anki_readme_options"),
+      SharedI18n.t("anki_readme_finish"),
+      SharedI18n.t("anki_readme_content"),
+    ].join("\r\n\r\n");
     files.push({
       name: "HOW_TO_IMPORT_TO_ANKI.txt",
       data: new TextEncoder().encode(readmeContent),
@@ -586,7 +559,7 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
   } catch (err) {
     console.error("Anki export error:", err);
     const errText = typeof SharedI18n !== "undefined"
-      ? SharedI18n.t("export_error", null, { error: err.message })
+      ? SharedI18n.t("export_error", null, { error: SharedI18n.errorMessage(err) })
       : ("Export error: " + err.message);
     alert(errText);
   } finally {
@@ -608,10 +581,10 @@ document.getElementById("exportCsv").addEventListener("click", async () => {
   // BOM for Excel UTF-8
   const BOM = "\uFEFF";
   const header =
-    "Original;Translation;Sentence;Sentence Translation;AI Sentence;AI Sentence Translation;Source Lang;Target Lang;Date;Image URL";
+    ["words_label_original", "words_label_translated", "words_label_sentence", "words_label_sentence_translated", "ai_sentence", "ui_ai_sentence_translation", "ui_source_language", "ui_target_language", "ui_date", "ui_image_url"].map(key => csvCell(SharedI18n.t(key))).join(";");
   const rows = words.map((w) => {
     const date = w.timestamp
-      ? new Date(w.timestamp).toLocaleDateString("en-US")
+      ? new Date(w.timestamp).toLocaleDateString(SharedI18n.getLang())
       : "";
     const screenshotUrl = w.screenshot
       ? typeof SharedUtils !== "undefined" &&
@@ -734,7 +707,7 @@ if (exportQuizBtn) {
       console.error("Quiz export error:", err);
       if (!GeminiProxy?.isLimitError?.(err)) {
         const qErr = typeof SharedI18n !== "undefined"
-          ? SharedI18n.t("quiz_error", null, { error: err.message || err })
+          ? SharedI18n.t("quiz_error", null, { error: SharedI18n.errorMessage(err) })
           : ("Quiz generation error: " + (err.message || err));
         alert(qErr);
       }

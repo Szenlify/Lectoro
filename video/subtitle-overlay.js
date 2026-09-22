@@ -397,8 +397,8 @@
         if (!subDragHandleEl || !subDragHandleEl.isConnected) {
             subDragHandleEl = document.createElement("div");
             subDragHandleEl.className = C.UI_CLASSES.SUB_HANDLE;
-            subDragHandleEl.title = "Drag to reposition subtitles vertically";
-            subDragHandleEl.setAttribute("aria-label", "Drag to reposition subtitles vertically");
+            subDragHandleEl.title = SharedI18n.t("ui_drag_to_reposition_subtitles_vertically");
+            subDragHandleEl.setAttribute("aria-label", SharedI18n.t("ui_drag_to_reposition_subtitles_vertically"));
 
             const bar = document.createElement("span");
             bar.className = "__qt_subtitles-drag-bar";
@@ -675,7 +675,7 @@
         const previousRect = wasLoading ? el.getBoundingClientRect() : null;
         if (loading) {
             el.dataset.sentenceState = "loading";
-            el.setAttribute("aria-label", "Translating");
+            el.setAttribute("aria-label", SharedI18n.t("ui_translating"));
             el.setAttribute("aria-busy", "true");
             el.textContent = "";
         } else if (wasLoading) {
@@ -1163,7 +1163,7 @@
                     }
                     if (token.isPhrase) {
                         span.dataset.isPhrase = "true";
-                        span.title = "Phrase: " + token.clean;
+                        span.title = SharedI18n.t("ui_phrase", { phrase: token.clean });
                     }
                     lineEl.appendChild(span);
                     activeWordSpans.push(span);
@@ -1462,7 +1462,7 @@
             }
             if (!isSubHovering || lastHoveredSubWord !== wordSpan) return;
             if (!translated) {
-                QT.showTooltip(`<div class="${PREFIX}body">No dictionary entry yet.</div>`, rect, placement);
+                QT.showTooltip(`<div class="${PREFIX}body">${QT.escapeHtml(SharedI18n.t("ui_no_dictionary_entry_yet"))}</div>`, rect, placement);
                 return;
             }
             const html = QT.buildTooltipHtml({
@@ -1494,7 +1494,7 @@
                         return;
                     }
                 } catch (_) {}
-                const errText = err?.message && !/sign in/i.test(err.message) ? err.message : "Translation unavailable.";
+                const errText = SharedI18n.errorMessage(err, "ui_translation_unavailable");
                 QT.showTooltip(
                     `<div class="${PREFIX}error">⚠ ${QT.escapeHtml(errText)}</div>`,
                     rect,
@@ -1817,7 +1817,7 @@
         layout,
         {
             text = "✨ Translating…",
-            ariaLabel = "Translating sentence...",
+            ariaLabel = SharedI18n.t("ui_translating_sentence"),
         } = {},
     ) {
         const overlay = createOverlay(layout);
@@ -2359,7 +2359,7 @@
             speakBtn.classList.add("speaking");
             speakBtn.setAttribute(
                 "aria-label",
-                "Playing translation",
+                SharedI18n.t("ui_playing_translation"),
             );
         }
 
@@ -2455,7 +2455,7 @@
                 speakBtn.classList.remove("speaking");
                 speakBtn.setAttribute(
                     "aria-label",
-                    "Play pronunciation",
+                    SharedI18n.t("play_pronunciation"),
                 );
             }
         }
@@ -2551,7 +2551,7 @@
 
         // 2. Render and reveal AI card
         const html = renderAiExplainContent(clampedIndex);
-        const copy = applyAiExplanation(html, aiExplainLayout, "Sentence analysis", { inPlace });
+        const copy = applyAiExplanation(html, aiExplainLayout, SharedI18n.t("ui_sentence_analysis"), { inPlace });
 
         // Ribbon pills click navigation
         copy.querySelectorAll(`.${PREFIX}ai-queue-pill`).forEach((pill) => {
@@ -2895,7 +2895,7 @@
                 saveBtn.disabled = false;
                 saveBtn.classList.remove("saving");
                 saveBtn.innerHTML = `${SVG.SAVE} <span>${escapeHtml(t("toast_could_not_save"))}</span><kbd class="${PREFIX}key-hint">Z</kbd>`;
-                saveBtn.title = error.message;
+                saveBtn.title = SharedI18n.errorMessage(error);
             }
         });
 
@@ -2916,7 +2916,7 @@
                 speakBtn.classList.remove("speaking");
                 speakBtn.setAttribute(
                     "aria-label",
-                    "Play translation and explanation",
+                    SharedI18n.t("ui_play_translation_and_explanation"),
                 );
                 return;
             }
@@ -2927,7 +2927,7 @@
             speakBtn.classList.add("speaking");
             speakBtn.setAttribute(
                 "aria-label",
-                "Playing translation and explanation",
+                SharedI18n.t("ui_playing_translation_and_explanation"),
             );
             try {
                 if (item) {
@@ -2951,7 +2951,7 @@
                     speakBtn.classList.remove("speaking");
                     speakBtn.setAttribute(
                         "aria-label",
-                        "Play translation and explanation",
+                        SharedI18n.t("ui_play_translation_and_explanation"),
                     );
                 }
             }
@@ -3382,7 +3382,7 @@
 
             const sentenceItem = {
                 type: "sentence",
-                title: "Zdanie",
+                title: SharedI18n.t("badge_sentence"),
                 term: text,
                 meaning: translation,
                 explanation: explanation,
@@ -3414,7 +3414,7 @@
                     showAiPaywallOverlay(aiExplainLayout, err?.validation);
                 } else if (!aiExplainQueue.length) {
                     applyAiExplanation(
-                        `<div class="${PREFIX}error">⚠ ${QT.escapeHtml(err.message)}</div>`,
+                        `<div class="${PREFIX}error">⚠ ${QT.escapeHtml(SharedI18n.errorMessage(err))}</div>`,
                         aiExplainLayout,
                     );
                 }
@@ -4311,7 +4311,7 @@
     function revealOverlayContent(
         content,
         layout = translationAnchorLayout,
-        ariaLabel = "Ready",
+        ariaLabel = SharedI18n.t("ui_ready"),
     ) {
         const overlay = translationOverlay || createOverlay(layout);
 
@@ -4383,7 +4383,7 @@
     function applyAiExplanation(
         html,
         layout = translationAnchorLayout,
-        ariaLabel = "Sentence analysis",
+        ariaLabel = SharedI18n.t("ui_sentence_analysis"),
         { inPlace = false } = {},
     ) {
         const overlay = translationOverlay || createOverlay(layout);
@@ -4537,7 +4537,7 @@
         applyAiExplanation(
             `<div class="${PREFIX}body"><div class="${PREFIX}ai-text">${QT.escapeHtml(translation.translatedText)}</div></div>`,
             layout,
-            "Subtitle translation",
+            SharedI18n.t("ui_subtitle_translation"),
         );
 
         if (options.speakTranslated) {
@@ -4654,7 +4654,7 @@
         if (!saveToastEl) {
             saveToastEl = document.createElement("div");
             saveToastEl.id = SAVE_TOAST_ID;
-            saveToastEl.title = "Click to close and resume playback";
+            saveToastEl.title = SharedI18n.t("ui_click_to_close_and_resume_playback");
             saveToastEl.addEventListener("click", dismissSaveToastNow);
             parent.appendChild(saveToastEl);
         } else if (saveToastEl.parentElement !== parent) {

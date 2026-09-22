@@ -448,7 +448,7 @@
                 },
             ) {
                 if (!timestamp) return "";
-                return new Date(timestamp).toLocaleDateString("en-US", options);
+                return new Date(timestamp).toLocaleDateString(globalThis.SharedI18n?.getLang?.() || "en", options);
             },
 
             /** Format timestamp into localized time */
@@ -456,8 +456,8 @@
                 timestamp,
                 options = { hour: "2-digit", minute: "2-digit" },
             ) {
-                if (!timestamp) return "never";
-                return new Date(timestamp).toLocaleTimeString("en-US", options);
+                if (!timestamp) return globalThis.SharedI18n?.t("never_synced") || "";
+                return new Date(timestamp).toLocaleTimeString(globalThis.SharedI18n?.getLang?.() || "en", options);
             },
 
             /** Format next monthly quota renewal date (supports Stripe timestamp in seconds/ms or YYYY-MM) */
@@ -507,7 +507,7 @@
                     );
                 }
 
-                return new Intl.DateTimeFormat("en-US", {
+                return new Intl.DateTimeFormat(globalThis.SharedI18n?.getLang?.() || "en", {
                     day: "numeric",
                     month: "long",
                     year: "numeric",

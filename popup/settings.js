@@ -11,6 +11,11 @@ function applyPopupTranslations(lang = null) {
     if (typeof SharedI18n !== "undefined") {
         SharedI18n.applyToDOM(document, activeLang);
     }
+    for (const languageSelect of [select, learningLangSelect]) {
+        for (const option of languageSelect?.options || []) {
+            option.textContent = SharedI18n.languageName(option.value, activeLang);
+        }
+    }
     const privacyLink = document.getElementById("footerPrivacyLink") || document.querySelector('a[data-i18n="footer_privacy"]');
     if (privacyLink && typeof SharedI18n !== "undefined" && typeof SharedI18n.getPrivacyUrl === "function") {
         privacyLink.href = SharedI18n.getPrivacyUrl(activeLang);
@@ -23,7 +28,9 @@ function applyPopupTranslations(lang = null) {
     if (grid) {
         grid.dataset.renderedKey = "";
     }
+    _subscriptionUiLastRefresh = 0;
     void refreshSubscriptionUi();
+    if (typeof renderSyncUI === "function") void renderSyncUI();
 }
 
 async function swapTranslationLanguages() {
@@ -38,7 +45,7 @@ async function swapTranslationLanguages() {
         applyPopupTranslations(targetLang);
         flashSaved();
     } catch (error) {
-        swapLanguagesButton.title = "Could not swap languages. Try again.";
+        swapLanguagesButton.title = SharedI18n.t("ui_could_not_swap_languages_try_again");
     } finally {
         swapLanguagesButton.disabled = false;
     }
@@ -326,7 +333,7 @@ function renderSubscriptionPlans(subscription, signedIn = true) {
                     action =
                         `<button type="button" class="subscription-plan-button" data-billing-action="portal"><span class="subscription-button-label">${t("change_plan")}</span><span aria-hidden="true">→</span></button>`;
                 } else {
-                    const btnLabel = hasTrialOffer ? t("start_trial") : t("choose_plan", { name: limits.displayName });
+                    const btnLabel = hasTrialOffer ? t("start_trial") : t("choose_plan", { name: t("plan_" + planId) });
                     action = `<button type="button" class="subscription-plan-button ${hasTrialOffer ? "is-trial" : ""}" data-billing-action="checkout" data-plan="${planId}"><span class="subscription-button-label">${btnLabel}</span><span aria-hidden="true">→</span></button>`;
                 }
             } else if (hasPaidPlan) {
@@ -378,7 +385,7 @@ function renderSubscriptionPlans(subscription, signedIn = true) {
 
             return `<article class="subscription-plan-card ${isCurrent ? "is-current" : ""} ${isRecommended ? "is-recommended" : ""} ${hasTrialOffer ? "has-trial-offer" : ""}">
                 <div class="subscription-plan-topline">
-                    <strong>${limits.displayName}</strong>
+                    <strong>${t("plan_" + planId)}</strong>
                     ${isCurrent && isTrialing
                     ? `<span class="subscription-plan-badge is-trialing">${t("badge_trial")}</span>`
                     : isCurrent
@@ -502,7 +509,7 @@ function renderGeminiTtsUsage(subscription) {
         if (info) info.textContent = `Gemini TTS: ${t("gemini_chars_left", { left: 0 })}`;
     } else {
         if (percentage >= 80) card.classList.add("is-warning");
-        const formattedLeft = left.toLocaleString(lang === "pl" ? "pl-PL" : "en-US");
+        const formattedLeft = left.toLocaleString(lang);
         if (title)
             title.textContent = t("gemini_chars_left", { left: formattedLeft });
         if (info)
@@ -596,7 +603,7 @@ async function refreshAiUsageUI() {
 
     if (planBadge) {
         if (isPaidPlan) {
-            planBadge.textContent = `${currentPlan.toUpperCase()} ${t("badge_plan")}`;
+            planBadge.textContent = t("plan_" + currentPlan);
             planBadge.className = "ai-plan-badge is-pro";
         } else if (signedIn) {
             planBadge.textContent = t("plan_free");
@@ -798,7 +805,7 @@ document
                 const lang = getPopupLang();
                 const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, lang, p) : k);
                 status.className = "stripe-billing-status is-error";
-                status.textContent = error.message || t("status_stripe_error");
+                status.textContent = SharedI18n.errorMessage(error, "status_stripe_error");
             }
         } finally {
             isBillingBusy = false;
@@ -842,7 +849,7 @@ function startBillingPolling() {
                     const lang = getPopupLang();
                     const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, lang, p) : k);
                     status.className = "stripe-billing-status is-success";
-                    status.textContent = t("status_plan_updated", { plan: SubscriptionConfig.getPlanLimits(updated.plan).displayName });
+                    status.textContent = t("status_plan_updated", { plan: t("plan_" + updated.plan) });
                 }
             }
         } catch (_) { }
@@ -891,6 +898,10 @@ document.addEventListener("visibilitychange", () => {
 
 chrome.storage.onChanged.addListener((changes, area) => {
     if (area === "local") {
+        if (changes.targetLang) {
+            select.value = changes.targetLang.newValue;
+            applyPopupTranslations(changes.targetLang.newValue);
+        }
         if (changes[subBgStorageKey] && subBgRange && document.activeElement !== subBgRange) {
             const val = changes[subBgStorageKey].newValue ?? 0;
             subBgRange.value = val;

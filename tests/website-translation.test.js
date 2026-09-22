@@ -11,7 +11,7 @@ function page(text, { failure = false, googleFailure = false, geminiTranslation 
         synonyms: ["home"], examples: [1, 2, 3].map(n => ({ source: `House ${n}.`, target: `Dom ${n}.` })),
     }] };
     let aiCalled = false;
-    const context = vm.createContext({ currentText: text, currentRect: {}, currentRange: {}, selectionRevision: 1,
+    const context = vm.createContext({ SharedI18n: require("../shared/i18n"), currentText: text, currentRect: {}, currentRange: {}, selectionRevision: 1,
         isReading: false, rangeAnchorElement: () => null, hideIcon() {}, showLoading() {}, attachTooltipHandlers() {},
         getTargetLang: async () => "pl", PREFIX: "__qt_", escapeHtml: value => value, console: { error() {}, warn() {} },
         SharedTranslatorService: { dictionaryTerm, getReadingSettings: async () => ({ learningLang: "en" }),
@@ -62,7 +62,7 @@ test("multiword selections go directly to text translation, without creating a l
 test("a failed word lookup is shown as an error instead of creating a sentence entry for the word", async () => {
     const state = page("house", { failure: true }); await state.run();
     assert.equal(state.translations.length, 0);
-    assert.match(state.rendered[0], /Dictionary unavailable/);
+    assert.ok(state.rendered[0].includes(require("../shared/i18n").t("ui_operation_failed")));
 });
 test("multiword selections prioritize Google Translate with preferGoogle option", async () => {
     const state = page("in the morning");
@@ -83,6 +83,6 @@ test("multiword selections display error when both Google and Gemini fail", asyn
     const state = page("in the morning", { googleFailure: true });
     await state.run();
     assert.equal(state.aiCalled, true);
-    assert.match(state.rendered[0], /Google Translate 429 Rate Limit/);
+    assert.ok(state.rendered[0].includes(require("../shared/i18n").t("ui_operation_failed")));
 });
 

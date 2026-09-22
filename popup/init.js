@@ -185,7 +185,7 @@ function updateInitialReviewBadge(words = []) {
     const badge = dueCount > 0
         ? `<span class="tab-badge">${dueCount > 999 ? "999+" : dueCount}</span>`
         : "";
-    tab.innerHTML = `<span class="tab-icon">🧠</span><span class="tab-label">Review</span>${badge}`;
+    tab.innerHTML = `<span class="tab-icon">🧠</span><span class="tab-label" data-i18n="tab_review">${SharedI18n.t("tab_review")}</span>${badge}`;
 }
 
 whenPopupReady((state) => {

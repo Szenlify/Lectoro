@@ -61,7 +61,7 @@
 
         const toast = document.createElement("div");
         toast.id = toastId;
-        toast.innerHTML = `<span style="margin-right:6px">🧠</span> ${count === 1 ? "Review due!" : `${count} reviews due!`}`;
+        toast.innerHTML = `<span style="margin-right:6px">🧠</span> ${SharedI18n.t("ui_reviews_due", { count })}`;
         document.body.appendChild(toast);
 
         requestAnimationFrame(() => {
@@ -150,8 +150,9 @@
             tooltipEl = document.createElement("div");
             tooltipEl.id = TOOLTIP_ID;
             tooltipEl.setAttribute("role", "dialog");
-            tooltipEl.setAttribute("aria-label", "Translation");
+
         }
+        tooltipEl.setAttribute("aria-label", SharedI18n.t("words_label_translated"));
         const parent = getOverlayParent();
         if (tooltipEl.parentElement !== parent) parent.appendChild(tooltipEl);
         return tooltipEl;
@@ -805,7 +806,7 @@
         const P = PREFIX;
         const seen = new Set();
         const sense = dictionary.senses[0];
-        const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, targetLang, p) : k);
+        const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, null, p) : k);
         function textRows(source, target, extra = "", definition = false) {
             const text = `<span class="${P}dictionary-line-text" lang="${escapeAttr(srcLang)}" dir="auto">${escapeHtml(source)}</span>`;
             const actions = `${extra}${speakButtonHtml(source, srcLang, definition ? t("play_definition") : t("play_example"))}`;
@@ -847,7 +848,7 @@
                 return true;
             });
         if (!examples.length && !definition && !synonyms) return "";
-        return `<section class="${P}dictionary-details" aria-label="Dictionary details">${definition ? `<div class="${P}dictionary-definition-section"><div class="${P}dictionary-caption">${escapeHtml(t("overview"))}</div>${definition}</div>` : ""}${synonyms}${examples.length ? `<div class="${P}dictionary-caption">${escapeHtml(t("examples"))}</div>` : ""}${examples
+        return `<section class="${P}dictionary-details" aria-label="${escapeAttr(SharedI18n.t("dictionary_details"))}">${definition ? `<div class="${P}dictionary-definition-section"><div class="${P}dictionary-caption">${escapeHtml(t("overview"))}</div>${definition}</div>` : ""}${synonyms}${examples.length ? `<div class="${P}dictionary-caption">${escapeHtml(t("examples"))}</div>` : ""}${examples
             .slice(0, 3)
             .map((example) => textRows(example.source, example.target,
                 `<button type="button" class="${P}save-example" data-src="${escapeAttr(example.source)}" data-translated="${escapeAttr(example.target)}" data-src-lang="${escapeAttr(srcLang)}" data-tgt-lang="${escapeAttr(targetLang)}" title="${escapeAttr(t("add_to_review"))}" aria-label="${escapeAttr(`${t("add_to_review")}: ${example.source}`)}" aria-pressed="false">${SVG.SAVE}</button>`))
@@ -863,7 +864,7 @@
     }) {
         const P = PREFIX;
         const dataAttrs = `data-src="${escapeAttr(original)}" data-translated="${escapeAttr(translated)}" data-src-lang="${escapeAttr(srcLang)}" data-tgt-lang="${escapeAttr(targetLang)}"`;
-        const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, targetLang, p) : k);
+        const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, null, p) : k);
 
         const saveFooterHtml = buildSaveFooterHtml(dataAttrs, {
             showExampleStatus: true,
@@ -909,17 +910,17 @@
     function buildSaveFooterHtml(
         dataAttrs = "",
         {
-            saveLabel = "Save",
-            saveTitle = "Save word",
+            saveLabel = SharedI18n.t("btn_save"),
+            saveTitle = SharedI18n.t("save_word"),
             saveKeyHint = "",
             isSaved = false,
-            savedLabel = "Saved!",
+            savedLabel = SharedI18n.t("saved_status"),
             showExampleStatus = false,
             showAi = true,
-            aiLabel = "AI Sentence",
-            aiTitle = "Generate AI sentence (Gemini)",
+            aiLabel = SharedI18n.t("ai_sentence"),
+            aiTitle = SharedI18n.t("ai_sentence_title"),
             aiKeyHint = "",
-            aiSavedLabel = "Saved to Review!",
+            aiSavedLabel = SharedI18n.t("saved_to_review"),
             isAiSaved = false,
             extraClass = "",
         } = {},
@@ -1059,7 +1060,7 @@
         }
 
         const targetLang = saveWordBtn.dataset.tgtLang || (await QT.getTargetLang?.()) || C.DEFAULT_READING_SETTINGS.targetLang;
-        const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, targetLang, p) : k);
+        const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, null, p) : k);
 
         saveWordBtn.classList.add("saving");
         saveWordBtn.disabled = true;
@@ -1074,7 +1075,7 @@
             saveWordBtn.disabled = false;
             saveWordBtn.classList.remove("saving");
             saveWordBtn.innerHTML = `${SVG.SAVE} <span>${escapeHtml(t("plan_limit"))}</span><kbd class="${PREFIX}key-hint">Z</kbd>`;
-            saveWordBtn.title = error.message;
+            saveWordBtn.title = SharedI18n.errorMessage(error);
         }
     }
 
@@ -1086,7 +1087,7 @@
         const status = btn.closest(`#${PREFIX}tooltip`)?.querySelector(`.${PREFIX}example-status`);
         if (status) status.textContent = "";
         const targetLang = btn.dataset.tgtLang || (await QT.getTargetLang?.()) || C.DEFAULT_READING_SETTINGS.targetLang;
-        const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, targetLang, p) : k);
+        const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, null, p) : k);
         try {
             const original = cleanCardText(btn.dataset.src);
             let translated = cleanCardText(btn.dataset.translated);
@@ -1111,7 +1112,7 @@
         } catch (error) {
             btn.disabled = false;
             btn.innerHTML = SVG.SAVE;
-            btn.title = error?.message || t("toast_could_not_save_sentence");
+            btn.title = SharedI18n.errorMessage(error, "toast_could_not_save_sentence");
             if (status) status.textContent = btn.title;
         } finally {
             btn.setAttribute("aria-busy", "false");
@@ -1127,7 +1128,7 @@
             return;
 
         const targetLang = saveAiBtn.dataset.tgtLang || (await QT.getTargetLang?.()) || C.DEFAULT_READING_SETTINGS.targetLang;
-        const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, targetLang, p) : k);
+        const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, null, p) : k);
 
         saveAiBtn.classList.add("loading");
         saveAiBtn.disabled = true;
@@ -1180,7 +1181,7 @@
                 aiResultEl.style.display = limitReached ? "none" : "block";
                 aiResultEl.innerHTML = limitReached
                     ? ""
-                    : `<div style="color:#f87171;font-size:11px;padding:6px 12px;">⚠ ${escapeHtml(err.message)}</div>`;
+                    : `<div style="color:#f87171;font-size:11px;padding:6px 12px;">⚠ ${escapeHtml(SharedI18n.errorMessage(err))}</div>`;
             }
 
             setTimeout(() => {
@@ -1251,7 +1252,7 @@
                     btn.innerHTML = SVG.SAVE;
                     btn.classList.add("saved");
                     btn.disabled = true;
-                    btn.title = "Sentence saved to review";
+                    btn.title = SharedI18n.t("ui_sentence_saved_to_review");
                     btn.setAttribute("aria-label", btn.title);
                     btn.setAttribute("aria-pressed", "true");
                 }

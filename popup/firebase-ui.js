@@ -64,7 +64,7 @@ async function renderSyncUI() {
     if (typeof FirebaseSync === "undefined" || !FirebaseSync.isConfigured()) {
         container.innerHTML = `
             <div style="font-size:11px; color:var(--text-ghost); padding:4px 0; line-height:1.6;">
-                Configure Firebase in <code style="font-size:10px; background:var(--glass-strong); padding:2px 5px; border-radius:4px;">firebase-config.js</code> to sync words across devices.
+                ${escapeSyncHtml(SharedI18n.t("ui_cloud_unavailable"))}
             </div>`;
         return;
     }
@@ -80,7 +80,7 @@ async function renderSyncUI() {
         if (renderRevision !== firebaseUiRenderRevision) return;
         container.innerHTML = `
             <div class="sync-status sync-status-error">
-                Failed to read sync state: ${escapeSyncHtml(error.message)}
+                ${escapeSyncHtml(SharedI18n.errorMessage(error, "sync_failed"))}
             </div>
             <button id="firebaseSyncRetry" class="sync-btn sync-primary" style="width:100%;">
                 Retry
@@ -131,7 +131,7 @@ async function renderSyncUI() {
                     firebaseUiAction = null;
                     showFirebaseFeedback(
                         "error",
-                        error.message || t("sign_in_error"),
+                        SharedI18n.errorMessage(error, "sign_in_error"),
                         0,
                     );
                 }
@@ -143,7 +143,7 @@ async function renderSyncUI() {
         typeof SharedUtils !== "undefined" && SharedUtils.formatTime
             ? SharedUtils.formatTime(data.lastFirebaseSync)
             : data.lastFirebaseSync
-              ? new Date(data.lastFirebaseSync).toLocaleTimeString(lang === "pl" ? "pl-PL" : "en-US")
+              ? new Date(data.lastFirebaseSync).toLocaleTimeString(lang)
               : t("never_synced");
     const syncing =
         firebaseUiAction === "sync" || firebaseUiAction === "sign-in";
@@ -159,7 +159,7 @@ async function renderSyncUI() {
     const statusHtml = firebaseUiFeedback
         ? `<div class="sync-status sync-status-${firebaseUiFeedback.type}">${escapeSyncHtml(firebaseUiFeedback.message)}</div>`
         : data.lastFirebaseSyncError
-          ? `<div class="sync-status sync-status-error">Last error: ${escapeSyncHtml(data.lastFirebaseSyncError)}</div>`
+          ? `<div class="sync-status sync-status-error">${escapeSyncHtml(SharedI18n.errorMessage(data.lastFirebaseSyncError, "sync_failed"))}</div>`
           : "";
 
     container.innerHTML = `
@@ -211,7 +211,7 @@ async function renderSyncUI() {
                 firebaseUiAction = null;
                 showFirebaseFeedback(
                     "error",
-                    error.message || t("sync_failed"),
+                    SharedI18n.errorMessage(error, "sync_failed"),
                     0,
                 );
             }
@@ -233,7 +233,7 @@ async function renderSyncUI() {
                 firebaseUiAction = null;
                 showFirebaseFeedback(
                     "error",
-                    error.message || t("failed_sign_out"),
+                    SharedI18n.errorMessage(error, "failed_sign_out"),
                     0,
                 );
             }
@@ -267,7 +267,7 @@ async function renderSyncUI() {
                 firebaseUiAction = null;
                 showFirebaseFeedback(
                     "error",
-                    error.message || t("account_delete_failed"),
+                    SharedI18n.errorMessage(error, "account_delete_failed"),
                     0,
                 );
             }
@@ -304,5 +304,12 @@ chrome.storage.onChanged.addListener((changes, area) => {
             maybeRefreshReviewQueue();
         }
         if (typeof initReviewBadge === "function") initReviewBadge();
+    }
+});
+
+chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === "local" && changes.targetLang) {
+        firebaseUiFeedback = null;
+        void renderSyncUI();
     }
 });

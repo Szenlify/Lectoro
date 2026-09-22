@@ -72,7 +72,7 @@ function app(settings = {}) {
         },
     };
     const registry = { getVideo: () => video, pauseVideo: () => video.pause() };
-    const context = vm.createContext({
+    const context = vm.createContext({ SharedI18n: require("../shared/i18n"),
         LectoroConstants: C,
         C,
         SharedUtils: U,

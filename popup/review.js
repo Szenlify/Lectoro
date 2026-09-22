@@ -51,6 +51,8 @@ if (typeof chrome !== "undefined" && chrome.storage?.onChanged) {
                 changes.targetLang.newValue ||
                 LectoroConstants.DEFAULT_READING_SETTINGS.targetLang;
             updateDirBtnLabel();
+            void updateReviewVoiceUI();
+            if (document.getElementById("reviewCard") && !document.getElementById("editOriginal")) renderReview();
         }
         if (changes.learningLang) {
             reviewLearningLang =
@@ -211,10 +213,10 @@ function syncReviewVoiceButton() {
               : "";
     label.textContent = usingGeminiTts
         ? `${voiceIcon}${voice?.name || "Gemini TTS"}`
-        : "Voice";
+        : SharedI18n.t("review_voice_label");
     btn.title = usingGeminiTts
-        ? `Gemini TTS: ${voice?.name || "selected voice"}`
-        : "Choose review voice";
+        ? `Gemini TTS: ${voice?.name || SharedI18n.t("ui_selected_voice")}`
+        : SharedI18n.t("review_voice_btn_title");
 }
 
 function renderFreeVoiceTeaser() {
@@ -304,8 +306,8 @@ function renderGeminiTtsVoiceSelect() {
         const desc = document.createElement("small");
         desc.className = "review-voice-desc";
         desc.textContent = isFemale
-            ? `${t("voice_female_full", "Głos żeński")} · Warm`
-            : `${t("voice_male_full", "Głos męski")} · Smooth`;
+            ? `${t("voice_female_full", "Głos żeński")} · ${SharedI18n.t("ui_warm")}`
+            : `${t("voice_male_full", "Głos męski")} · ${SharedI18n.t("ui_smooth")}`;
 
         copy.append(name, desc);
 
@@ -607,7 +609,7 @@ function updateReviewTabBadge(count) {
         count > 0
             ? `<span class="tab-badge">${count > 999 ? "999+" : count}</span>`
             : "";
-    tab.innerHTML = `<span class="tab-icon">🧠</span><span class="tab-label">Review</span>${badge}`;
+    tab.innerHTML = `<span class="tab-icon">🧠</span><span class="tab-label" data-i18n="tab_review">${SharedI18n.t("tab_review")}</span>${badge}`;
 }
 
 // ── On first Review-tab open → refresh badge count ───────────────
@@ -673,7 +675,7 @@ function renderReview() {
 
                     <div style="margin-top: 16px;" class="review-empty-web-badge">
                         <img src="icons/icon16.png" class="review-empty-web-logo" width="13" height="13" alt="Lectoro">
-                        <span>WEB & MOBILE</span>
+                        <span>${SharedI18n.t("ui_web_mobile")}</span>
                     </div>
                     <div class="review-empty-sub">${cardDesc}</div>
                     <a href="https://lectoroai.vercel.app/dashboard/reviews" target="_blank" rel="noopener noreferrer" class="review-empty-web-link">
@@ -727,7 +729,7 @@ function renderReview() {
                 <div class="review-done-sub">${doneSub}</div>
                  <div style="margin-top: 16px;" class="review-empty-web-badge">
                         <img src="icons/icon16.png" class="review-empty-web-logo" width="13" height="13" alt="Lectoro">
-                        <span>WEB & MOBILE</span>
+                        <span>${SharedI18n.t("ui_web_mobile")}</span>
                     </div>
                     <div class="review-done-sub">${cardDesc}</div>
                     <a href="https://lectoroai.vercel.app/dashboard/reviews" target="_blank" rel="noopener noreferrer" class="review-empty-web-link">
@@ -803,7 +805,7 @@ function reviewControlsHtml(sr, answerShown) {
         </div>
     </div>
 
-    <div class="review-shortcuts" aria-label="Review keyboard shortcuts">
+    <div class="review-shortcuts" aria-label="${escapeAttr(SharedI18n.t("ui_review_keyboard_shortcuts"))}">
         <span>
             <span class="shortcut-keys">
                 <kbd>↑</kbd>
@@ -966,10 +968,10 @@ function renderQuestion(w) {
                         <span class="review-word ${wordClass}">${escapeHtml(showWord)}</span>
                         <button class="review-speak-btn" data-text="${escapeAttr(
                             buildReviewSpeakText(showWord, showSentence),
-                        )}" data-lang="${escapeAttr(showLang)}" ${forceBrowserAttr} ${cacheAttrs} title="Odczytaj">${SPEAK_SVG}</button>
+                        )}" data-lang="${escapeAttr(showLang)}" ${forceBrowserAttr} ${cacheAttrs} title="${escapeAttr(SharedI18n.t("read_aloud_btn"))}">${SPEAK_SVG}</button>
                     <button class="review-speak-btn review-speak-slow-btn" type="button" data-rate="0.75" data-text="${escapeAttr(
                             buildReviewSpeakText(showWord, showSentence),
-                        )}" data-lang="${escapeAttr(showLang)}" ${forceBrowserAttr} ${cacheAttrs} title="Listen slowly (0.75×)" aria-label="Listen slowly (0.75×)">${SLOW_SPEAK_SVG}</button>
+                        )}" data-lang="${escapeAttr(showLang)}" ${forceBrowserAttr} ${cacheAttrs} title="${escapeAttr(SharedI18n.t("ui_listen_slowly_0_75"))}" aria-label="${escapeAttr(SharedI18n.t("ui_listen_slowly_0_75"))}">${SLOW_SPEAK_SVG}</button>
                     </div>
                     ${sentenceHtml}
                     ${reviewScreenshotHtml(w.screenshot)}
@@ -1101,7 +1103,7 @@ function renderAnswer(w) {
                     )}" data-lang="${escapeAttr(aLang)}" ${forceBrowserAttr} ${cacheAttrs} title="Listen">${SPEAK_SVG}</button>
                     <button class="review-speak-btn review-speak-slow-btn" type="button" data-rate="0.75" data-text="${escapeAttr(
                         buildReviewSpeakText(aWord, aSentence),
-                    )}" data-lang="${escapeAttr(aLang)}" ${forceBrowserAttr} ${cacheAttrs} title="Listen slowly (0.75×)" aria-label="Listen slowly (0.75×)">${SLOW_SPEAK_SVG}</button>
+                    )}" data-lang="${escapeAttr(aLang)}" ${forceBrowserAttr} ${cacheAttrs} title="${escapeAttr(SharedI18n.t("ui_listen_slowly_0_75"))}" aria-label="${escapeAttr(SharedI18n.t("ui_listen_slowly_0_75"))}">${SLOW_SPEAK_SVG}</button>
                 </div>
                 ${
                     aSentence && !isRedundantA
@@ -1164,17 +1166,17 @@ function showReviewEditForm(w, returnToAnswer = reviewAnswerShown) {
     const card = getReviewCard();
     card.innerHTML = `
         <div class="review-edit-form">
-            <label>Original</label>
+            <label>${SharedI18n.t("words_label_original")}</label>
             <input type="text" id="editOriginal" value="${escapeAttr(w.original)}">
-            <label>Translation</label>
+            <label>${SharedI18n.t("words_label_translated")}</label>
             <input type="text" id="editTranslated" value="${escapeAttr(w.translated)}">
-            <label>Context sentence (original)</label>
+            <label>${SharedI18n.t("words_label_sentence")}</label>
             <input type="text" id="editSentence" value="${escapeAttr(w.sentence || "")}">
-            <label>Context sentence (translation)</label>
+            <label>${SharedI18n.t("words_label_sentence_translated")}</label>
             <input type="text" id="editSentenceTr" value="${escapeAttr(w.sentenceTranslated || "")}">
             <div class="review-edit-actions">
-                <button class="review-edit-cancel" id="editCancel">Cancel</button>
-                <button class="review-edit-save" id="editSave">💾 Save</button>
+                <button class="review-edit-cancel" id="editCancel">${SharedI18n.t("btn_cancel")}</button>
+                <button class="review-edit-save" id="editSave">${SharedI18n.t("btn_save")}</button>
             </div>
         </div>`;
 

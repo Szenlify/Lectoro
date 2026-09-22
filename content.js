@@ -282,7 +282,7 @@
             if (revision !== selectionRevision) return;
             console.error("[Lectoro]", err);
             showTooltip(
-                `<div class="${PREFIX}error">⚠ ${escapeHtml(err.message)}</div>`,
+                `<div class="${PREFIX}error">⚠ ${escapeHtml(SharedI18n.errorMessage(err))}</div>`,
                 rect,
                 "top",
                 anchorEl,

@@ -9,7 +9,7 @@ test('language swap saves both directions atomically and leaves UI intact on fai
     const swapLanguagesButton = {disabled:false};
     const writes = [];
     let fail = false;
-    const context = vm.createContext({select, learningLangSelect, swapLanguagesButton, flashSaved(){},
+    const context = vm.createContext({ SharedI18n: require("../shared/i18n"),select, learningLangSelect, swapLanguagesButton, flashSaved(){},
         chrome:{storage:{local:{async set(values){if(fail) throw Error('storage'); writes.push({...values});}}}}});
     const source = read('popup/settings.js').replace(/\r\n/g,'\n');
     vm.runInContext(source.match(/async function swapTranslationLanguages\(\) \{[\s\S]*?\n\}/)[0],context);

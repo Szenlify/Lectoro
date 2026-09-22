@@ -6,7 +6,7 @@ const utils = require('../shared/utils');
 
 function harness() {
   const handlers = {};
-  const context = vm.createContext({
+  const context = vm.createContext({ SharedI18n: require("../shared/i18n"),
     SharedUtils: utils, escapeHtml: utils.escapeHtml, escapeAttr: utils.escapeAttr,
     console, TextEncoder, Uint8Array, DataView, Blob,
     document: {getElementById: (id) => !id.toLowerCase().includes('badge')
