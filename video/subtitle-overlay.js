@@ -3821,44 +3821,12 @@
             return true;
         };
 
-        let translations;
-        for (const span of wordSpans) {
-            if (!isEligibleWord(span)) continue;
-            span.dataset.wordCloudLoading = pendingOwner;
-            span.classList.add(pendingClass);
-            span.setAttribute?.("aria-busy", "true");
-        }
-        try {
-            // One bounded contextual AI request; existing phrase/word lookup is the silent fallback.
-            translations = await SharedTranslatorService.lookupWords(
-                wordSpans.map((span) => span.textContent.trim()),
-                targetLang,
-                learningLang,
-                { wordByWord: true, contextual: true, preferAi: true, context: fullText, generateMissing: false },
-            );
-        } catch (error) {
-            // Degrade to known single-word cache entries instead of failing the whole subtitle.
-            console.warn("[Lectoro] Contextual word lookup failed; using cached words only:", error);
-            try {
-                translations = await SharedTranslatorService.lookupWords(
-                    wordSpans.map((span) => span.textContent.trim()),
-                    targetLang,
-                    learningLang,
-                    { wordByWord: true, generateMissing: false },
-                );
-            } catch (fallbackError) {
-                console.warn("[Lectoro] Cached word lookup failed:", fallbackError);
-                translations = Array(wordSpans.length).fill(null);
-            }
-        } finally {
-            for (const span of wordSpans) {
-                if (span.dataset.wordCloudLoading !== pendingOwner) continue;
-                delete span.dataset.wordCloudLoading;
-                span.classList.remove(pendingClass);
-                span.removeAttribute?.("aria-busy");
-            }
-        }
-        if (modeRevision !== subtitleModeRevision) return;
+        const stopLoading = (span) => {
+            if (!span || span.dataset?.wordCloudLoading !== pendingOwner) return;
+            delete span.dataset.wordCloudLoading;
+            span.classList.remove(pendingClass);
+            span.removeAttribute?.("aria-busy");
+        };
 
         const subFontSizePx =
             parseFloat(window.getComputedStyle(wordSpans[0]).fontSize) || 20;
@@ -3906,31 +3874,70 @@
             parent.appendChild(cloud);
             wordCloudEls.push({ cloud, span: targetSpan, members, wrappers });
             positionWordCloud(cloud, targetSpan, members);
+            members.forEach(stopLoading);
+            if (typeof positionAllWordClouds === "function") positionAllWordClouds();
         };
-        translations.forEach((value, i) => renderTranslation(i, value));
-        ensureSubtitleUiTracking();
-        const covered = new Set();
-        translations.forEach((value, i) => {
-            for (let offset = 1; offset < (value?.length || 1); offset++) covered.add(i + offset);
-        });
-        const missing = wordSpans.map((span, i) => ({ span, i }))
-            .filter(({ span, i }) => {
-                return !translations[i] && !covered.has(i) && isEligibleWord(span);
-            });
-        const loadingClass = `${PREFIX}word-cloud-loading`;
-        const loadingOwner = String(modeRevision);
-        for (const { span } of missing) {
-            span.dataset.wordCloudLoading = loadingOwner;
-            span.classList.add(loadingClass);
+
+        for (const span of wordSpans) {
+            if (!isEligibleWord(span)) continue;
+            span.dataset.wordCloudLoading = pendingOwner;
+            span.classList.add(pendingClass);
             span.setAttribute?.("aria-busy", "true");
         }
-        const stopLoading = (span) => {
-            // A previous session's response must not clear a new session's animation.
-            if (span.dataset.wordCloudLoading !== loadingOwner) return;
-            delete span.dataset.wordCloudLoading;
-            span.classList.remove(loadingClass);
-            span.removeAttribute?.("aria-busy");
-        };
+
+        let translations;
+        let lookupError = null;
+        try {
+            // Automatically show what we already have immediately without waiting for AI or missing words
+            translations = await SharedTranslatorService.lookupWords(
+                wordSpans.map((span) => span.textContent.trim()),
+                targetLang,
+                learningLang,
+                { wordByWord: true, contextual: true, localOnly: true, generateMissing: false, context: fullText },
+            );
+        } catch (error) {
+            lookupError = error;
+            console.warn("[Lectoro] Local word lookup failed; using cached words only:", error);
+            try {
+                translations = await SharedTranslatorService.lookupWords(
+                    wordSpans.map((span) => span.textContent.trim()),
+                    targetLang,
+                    learningLang,
+                    { wordByWord: true, generateMissing: false },
+                );
+            } catch (fallbackError) {
+                lookupError = fallbackError;
+                console.warn("[Lectoro] Cached word lookup failed:", fallbackError);
+                translations = Array(wordSpans.length).fill(null);
+            }
+        }
+
+        if (modeRevision !== subtitleModeRevision) {
+            wordSpans.forEach(stopLoading);
+            return;
+        }
+
+        // Immediately render everything that is already known locally
+        if (Array.isArray(translations)) {
+            translations.forEach((value, i) => {
+                if (value) renderTranslation(i, value);
+            });
+        }
+        ensureSubtitleUiTracking();
+
+        const covered = new Set();
+        if (Array.isArray(translations)) {
+            translations.forEach((value, i) => {
+                if (value) {
+                    for (let offset = 0; offset < (value.length || 1); offset++) covered.add(i + offset);
+                }
+            });
+        }
+        const missing = wordSpans.map((span, i) => ({ span, i }))
+            .filter(({ span, i }) => {
+                return (!translations || !translations[i]) && !covered.has(i) && isEligibleWord(span);
+            });
+
         // Three requests at a time; render each completed word without delaying known entries.
         let next = 0;
         let generationError = null;
@@ -3951,8 +3958,9 @@
                 await sentenceSpeechPromise;
             } catch (_) {}
         }
-        if (generationError && modeRevision === subtitleModeRevision) {
-            throw generationError;
+        const effectiveError = generationError || (lookupError && (!translations || translations.every((t) => !t)) ? lookupError : null);
+        if (effectiveError && modeRevision === subtitleModeRevision) {
+            throw effectiveError;
         }
     }
 

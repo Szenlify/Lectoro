@@ -442,6 +442,10 @@
         if (options.wordByWord && options.contextual) {
             if (!words.length) return [];
             const tokens = words.map(word => word.normalize("NFKC").trim());
+            const cachedAnalysis = await root.DictionaryStore?.getAnalysis?.(sourceLang, targetLang, options.context || tokens.join(" "), tokens);
+            const savedAnalysis = segmentTranslations(cachedAnalysis, tokens);
+            if (savedAnalysis) return savedAnalysis;
+
             if (options.preferAi === true && !options.localOnly) {
                 const translated = await translateSubtitleWithAi(tokens, sourceLang, targetLang, options.context || tokens.join(" "));
                 if (translated) return translated;
@@ -496,7 +500,7 @@
             });
             const known = await lookupWords(singles, targetLang, sourceLang, {
                 wordByWord: true,
-                localOnly: false,
+                localOnly: options.localOnly === true,
                 generateMissing: false,
             });
             return known.map((value, index) => phrases[index] || value);

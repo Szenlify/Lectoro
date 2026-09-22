@@ -243,24 +243,23 @@ if (subFontSizeGroup) {
 }
 
 // ── Subscription & AI Usage ──────────────────────────────────────
-function getBlikLogoSvg(planId = "") {
-    const gradId = `blikGrad_${planId || "default"}`;
-    return `<svg class="blik-logo" viewBox="20 19 80 42" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-        <defs>
-            <linearGradient id="${gradId}" x1="36.4" y1="30.6" x2="44.5" y2="22.7" gradientUnits="userSpaceOnUse">
-                <stop stop-color="#E52F08"/>
-                <stop offset="1" stop-color="#E94F96"/>
-            </linearGradient>
-        </defs>
-        <path d="M46.1362 26.7057C46.1565 23.574 43.6343 21.0189 40.5027 20.9986C37.3711 20.9782 34.8159 23.5004 34.7956 26.632C34.7753 29.7636 37.2975 32.3188 40.4291 32.3391C43.5607 32.3595 46.1158 29.8373 46.1362 26.7057Z" fill="url(#${gradId})"/>
-        <path d="M89.7466 58.7831H97.9114L88.1018 46.1135L96.997 35.2271H89.5914L80.8562 46.1815V22.8215H74.5162V58.7831H80.8562L80.8514 46.2119L89.7466 58.7831Z" fill="#fff"/>
-        <path d="M50.5937 22.8167H56.9321V58.7815H50.5937V22.8167Z" fill="#fff"/>
-        <path d="M62.5569 35.2255H68.8953V58.7815H62.5569V35.2255Z" fill="#fff"/>
-        <path d="M34.1145 34.9903C32.13 34.9875 30.176 35.4779 28.4281 36.4175V22.8175H22.0889V47.0111C22.0882 49.3893 22.7929 51.7143 24.1136 53.692C25.4344 55.6697 27.3119 57.2114 29.5089 58.122C31.7058 59.0326 34.1235 59.2712 36.4561 58.8078C38.7887 58.3443 40.9315 57.1996 42.6134 55.5183C44.2954 53.837 45.441 51.6946 45.9054 49.3622C46.3698 47.0298 46.1321 44.6121 45.2224 42.4148C44.3126 40.2175 42.7717 38.3393 40.7945 37.0177C38.8173 35.6962 36.4927 34.9906 34.1145 34.9903ZM34.1145 52.7983C32.9701 52.7983 31.8514 52.459 30.8998 51.8232C29.9482 51.1874 29.2066 50.2837 28.7686 49.2265C28.3306 48.1692 28.216 47.0058 28.4392 45.8833C28.6624 44.7609 29.2134 43.7299 30.0226 42.9206C30.8317 42.1113 31.8627 41.5602 32.9851 41.3368C34.1075 41.1134 35.2709 41.2279 36.3283 41.6657C37.3856 42.1036 38.2894 42.8451 38.9253 43.7966C39.5612 44.748 39.9007 45.8667 39.9009 47.0111C39.9012 47.7711 39.7517 48.5237 39.4611 49.226C39.1704 49.9282 38.7442 50.5663 38.2068 51.1037C37.6695 51.6411 37.0314 52.0674 36.3293 52.3582C35.6271 52.649 34.8745 52.7985 34.1145 52.7983Z" fill="#fff"/>
-    </svg>`;
-}
-
 function renderSubscriptionPlans(subscription, signedIn = true) {
+    function getBlikLogoSvg(planId = "") {
+        const gradId = `blikGrad_${planId || "default"}`;
+        return `<svg class="blik-logo" viewBox="20 19 80 42" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+            <defs>
+                <linearGradient id="${gradId}" x1="36.4" y1="30.6" x2="44.5" y2="22.7" gradientUnits="userSpaceOnUse">
+                    <stop stop-color="#E52F08"/>
+                    <stop offset="1" stop-color="#E94F96"/>
+                </linearGradient>
+            </defs>
+            <path d="M46.1362 26.7057C46.1565 23.574 43.6343 21.0189 40.5027 20.9986C37.3711 20.9782 34.8159 23.5004 34.7956 26.632C34.7753 29.7636 37.2975 32.3188 40.4291 32.3391C43.5607 32.3595 46.1158 29.8373 46.1362 26.7057Z" fill="url(#${gradId})"/>
+            <path d="M89.7466 58.7831H97.9114L88.1018 46.1135L96.997 35.2271H89.5914L80.8562 46.1815V22.8215H74.5162V58.7831H80.8562L80.8514 46.2119L89.7466 58.7831Z" fill="#fff"/>
+            <path d="M50.5937 22.8167H56.9321V58.7815H50.5937V22.8167Z" fill="#fff"/>
+            <path d="M62.5569 35.2255H68.8953V58.7815H62.5569V35.2255Z" fill="#fff"/>
+            <path d="M34.1145 34.9903C32.13 34.9875 30.176 35.4779 28.4281 36.4175V22.8175H22.0889V47.0111C22.0882 49.3893 22.7929 51.7143 24.1136 53.692C25.4344 55.6697 27.3119 57.2114 29.5089 58.122C31.7058 59.0326 34.1235 59.2712 36.4561 58.8078C38.7887 58.3443 40.9315 57.1996 42.6134 55.5183C44.2954 53.837 45.441 51.6946 45.9054 49.3622C46.3698 47.0298 46.1321 44.6121 45.2224 42.4148C44.3126 40.2175 42.7717 38.3393 40.7945 37.0177C38.8173 35.6962 36.4927 34.9906 34.1145 34.9903ZM34.1145 52.7983C32.9701 52.7983 31.8514 52.459 30.8998 51.8232C29.9482 51.1874 29.2066 50.2837 28.7686 49.2265C28.3306 48.1692 28.216 47.0058 28.4392 45.8833C28.6624 44.7609 29.2134 43.7299 30.0226 42.9206C30.8317 42.1113 31.8627 41.5602 32.9851 41.3368C34.1075 41.1134 35.2709 41.2279 36.3283 41.6657C37.3856 42.1036 38.2894 42.8451 38.9253 43.7966C39.5612 44.748 39.9007 45.8667 39.9009 47.0111C39.9012 47.7711 39.7517 48.5237 39.4611 49.226C39.1704 49.9282 38.7442 50.5663 38.2068 51.1037C37.6695 51.6411 37.0314 52.0674 36.3293 52.3582C35.6271 52.649 34.8745 52.7985 34.1145 52.7983Z" fill="#fff"/>
+        </svg>`;
+    }
     const grid = document.getElementById("subscriptionPlansGrid");
     if (!grid) return;
     const activePlan = signedIn
@@ -344,7 +343,7 @@ function renderSubscriptionPlans(subscription, signedIn = true) {
                     <span class="blik-price-strong">· ${blikPrice}</span>`;
 
                 blikAction = `<div class="subscription-blik-option">
-                    <button type="button" class="subscription-plan-button is-blik ${isPrepaid ? "is-extend" : ""}" data-billing-action="blik" data-plan="${planId}" aria-label="${t(isPrepaid ? "blik_extend" : "blik_pay")}: ${blikPrice}">
+                    <button type="button" class="subscription-plan-button is-blik ${isPrepaid ? "is-extend" : ""}" data-billing-action="blik" data-plan="${planId}" aria-label="${t(isPrepaid ? "blik_extend" : "blik_pay")}${isPrepaid ? " BLIKIEM" : ""}: ${blikPrice}">
                         ${blikBtnContent}
                     </button>
                     <span class="subscription-trial-note">${t("blik_terms")}</span>
