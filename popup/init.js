@@ -132,7 +132,15 @@ function activateMountedTab(tabName) {
         content.classList.toggle("active", content.id === "tab-" + tabName);
     });
 
-    if (tabName === "words" && typeof loadWords === "function") {
+    if (tabName === "settings") {
+        const grid = document.getElementById("subscriptionPlansGrid");
+        if (grid && grid.dataset.hasPaidPlan === "true") {
+            const maxScroll = Math.max(0, grid.scrollWidth - grid.clientWidth);
+            if (maxScroll > 0) {
+                grid.scrollLeft = maxScroll;
+            }
+        }
+    } else if (tabName === "words" && typeof loadWords === "function") {
         loadWords();
     } else if (tabName === "review" && typeof loadReviewQueue === "function") {
         loadReviewQueue();

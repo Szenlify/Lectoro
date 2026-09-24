@@ -424,38 +424,84 @@ function renderSubscriptionPlans(subscription, signedIn = true) {
         })
         .join("");
 
-    initSubscriptionCarousel(grid);
+    initSubscriptionCarousel(grid, hasPaidPlan);
 }
 
 /* Subscription Carousel Navigation */
-function initSubscriptionCarousel(grid) {
+function initSubscriptionCarousel(grid, hasPaidPlan = false) {
     if (!grid) return;
     const cards = grid.querySelectorAll(".subscription-plan-card");
     if (cards.length === 0) return;
 
-    const btn = document.getElementById("carouselNext");
-    if (!btn) return;
+    grid.dataset.hasPaidPlan = hasPaidPlan ? "true" : "false";
 
-    let scrolledToEnd = false;
+    const nextBtn = document.getElementById("carouselNext");
+    const prevBtn = document.getElementById("carouselPrev");
+    const carousel = document.getElementById("subscriptionCarousel");
 
-    function updateArrow() {
-        const maxScroll = grid.scrollWidth - grid.clientWidth;
-        scrolledToEnd = grid.scrollLeft >= maxScroll - 4;
-        btn.classList.toggle("is-scrolled-end", scrolledToEnd);
-        const carousel = document.getElementById("subscriptionCarousel");
-        if (carousel) carousel.classList.toggle("is-scrolled-end", scrolledToEnd);
+    function updateArrows() {
+        const maxScroll = Math.max(0, grid.scrollWidth - grid.clientWidth);
+        if (maxScroll <= 4) {
+            if (nextBtn) nextBtn.classList.add("is-hidden");
+            if (prevBtn) prevBtn.classList.add("is-hidden");
+            if (carousel) {
+                carousel.classList.add("is-scrolled-end");
+                carousel.classList.remove("has-scrolled-left");
+            }
+            return;
+        }
+
+        const atStart = grid.scrollLeft <= 4;
+        const atEnd = grid.scrollLeft >= maxScroll - 4;
+
+        if (prevBtn) prevBtn.classList.toggle("is-hidden", atStart);
+        if (nextBtn) nextBtn.classList.toggle("is-hidden", atEnd);
+        if (carousel) {
+            carousel.classList.toggle("is-scrolled-end", atEnd);
+            carousel.classList.toggle("has-scrolled-left", !atStart);
+        }
     }
 
-    btn.addEventListener("click", () => {
-        if (scrolledToEnd) {
-            grid.scrollTo({ left: 0, behavior: "smooth" });
-        } else {
-            grid.scrollBy({ left: grid.clientWidth * 0.55, behavior: "smooth" });
+    if (hasPaidPlan) {
+        const scrollToRight = () => {
+            const maxScroll = Math.max(0, grid.scrollWidth - grid.clientWidth);
+            if (maxScroll > 0) {
+                grid.scrollLeft = maxScroll;
+            }
+            updateArrows();
+        };
+        scrollToRight();
+        if (typeof requestAnimationFrame !== "undefined") {
+            requestAnimationFrame(scrollToRight);
         }
-    });
+    } else {
+        grid.scrollLeft = 0;
+        updateArrows();
+    }
 
-    grid.addEventListener("scroll", updateArrow, { passive: true });
-    updateArrow();
+    if (!grid.dataset.carouselNavBound) {
+        grid.dataset.carouselNavBound = "true";
+
+        if (nextBtn) {
+            nextBtn.addEventListener("click", () => {
+                grid.scrollBy({ left: grid.clientWidth * 0.6, behavior: "smooth" });
+            });
+        }
+
+        if (prevBtn) {
+            prevBtn.addEventListener("click", () => {
+                grid.scrollBy({ left: -grid.clientWidth * 0.6, behavior: "smooth" });
+            });
+        }
+
+        grid.addEventListener("scroll", updateArrows, { passive: true });
+        if (typeof ResizeObserver !== "undefined") {
+            const ro = new ResizeObserver(() => updateArrows());
+            ro.observe(grid);
+        }
+    }
+
+    updateArrows();
 }
 
 function renderGeminiTtsUsage(subscription) {

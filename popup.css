@@ -3453,12 +3453,38 @@ html[data-lectoro-ai-limit-reached] #exportQuiz {
     display: none;
 }
 
+@property --qt-ai-angle {
+    syntax: "<angle>";
+    inherits: false;
+    initial-value: 0deg;
+}
+
+@keyframes __qt_ai_border_sweep {
+    0% {
+        --qt-ai-angle: 0deg;
+        opacity: 0;
+    }
+
+    10% {
+        opacity: 1;
+    }
+
+    90% {
+        opacity: 1;
+    }
+
+    100% {
+        --qt-ai-angle: 360deg;
+        opacity: 0;
+    }
+}
+
+.carousel-arrow-prev,
 .carousel-arrow-next {
     position: absolute;
-    right: -6px;
     top: 50%;
     transform: translateY(-50%);
-    z-index: 3;
+    z-index: 4;
     display: grid;
     place-items: center;
     width: 28px;
@@ -3469,10 +3495,27 @@ html[data-lectoro-ai-limit-reached] #exportQuiz {
     backdrop-filter: blur(8px);
     color: #c7d2fe;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition:
+        transform 0.2s ease,
+        border-color 0.2s ease,
+        background 0.2s ease,
+        box-shadow 0.2s ease,
+        opacity 0.25s ease,
+        visibility 0.25s ease;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    opacity: 1;
+    visibility: visible;
 }
 
+.carousel-arrow-prev {
+    left: -6px;
+}
+
+.carousel-arrow-next {
+    right: -6px;
+}
+
+.carousel-arrow-prev:hover,
 .carousel-arrow-next:hover {
     border-color: rgba(129, 140, 248, 0.55);
     background: rgba(99, 102, 241, 0.25);
@@ -3480,12 +3523,63 @@ html[data-lectoro-ai-limit-reached] #exportQuiz {
     box-shadow: 0 4px 16px rgba(99, 102, 241, 0.2);
 }
 
-.carousel-arrow-next.is-scrolled-end {
-    transform: translateY(-50%) rotate(180deg);
+.carousel-arrow-prev.is-hidden,
+.carousel-arrow-next.is-hidden {
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
 }
 
-.carousel-arrow-next.is-scrolled-end:hover {
-    transform: translateY(-50%) rotate(180deg) scale(1.1);
+.carousel-arrow-next::before {
+    content: "";
+    position: absolute;
+    inset: -1.5px;
+    border-radius: 50%;
+    padding: 1.5px;
+    background: conic-gradient(
+        from var(--qt-ai-angle, 0deg),
+        transparent 0%,
+        transparent 25%,
+        #a855f7 45%,
+        #4ecdc4 65%,
+        #ffffff 80%,
+        #a855f7 92%,
+        transparent 100%
+    );
+    -webkit-mask:
+        linear-gradient(#fff 0 0) content-box,
+        linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 1;
+    animation: __qt_ai_border_sweep 2.2s cubic-bezier(0.35, 1, 0.5, 0.9) infinite;
+}
+
+.carousel-arrow-prev svg,
+.carousel-arrow-next svg {
+    position: relative;
+    z-index: 2;
+}
+
+.subscription-carousel::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 32px;
+    background: linear-gradient(270deg, transparent, rgba(4, 26, 36, 0.85));
+    pointer-events: none;
+    z-index: 2;
+    border-radius: 14px 0 0 14px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.subscription-carousel.has-scrolled-left::before {
+    opacity: 1;
 }
 
 .subscription-carousel::after {
@@ -4079,6 +4173,10 @@ html[data-lectoro-ai-limit-reached] #exportQuiz {
 @media (prefers-reduced-motion: reduce) {
     .subscription-plan-card:hover {
         transform: none;
+    }
+
+    .carousel-arrow-next::before {
+        animation: none;
     }
 }
 
