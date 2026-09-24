@@ -434,6 +434,19 @@ test("prepare maps language codes to full names and enforces source/target langu
     assert.equal(validItJa.d.s, "Che non si trova più.");
     assert.equal(validItJa.d.t, "見つからない。");
 });
+test("prepare instructs Simple English learner definition and 1-to-1 sentence translation in entry.d", () => {
+    const job = prepare({
+        kind: "word",
+        text: "permanent",
+        sourceLang: "en",
+        targetLang: "pl",
+    }, "u1");
+
+    assert.ok(job.prompt.includes("Simple English"));
+    assert.ok(job.prompt.includes("exact, faithful 1-to-1 sentence translation of field s"));
+    assert.ok(job.prompt.includes("translate the actual definition sentence itself"));
+    assert.ok(job.prompt.includes("NEVER return just a list of adjectives, synonyms, or single words"));
+});
 
 
 
