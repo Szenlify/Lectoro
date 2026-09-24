@@ -3818,7 +3818,7 @@ html[data-lectoro-ai-limit-reached] #exportQuiz {
     position: relative;
     display: flex;
     flex: 0 0 42%;
-    min-width: 0;
+    min-width: 210px;
     min-height: 220px;
     flex-direction: column;
     padding: 12px 12px 10px;
@@ -3851,8 +3851,9 @@ html[data-lectoro-ai-limit-reached] #exportQuiz {
     position: absolute;
     top: -34px;
     right: -38px;
-    width: 85px;
-    height: 85px;
+    width: 325px;
+    height: 117px;
+     border: 1px solid rgba(110, 231, 183, 0.406);
     border-radius: 50%;
     background: rgba(110, 231, 183, 0.06);
     content: "";
