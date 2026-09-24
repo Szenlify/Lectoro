@@ -320,7 +320,7 @@ function renderSubscriptionPlans(subscription, signedIn = true) {
                     ? (lang === "pl" ? "0 zł" : "$0")
                     : `$${limits.priceMonthly.amount}`);
             const tts = limits.geminiTts.enabled
-                ? `${limits.geminiTts.charactersPerMonth.toLocaleString(lang)} Gemini TTS`
+                ? `${limits.geminiTts.charactersPerMonth.toLocaleString(lang)} ${t("gemini_voices")}`
                 : t("basic_voice");
             let action =
                 `<span class="subscription-plan-current">${t("plan_current")}</span>`;
@@ -506,14 +506,14 @@ function renderGeminiTtsUsage(subscription) {
     if (limitReached) {
         card.classList.add("is-empty");
         if (title) title.textContent = t("gemini_limit_reached");
-        if (info) info.textContent = `Gemini TTS: ${t("gemini_chars_left", { left: 0 })}`;
+        if (info) info.textContent = `${t("gemini_voices")}: ${t("gemini_chars_left", { left: 0 })}`;
     } else {
         if (percentage >= 80) card.classList.add("is-warning");
         const formattedLeft = left.toLocaleString(lang);
         if (title)
             title.textContent = t("gemini_chars_left", { left: formattedLeft });
         if (info)
-            info.textContent = `Gemini TTS: ${t("gemini_chars_left", { left: formattedLeft })}`;
+            info.textContent = `${t("gemini_voices")}: ${t("gemini_chars_left", { left: formattedLeft })}`;
     }
 }
 

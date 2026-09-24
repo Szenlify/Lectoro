@@ -212,10 +212,10 @@ function syncReviewVoiceButton() {
               ? "👨 "
               : "";
     label.textContent = usingGeminiTts
-        ? `${voiceIcon}${voice?.name || "Gemini TTS"}`
+        ? `${voiceIcon}${voice?.name || (typeof SharedI18n !== "undefined" ? SharedI18n.t("gemini_voices") : "Natural voices")}`
         : SharedI18n.t("review_voice_label");
     btn.title = usingGeminiTts
-        ? `Gemini TTS: ${voice?.name || SharedI18n.t("ui_selected_voice")}`
+        ? `${typeof SharedI18n !== "undefined" ? SharedI18n.t("gemini_voices") : "Natural voices"}: ${voice?.name || SharedI18n.t("ui_selected_voice")}`
         : SharedI18n.t("review_voice_btn_title");
 }
 
@@ -233,7 +233,7 @@ function renderFreeVoiceTeaser() {
                 <span class="review-voice-chip">👩 Sulafat (${t("voice_female", "żeński")})</span>
                 <span class="review-voice-chip">👨 Algieba (${t("voice_male", "męski")})</span>
             </div>
-            <button type="button" class="review-voice-upgrade" id="reviewVoiceUpgrade">${t("review_voice_unlock_btn", "Unlock Gemini TTS voices")}</button>
+            <button type="button" class="review-voice-upgrade" id="reviewVoiceUpgrade">${t("review_voice_unlock_btn", "Unlock natural voices")}</button>
         </div>`;
     content
         .querySelector("#reviewVoiceUpgrade")
