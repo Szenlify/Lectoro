@@ -208,7 +208,7 @@ function syncReviewVoiceButton() {
     const voiceIcon =
         voice?.voice_id === "nova" || voice?.voice_id === "Sulafat"
             ? "👩 "
-            : voice?.voice_id === "alloy" || voice?.voice_id === "Algieba"
+            : voice?.voice_id === "onyx" || voice?.voice_id === "alloy" || voice?.voice_id === "Algieba"
               ? "👨 "
               : "";
     label.textContent = usingGeminiTts
@@ -231,7 +231,7 @@ function renderFreeVoiceTeaser() {
             <p>${t("review_voice_natural_desc", "Listen to authentic accents and choose a voice for your reviews.")}</p>
             <div class="review-voice-chips" aria-hidden="true">
                 <span class="review-voice-chip">👩 Nova (${t("voice_female", "żeński")})</span>
-                <span class="review-voice-chip">👨 Alloy (${t("voice_male", "męski")})</span>
+                <span class="review-voice-chip">👨 Onyx (${t("voice_male", "męski")})</span>
             </div>
             <button type="button" class="review-voice-upgrade" id="reviewVoiceUpgrade">${t("review_voice_unlock_btn", "Unlock natural voices")}</button>
         </div>`;

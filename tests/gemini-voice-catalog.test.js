@@ -25,8 +25,8 @@ test("Review lists the two AI voices without a voice-list request, even before b
     for (const contentScript of [false, true]) {
         const service = catalogue("basic", contentScript);
         const voices = await service.getGeminiTtsVoices("review");
-        assert.deepEqual(Array.from(voices, (voice) => voice.voice_id), ["nova", "alloy"]);
-        assert.deepEqual(Array.from(voices, (voice) => voice.name), ["Nova", "Alloy"]);
+        assert.deepEqual(Array.from(voices, (voice) => voice.voice_id), ["nova", "onyx"]);
+        assert.deepEqual(Array.from(voices, (voice) => voice.name), ["Nova", "Onyx"]);
     }
 });
 

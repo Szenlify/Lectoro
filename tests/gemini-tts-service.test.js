@@ -45,9 +45,9 @@ test("legacy preference migrates and identical recordings are synthesized once",
     const ctx = service({ stored: { ttsMode: "elevenlabs", elVoiceId: "TX3LPaxmHKxFdv7VOQHJ" } });
     const first = await ctx.api.getAudioBlob("Cześć", "pl", { allowSynthesis: true, allowFallback: false });
     assert.equal(first.provider, "openai");
-    assert.equal(first.voiceId, "alloy");
+    assert.equal(first.voiceId, "onyx");
     assert.equal(ctx.storage.ttsMode, "openai");
-    assert.deepEqual(ctx.syntheses[0].slice(0, 4), ["Cześć", "alloy", "review", "pl"]);
+    assert.deepEqual(ctx.syntheses[0].slice(0, 4), ["Cześć", "onyx", "review", "pl"]);
     assert.equal(ctx.syntheses[0][4]?.skipCacheCheck, true);
     const second = await ctx.api.getAudioBlob("Cześć", "pl", { allowSynthesis: true, allowFallback: false });
     assert.equal(second.cached, true);
@@ -59,7 +59,7 @@ test("cached recordings never cross language, voice or legacy provider boundarie
     ctx.cache.set("Gift|nova", ctx.mp3); // Old unscoped cache format.
     await ctx.api.getAudioBlob("Gift", "en", { allowSynthesis: true });
     await ctx.api.getAudioBlob("Gift", "de", { allowSynthesis: true });
-    await ctx.api.getAudioBlob("Gift", "en", { allowSynthesis: true, voiceId: "alloy" });
+    await ctx.api.getAudioBlob("Gift", "en", { allowSynthesis: true, voiceId: "onyx" });
     assert.equal(ctx.syntheses.length, 3);
     assert.equal(ctx.cache.size, 4);
 });
@@ -107,12 +107,12 @@ test("cancelling during synthesis prevents late playback", async () => {
     assert.equal(result.type, "none");
 });
 
-test("OPENAI_VOICE_GAIN defines loudness compensation for Nova (~1.85x) and Alloy (~1.30x)", () => {
+test("OPENAI_VOICE_GAIN defines loudness compensation for Nova (~1.85x) and Onyx (~1.30x)", () => {
     assert.equal(Constants.OPENAI_VOICE_GAIN.nova, 1.85);
-    assert.equal(Constants.OPENAI_VOICE_GAIN.alloy, 1.30);
+    assert.equal(Constants.OPENAI_VOICE_GAIN.onyx, 1.30);
 });
 
-test("playAudioBlob uses Web Audio API to boost Nova by 1.85x and Alloy by 1.30x with dynamic compressor", async () => {
+test("playAudioBlob uses Web Audio API to boost Nova by 1.85x and Onyx by 1.30x with dynamic compressor", async () => {
     let appliedGain = null;
     let compressorCreated = false;
     let sourceStarted = false;
@@ -178,12 +178,12 @@ test("playAudioBlob uses Web Audio API to boost Nova by 1.85x and Alloy by 1.30x
     assert.equal(compressorCreated, true);
     assert.equal(sourceStarted, true);
 
-    // Test with Alloy (~1.30x)
+    // Test with Onyx (~1.30x)
     appliedGain = null;
     compressorCreated = false;
     sourceStarted = false;
-    const resAlloy = await sandbox.SharedTtsService.playAudioBlob(testMp3, { voiceId: "alloy", volume: 1 });
-    assert.equal(resAlloy.type, "audio");
+    const resOnyx = await sandbox.SharedTtsService.playAudioBlob(testMp3, { voiceId: "onyx", volume: 1 });
+    assert.equal(resOnyx.type, "audio");
     assert.equal(appliedGain, 1.30);
     assert.equal(compressorCreated, true);
     assert.equal(sourceStarted, true);

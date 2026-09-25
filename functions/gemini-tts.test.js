@@ -19,23 +19,25 @@ test("client and server agree on model, two voices and multilingual cache keys",
     }
     assert.notEqual(audioCacheKey("nova", "Dom", "pl"), audioCacheKey("nova", "DOM", "pl"));
     assert.notEqual(audioCacheKey("nova", "Gift", "en"), audioCacheKey("nova", "Gift", "de"));
-    assert.notEqual(audioCacheKey("nova", "Hello", "en"), audioCacheKey("alloy", "Hello", "en"));
+    assert.notEqual(audioCacheKey("nova", "Hello", "en"), audioCacheKey("onyx", "Hello", "en"));
     assert.throws(() => audioCacheKey("old-elevenlabs-id", "Hello", "en"));
     assert.throws(() => audioCacheKey("nova", "Hello", "../../en"));
 });
 
 test("legacy voice settings migrate without changing browser voice preference", () => {
     assert.deepEqual(C.normalizeTtsProviderSettings({ ttsMode: "elevenlabs", elVoiceId: "TX3LPaxmHKxFdv7VOQHJ" }),
-        { ttsMode: "openai", elVoiceId: "alloy" });
+        { ttsMode: "openai", elVoiceId: "onyx" });
     assert.deepEqual(C.normalizeTtsProviderSettings({ ttsMode: "elevenlabs", elVoiceId: "XrExE9yKIg1WjnnlVkGX" }),
         { ttsMode: "openai", elVoiceId: "nova" });
     assert.equal(C.normalizeTtsProviderSettings({ ttsMode: "browser" }).ttsMode, "browser");
     assert.deepEqual(C.normalizeTtsProviderSettings({ ttsMode: "gemini", elVoiceId: "Algieba" }),
-        { ttsMode: "openai", elVoiceId: "alloy" });
+        { ttsMode: "openai", elVoiceId: "onyx" });
     assert.deepEqual(C.normalizeTtsProviderSettings({ ttsMode: "gemini", elVoiceId: "Sulafat" }),
         { ttsMode: "openai", elVoiceId: "nova" });
     assert.deepEqual(C.normalizeTtsProviderSettings({ ttsMode: "openai", elVoiceId: "alloy" }),
-        { ttsMode: "openai", elVoiceId: "alloy" });
+        { ttsMode: "openai", elVoiceId: "onyx" });
+    assert.deepEqual(C.normalizeTtsProviderSettings({ ttsMode: "openai", elVoiceId: "onyx" }),
+        { ttsMode: "openai", elVoiceId: "onyx" });
 });
 
 test("PCM is wrapped in a playable 24 kHz mono 16-bit WAV without changing samples", () => {
@@ -86,7 +88,7 @@ test("missing credentials or invalid voices fail before a paid request", async (
 test("quota and access failures have stable codes and are not retried or leaked", async () => {
     for (const [status, code] of [[429, "OPENAI_TTS_PROVIDER_QUOTA"], [403, "OPENAI_TTS_PROVIDER_DISABLED"], [500, "OPENAI_TTS_SYNTHESIS_FAILED"]]) {
         let calls = 0;
-        await assert.rejects(synthesizeSpeech({ apiKey: "test", text: "Hi", voiceId: "alloy", language: "en",
+        await assert.rejects(synthesizeSpeech({ apiKey: "test", text: "Hi", voiceId: "onyx", language: "en",
             fetchImpl: async () => { calls++; return { ok: false, status }; },
         }), { code });
         assert.equal(calls, 1);

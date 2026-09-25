@@ -465,7 +465,7 @@ exports.geminiProxy = onRequest(
             const rawVoiceId = typeof req.body.voiceId === "string" ? req.body.voiceId : "";
             let voiceId = rawVoiceId.toLowerCase();
             if (voiceId === "sulafat") voiceId = "nova";
-            if (voiceId === "algieba") voiceId = "alloy";
+            if (voiceId === "algieba" || voiceId === "alloy") voiceId = "onyx";
             if (!VOICES.some((voice) => voice.voice_id === voiceId)) {
                 return res.status(400).json({ error: "Invalid TTS voice identifier." });
             }

@@ -4,11 +4,11 @@ const MODEL = "tts-1";
 const CACHE_VERSION = "v1";
 const VOICES = Object.freeze([
     Object.freeze({ voice_id: "nova", name: "Nova", gender: "female", labels: { description: "Warm & Natural" } }),
-    Object.freeze({ voice_id: "alloy", name: "Alloy", gender: "male", labels: { description: "Balanced & Clear" } }),
+    Object.freeze({ voice_id: "onyx", name: "Onyx", gender: "male", labels: { description: "Balanced & Clear" } }),
 ]);
 const OPENAI_VOICE_GAIN = Object.freeze({
     nova: 1.85,
-    alloy: 1.30,
+    onyx: 1.30,
 });
 
 function normalizeLanguage(language) {
@@ -22,7 +22,7 @@ function normalizeLanguage(language) {
 function normalizeVoiceId(voiceId) {
     const v = String(voiceId || "").trim().toLowerCase();
     if (v === "sulafat") return "nova";
-    if (v === "algieba") return "alloy";
+    if (v === "algieba" || v === "alloy") return "onyx";
     if (VOICES.some((voice) => voice.voice_id === v)) return v;
     throw new Error("Invalid OpenAI TTS voice identifier.");
 }

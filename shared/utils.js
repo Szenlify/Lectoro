@@ -411,8 +411,8 @@
             async getTtsAudioCacheKey(voiceId, text, language = "en") {
                 let v = String(voiceId || "").trim().toLowerCase();
                 if (v === "sulafat") v = "nova";
-                if (v === "algieba") v = "alloy";
-                const allowed = C.ALLOWED_OPENAI_TTS_VOICE_IDS || C.ALLOWED_GEMINI_TTS_VOICE_IDS || ["nova", "alloy"];
+                if (v === "algieba" || v === "alloy") v = "onyx";
+                const allowed = C.ALLOWED_OPENAI_TTS_VOICE_IDS || C.ALLOWED_GEMINI_TTS_VOICE_IDS || ["nova", "onyx"];
                 if (!allowed.includes(v)) throw new Error("Invalid TTS voice.");
                 const lang = String(language || "en").trim().toLowerCase();
                 if (!/^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/.test(lang) || lang.length > 35) throw new Error("Invalid speech language.");

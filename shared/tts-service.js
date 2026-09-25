@@ -462,7 +462,7 @@
 
         /**
          * Play an audio blob using Web Audio API for gain boosting + transparent dynamic limiter.
-         * Boosting Nova by ~1.85x (+5.3 dB) and Alloy by ~1.30x (+2.3 dB) compensates for OpenAI's naturally
+         * Boosting Nova by ~1.85x (+5.3 dB) and Onyx by ~1.30x (+2.3 dB) compensates for OpenAI's naturally
          * softer recording level (-21 LUFS) relative to system/browser TTS (-14 LUFS).
          * Dynamics compressor acts as a transparent peak limiter preventing distortion or clipping.
          * Falls back to standard HTMLAudioElement when Web Audio is unavailable.

@@ -126,6 +126,6 @@ test("hover context serves from R2 if cached and returns 404 without synthesizin
 test("voice catalogue returns exactly the two chosen voices without contacting a provider", async () => {
     const server = backend();
     const response = await server.request({ action: "geminiTtsVoices" });
-    assert.deepEqual(response.body.voices.map((v) => v.voice_id), ["nova", "alloy"]);
+    assert.deepEqual(response.body.voices.map((v) => v.voice_id), ["nova", "onyx"]);
     assert.equal(server.counts.synth, 0);
 });

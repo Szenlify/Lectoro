@@ -362,7 +362,7 @@
         const OPENAI_TTS_CACHE_VERSION = "v1";
         const OPENAI_TTS_VOICES = Object.freeze([
             Object.freeze({ id: "nova", voice_id: "nova", name: "Nova", key: "nova", gender: "female" }),
-            Object.freeze({ id: "alloy", voice_id: "alloy", name: "Alloy", key: "alloy", gender: "male" }),
+            Object.freeze({ id: "onyx", voice_id: "onyx", name: "Onyx", key: "onyx", gender: "male" }),
         ]);
         const ALLOWED_OPENAI_TTS_VOICE_KEYS = Object.freeze(OPENAI_TTS_VOICES.map((v) => v.key));
         const ALLOWED_OPENAI_TTS_VOICE_IDS = Object.freeze(OPENAI_TTS_VOICES.map((v) => v.id));
@@ -370,11 +370,11 @@
         /**
          * Voice loudness compensation gain multipliers.
          * OpenAI "nova" is naturally softer (~ -21 LUFS) compared to system/browser TTS (~ -14 LUFS).
-         * Boosting Nova by ~1.85x (+5.3 dB) and Alloy by ~1.30x (+2.3 dB) brings them to a balanced, crystal-clear level.
+         * Boosting Nova by ~1.85x (+5.3 dB) and Onyx by ~1.30x (+2.3 dB) brings them to a balanced, crystal-clear level.
          */
         const OPENAI_VOICE_GAIN = Object.freeze({
             nova: 1.85,
-            alloy: 1.30,
+            onyx: 1.30,
         });
 
         // Aliases for compatibility
@@ -396,7 +396,7 @@
             const rawVoice = String(settings.elVoiceId || "").trim().toLowerCase();
             let voice = rawVoice;
             if (voice === "sulafat" || voice === "xrexkeyki1wjnnlpkgx") voice = "nova";
-            if (voice === "algieba" || voice === "tx3lpaxmhkxfdv7voqhj") voice = "alloy";
+            if (voice === "algieba" || voice === "tx3lpaxmhkxfdv7voqhj" || voice === "alloy") voice = "onyx";
             const elVoiceId = ALLOWED_OPENAI_TTS_VOICE_IDS.includes(voice) ? voice : "nova";
             return { ttsMode, elVoiceId };
         }
