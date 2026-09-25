@@ -21,12 +21,12 @@ function catalogue(plan, contentScript = false) {
     return sandbox.SubscriptionService;
 }
 
-test("Review lists the two Gemini voices without a voice-list request, even before backend deployment", async () => {
+test("Review lists the two AI voices without a voice-list request, even before backend deployment", async () => {
     for (const contentScript of [false, true]) {
         const service = catalogue("basic", contentScript);
         const voices = await service.getGeminiTtsVoices("review");
-        assert.deepEqual(Array.from(voices, (voice) => voice.voice_id), ["Sulafat", "Algieba"]);
-        assert.deepEqual(Array.from(voices, (voice) => voice.name), ["Sulafat", "Algieba"]);
+        assert.deepEqual(Array.from(voices, (voice) => voice.voice_id), ["nova", "alloy"]);
+        assert.deepEqual(Array.from(voices, (voice) => voice.name), ["Nova", "Alloy"]);
     }
 });
 

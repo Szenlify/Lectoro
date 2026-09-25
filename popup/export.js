@@ -460,7 +460,7 @@ document.getElementById("exportAnki").addEventListener("click", async () => {
         const res = await fetchAudioBlob(candText, ttsLang, {
           allowFallback: false,
         });
-        if (res?.blob && res.provider === "gemini") {
+        if (res?.blob && (res.provider === "openai" || res.provider === "gemini")) {
           audioRes = res;
           usedAudioText = candText;
           break;

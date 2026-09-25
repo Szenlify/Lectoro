@@ -197,18 +197,18 @@ function syncReviewVoiceButton() {
     const voice = selectedReviewVoice();
     const usingGeminiTts =
         enabled &&
-        ttsMode === "gemini" &&
+        (ttsMode === "openai" || ttsMode === "gemini") &&
         !!reviewGeminiVoiceId &&
         reviewGeminiVoiceId !== "random";
 
     btn.classList.toggle("is-gemini", usingGeminiTts);
     systemOption?.classList.toggle("active", !usingGeminiTts);
     badge.classList.toggle("is-locked", !enabled);
-    badge.textContent = usingGeminiTts ? "G" : "AI";
+    badge.textContent = usingGeminiTts ? "AI" : "AI";
     const voiceIcon =
-        voice?.voice_id === "Sulafat"
+        voice?.voice_id === "nova" || voice?.voice_id === "Sulafat"
             ? "👩 "
-            : voice?.voice_id === "Algieba"
+            : voice?.voice_id === "alloy" || voice?.voice_id === "Algieba"
               ? "👨 "
               : "";
     label.textContent = usingGeminiTts
@@ -230,8 +230,8 @@ function renderFreeVoiceTeaser() {
             <div class="review-voice-teaser-title"><span>${t("review_voice_natural_title", "Natural AI voices")}</span><span>🔒</span></div>
             <p>${t("review_voice_natural_desc", "Listen to authentic accents and choose a voice for your reviews.")}</p>
             <div class="review-voice-chips" aria-hidden="true">
-                <span class="review-voice-chip">👩 Sulafat (${t("voice_female", "żeński")})</span>
-                <span class="review-voice-chip">👨 Algieba (${t("voice_male", "męski")})</span>
+                <span class="review-voice-chip">👩 Nova (${t("voice_female", "żeński")})</span>
+                <span class="review-voice-chip">👨 Alloy (${t("voice_male", "męski")})</span>
             </div>
             <button type="button" class="review-voice-upgrade" id="reviewVoiceUpgrade">${t("review_voice_unlock_btn", "Unlock natural voices")}</button>
         </div>`;
@@ -250,7 +250,7 @@ function syncGeminiTtsVoiceActiveState() {
     if (!list) return false;
     list.querySelectorAll(".review-voice-item").forEach((btn) => {
         const isActive =
-            ttsMode === "gemini" && reviewGeminiVoiceId === btn.dataset.voiceId;
+            (ttsMode === "openai" || ttsMode === "gemini") && reviewGeminiVoiceId === btn.dataset.voiceId;
         btn.classList.toggle("active", isActive);
         btn.setAttribute("aria-pressed", String(isActive));
     });
@@ -287,12 +287,12 @@ function renderGeminiTtsVoiceSelect() {
         const item = document.createElement("button");
         item.type = "button";
         const isActive =
-            ttsMode === "gemini" && reviewGeminiVoiceId === voice.voice_id;
+            (ttsMode === "openai" || ttsMode === "gemini") && reviewGeminiVoiceId === voice.voice_id;
         item.className = `review-voice-item${isActive ? " active" : ""}`;
         item.dataset.voiceId = voice.voice_id;
         item.setAttribute("aria-pressed", String(isActive));
 
-        const isFemale = voice.voice_id === "Sulafat";
+        const isFemale = voice.voice_id === "nova" || voice.voice_id === "Sulafat";
         const avatar = document.createElement("span");
         avatar.className = "review-voice-avatar el";
         avatar.textContent = isFemale ? "👩" : "👨";
@@ -321,7 +321,7 @@ function renderGeminiTtsVoiceSelect() {
         item.addEventListener("click", async (event) => {
             event.stopPropagation();
             reviewGeminiVoiceId = voice.voice_id;
-            ttsMode = "gemini";
+            ttsMode = "openai";
             if (typeof clearPopupGeminiTtsProviderBlock === "function") {
                 clearPopupGeminiTtsProviderBlock();
             }
@@ -414,7 +414,7 @@ async function updateReviewVoiceUI() {
         SubscriptionConfig.getPlanLimits(reviewVoiceProfile.plan).geminiTts
             .enabled;
     if (!enabled) {
-        if (ttsMode === "gemini") {
+        if (ttsMode === "gemini" || ttsMode === "openai") {
             ttsMode = "browser";
             await chrome.storage.local.set({ ttsMode });
         }
@@ -880,8 +880,8 @@ function prefetchReviewCardAudio(w) {
     )
         return;
 
-    // Check TTS settings: only prefetch if Gemini TTS mode is enabled
-    if (ttsMode !== "gemini") return;
+    // Check TTS settings: only prefetch if AI TTS mode is enabled
+    if (ttsMode !== "gemini" && ttsMode !== "openai") return;
 
     const defaultLearning =
         typeof popupState !== "undefined" && popupState.learningLang
@@ -898,7 +898,7 @@ function prefetchReviewCardAudio(w) {
 
     if (!speakText || !speakText.trim()) return;
 
-    const voiceId = reviewGeminiVoiceId || "Sulafat";
+    const voiceId = reviewGeminiVoiceId || "nova";
     const key = `${srcL}::${voiceId}::${speakText.trim()}`;
     if (_prefetchedCardKeys.has(key)) return;
     _prefetchedCardKeys.add(key);

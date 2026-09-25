@@ -86,7 +86,7 @@ async function getCachedAudio(config, voiceId, text, language = "en") {
             key,
             buffer,
             publicUrl,
-            contentType: response.ContentType || "audio/wav",
+            contentType: response.ContentType || (key.endsWith(".mp3") ? "audio/mpeg" : "audio/wav"),
         };
     } catch (error) {
         // NoSuchKey / 404 is expected on cache miss
@@ -98,7 +98,7 @@ async function getCachedAudio(config, voiceId, text, language = "en") {
 }
 
 /**
- * Save synthesized Gemini TTS audio buffer to Cloudflare R2.
+ * Save synthesized TTS audio buffer (MP3/WAV) to Cloudflare R2.
  */
 async function saveCachedAudio(config, voiceId, text, audioBuffer, language = "en") {
     const s3 = getR2Client(config);
@@ -106,7 +106,8 @@ async function saveCachedAudio(config, voiceId, text, audioBuffer, language = "e
     if (!s3 || !bucket || !audioBuffer || audioBuffer.length === 0) return null;
 
     const key = audioCacheKey(voiceId, text, language);
-    const hash = key.split("/").pop().replace(/\.wav$/, "");
+    const hash = key.split("/").pop().replace(/\.(wav|mp3)$/, "");
+    const contentType = key.endsWith(".mp3") ? "audio/mpeg" : "audio/wav";
 
     try {
         const { PutObjectCommand } = getS3Sdk();
@@ -114,7 +115,7 @@ async function saveCachedAudio(config, voiceId, text, audioBuffer, language = "e
             Bucket: bucket,
             Key: key,
             Body: audioBuffer,
-            ContentType: "audio/wav",
+            ContentType: contentType,
             CacheControl: "public, max-age=31536000, immutable",
             Metadata: {
                 voiceId,

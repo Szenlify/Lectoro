@@ -357,22 +357,36 @@
             return LANG_TAGS[c] || String(code).toUpperCase();
         }
 
-        // Keep aligned with functions/gemini-tts.js (enforced by tests).
-        const GEMINI_TTS_MODEL = "gemini-2.5-flash-preview-tts";
-        const GEMINI_TTS_CACHE_VERSION = "v1";
-        const GEMINI_TTS_VOICES = Object.freeze([
-            Object.freeze({ id: "Sulafat", name: "Sulafat", key: "sulafat" }),
-            Object.freeze({ id: "Algieba", name: "Algieba", key: "algieba" }),
+        // Keep aligned with functions/openai-tts.js (enforced by tests).
+        const OPENAI_TTS_MODEL = "tts-1";
+        const OPENAI_TTS_CACHE_VERSION = "v1";
+        const OPENAI_TTS_VOICES = Object.freeze([
+            Object.freeze({ id: "nova", voice_id: "nova", name: "Nova", key: "nova", gender: "female" }),
+            Object.freeze({ id: "alloy", voice_id: "alloy", name: "Alloy", key: "alloy", gender: "male" }),
         ]);
-        const ALLOWED_GEMINI_TTS_VOICE_KEYS = Object.freeze(GEMINI_TTS_VOICES.map((v) => v.key));
-        const ALLOWED_GEMINI_TTS_VOICE_IDS = Object.freeze(GEMINI_TTS_VOICES.map((v) => v.id));
+        const ALLOWED_OPENAI_TTS_VOICE_KEYS = Object.freeze(OPENAI_TTS_VOICES.map((v) => v.key));
+        const ALLOWED_OPENAI_TTS_VOICE_IDS = Object.freeze(OPENAI_TTS_VOICES.map((v) => v.id));
+
+        // Aliases for compatibility
+        const GEMINI_TTS_MODEL = OPENAI_TTS_MODEL;
+        const GEMINI_TTS_CACHE_VERSION = OPENAI_TTS_CACHE_VERSION;
+        const GEMINI_TTS_VOICES = OPENAI_TTS_VOICES;
+        const ALLOWED_GEMINI_TTS_VOICE_KEYS = ALLOWED_OPENAI_TTS_VOICE_KEYS;
+        const ALLOWED_GEMINI_TTS_VOICE_IDS = ALLOWED_OPENAI_TTS_VOICE_IDS;
 
         function normalizeTtsProviderSettings(settings = {}) {
-            const ttsMode = settings.ttsMode === "elevenlabs" ? "gemini" : settings.ttsMode || "browser";
+            let ttsMode = settings.ttsMode;
+            if (ttsMode === "elevenlabs" || ttsMode === "gemini") {
+                ttsMode = "openai";
+            } else if (!ttsMode) {
+                ttsMode = "browser";
+            }
             // elVoiceId is a persisted legacy key. Reuse it to preserve existing installations.
-            const voice = settings.elVoiceId;
-            const elVoiceId = ALLOWED_GEMINI_TTS_VOICE_IDS.includes(voice) ? voice
-                : voice === "TX3LPaxmHKxFdv7VOQHJ" ? "Algieba" : "Sulafat";
+            const rawVoice = String(settings.elVoiceId || "").trim().toLowerCase();
+            let voice = rawVoice;
+            if (voice === "sulafat" || voice === "xrexkeyki1wjnnlpkgx") voice = "nova";
+            if (voice === "algieba" || voice === "tx3lpaxmhkxfdv7voqhj") voice = "alloy";
+            const elVoiceId = ALLOWED_OPENAI_TTS_VOICE_IDS.includes(voice) ? voice : "nova";
             return { ttsMode, elVoiceId };
         }
 
@@ -445,7 +459,11 @@
             detectBrowserLanguage,
             getDefaultLanguageSettings,
             LANG_NAMES,
-            LANG_TAGS,
+            OPENAI_TTS_MODEL,
+            OPENAI_TTS_CACHE_VERSION,
+            OPENAI_TTS_VOICES,
+            ALLOWED_OPENAI_TTS_VOICE_KEYS,
+            ALLOWED_OPENAI_TTS_VOICE_IDS,
             GEMINI_TTS_MODEL,
             GEMINI_TTS_CACHE_VERSION,
             normalizeTtsProviderSettings,

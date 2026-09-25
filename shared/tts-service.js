@@ -483,7 +483,7 @@
 
             // Check if audio exists in local AudioCache or Cloudflare R2
             try {
-                const targetVoiceId = settings.elVoiceId || "Sulafat";
+                const targetVoiceId = settings.elVoiceId || "nova";
                 const cacheKey = await Utils.getGeminiAudioCacheKey(targetVoiceId, cleaned, lang);
 
                 // 1. Check local AudioCache (IndexedDB) - free, instant
@@ -502,7 +502,7 @@
                         });
                         if (
                             headRes.ok &&
-                            /^audio\/(?:wav|wave|x-wav)(?:;|$)/i.test(
+                            /^audio\/(?:mpeg|mp3|wav|wave|x-wav)(?:;|$)/i.test(
                                 headRes.headers.get("content-type") || "",
                             )
                         ) {
@@ -613,16 +613,16 @@
             });
             const isMultilingual = segments.length > 1;
 
-            const useGeminiTts =
+            const useNeuralTts =
                 !forceBrowser &&
                 !isMultilingual &&
-                settings.ttsMode === "gemini" &&
+                (settings.ttsMode === "openai" || settings.ttsMode === "gemini") &&
                 !!settings.elVoiceId &&
                 settings.elVoiceId !== "random" &&
                 typeof SubscriptionService !== "undefined" &&
                 typeof AudioCache !== "undefined";
 
-            if (useGeminiTts) {
+            if (useNeuralTts) {
                 try {
                     const targetVoiceId = settings.elVoiceId;
                     const audioResult = await getAudioBlob(cleaned, lang, {
@@ -635,7 +635,7 @@
 
                     if (
                         audioResult?.blob &&
-                        audioResult.provider === "gemini"
+                        (audioResult.provider === "openai" || audioResult.provider === "gemini")
                     ) {
                         if (
                             isCancelled?.() ||
@@ -741,22 +741,22 @@
                 if (!cacheNotBefore) {
                     try {
                         const response = await fetch(await Utils.getR2AudioUrl(preferredVoiceId, cleaned, lang), { signal: AbortSignal.timeout(5000) });
-                        if (response.ok && /^audio\/(?:wav|wave|x-wav)(?:;|$)/i.test(response.headers.get("content-type") || "")) {
+                        if (response.ok && /^audio\/(?:mpeg|mp3|wav|wave|x-wav)(?:;|$)/i.test(response.headers.get("content-type") || "")) {
                             const blob = await response.blob();
                             if (blob.size > 0) {
                                 if (typeof AudioCache !== "undefined") await AudioCache.set(cacheKey, blob);
-                                return { blob, provider: "gemini", cached: true, voiceId: preferredVoiceId };
+                                return { blob, provider: "openai", cached: true, voiceId: preferredVoiceId };
                             }
                         }
                     } catch (_) { /* A cache miss falls through to synthesis. */ }
                 }
             }
 
-            // ── STEP 3: Gemini TTS Proxy Synthesis (Live API) - executed ONLY when allowSynthesis is true ──
+            // ── STEP 3: TTS Proxy Synthesis (Live API) - executed ONLY when allowSynthesis is true ──
             const canSynthesize =
                 allowSynthesis &&
                 !forceBrowser &&
-                settings.ttsMode === "gemini" &&
+                (settings.ttsMode === "openai" || settings.ttsMode === "gemini") &&
                 !!preferredVoiceId &&
                 preferredVoiceId !== "random" &&
                 typeof SubscriptionService !== "undefined" &&
@@ -788,7 +788,7 @@
                         }
                         return {
                             blob,
-                            provider: "gemini",
+                            provider: "openai",
                             cached: false,
                             voiceId: preferredVoiceId,
                         };

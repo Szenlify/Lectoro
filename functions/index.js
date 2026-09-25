@@ -37,9 +37,14 @@ function getAdmin() {
 // Secret Manager is used strictly for sensitive private keys
 const geminiApiKey = defineSecret("LECTORO_GEMINI_API_KEY");
 const r2SecretAccessKey = defineSecret("R2_SECRET_ACCESS_KEY");
+const openAiApiKey = defineSecret("OPENAI_API_KEY");
 
 function getGeminiApiKey() {
     return geminiApiKey.value() || process.env.LECTORO_GEMINI_API_KEY || "";
+}
+
+function getOpenAiApiKey() {
+    return openAiApiKey.value() || process.env.OPENAI_API_KEY || "";
 }
 
 function getR2SecretAccessKey() {
@@ -220,6 +225,7 @@ exports.geminiProxy = onRequest(
         secrets: [
             geminiApiKey,
             r2SecretAccessKey,
+            openAiApiKey,
         ],
     },
     async (req, res) => {
@@ -432,33 +438,36 @@ exports.geminiProxy = onRequest(
             return res.status(200).json({ ok: true, message: "Account and data permanently deleted." });
         }
 
-        if (req.body?.action === "geminiTtsVoices") {
+        if (req.body?.action === "geminiTtsVoices" || req.body?.action === "openAiTtsVoices" || req.body?.action === "ttsVoices") {
             if (!isReviewContext(req.body?.context)) {
                 return res.status(403).json({
-                    error: "Gemini TTS voices are only available in review mode.",
+                    error: "TTS voices are only available in review mode.",
                     code: "GEMINI_TTS_REVIEW_ONLY",
                 });
             }
             if (!getPlanLimits(plan).geminiTts.enabled) {
                 return res.status(403).json({
-                    error: "Gemini TTS is not included in the FREE plan.",
+                    error: "Natural TTS is not included in the FREE plan.",
                     code: "GEMINI_TTS_NOT_INCLUDED",
                 });
             }
             return res.status(200).json({ voices: VOICES });
         }
 
-        if (req.body?.action === "synthesizeGeminiTts") {
+        if (req.body?.action === "synthesizeGeminiTts" || req.body?.action === "synthesizeOpenAiTts" || req.body?.action === "synthesizeTts") {
             if (!isReviewContext(req.body?.context)) {
                 return res.status(403).json({
-                    error: "Gemini TTS is only available in review mode.",
+                    error: "TTS is only available in review mode.",
                     code: "GEMINI_TTS_REVIEW_ONLY",
                 });
             }
             const text = typeof req.body.text === "string" ? req.body.text.trim() : "";
-            const voiceId = typeof req.body.voiceId === "string" ? req.body.voiceId : "";
+            const rawVoiceId = typeof req.body.voiceId === "string" ? req.body.voiceId : "";
+            let voiceId = rawVoiceId.toLowerCase();
+            if (voiceId === "sulafat") voiceId = "nova";
+            if (voiceId === "algieba") voiceId = "alloy";
             if (!VOICES.some((voice) => voice.voice_id === voiceId)) {
-                return res.status(400).json({ error: "Invalid Gemini TTS voice identifier." });
+                return res.status(400).json({ error: "Invalid TTS voice identifier." });
             }
 
             let language;
@@ -473,7 +482,7 @@ exports.geminiProxy = onRequest(
                 return res.status(limitHttpStatus(entitlement)).json({ error: entitlement.message, limit: entitlement });
             }
 
-            // Reserve characters for user in transaction (R2 downloads and Gemini synthesis both count towards character usage)
+            // Reserve characters for user in transaction (R2 downloads and synthesis both count towards character usage)
             let reservation = null;
             try {
                 reservation = await db.runTransaction(async (transaction) => {
@@ -521,7 +530,7 @@ exports.geminiProxy = onRequest(
                     try {
                         const cached = await getCachedAudio(r2Config, voiceId, text, language);
                         if (cached && cached.buffer && cached.buffer.length > 0) {
-                            res.set("Content-Type", cached.contentType || "audio/wav");
+                            res.set("Content-Type", cached.contentType || "audio/mpeg");
                             res.set("Cache-Control", "private, no-store");
                             res.set("X-Lectoro-Plan", plan);
                             res.set("X-Lectoro-Cache", "HIT");
@@ -551,9 +560,9 @@ exports.geminiProxy = onRequest(
                     });
                 }
 
-                // 2. Cache Miss in Review mode: synthesize with Gemini
+                // 2. Cache Miss in Review mode: synthesize with OpenAI TTS
                 const audio = await synthesizeSpeech({
-                    apiKey: getGeminiApiKey(), text, voiceId, language,
+                    apiKey: getOpenAiApiKey() || getGeminiApiKey(), text, voiceId, language,
                 });
 
                 // Asynchronously save to Cloudflare R2 cache so the client receives audio without waiting
@@ -561,7 +570,7 @@ exports.geminiProxy = onRequest(
                     console.warn("[geminiProxy] Async R2 save error:", err.message),
                 );
 
-                res.set("Content-Type", "audio/wav");
+                res.set("Content-Type", "audio/mpeg");
                 res.set("Cache-Control", "private, no-store");
                 res.set("X-Lectoro-Plan", plan);
                 res.set("X-Lectoro-Cache", "MISS");
@@ -574,7 +583,7 @@ exports.geminiProxy = onRequest(
                 );
                 return res.status(200).send(audio);
             } catch (error) {
-                console.error("[subscriptionProxy] Gemini TTS request error:", error);
+                console.error("[subscriptionProxy] TTS request error:", error);
                 if (reservation?.validation?.allowed) {
                     await rollbackGeminiTtsReservation(
                         db,

@@ -4,17 +4,12 @@ const { MODEL, CACHE_VERSION, VOICES, audioCacheKey, pcmToWav, synthesizeSpeech 
 const C = require("../shared/constants");
 const Utils = require("../shared/utils");
 
-const pcm = Buffer.from([0, 0, 255, 127, 0, 128]);
-function audioResponse(overrides = {}) {
-    return { candidates: [{ finishReason: "STOP", content: { parts: [{ inlineData: {
-        mimeType: "audio/L16;codec=pcm;rate=24000", data: pcm.toString("base64"),
-    } }] } }], ...overrides };
-}
+const sampleMp3 = Buffer.from([0xFF, 0xFB, 0x90, 0x64, 0x00, 0x00]);
 
 test("client and server agree on model, two voices and multilingual cache keys", async () => {
-    assert.equal(C.GEMINI_TTS_MODEL, MODEL);
-    assert.equal(C.GEMINI_TTS_CACHE_VERSION, CACHE_VERSION);
-    assert.deepEqual(C.ALLOWED_GEMINI_TTS_VOICE_IDS, VOICES.map((v) => v.voice_id));
+    assert.equal(C.OPENAI_TTS_MODEL, MODEL);
+    assert.equal(C.OPENAI_TTS_CACHE_VERSION, CACHE_VERSION);
+    assert.deepEqual(C.ALLOWED_OPENAI_TTS_VOICE_IDS, VOICES.map((v) => v.voice_id));
     assert.equal(VOICES.length, 2);
     for (const voice of VOICES) {
         for (const lang of ["pl", "en", "zh-CN", "pt-BR", "ja"]) {
@@ -22,24 +17,29 @@ test("client and server agree on model, two voices and multilingual cache keys",
                 audioCacheKey(voice.voice_id, "  Żółć 世界  ", lang));
         }
     }
-    assert.notEqual(audioCacheKey("Sulafat", "Dom", "pl"), audioCacheKey("Sulafat", "DOM", "pl"));
-    assert.notEqual(audioCacheKey("Sulafat", "Gift", "en"), audioCacheKey("Sulafat", "Gift", "de"));
-    assert.notEqual(audioCacheKey("Sulafat", "Hello", "en"), audioCacheKey("Algieba", "Hello", "en"));
+    assert.notEqual(audioCacheKey("nova", "Dom", "pl"), audioCacheKey("nova", "DOM", "pl"));
+    assert.notEqual(audioCacheKey("nova", "Gift", "en"), audioCacheKey("nova", "Gift", "de"));
+    assert.notEqual(audioCacheKey("nova", "Hello", "en"), audioCacheKey("alloy", "Hello", "en"));
     assert.throws(() => audioCacheKey("old-elevenlabs-id", "Hello", "en"));
-    assert.throws(() => audioCacheKey("Sulafat", "Hello", "../../en"));
+    assert.throws(() => audioCacheKey("nova", "Hello", "../../en"));
 });
 
 test("legacy voice settings migrate without changing browser voice preference", () => {
     assert.deepEqual(C.normalizeTtsProviderSettings({ ttsMode: "elevenlabs", elVoiceId: "TX3LPaxmHKxFdv7VOQHJ" }),
-        { ttsMode: "gemini", elVoiceId: "Algieba" });
+        { ttsMode: "openai", elVoiceId: "alloy" });
     assert.deepEqual(C.normalizeTtsProviderSettings({ ttsMode: "elevenlabs", elVoiceId: "XrExE9yKIg1WjnnlVkGX" }),
-        { ttsMode: "gemini", elVoiceId: "Sulafat" });
+        { ttsMode: "openai", elVoiceId: "nova" });
     assert.equal(C.normalizeTtsProviderSettings({ ttsMode: "browser" }).ttsMode, "browser");
     assert.deepEqual(C.normalizeTtsProviderSettings({ ttsMode: "gemini", elVoiceId: "Algieba" }),
-        { ttsMode: "gemini", elVoiceId: "Algieba" });
+        { ttsMode: "openai", elVoiceId: "alloy" });
+    assert.deepEqual(C.normalizeTtsProviderSettings({ ttsMode: "gemini", elVoiceId: "Sulafat" }),
+        { ttsMode: "openai", elVoiceId: "nova" });
+    assert.deepEqual(C.normalizeTtsProviderSettings({ ttsMode: "openai", elVoiceId: "alloy" }),
+        { ttsMode: "openai", elVoiceId: "alloy" });
 });
 
 test("PCM is wrapped in a playable 24 kHz mono 16-bit WAV without changing samples", () => {
+    const pcm = Buffer.from([0, 0, 255, 127, 0, 128]);
     const wav = pcmToWav(pcm);
     assert.equal(wav.toString("ascii", 0, 4), "RIFF");
     assert.equal(wav.toString("ascii", 8, 12), "WAVE");
@@ -53,49 +53,48 @@ test("PCM is wrapped in a playable 24 kHz mono 16-bit WAV without changing sampl
     assert.throws(() => pcmToWav(Buffer.from([1])));
 });
 
-test("synthesis calls only the selected low-cost model, passes voice and language, and returns WAV", async () => {
+test("synthesis calls only OpenAI tts-1 model, passes voice and returns MP3", async () => {
     let count = 0;
-    const result = await synthesizeSpeech({ apiKey: "test-only", text: "Cześć!", voiceId: "Sulafat", language: "pl",
+    const result = await synthesizeSpeech({ apiKey: "test-only", text: "Cześć!", voiceId: "nova", language: "pl",
         fetchImpl: async (url, options) => {
             count++;
-            assert.equal(url, `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`);
-            assert.equal(options.headers["x-goog-api-key"], "test-only");
+            assert.equal(url, "https://api.openai.com/v1/audio/speech");
+            assert.equal(options.headers["Authorization"], "Bearer test-only");
             assert.ok(options.signal);
             const body = JSON.parse(options.body);
-            assert.deepEqual(body.generationConfig.responseModalities, ["AUDIO"]);
-            assert.equal(body.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName, "Sulafat");
-            assert.match(body.contents[0].parts[0].text, /language pl/);
-            assert.ok(body.contents[0].parts[0].text.endsWith("Cześć!"));
-            return { ok: true, json: async () => audioResponse() };
+            assert.equal(body.model, "tts-1");
+            assert.equal(body.voice, "nova");
+            assert.equal(body.input, "Cześć!");
+            assert.equal(body.response_format, "mp3");
+            return {
+                ok: true,
+                arrayBuffer: async () => sampleMp3.buffer.slice(sampleMp3.byteOffset, sampleMp3.byteOffset + sampleMp3.byteLength),
+            };
         },
     });
     assert.equal(count, 1);
-    assert.deepEqual(result.subarray(44), pcm);
+    assert.deepEqual(result, sampleMp3);
 });
 
 test("missing credentials or invalid voices fail before a paid request", async () => {
     const fetchImpl = () => assert.fail("must not call provider");
-    await assert.rejects(synthesizeSpeech({ apiKey: "", text: "Hi", voiceId: "Sulafat", fetchImpl }),
-        { code: "GEMINI_TTS_PROVIDER_DISABLED" });
+    await assert.rejects(synthesizeSpeech({ apiKey: "", text: "Hi", voiceId: "nova", fetchImpl }),
+        { code: "OPENAI_TTS_PROVIDER_DISABLED" });
     await assert.rejects(synthesizeSpeech({ apiKey: "test", text: "Hi", voiceId: "unknown", fetchImpl }));
 });
 
 test("quota and access failures have stable codes and are not retried or leaked", async () => {
-    for (const [status, code] of [[429, "GEMINI_TTS_PROVIDER_QUOTA"], [403, "GEMINI_TTS_PROVIDER_DISABLED"], [500, "GEMINI_TTS_SYNTHESIS_FAILED"]]) {
+    for (const [status, code] of [[429, "OPENAI_TTS_PROVIDER_QUOTA"], [403, "OPENAI_TTS_PROVIDER_DISABLED"], [500, "OPENAI_TTS_SYNTHESIS_FAILED"]]) {
         let calls = 0;
-        await assert.rejects(synthesizeSpeech({ apiKey: "test", text: "Hi", voiceId: "Algieba", language: "en",
+        await assert.rejects(synthesizeSpeech({ apiKey: "test", text: "Hi", voiceId: "alloy", language: "en",
             fetchImpl: async () => { calls++; return { ok: false, status }; },
         }), { code });
         assert.equal(calls, 1);
     }
 });
 
-test("empty, truncated and non-PCM outputs cannot be cached as successful audio", async () => {
-    const invalid = [ {}, audioResponse({ candidates: [{ finishReason: "MAX_TOKENS" }] }),
-        { candidates: [{ content: { parts: [{ inlineData: { mimeType: "audio/mpeg", data: pcm.toString("base64") } }] } }] } ];
-    for (const output of invalid) {
-        await assert.rejects(synthesizeSpeech({ apiKey: "test", text: "Hi", voiceId: "Sulafat", language: "en",
-            fetchImpl: async () => ({ ok: true, json: async () => output }),
-        }));
-    }
+test("empty response cannot be cached as successful audio", async () => {
+    await assert.rejects(synthesizeSpeech({ apiKey: "test", text: "Hi", voiceId: "nova", language: "en",
+        fetchImpl: async () => ({ ok: true, arrayBuffer: async () => new ArrayBuffer(0) }),
+    }));
 });

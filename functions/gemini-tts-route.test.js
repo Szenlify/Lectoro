@@ -20,15 +20,15 @@ function backend({ plan = "basic", used = 12, cached = null, fail = false, month
         require(name) {
             if (name === "firebase-functions/v2/https") return { onRequest: (_, handler) => handler };
             if (name === "firebase-functions/v2/scheduler") return { onSchedule: () => () => {} };
-            if (name === "firebase-functions/params") return { defineSecret: (name) => ({ value: () => name === "LECTORO_GEMINI_API_KEY" ? "test-key" : "" }) };
+            if (name === "firebase-functions/params") return { defineSecret: (name) => ({ value: () => ["LECTORO_GEMINI_API_KEY", "OPENAI_API_KEY"].includes(name) ? "test-key" : "" }) };
             if (name === "firebase-admin") return { apps: [{}], firestore: () => db, auth: () => ({ verifyIdToken: async () => ({ uid: "test-user", plan }) }) };
             if (["./stripe-billing", "./consolidate-dictionary"].includes(name)) return {};
             if (name === "./subscription-config") return Config;
             if (name === "./gemini-policy") return require(name);
             if (name === "./gemini-tts") return { ...Tts, synthesizeSpeech: async (args) => {
                 counts.synth++; synthesis = args;
-                if (fail) { const error = new Error("upstream failure"); error.code = "GEMINI_TTS_PROVIDER_QUOTA"; throw error; }
-                return Tts.pcmToWav(Buffer.from([0, 0]));
+                if (fail) { const error = new Error("upstream failure"); error.code = "OPENAI_TTS_PROVIDER_QUOTA"; throw error; }
+                return Buffer.from([0, 0]);
             } };
             if (name === "./r2-storage") return {
                 getCachedAudio: async () => { counts.cacheRead++; return cached; },
@@ -45,7 +45,7 @@ function backend({ plan = "basic", used = 12, cached = null, fail = false, month
                 json(payload) { this.body = payload; return this; }, send(payload) { this.body = payload; return this; },
             };
             await sandbox.exports.geminiProxy({ method: "POST", headers: { authorization: "Bearer test" }, body: {
-                action: "synthesizeGeminiTts", context: "review", voiceId: "Sulafat", text: "Hello", language: "en", ...body,
+                action: "synthesizeGeminiTts", context: "review", voiceId: "nova", text: "Hello", language: "en", ...body,
             } }, response);
             return response;
         },
@@ -56,7 +56,7 @@ test("successful synthesis preserves existing character usage and does not charg
     const server = backend();
     const response = await server.request({ language: "pl" });
     assert.equal(response.statusCode, 200);
-    assert.equal(response.headers["Content-Type"], "audio/wav");
+    assert.equal(response.headers["Content-Type"], "audio/mpeg");
     assert.equal(server.data.elevenLabsCharactersThisMonth, 17);
     assert.equal(server.data.aiCallsThisMonth, undefined);
     assert.equal(server.synthesis.language, "pl");
@@ -68,13 +68,13 @@ test("provider error rolls back only the current TTS reservation", async () => {
     const server = backend({ fail: true });
     const response = await server.request();
     assert.equal(response.statusCode, 503);
-    assert.equal(response.body.code, "GEMINI_TTS_PROVIDER_QUOTA");
+    assert.equal(response.body.code, "OPENAI_TTS_PROVIDER_QUOTA");
     assert.equal(server.data.elevenLabsCharactersThisMonth, 12);
     assert.equal(server.counts.cacheWrite, 0);
 });
 
 test("R2 cache hits charge character quota, including after a month rollover", async () => {
-    const server = backend({ used: 999, month: "2000-01", cached: { buffer: Buffer.from("wav"), contentType: "audio/wav" } });
+    const server = backend({ used: 999, month: "2000-01", cached: { buffer: Buffer.from("mp3"), contentType: "audio/mpeg" } });
     const response = await server.request();
     assert.equal(response.headers["X-Lectoro-Cache"], "HIT");
     assert.equal(response.headers["X-Lectoro-TTS-Used"], "5");
@@ -84,7 +84,7 @@ test("R2 cache hits charge character quota, including after a month rollover", a
 
 test("free plan, invalid voice, invalid language and overlong input fail before cache or provider access", async () => {
     for (const [options, body] of [
-        [{ plan: "free" }, {}], [{}, { voiceId: "Kore" }], [{}, { language: "../pl" }],
+        [{ plan: "free" }, {}], [{}, { voiceId: "unknown-voice" }], [{}, { language: "../pl" }],
         [{}, { text: "x".repeat(501) }], [{}, { text: " " }], [{}, { context: "content" }],
     ]) {
         const server = backend(options);
@@ -103,12 +103,12 @@ test("exhausted monthly quota prevents synthesis and R2 downloads", async () => 
     assert.equal(response.statusCode, 429);
     assert.equal(server.counts.synth, 0);
     assert.equal(server.data.elevenLabsCharactersThisMonth, limit);
-    const hit = backend({ used: limit, cached: { buffer: Buffer.from("wav") } });
+    const hit = backend({ used: limit, cached: { buffer: Buffer.from("mp3") } });
     assert.equal((await hit.request()).statusCode, 429);
 });
 
 test("hover context serves from R2 if cached and returns 404 without synthesizing if miss", async () => {
-    const hitServer = backend({ cached: { buffer: Buffer.from("wav") } });
+    const hitServer = backend({ cached: { buffer: Buffer.from("mp3") } });
     const hitRes = await hitServer.request({ context: "hover" });
     assert.equal(hitRes.statusCode, 200);
     assert.equal(hitRes.headers["X-Lectoro-Cache"], "HIT");
@@ -126,6 +126,6 @@ test("hover context serves from R2 if cached and returns 404 without synthesizin
 test("voice catalogue returns exactly the two chosen voices without contacting a provider", async () => {
     const server = backend();
     const response = await server.request({ action: "geminiTtsVoices" });
-    assert.deepEqual(response.body.voices.map((v) => v.voice_id), ["Sulafat", "Algieba"]);
+    assert.deepEqual(response.body.voices.map((v) => v.voice_id), ["nova", "alloy"]);
     assert.equal(server.counts.synth, 0);
 });

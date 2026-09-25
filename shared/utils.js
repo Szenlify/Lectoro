@@ -408,8 +408,12 @@
             },
 
             /** Provider/model/voice/language-scoped cache key. Preserve text case for pronunciation. */
-            async getGeminiAudioCacheKey(voiceId, text, language = "en") {
-                if (!C.ALLOWED_GEMINI_TTS_VOICE_IDS.includes(voiceId)) throw new Error("Invalid Gemini TTS voice.");
+            async getTtsAudioCacheKey(voiceId, text, language = "en") {
+                let v = String(voiceId || "").trim().toLowerCase();
+                if (v === "sulafat") v = "nova";
+                if (v === "algieba") v = "alloy";
+                const allowed = C.ALLOWED_OPENAI_TTS_VOICE_IDS || C.ALLOWED_GEMINI_TTS_VOICE_IDS || ["nova", "alloy"];
+                if (!allowed.includes(v)) throw new Error("Invalid TTS voice.");
                 const lang = String(language || "en").trim().toLowerCase();
                 if (!/^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/.test(lang) || lang.length > 35) throw new Error("Invalid speech language.");
                 const value = String(text || "").trim();
@@ -422,11 +426,17 @@
                 } else {
                     throw new Error("SHA-256 is unavailable.");
                 }
-                return `audio/gemini/${C.GEMINI_TTS_MODEL}/${C.GEMINI_TTS_CACHE_VERSION}/${voiceId}/${lang}/${hash}.wav`;
+                const model = C.OPENAI_TTS_MODEL || C.GEMINI_TTS_MODEL || "tts-1";
+                const version = C.OPENAI_TTS_CACHE_VERSION || C.GEMINI_TTS_CACHE_VERSION || "v1";
+                return `audio/openai/${model}/${version}/${v}/${lang}/${hash}.mp3`;
+            },
+
+            async getGeminiAudioCacheKey(voiceId, text, language = "en") {
+                return SharedUtils.getTtsAudioCacheKey(voiceId, text, language);
             },
 
             async getR2AudioUrl(voiceId, text, language = "en") {
-                const key = await SharedUtils.getGeminiAudioCacheKey(voiceId, text, language);
+                const key = await SharedUtils.getTtsAudioCacheKey(voiceId, text, language);
                 return `${R2_CDN_BASE_URL}/${key}`;
             },
 
