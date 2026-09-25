@@ -2,7 +2,7 @@
 
 ## General Information
 
-- **Last Updated:** 2026-09-22
+- **Last Updated:** 2026-09-25
 - **Extension Name:** Lectoro AI - Language Learning & Subtitles
 - **Short Name:** Lectoro AI
 - **Current Version:** 1.0.0
@@ -32,7 +32,7 @@ Master new languages naturally while watching your favorite videos and reading a
 - **Word-by-Word Translation Clouds:** Press S for contextual word and phrase translations above subtitles, with automatic fallback when the primary service is unavailable. Repeated subtitles load from saved results. Use Left/Right arrows or A/D to select a word or phrase, then Z to save it or X to save an AI sentence.
 - **AI Context Explanations:** Receive in-depth breakdowns of complex sentences, idioms, and grammar structures directly in the video player or reading pane.
 - **Natural Speech Pronunciation:** Listen to crystal-clear speech pronunciation tuned to your learning language.
-- **Smart AI Flashcards (optional):** Enable in Settings to turn a subtitle saved with Z into a short standalone sentence and translation using nearby dialogue for context, without periods or commas.
+- **Subtitle Flashcards:** Z saves the original subtitle and punctuation with a faithful, natural translation of that exact text.
 - **Spaced Repetition (SRS) Flashcards:** Save words and context sentences with a single shortcut or click. Listen to either side at normal speed or 0.75×. Daily review reminders help you retain vocabulary in long-term memory.
 - **Flexible Vocabulary Export:** Export minimalist Anki cards with saved translations, original context and pronunciation, without AI examples or explanations. Export to Excel or take interactive AI-generated quizzes.
 - **Cross-Device Cloud Sync:** Optionally connect your account to keep your vocabulary, learning history, and flashcards synchronized across all your devices.
@@ -92,6 +92,7 @@ Every permission declared in `manifest.json` adheres to the Principle of Least P
   - 3. In-Video AI Explanations
   - 4. SRS Review & Vocabulary Cards
   - 5. Anki / Quiz Export
+  - Refresh subtitle settings screenshots after removal of the Smart AI flashcard toggle.
   - Refresh the Anki screenshot: plain expression and translation, without gradients, branding or AI examples.
   - Refresh Polish plan screenshots to show the one-time BLIK option.
   - Refresh the review card screenshot to show the turtle icon for 0.75× playback.
@@ -102,7 +103,7 @@ Every permission declared in `manifest.json` adheres to the Principle of Least P
 ## Version History
 
 - **1.0.0 (Current):**
-  - Added an opt-in smart AI subtitle flashcard setting for Z, using nearby subtitle context (2026-09-22).
+  - Removed the Smart AI flashcard setting. Z saves the original subtitle with punctuation and a faithful translation, without generating a replacement sentence (2026-09-25).
   - Added optional Left/Right or A/D word selection in S mode with Z/X saving and word tooltips above translation clouds; default behavior stays unchanged until navigation is used (2026-09-22).
   - Added one-time BLIK purchases for 30 days of BASIC or PRO access in the Polish interface, without a card or automatic renewal.
   - Added 0.75× speech playback beside the speaker on both sides of review cards (2026-09-21).

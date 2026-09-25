@@ -79,19 +79,6 @@ whenPopupReady((data) => {
     const defaultSubFontSize = LectoroConstants.DEFAULT_SUBTITLE_SETTINGS.FONT_SIZE || "medium";
     const subFontSize = data.subtitleFontSize || defaultSubFontSize;
     updateSubFontSizeButtons(subFontSize);
-    const smartFlashcardToggle = document.getElementById("smartSubtitleFlashcardToggle");
-    if (smartFlashcardToggle) {
-        smartFlashcardToggle.checked = data.smartSubtitleFlashcard === true;
-        smartFlashcardToggle.addEventListener("change", async () => {
-            try {
-                await chrome.storage.local.set({ smartSubtitleFlashcard: smartFlashcardToggle.checked });
-                flashSaved();
-            } catch (error) {
-                smartFlashcardToggle.checked = !smartFlashcardToggle.checked;
-                console.error("Could not save smart flashcard setting:", error);
-            }
-        });
-    }
     const ytFocusModeToggle = document.getElementById("ytFocusModeToggle");
     const ytFocusColorWrap = document.getElementById("ytFocusColorWrap");
     const ytFocusColorPicker = document.getElementById("ytFocusColorPicker");

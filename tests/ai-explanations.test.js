@@ -205,26 +205,3 @@ test("SharedUtils isProperNounDefinition and isLikelyEnglish correctly categoriz
     assert.equal(Utils.isLikelyEnglish("zrobić przerwę", "pl"), false);
     assert.equal(Utils.isLikelyEnglish("wahać się", "pl"), false);
 });
-
-
-
-test("smart subtitle flashcards use surrounding context and normalize punctuation on both sides", async () => {
-    const { service, requests } = explanationService(response({ sentence: "I, missed the train.", translation: "Spóźniłem się, na pociąg." }));
-    const card = await service.generateSubtitleFlashcard("missed it", { before: ["The train left"], after: ["I will take the next one"] }, "en", "pl");
-    assert.equal(card.sentence, "I missed the train");
-    assert.equal(card.translation, "Spóźniłem się na pociąg");
-    assert.equal(requests.length, 1);
-    assert.match(requests[0].prompt, /The train left/);
-    assert.match(requests[0].prompt, /I will take the next one/);
-    assert.match(requests[0].prompt, /missed it/);
-});
-
-test("smart subtitle flashcards reject empty, long and wrong-language responses", async () => {
-    for (const fields of [
-        { sentence: "..." }, { sentence: "word ".repeat(17) },
-        { translation: "" }, { source_language: "de" }, { output_language: "fr" },
-    ]) {
-        const { service } = explanationService(response({ sentence: "I missed the train", translation: "Spóźniłem się na pociąg", ...fields }));
-        await assert.rejects(service.generateSubtitleFlashcard("missed it", null, "en", "pl"));
-    }
-});

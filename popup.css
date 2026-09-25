@@ -2632,18 +2632,6 @@ body::before {
     letter-spacing: -0.1px;
 }
 
-.review-web-banner-badge {
-    font-size: 8px;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    background: rgba(129, 140, 248, 0.18);
-    color: #a5b4fc;
-    border: 1px solid rgba(129, 140, 248, 0.3);
-    border-radius: 4px;
-    padding: 1px 5px;
-    flex-shrink: 0;
-}
 
 .review-web-banner-desc {
     font-size: 9.5px;

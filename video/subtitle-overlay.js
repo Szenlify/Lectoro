@@ -4764,31 +4764,22 @@
             pausedForSave = true;
         }
 
-        let cleanedText = cleanCardText(text) || text;
+        const cleanedText = text.trim();
         const sourceUrl = window.location.href;
 
         try {
-            // Capture context before asynchronous work can advance or replace the cue.
-            const context = getActiveSubtitleContext(video, text);
             showSaveToast("saving", { text: cleanedText });
             const screenshot = await registry.captureVideoReviewScreenshot(video);
             flashCapture();
             const settings = await SharedTranslatorService.getReadingSettings();
             const targetLang = settings.targetLang;
-            let srcLang;
-            let cleanedTranslated;
-            if (settings.smartSubtitleFlashcard) {
-                srcLang = settings.learningLang;
-                const card = await SharedTranslatorService.generateSubtitleFlashcard(
-                    text, context, srcLang, targetLang,
-                );
-                cleanedText = card.sentence;
-                cleanedTranslated = card.translation;
-            } else {
-                const { translated, detectedLang } = await QT.translate(cleanedText, targetLang);
-                srcLang = typeof detectedLang === "string" ? detectedLang : "auto";
-                cleanedTranslated = cleanCardText(translated) || translated || cleanedText;
+            // Translate the exact saved subtitle; never rewrite it into an AI example.
+            const { translated, detectedLang } = await QT.translate(cleanedText, targetLang, settings.learningLang);
+            if (typeof translated !== "string" || !translated.trim()) {
+                throw new Error("Empty subtitle translation.");
             }
+            const srcLang = typeof detectedLang === "string" ? detectedLang : settings.learningLang;
+            const cleanedTranslated = translated.trim();
 
             await QT.saveWord({
                 original: cleanedText,

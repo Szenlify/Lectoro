@@ -126,7 +126,6 @@
             EL_VOICE_ID: "elVoiceId",
             SUBTITLE_TTS: "subtitleTTS",
             WORD_CLOUD_MODE: "wordCloudMode",
-            SMART_SUBTITLE_FLASHCARD: "smartSubtitleFlashcard",
             YOUTUBE_FOCUS_MODE: "youtubeFocusMode",
             YOUTUBE_FOCUS_COLOR: "youtubeFocusColor",
             SUBTITLE_POSITION: "subtitlePosition",
@@ -166,7 +165,6 @@
             learningLang: "en",
             subtitleTTS: true,
             wordCloudMode: true,
-            smartSubtitleFlashcard: false,
             youtubeFocusMode: false,
             youtubeFocusColor: "#6366f1",
         });
