@@ -442,6 +442,31 @@
         function showUpgradePrompt(validation) {
             if (typeof document === "undefined") return;
             const isGeminiTts = validation?.feature === "geminiTts";
+            if (isGeminiTts) {
+                // Non-invasive, discreet notification for TTS limits with renewal date
+                void effectiveProfile(false).then((prof) => {
+                    const renewalTimestamp =
+                        prof?.stripeCurrentPeriodEnd ||
+                        prof?.usage?.elevenLabsCharacters?.month ||
+                        null;
+                    const renewalDate = typeof Utils !== "undefined" && typeof Utils.formatNextUsageRenewalDate === "function"
+                        ? Utils.formatNextUsageRenewalDate(renewalTimestamp)
+                        : "";
+                    if (typeof window !== "undefined") {
+                        window.dispatchEvent(
+                            new CustomEvent("lectoro-tts-quota-exhausted", {
+                                detail: { renewalDate, renewalTimestamp, feature: "geminiTts" },
+                            }),
+                        );
+                    }
+                    if (typeof chrome !== "undefined" && chrome.storage?.local) {
+                        chrome.storage.local.set({
+                            ttsQuotaExhausted: { renewalDate, renewalTimestamp, at: Date.now() },
+                        });
+                    }
+                });
+                return;
+            }
             if (document.getElementById("aiPlansSection") && !isGeminiTts) {
                 openPlans();
                 return;

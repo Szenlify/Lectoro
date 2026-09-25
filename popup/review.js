@@ -655,14 +655,6 @@ function renderReview() {
             typeof SharedI18n !== "undefined"
                 ? SharedI18n.t("review_empty_title")
                 : "No cards to review!";
-        const emptySub =
-            typeof SharedI18n !== "undefined"
-                ? SharedI18n.t("review_empty_sub")
-                : "Add new words or come back later.";
-        const cardTitle =
-            typeof SharedI18n !== "undefined"
-                ? SharedI18n.t("review_web_card_title")
-                : "Practice anywhere, anytime";
         const cardDesc =
             typeof SharedI18n !== "undefined"
                 ? SharedI18n.t("review_web_card_desc")
@@ -671,20 +663,9 @@ function renderReview() {
             <div class="review-empty">
                 <div class="review-empty-icon">✅</div>
                 <div class="review-empty-text">${emptyTitle}</div>
-                <div class="review-empty-sub">${emptySub}</div>
-
-                    <div style="margin-top: 16px;" class="review-empty-web-badge">
-                        <img src="icons/icon16.png" class="review-empty-web-logo" width="13" height="13" alt="Lectoro">
-                        <span>${SharedI18n.t("ui_web_mobile")}</span>
-                    </div>
                     <div class="review-empty-sub">${cardDesc}</div>
-                    <a href="https://lectoroai.vercel.app/dashboard/reviews" target="_blank" rel="noopener noreferrer" class="review-empty-web-link">
-                        <span class="ai-loader-label">lectoroai.com</span>
-                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                            <polyline points="15 3 21 3 21 9"></polyline>
-                            <line x1="10" y1="14" x2="21" y2="3"></line>
-                        </svg>
+                    <a href="https://lectoroai.vercel.app/dashboard/reviews" target="_blank" rel="noopener noreferrer">
+                        <span style="margin-top: 25px" class="ai-loader-label">lectoroai.com</span>
                     </a>
  
             </div>`;
@@ -727,18 +708,10 @@ function renderReview() {
                 <div class="review-done-icon">🎉</div>
                 <div class="review-done-text">${doneTitle}</div>
                 <div class="review-done-sub">${doneSub}</div>
-                 <div style="margin-top: 16px;" class="review-empty-web-badge">
-                        <img src="icons/icon16.png" class="review-empty-web-logo" width="13" height="13" alt="Lectoro">
-                        <span>${SharedI18n.t("ui_web_mobile")}</span>
-                    </div>
+                
                     <div class="review-done-sub">${cardDesc}</div>
-                    <a href="https://lectoroai.vercel.app/dashboard/reviews" target="_blank" rel="noopener noreferrer" class="review-empty-web-link">
-                        <span class="ai-loader-label">lectoroai.com</span>
-                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                            <polyline points="15 3 21 3 21 9"></polyline>
-                            <line x1="10" y1="14" x2="21" y2="3"></line>
-                        </svg>
+                    <a href="https://lectoroai.vercel.app/dashboard/reviews" target="_blank" rel="noopener noreferrer">
+                        <span style="margin-top: 25px" class="ai-loader-label">lectoroai.com</span>
                     </a>
             </div>`;
         updateReviewTabBadge(0);

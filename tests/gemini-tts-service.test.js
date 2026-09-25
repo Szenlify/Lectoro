@@ -192,3 +192,29 @@ test("playAudioBlob uses Web Audio API to boost Nova by 1.85x and Onyx by 1.30x 
     sandbox.SharedTtsService.cancel();
     assert.equal(sourceStopped, true);
 });
+
+test("when AI credits are exhausted, cached audio in local storage plays with premium voice, and uncached falls back", async () => {
+    const quotaError = new Error("Monthly Gemini TTS limit reached");
+    quotaError.code = "GEMINI_TTS_MONTHLY_LIMIT_REACHED";
+
+    const ctx = service({
+        synthesize: async () => {
+            throw quotaError;
+        },
+    });
+
+    // 1. Put a word into local cache (as if synthesized earlier or saved in storage)
+    const cacheKey = await Utils.getGeminiAudioCacheKey("onyx", "Dog", "en");
+    ctx.cache.set(cacheKey, ctx.mp3);
+
+    // 2. Play cached word: must return cached premium audio without failing
+    const cachedResult = await ctx.api.getAudioBlob("Dog", "en", { allowSynthesis: true, voiceId: "onyx" });
+    assert.equal(cachedResult.cached, true);
+    assert.equal(cachedResult.voiceId, "onyx");
+    assert.equal(cachedResult.provider, "gemini");
+    assert.equal(ctx.syntheses.length, 0, "Cached items must not attempt synthesis");
+
+    // 3. Play uncached word when credits are exhausted: synthesis fails with GEMINI_TTS_MONTHLY_LIMIT_REACHED, falls back cleanly
+    const uncachedResult = await ctx.api.getAudioBlob("Cat", "en", { allowSynthesis: true, voiceId: "onyx" });
+    assert.equal(uncachedResult.provider, "google-tts"); // Fallback provider
+});

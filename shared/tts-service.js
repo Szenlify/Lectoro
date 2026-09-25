@@ -943,6 +943,37 @@
                         "[Lectoro TTS] Gemini TTS getAudioBlob fallback:",
                         err.message || err,
                     );
+                    const isLimit =
+                        err?.code === "GEMINI_TTS_MONTHLY_LIMIT_REACHED" ||
+                        err?.limit?.code === "GEMINI_TTS_MONTHLY_LIMIT_REACHED" ||
+                        err?.status === 429;
+                    if (isLimit) {
+                        try {
+                            if (typeof SubscriptionService !== "undefined") {
+                                void SubscriptionService.effectiveProfile(false).then((prof) => {
+                                    const renewalTimestamp =
+                                        prof?.stripeCurrentPeriodEnd ||
+                                        prof?.usage?.elevenLabsCharacters?.month ||
+                                        null;
+                                    const renewalDate = typeof Utils !== "undefined" && typeof Utils.formatNextUsageRenewalDate === "function"
+                                        ? Utils.formatNextUsageRenewalDate(renewalTimestamp)
+                                        : "";
+                                    if (typeof window !== "undefined") {
+                                        window.dispatchEvent(
+                                            new CustomEvent("lectoro-tts-quota-exhausted", {
+                                                detail: { renewalDate, renewalTimestamp },
+                                            }),
+                                        );
+                                    }
+                                    if (typeof chrome !== "undefined" && chrome.storage?.local) {
+                                        chrome.storage.local.set({
+                                            ttsQuotaExhausted: { renewalDate, renewalTimestamp, at: Date.now() },
+                                        });
+                                    }
+                                });
+                            }
+                        } catch (_) {}
+                    }
                     if (
                         [
                             "GEMINI_TTS_PROVIDER_DISABLED",
