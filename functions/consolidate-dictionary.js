@@ -73,41 +73,24 @@ async function consolidatePair(config, pair, { s3Client, localFallbackDir, force
     const originalEntries = structuredClone(pack.entries);
     let newWordsAdded = 0;
 
-    // 2. Merge local pack entries if local file exists (allows manual additions in project folder)
+    // Seed from local starter pack if pack did not exist on R2
     const fallbackPath = path.join(
         localFallbackDir || path.join(__dirname, "../dictionaries/packs"),
         `${pair}.json`
     );
-    if (fs.existsSync(fallbackPath)) {
+    if (!packExistedOnR2 && fs.existsSync(fallbackPath)) {
         try {
             const localPack = JSON.parse(fs.readFileSync(fallbackPath, "utf-8"));
             if (localPack?.entries && typeof localPack.entries === "object") {
-                if (!packExistedOnR2) {
-                    pack = localPack;
-                    console.log(`[Consolidator] Seeded ${pair} from local starter pack (${Object.keys(pack.entries).length} words).`);
-                } else {
-                    let localMergedCount = 0;
-                    for (const [rawWord, entry] of Object.entries(localPack.entries)) {
-                        const word = rawWord.normalize("NFKC").trim().toLowerCase();
-                        if (entry && (entry.languageValidation === 1 || entry.t)) {
-                            if (!pack.entries[word]) {
-                                newWordsAdded++;
-                                localMergedCount++;
-                            }
-                            pack.entries[word] = entry;
-                        }
-                    }
-                    if (localMergedCount > 0) {
-                        console.log(`[Consolidator] Merged ${localMergedCount} new/local words from ${pair}.json into pack.`);
-                    }
-                }
+                pack = localPack;
+                console.log(`[Consolidator] Seeded ${pair} from local starter pack (${Object.keys(pack.entries).length} words).`);
             }
         } catch (err) {
             console.warn(`[Consolidator] Failed reading local pack for ${pair}:`, err.message);
         }
     }
 
-    // 3. List and merge all live words under dictionaries/live/<pair>/
+    // 2. List and merge all live words under dictionaries/live/<pair>/
     let continuationToken = null;
     let liveFilesExamined = 0;
 
@@ -159,6 +142,59 @@ async function consolidatePair(config, pair, { s3Client, localFallbackDir, force
         }
         continuationToken = listRes.IsTruncated ? listRes.NextContinuationToken : null;
     } while (continuationToken);
+
+    // 3. Merge local pack entries if local file exists (local manual edits take precedence over stale live cache)
+    if (packExistedOnR2 && fs.existsSync(fallbackPath)) {
+        try {
+            const localPack = JSON.parse(fs.readFileSync(fallbackPath, "utf-8"));
+            if (localPack?.entries && typeof localPack.entries === "object") {
+                let localMergedCount = 0;
+                for (const [rawWord, entry] of Object.entries(localPack.entries)) {
+                    const word = rawWord.normalize("NFKC").trim().toLowerCase();
+                    if (entry && (entry.languageValidation === 1 || entry.t)) {
+                        if (!pack.entries[word]) {
+                            newWordsAdded++;
+                        }
+                        if (!isDeepStrictEqual(pack.entries[word], entry)) {
+                            localMergedCount++;
+                        }
+                        pack.entries[word] = entry;
+                    }
+                }
+                if (localMergedCount > 0) {
+                    console.log(`[Consolidator] Merged ${localMergedCount} updated/local words from ${pair}.json into pack.`);
+                }
+            }
+        } catch (err) {
+            console.warn(`[Consolidator] Failed reading local pack for ${pair}:`, err.message);
+        }
+    }
+
+    // 4. Exclude quarantined words if a quarantine file exists
+    const quarantinePath = path.join(
+        localFallbackDir ? path.join(localFallbackDir, "../review") : path.join(__dirname, "../dictionaries/review"),
+        `${pair}-quarantine.json`
+    );
+    if (fs.existsSync(quarantinePath)) {
+        try {
+            const qData = JSON.parse(fs.readFileSync(quarantinePath, "utf-8"));
+            if (qData?.entries && typeof qData.entries === "object") {
+                let quarantinedCount = 0;
+                for (const badWord of Object.keys(qData.entries)) {
+                    const normalizedBad = badWord.normalize("NFKC").trim().toLowerCase();
+                    if (pack.entries[normalizedBad]) {
+                        delete pack.entries[normalizedBad];
+                        quarantinedCount++;
+                    }
+                }
+                if (quarantinedCount > 0) {
+                    console.log(`[Consolidator] Excluded ${quarantinedCount} quarantined words for ${pair}.`);
+                }
+            }
+        } catch (qErr) {
+            console.warn(`[Consolidator] Failed reading quarantine file for ${pair}:`, qErr.message);
+        }
+    }
 
     // Persist corrections to existing words as well as newly added words.
     const updatedWords = Object.keys(pack.entries).filter(word =>

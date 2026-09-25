@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "source": "en",
   "target": "pl",
-  "updatedAt": 1790335543563,
+  "updatedAt": 1790336696507,
   "entries": {
     "time": {
       "t": "czas",
@@ -37675,29 +37675,6 @@
       ],
       "languageValidation": 1
     },
-    "nanotexture": {
-      "t": "nano-tekstura",
-      "d": {
-        "s": "A surface texture engineered at a nanometer scale to reduce glare.",
-        "t": "Tekstura powierzchni stworzona w nanoskali w celu redukcji odblasków."
-      },
-      "s": [],
-      "e": [
-        {
-          "s": "The monitor features advanced nanotexture glass.",
-          "t": "Monitor posiada zaawansowane szkło o nano-teksturze."
-        },
-        {
-          "s": "Nanotexture surfaces help prevent reflections on screens.",
-          "t": "Powierzchnie o nano-teksturze pomagają zapobiegać odbiciom na ekranach."
-        },
-        {
-          "s": "Apple offers a nanotexture finish on its pro displays.",
-          "t": "Apple oferuje wykończenie z nano-teksturą w swoich profesjonalnych monitorach."
-        }
-      ],
-      "languageValidation": 1
-    },
     "initial": {
       "t": "początkowy",
       "d": {
@@ -52073,6 +52050,29 @@
         {
           "s": "She is known for being a fair tipper.",
           "t": "Jest znana z tego, że daje uczciwe napiwki."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "nanotexture": {
+      "t": "nano-tekstura",
+      "d": {
+        "s": "A surface texture engineered at a nanometer scale to reduce glare.",
+        "t": "Tekstura powierzchni stworzona w nanoskali w celu redukcji odblasków."
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "The monitor features advanced nanotexture glass.",
+          "t": "Monitor posiada zaawansowane szkło o nano-teksturze."
+        },
+        {
+          "s": "Nanotexture surfaces help prevent reflections on screens.",
+          "t": "Powierzchnie o nano-teksturze pomagają zapobiegać odbiciom na ekranach."
+        },
+        {
+          "s": "Apple offers a nanotexture finish on its pro displays.",
+          "t": "Apple oferuje wykończenie z nano-teksturą w swoich profesjonalnych monitorach."
         }
       ],
       "languageValidation": 1

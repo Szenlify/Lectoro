@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "source": "en",
   "target": "de",
-  "updatedAt": 1789668694610,
+  "updatedAt": 1790336698412,
   "entries": {
     "time": {
       "t": "Zeit",
@@ -212,8 +212,8 @@
     "life": {
       "t": "Leben",
       "d": {
-        "s": "The condition that distinguishes animals and plants from inorganic matter.",
-        "t": "Der Zustand, der lebende Organismen von anorganischer Materie unterscheidet."
+        "s": "The state of existence, especially that of humans.",
+        "t": "Der Zustand der Existenz, insbesondere der von Menschen."
       },
       "s": [
         "existence",
@@ -221,16 +221,16 @@
       ],
       "e": [
         {
-          "s": "She lived a long and happy life.",
-          "t": "Sie lebte ein langes und glückliches Leben."
+          "s": "He has lived a long and happy life.",
+          "t": "Er hat ein langes und glückliches Leben gelebt."
         },
         {
-          "s": "Water is essential for life.",
-          "t": "Wasser ist lebensnotwendig."
+          "s": "The accident left him with a lifelong disability.",
+          "t": "Der Unfall hinterließ ihn mit einer lebenslangen Behinderung."
         },
         {
-          "s": "This discovery changed his life completely.",
-          "t": "Diese Entdeckung hat sein Leben völlig verändert."
+          "s": "She dedicated her life to helping others.",
+          "t": "Sie widmete ihr Leben der Hilfe für andere."
         }
       ],
       "languageValidation": 1
@@ -357,6 +357,502 @@
         {
           "s": "He is good at video games.",
           "t": "Er ist gut in Videospielen."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "again": {
+      "t": "wieder",
+      "d": {
+        "s": "Once more; another time.",
+        "t": "Nochmal; eine weitere Zeit."
+      },
+      "s": [
+        "anew",
+        "repeatedly"
+      ],
+      "e": [
+        {
+          "s": "He said it again.",
+          "t": "Er sagte es wieder."
+        },
+        {
+          "s": "Let's try again.",
+          "t": "Versuchen wir es noch einmal."
+        },
+        {
+          "s": "She visited him again.",
+          "t": "Sie besuchte ihn wieder."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "bringin": {
+      "t": "bringend",
+      "d": {
+        "s": "Bringing; carrying or conveying something to a place or person.",
+        "t": "Bringend; etwas an einen Ort oder zu einer Person bringen oder befördern."
+      },
+      "s": [
+        "carrying",
+        "conveying"
+      ],
+      "e": [
+        {
+          "s": "He is bringin the groceries inside.",
+          "t": "Er bringt die Lebensmittel herein."
+        },
+        {
+          "s": "She is bringin a gift to the party.",
+          "t": "Sie bringt ein Geschenk zur Party mit."
+        },
+        {
+          "s": "The delivery service is bringin the package tomorrow.",
+          "t": "Der Lieferservice bringt das Paket morgen."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "only": {
+      "t": "nur / bloß",
+      "d": {
+        "s": "To a sole extent or degree; just; simply.",
+        "t": "Nur, bloß, lediglich."
+      },
+      "s": [
+        "solely",
+        "merely"
+      ],
+      "e": [
+        {
+          "s": "He is only interested in money.",
+          "t": "Er ist nur an Geld interessiert."
+        },
+        {
+          "s": "There is only one way to solve this problem.",
+          "t": "Es gibt nur einen Weg, dieses Problem zu lösen."
+        },
+        {
+          "s": "She arrived only yesterday.",
+          "t": "Sie kam erst gestern an."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "over": {
+      "t": "wieder / über",
+      "d": {
+        "s": "again; in or to a place or position above or on top of something else",
+        "t": "wieder; an oder auf einer Position über oder auf etwas anderem"
+      },
+      "s": [
+        "again",
+        "above"
+      ],
+      "e": [
+        {
+          "s": "And then we’ll do it all over again",
+          "t": "Und dann machen wir alles wieder von vorne"
+        },
+        {
+          "s": "The plane flew over the city",
+          "t": "Das Flugzeug flog über die Stadt"
+        },
+        {
+          "s": "He put his coat over his shoulders",
+          "t": "Er legte seinen Mantel über seine Schultern"
+        }
+      ],
+      "languageValidation": 1
+    },
+    "better": {
+      "t": "besser",
+      "d": {
+        "s": "Superior to someone or something else; more desirable or effective.",
+        "t": "Besser als jemand oder etwas anderes; wünschenswerter oder wirksamer."
+      },
+      "s": [
+        "finer",
+        "superior"
+      ],
+      "e": [
+        {
+          "s": "This is a better way to do it.",
+          "t": "Dies ist ein besserer Weg, es zu tun."
+        },
+        {
+          "s": "He felt better after a good night's sleep.",
+          "t": "Er fühlte sich besser nach einer guten Nachtruhe."
+        },
+        {
+          "s": "Ain’t no better life than the one we livin now",
+          "t": "Es gibt kein besseres Leben als das, das wir jetzt führen."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "that": {
+      "t": "das / jener",
+      "d": {
+        "s": "Used to identify a specific person or thing observed by the speaker.",
+        "t": "Wird verwendet, um eine bestimmte Person oder Sache zu identifizieren, die vom Sprecher beobachtet wird."
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "Look at that bird.",
+          "t": "Schau dir diesen Vogel an."
+        },
+        {
+          "s": "That is my car.",
+          "t": "Das ist mein Auto."
+        },
+        {
+          "s": "I like that dress.",
+          "t": "Ich mag dieses Kleid."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "bad": {
+      "t": "schlecht",
+      "d": {
+        "s": "Of poor quality or a low standard.",
+        "t": "Von schlechter Qualität oder niedrigem Standard."
+      },
+      "s": [
+        "poor",
+        "inferior"
+      ],
+      "e": [
+        {
+          "s": "The weather was bad all week.",
+          "t": "Das Wetter war die ganze Woche schlecht."
+        },
+        {
+          "s": "He has a bad reputation.",
+          "t": "Er hat einen schlechten Ruf."
+        },
+        {
+          "s": "This is a bad idea.",
+          "t": "Das ist eine schlechte Idee."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "have": {
+      "t": "haben",
+      "d": {
+        "s": "To possess, own, or hold something.",
+        "t": "Besitzen, haben oder etwas halten."
+      },
+      "s": [
+        "possess",
+        "own"
+      ],
+      "e": [
+        {
+          "s": "I have a new car.",
+          "t": "Ich habe ein neues Auto."
+        },
+        {
+          "s": "She has two brothers.",
+          "t": "Sie hat zwei Brüder."
+        },
+        {
+          "s": "They have a lot of work to do.",
+          "t": "Sie haben viel Arbeit zu erledigen."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "goal": {
+      "t": "Ziel",
+      "d": {
+        "s": "The object of a person's ambition or effort; an aim or desired result.",
+        "t": "Das Ziel von Ehrgeiz oder Bemühungen einer Person; ein angestrebtes oder gewünschtes Ergebnis."
+      },
+      "s": [
+        "aim",
+        "objective"
+      ],
+      "e": [
+        {
+          "s": "The goal was to finish the race.",
+          "t": "Das Ziel war es, das Rennen zu beenden."
+        },
+        {
+          "s": "Her main goal is to get a promotion.",
+          "t": "Ihr Hauptziel ist es, eine Beförderung zu erhalten."
+        },
+        {
+          "s": "We set a goal to save money.",
+          "t": "Wir setzten uns das Ziel, Geld zu sparen."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "of": {
+      "t": "von",
+      "d": {
+        "s": "Used to indicate that someone or something belongs to or is associated with someone or something else.",
+        "t": "Zeigt Besitz oder Zugehörigkeit an."
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "a pile of cash",
+          "t": "ein Haufen Bargeld"
+        },
+        {
+          "s": "the city of London",
+          "t": "die Stadt London"
+        },
+        {
+          "s": "a friend of mine",
+          "t": "ein Freund von mir"
+        }
+      ],
+      "languageValidation": 1
+    },
+    "back": {
+      "t": "zurück / Rücken",
+      "d": {
+        "s": "The rear or hind part of the human body; the part opposite the chest.",
+        "t": "Der hintere oder rückwärtige Teil des menschlichen Körpers; der Teil gegenüber der Brust."
+      },
+      "s": [
+        "rear",
+        "behind"
+      ],
+      "e": [
+        {
+          "s": "He hurt his back playing football.",
+          "t": "Er verletzte seinen Rücken beim Fußballspielen."
+        },
+        {
+          "s": "The car came back after a week.",
+          "t": "Das Auto kam nach einer Woche zurück."
+        },
+        {
+          "s": "Turn your back on me.",
+          "t": "Dreh mir den Rücken zu."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "years": {
+      "t": "Jahre",
+      "d": {
+        "s": "a period of twelve months",
+        "t": "ein Zeitraum von zwölf Monaten"
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "He has worked there for many years.",
+          "t": "Er hat dort viele Jahre gearbeitet."
+        },
+        {
+          "s": "The project took several years to complete.",
+          "t": "Das Projekt dauerte mehrere Jahre bis zur Fertigstellung."
+        },
+        {
+          "s": "She celebrated her 21st birthday last year.",
+          "t": "Sie feierte letztes Jahr ihren 21. Geburtstag."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "all": {
+      "t": "alle",
+      "d": {
+        "s": "The whole quantity, extent, or duration of something.",
+        "t": "Die ganze Menge, der ganze Umfang oder die ganze Dauer von etwas."
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "All the students passed the exam.",
+          "t": "Alle Studenten haben die Prüfung bestanden."
+        },
+        {
+          "s": "He ate all the cake.",
+          "t": "Er aß den ganzen Kuchen."
+        },
+        {
+          "s": "All of us are going to the party.",
+          "t": "Wir alle gehen zur Party."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "rapidly": {
+      "t": "schnell",
+      "d": {
+        "s": "at a fast speed; quickly.",
+        "t": "in hohem Tempo; schnell."
+      },
+      "s": [
+        "quickly",
+        "swiftly"
+      ],
+      "e": [
+        {
+          "s": "The population grew rapidly.",
+          "t": "Die Bevölkerung wuchs schnell."
+        },
+        {
+          "s": "He responded rapidly to the crisis.",
+          "t": "Er reagierte schnell auf die Krise."
+        },
+        {
+          "s": "The disease spread rapidly through the community.",
+          "t": "Die Krankheit breitete sich schnell in der Gemeinde aus."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "boys": {
+      "t": "Jungen",
+      "d": {
+        "s": "A male child or young man.",
+        "t": "Ein männliches Kind oder junger Mann."
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "The boys are playing in the park.",
+          "t": "Die Jungen spielen im Park."
+        },
+        {
+          "s": "He is a good boy.",
+          "t": "Er ist ein guter Junge."
+        },
+        {
+          "s": "The two boys shared a room.",
+          "t": "Die beiden Jungen teilten sich ein Zimmer."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "came": {
+      "t": "kam",
+      "d": {
+        "s": "Past tense of come: to move toward or into a place, person, or thing.",
+        "t": "Vergangenheitsform von kommen: sich auf einen Ort, eine Person oder eine Sache zubewegen oder in sie hineingehen."
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "He came home late.",
+          "t": "Er kam spät nach Hause."
+        },
+        {
+          "s": "The train came into the station.",
+          "t": "Der Zug kam im Bahnhof an."
+        },
+        {
+          "s": "She came to my house yesterday.",
+          "t": "Sie kam gestern zu mir nach Hause."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "whatever": {
+      "t": "was auch immer / egal was",
+      "d": {
+        "s": "Used to express that something is not important or that you do not care about it.",
+        "t": "Was auch immer; Egal was; Gleichgültig was"
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "You can do whatever you want.",
+          "t": "Du kannst tun, was auch immer du willst."
+        },
+        {
+          "s": "Whatever the reason, he's gone.",
+          "t": "Was auch immer der Grund ist, er ist weg."
+        },
+        {
+          "s": "I don't care what you say, whatever.",
+          "t": "Es ist mir egal, was du sagst, egal was."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "cash": {
+      "t": "Bargeld",
+      "d": {
+        "s": "Money in the form of coins or banknotes, especially that which is readily available.",
+        "t": "Geld in Form von Münzen oder Banknoten, insbesondere das, das sofort verfügbar ist."
+      },
+      "s": [
+        "money",
+        "currency"
+      ],
+      "e": [
+        {
+          "s": "I need to withdraw some cash from the ATM.",
+          "t": "Ich muss Bargeld vom Geldautomaten abheben."
+        },
+        {
+          "s": "The store only accepts cash payments.",
+          "t": "Das Geschäft akzeptiert nur Barzahlungen."
+        },
+        {
+          "s": "He paid for the repairs with cash.",
+          "t": "Er bezahlte die Reparaturen bar."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "after": {
+      "t": "nach",
+      "d": {
+        "s": "Following in time, place, or order.",
+        "t": "Nachfolgend in Zeit, Ort oder Reihenfolge."
+      },
+      "s": [],
+      "e": [
+        {
+          "s": "We will go to the park after lunch.",
+          "t": "Wir gehen nach dem Mittagessen in den Park."
+        },
+        {
+          "s": "He arrived shortly after me.",
+          "t": "Er kam kurz nach mir an."
+        },
+        {
+          "s": "The story is set in the years after the war.",
+          "t": "Die Geschichte spielt in den Jahren nach dem Krieg."
+        }
+      ],
+      "languageValidation": 1
+    },
+    "indeed": {
+      "t": "in der Tat / tatsächlich / wahrlich",
+      "d": {
+        "s": "used to emphasize a statement or opinion or to express surprise or admiration",
+        "t": "in der Tat; tatsächlich; wahrlich"
+      },
+      "s": [
+        "certainly",
+        "truly"
+      ],
+      "e": [
+        {
+          "s": "He has every right and indeed he should communicate his concerns.",
+          "t": "Er hat jedes Recht und sollte in der Tat seine Bedenken äußern."
+        },
+        {
+          "s": "It was a difficult task, but indeed a rewarding one.",
+          "t": "Es war eine schwierige Aufgabe, aber tatsächlich eine lohnende."
+        },
+        {
+          "s": "She is indeed a talented musician.",
+          "t": "Sie ist wahrlich eine talentierte Musikerin."
         }
       ],
       "languageValidation": 1

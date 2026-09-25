@@ -75,6 +75,16 @@
         }
       ],
       "languageValidation": 1
+    },
+    "nanoexture": {
+      "t": "nano-tekstura",
+      "d": {
+        "s": "Typo for nanotexture.",
+        "t": "Literówka dla nanotexture."
+      },
+      "s": [],
+      "e": [],
+      "languageValidation": 0
     }
   }
 }

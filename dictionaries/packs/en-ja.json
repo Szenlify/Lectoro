@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "source": "en",
   "target": "ja",
-  "updatedAt": 1789668698123,
+  "updatedAt": 1790336705276,
   "entries": {
     "time": {
       "t": "時間",
@@ -108,26 +108,27 @@
       "languageValidation": 1
     },
     "day": {
-      "t": "日",
+      "t": "日 / 昼",
       "d": {
-        "s": "A period of twenty-four hours.",
-        "t": "24時間の期間、または昼間。"
+        "s": "A period of 24 hours as measured from one midnight to the next; the time between sunrise and sunset.",
+        "t": "24時間、または日の出から日没までの時間。"
       },
       "s": [
-        "daytime"
+        "daytime",
+        "daylight"
       ],
       "e": [
         {
-          "s": "It was a sunny day yesterday.",
-          "t": "昨日は晴れた日でした。"
+          "s": "I work all day long.",
+          "t": "私は一日中働きます。"
         },
         {
-          "s": "I drink coffee every day.",
-          "t": "私は毎日コーヒーを飲みます。"
+          "s": "We had a wonderful day at the beach.",
+          "t": "私たちはビーチで素晴らしい一日を過ごしました。"
         },
         {
-          "s": "Have a nice day at work.",
-          "t": "仕事場で良い一日をお過ごしください。"
+          "s": "It's a beautiful day today.",
+          "t": "今日は美しい日です。"
         }
       ],
       "languageValidation": 1
@@ -1005,26 +1006,24 @@
       "languageValidation": 1
     },
     "for": {
-      "t": "〜のために",
+      "t": "〜のために / 〜について / 〜の間",
       "d": {
-        "s": "The standard English word 'for'.",
-        "t": "一般的な英単語「for」。"
+        "s": "indicating the purpose or intention of something",
+        "t": "〜のために、〜目的で"
       },
-      "s": [
-        "for_synonym"
-      ],
+      "s": [],
       "e": [
         {
-          "s": "This is a sample sentence with 'for'.",
-          "t": "これは「〜のために」を使った例文です。"
+          "s": "This is a gift for you.",
+          "t": "これはあなたへのプレゼントです。"
         },
         {
-          "s": "I know the meaning of 'for'.",
-          "t": "私は「〜のために」の意味を知っています。"
+          "s": "He is known for his honesty.",
+          "t": "彼は正直さで知られています。"
         },
         {
-          "s": "Can you use 'for' in a sentence?",
-          "t": "「〜のために」を文の中で使えますか？"
+          "s": "We waited for an hour.",
+          "t": "私たちは1時間待ちました。"
         }
       ],
       "languageValidation": 1
@@ -1255,26 +1254,24 @@
       "languageValidation": 1
     },
     "from": {
-      "t": "〜から",
+      "t": "から",
       "d": {
-        "s": "The standard English word 'from'.",
-        "t": "一般的な英単語「from」。"
+        "s": "Indicating the starting point of a journey, action, or interval.",
+        "t": "出発点、起点、期間の始まりを示す。"
       },
-      "s": [
-        "from_synonym"
-      ],
+      "s": [],
       "e": [
         {
-          "s": "This is a sample sentence with 'from'.",
-          "t": "これは「〜から」を使った例文です。"
+          "s": "He came here from London.",
+          "t": "彼はロンドンからここに来た。"
         },
         {
-          "s": "I know the meaning of 'from'.",
-          "t": "私は「〜から」の意味を知っています。"
+          "s": "The train leaves from platform 3.",
+          "t": "電車は3番線から出発します。"
         },
         {
-          "s": "Can you use 'from' in a sentence?",
-          "t": "「〜から」を文の中で使えますか？"
+          "s": "We have been friends from childhood.",
+          "t": "私たちは子供の頃から友達です。"
         }
       ],
       "languageValidation": 1
@@ -1305,26 +1302,24 @@
       "languageValidation": 1
     },
     "by": {
-      "t": "〜によって",
+      "t": "によって / 〜で / 〜のそばに",
       "d": {
-        "s": "The standard English word 'by'.",
-        "t": "一般的な英単語「by」。"
+        "s": "Indicating the means or agency by which an action is performed.",
+        "t": "〜によって、〜で"
       },
-      "s": [
-        "by_synonym"
-      ],
+      "s": [],
       "e": [
         {
-          "s": "This is a sample sentence with 'by'.",
-          "t": "これは「〜によって」を使った例文です。"
+          "s": "The book was written by a famous author.",
+          "t": "その本は有名な作家によって書かれました。"
         },
         {
-          "s": "I know the meaning of 'by'.",
-          "t": "私は「〜によって」の意味を知っています。"
+          "s": "We traveled by train.",
+          "t": "私たちは電車で旅行しました。"
         },
         {
-          "s": "Can you use 'by' in a sentence?",
-          "t": "「〜によって」を文の中で使えますか？"
+          "s": "He stood by the window.",
+          "t": "彼は窓のそばに立っていました。"
         }
       ],
       "languageValidation": 1
@@ -1705,26 +1700,27 @@
       "languageValidation": 1
     },
     "know": {
-      "t": "知っている",
+      "t": "知る / わかる",
       "d": {
-        "s": "The standard English word 'know'.",
-        "t": "一般的な英単語「know」。"
+        "s": "To have knowledge or information about something.",
+        "t": "何かについて知識や情報を持っていること。"
       },
       "s": [
-        "know_synonym"
+        "understand",
+        "recognize"
       ],
       "e": [
         {
-          "s": "This is a sample sentence with 'know'.",
-          "t": "これは「知っている」を使った例文です。"
+          "s": "I know the answer to that question.",
+          "t": "私はその質問の答えを知っています。"
         },
         {
-          "s": "I know the meaning of 'know'.",
-          "t": "私は「知っている」の意味を知っています。"
+          "s": "Do you know him?",
+          "t": "彼を知っていますか？"
         },
         {
-          "s": "Can you use 'know' in a sentence?",
-          "t": "「知っている」を文の中で使えますか？"
+          "s": "She knows how to play the piano.",
+          "t": "彼女はピアノの弾き方を知っています。"
         }
       ],
       "languageValidation": 1
@@ -1755,51 +1751,50 @@
       "languageValidation": 1
     },
     "up": {
-      "t": "上に",
+      "t": "上へ / 起き上がって / 上昇して",
       "d": {
-        "s": "The standard English word 'up'.",
-        "t": "一般的な英単語「up」。"
+        "s": "In a higher direction or position; towards the sky or a higher place.",
+        "t": "より高い方向または位置に。空またはより高い場所に向かって。"
       },
       "s": [
-        "up_synonym"
+        "upward",
+        "aloft"
       ],
       "e": [
         {
-          "s": "This is a sample sentence with 'up'.",
-          "t": "これは「上に」を使った例文です。"
+          "s": "He walked up the stairs.",
+          "t": "彼は階段を上った。"
         },
         {
-          "s": "I know the meaning of 'up'.",
-          "t": "私は「上に」の意味を知っています。"
+          "s": "The sun is up.",
+          "t": "太陽が昇っている。"
         },
         {
-          "s": "Can you use 'up' in a sentence?",
-          "t": "「上に」を文の中で使えますか？"
+          "s": "Prices have gone up.",
+          "t": "物価が上がった。"
         }
       ],
       "languageValidation": 1
     },
     "one": {
-      "t": "1つ",
+      "t": "一 / １",
       "d": {
-        "s": "The standard English word 'one'.",
-        "t": "一般的な英単語「one」。"
+        "s": "The smallest whole number; a single unit or thing.",
+        "t": "最小の整数。単一の単位または物。"
       },
-      "s": [
-        "one_synonym"
-      ],
+      "s": [],
       "e": [
         {
-          "s": "This is a sample sentence with 'one'.",
-          "t": "これは「1つ」を使った例文です。"
+          "s": "I have one apple.",
+          "t": "私はリンゴを一つ持っています。"
         },
         {
-          "s": "I know the meaning of 'one'.",
-          "t": "私は「1つ」の意味を知っています。"
+          "s": "There is only one way to solve this problem.",
+          "t": "この問題を解決するには一つの方法しかありません。"
         },
         {
-          "s": "Can you use 'one' in a sentence?",
-          "t": "「1つ」を文の中で使えますか？"
+          "s": "She is the one I was waiting for.",
+          "t": "彼女は私が待っていた人です。"
         }
       ],
       "languageValidation": 1
@@ -2132,24 +2127,22 @@
     "him": {
       "t": "彼を",
       "d": {
-        "s": "The standard English word 'him'.",
-        "t": "一般的な英単語「him」。"
+        "s": "Used as the object of a verb or preposition to refer to a man, boy, or male animal previously mentioned or easily identified.",
+        "t": "男性、少年、または男性の動物を以前に言及された、または容易に特定できるものを指すために、動詞または前置詞の目的語として使用されます。"
       },
-      "s": [
-        "him_synonym"
-      ],
+      "s": [],
       "e": [
         {
-          "s": "This is a sample sentence with 'him'.",
-          "t": "これは「彼を」を使った例文です。"
+          "s": "The dog wagged its tail when he saw his owner.",
+          "t": "犬は彼が飼い主を見たとき尻尾を振った。"
         },
         {
-          "s": "I know the meaning of 'him'.",
-          "t": "私は「彼を」の意味を知っています。"
+          "s": "She gave the book to him.",
+          "t": "彼女は彼にその本を渡した。"
         },
         {
-          "s": "Can you use 'him' in a sentence?",
-          "t": "「彼を」を文の中で使えますか？"
+          "s": "I spoke with him about the project.",
+          "t": "私は彼とプロジェクトについて話した。"
         }
       ],
       "languageValidation": 1
@@ -2332,24 +2325,22 @@
     "how": {
       "t": "どのように",
       "d": {
-        "s": "The standard English word 'how'.",
-        "t": "一般的な英単語「how」。"
+        "s": "In what way or manner; by what means.",
+        "t": "どのような方法で、どのようなやり方で"
       },
-      "s": [
-        "how_synonym"
-      ],
+      "s": [],
       "e": [
         {
-          "s": "This is a sample sentence with 'how'.",
-          "t": "これは「どのように」を使った例文です。"
+          "s": "I don't know how to swim.",
+          "t": "私は泳ぎ方がわかりません。"
         },
         {
-          "s": "I know the meaning of 'how'.",
-          "t": "私は「どのように」の意味を知っています。"
+          "s": "Can you show me how to do this?",
+          "t": "これをどうやるか教えてくれますか？"
         },
         {
-          "s": "Can you use 'how' in a sentence?",
-          "t": "「どのように」を文の中で使えますか？"
+          "s": "He explained how he had solved the problem.",
+          "t": "彼はその問題をどう解決したかを説明した。"
         }
       ],
       "languageValidation": 1
@@ -4132,24 +4123,22 @@
     "where": {
       "t": "どこ",
       "d": {
-        "s": "The standard English word 'where'.",
-        "t": "一般的な英単語「where」。"
+        "s": "In or at what place or position?",
+        "t": "どの場所または位置に？"
       },
-      "s": [
-        "where_synonym"
-      ],
+      "s": [],
       "e": [
         {
-          "s": "This is a sample sentence with 'where'.",
-          "t": "これは「どこ」を使った例文です。"
+          "s": "Where did you put the keys?",
+          "t": "鍵をどこに置きましたか？"
         },
         {
-          "s": "I know the meaning of 'where'.",
-          "t": "私は「どこ」の意味を知っています。"
+          "s": "I don't know where to go.",
+          "t": "どこへ行くべきかわかりません。"
         },
         {
-          "s": "Can you use 'where' in a sentence?",
-          "t": "「どこ」を文の中で使えますか？"
+          "s": "Where are you?",
+          "t": "どこにいますか？"
         }
       ],
       "languageValidation": 1
@@ -4355,26 +4344,27 @@
       "languageValidation": 1
     },
     "against": {
-      "t": "〜に反対して",
+      "t": "〜に対して / 〜に反対して",
       "d": {
-        "s": "The standard English word 'against'.",
-        "t": "一般的な英単語「against」。"
+        "s": "in opposition to",
+        "t": "〜に対して"
       },
       "s": [
-        "against_synonym"
+        "versus",
+        "opposed to"
       ],
       "e": [
         {
-          "s": "This is a sample sentence with 'against'.",
-          "t": "これは「〜に反対して」を使った例文です。"
+          "s": "The team played against their rivals.",
+          "t": "そのチームはライバルと対戦した。"
         },
         {
-          "s": "I know the meaning of 'against'.",
-          "t": "私は「〜に反対して」の意味を知っています。"
+          "s": "She voted against the proposal.",
+          "t": "彼女はその提案に反対票を投じた。"
         },
         {
-          "s": "Can you use 'against' in a sentence?",
-          "t": "「〜に反対して」を文の中で使えますか？"
+          "s": "He leaned against the wall.",
+          "t": "彼は壁に寄りかかった。"
         }
       ],
       "languageValidation": 1
@@ -4932,24 +4922,25 @@
     "night": {
       "t": "夜",
       "d": {
-        "s": "The standard English word 'night'.",
-        "t": "一般的な英単語「night」。"
+        "s": "The period from sunset to sunrise.",
+        "t": "日没から日の出までの期間。"
       },
       "s": [
-        "night_synonym"
+        "darkness",
+        "evening"
       ],
       "e": [
         {
-          "s": "This is a sample sentence with 'night'.",
-          "t": "これは「夜」を使った例文です。"
+          "s": "The stars are visible at night.",
+          "t": "星は夜に見えます。"
         },
         {
-          "s": "I know the meaning of 'night'.",
-          "t": "私は「夜」の意味を知っています。"
+          "s": "I worked late into the night.",
+          "t": "私は夜遅くまで働きました。"
         },
         {
-          "s": "Can you use 'night' in a sentence?",
-          "t": "「夜」を文の中で使えますか？"
+          "s": "Good night, sleep well.",
+          "t": "おやすみなさい、よく眠ってください。"
         }
       ],
       "languageValidation": 1
@@ -7380,26 +7371,27 @@
       "languageValidation": 1
     },
     "idea": {
-      "t": "アイデア",
+      "t": "考え / アイデア",
       "d": {
-        "s": "The standard English word 'idea'.",
-        "t": "一般的な英単語「idea」。"
+        "s": "A thought or suggestion as to a possible course of action.",
+        "t": "行動の可能性としての考えや提案。"
       },
       "s": [
-        "idea_synonym"
+        "concept",
+        "notion"
       ],
       "e": [
         {
-          "s": "This is a sample sentence with 'idea'.",
-          "t": "これは「アイデア」を使った例文です。"
+          "s": "I have no idea what I'm doing.",
+          "t": "自分が何をしているのか全く分からない。"
         },
         {
-          "s": "I know the meaning of 'idea'.",
-          "t": "私は「アイデア」の意味を知っています。"
+          "s": "She had a brilliant idea for the project.",
+          "t": "彼女はそのプロジェクトのために素晴らしいアイデアを思いついた。"
         },
         {
-          "s": "Can you use 'idea' in a sentence?",
-          "t": "「アイデア」を文の中で使えますか？"
+          "s": "Let's brainstorm some ideas.",
+          "t": "いくつかアイデアを出し合おう。"
         }
       ],
       "languageValidation": 1
@@ -9530,26 +9522,27 @@
       "languageValidation": 1
     },
     "stay": {
-      "t": "滞在する",
+      "t": "とどまる / 滞在する",
       "d": {
-        "s": "The standard English word 'stay'.",
-        "t": "一般的な英単語「stay」。"
+        "s": "Remain in a particular place or position.",
+        "t": "特定の場所や位置にとどまる。"
       },
       "s": [
-        "stay_synonym"
+        "remain",
+        "wait"
       ],
       "e": [
         {
-          "s": "This is a sample sentence with 'stay'.",
-          "t": "これは「滞在する」を使った例文です。"
+          "s": "Please stay here while I get the car.",
+          "t": "車を取ってくる間、ここにいてください。"
         },
         {
-          "s": "I know the meaning of 'stay'.",
-          "t": "私は「滞在する」の意味を知っています。"
+          "s": "We decided to stay at home.",
+          "t": "私たちは家にいることにした。"
         },
         {
-          "s": "Can you use 'stay' in a sentence?",
-          "t": "「滞在する」を文の中で使えますか？"
+          "s": "You should stay out of trouble.",
+          "t": "トラブルに巻き込まれないようにすべきだ。"
         }
       ],
       "languageValidation": 1
@@ -11157,24 +11150,25 @@
     "explain": {
       "t": "説明する",
       "d": {
-        "s": "The standard English word 'explain'.",
-        "t": "一般的な英単語「explain」。"
+        "s": "To make something clear or easy to understand by describing it in detail or revealing relevant facts.",
+        "t": "詳細を説明したり関連する事実を明らかにしたりすることによって、何かを明確または理解しやすくすること。"
       },
       "s": [
-        "explain_synonym"
+        "clarify",
+        "elucidate"
       ],
       "e": [
         {
-          "s": "This is a sample sentence with 'explain'.",
-          "t": "これは「説明する」を使った例文です。"
+          "s": "Can you explain the rules of the game to me?",
+          "t": "ゲームのルールを説明してもらえますか？"
         },
         {
-          "s": "I know the meaning of 'explain'.",
-          "t": "私は「説明する」の意味を知っています。"
+          "s": "The teacher explained the complex theory in simple terms.",
+          "t": "先生は複雑な理論を簡単な言葉で説明しました。"
         },
         {
-          "s": "Can you use 'explain' in a sentence?",
-          "t": "「説明する」を文の中で使えますか？"
+          "s": "He tried to explain his absence from the meeting.",
+          "t": "彼は会議を欠席した理由を説明しようとした。"
         }
       ],
       "languageValidation": 1
@@ -13555,26 +13549,27 @@
       "languageValidation": 1
     },
     "step": {
-      "t": "ステップ",
+      "t": "一歩 / ステップ",
       "d": {
-        "s": "The standard English word 'step'.",
-        "t": "一般的な英単語「step」。"
+        "s": "A single action or movement made when walking or going somewhere.",
+        "t": "歩くときやどこかへ行くときに踏み出す一歩。"
       },
       "s": [
-        "step_synonym"
+        "pace",
+        "stride"
       ],
       "e": [
         {
-          "s": "This is a sample sentence with 'step'.",
-          "t": "これは「ステップ」を使った例文です。"
+          "s": "Take one step forward.",
+          "t": "一歩前に進みなさい。"
         },
         {
-          "s": "I know the meaning of 'step'.",
-          "t": "私は「ステップ」の意味を知っています。"
+          "s": "He took a step back in surprise.",
+          "t": "彼は驚いて一歩後ずさった。"
         },
         {
-          "s": "Can you use 'step' in a sentence?",
-          "t": "「ステップ」を文の中で使えますか？"
+          "s": "The next step is to paint the walls.",
+          "t": "次のステップは壁を塗ることです。"
         }
       ],
       "languageValidation": 1
@@ -17682,24 +17677,25 @@
     "wind": {
       "t": "風",
       "d": {
-        "s": "The standard English word 'wind'.",
-        "t": "一般的な英単語「wind」。"
+        "s": "Air moving naturally outdoors, often with noticeable force.",
+        "t": "屋外を自然に移動する空気で、しばしば目に見える力がある。"
       },
       "s": [
-        "wind_synonym"
+        "breeze",
+        "gust"
       ],
       "e": [
         {
-          "s": "This is a sample sentence with 'wind'.",
-          "t": "これは「風」を使った例文です。"
+          "s": "The wind blew strongly through the trees.",
+          "t": "風が木々を強く吹き抜けた。"
         },
         {
-          "s": "I know the meaning of 'wind'.",
-          "t": "私は「風」の意味を知っています。"
+          "s": "We could feel the wind on our faces.",
+          "t": "顔に風を感じることができた。"
         },
         {
-          "s": "Can you use 'wind' in a sentence?",
-          "t": "「風」を文の中で使えますか？"
+          "s": "A gentle wind rustled the leaves.",
+          "t": "そよ風が葉を揺らした。"
         }
       ],
       "languageValidation": 1
@@ -20100,6 +20096,188 @@
         {
           "s": "Can you use 'monster' in a sentence?",
           "t": "「怪物」を文の中で使えますか？"
+        }
+      ],
+      "languageValidation": 1
+    },
+    "zone": {
+      "t": "ゾーン / 地域",
+      "d": {
+        "s": "an area or stretch of land having a particular characteristic, purpose, or use, or subject to particular restrictions or regulations.",
+        "t": "特定の特性、目的、または用途を持つ、または特定の制限または規制の対象となる土地の区域または範囲。"
+      },
+      "s": [
+        "area",
+        "region"
+      ],
+      "e": [
+        {
+          "s": "This is a restricted zone where only authorized personnel are allowed.",
+          "t": "ここは許可された担当者のみが入れる制限区域です。"
+        },
+        {
+          "s": "The city is divided into several residential zones.",
+          "t": "その都市はいくつかの住宅ゾーンに分けられています。"
+        },
+        {
+          "s": "He felt like he was in a zone, completely focused on his work.",
+          "t": "彼は仕事に完全に集中していて、ゾーンに入っているように感じていた。"
+        }
+      ],
+      "languageValidation": 1
+    },
+    "playing": {
+      "t": "遊ぶ / プレーする",
+      "d": {
+        "s": "Engaging in an activity for enjoyment and recreation.",
+        "t": "楽しみや娯楽のために活動に従事すること。"
+      },
+      "s": [
+        "recreating",
+        "amusing"
+      ],
+      "e": [
+        {
+          "s": "The children were playing in the park.",
+          "t": "子供たちは公園で遊んでいました。"
+        },
+        {
+          "s": "He is playing the guitar.",
+          "t": "彼はギターを弾いています。"
+        },
+        {
+          "s": "They are playing a game of chess.",
+          "t": "彼らはチェスのゲームをしています。"
+        }
+      ],
+      "languageValidation": 1
+    },
+    "walks": {
+      "t": "歩く",
+      "d": {
+        "s": "moves at a regular pace by lifting and setting down each foot in turn, never having both feet off the ground at once.",
+        "t": "足を交互に上げて地面に下ろすペースで移動し、両足が同時に地面から離れないようにする。"
+      },
+      "s": [
+        "stride",
+        "tread"
+      ],
+      "e": [
+        {
+          "s": "He walks to the store every morning.",
+          "t": "彼は毎朝店まで歩いて行きます。"
+        },
+        {
+          "s": "She walks her dog in the park.",
+          "t": "彼女は公園で犬を散歩させます。"
+        },
+        {
+          "s": "They walks along the beach at sunset.",
+          "t": "彼らは夕暮れ時にビーチを沿って歩きます。"
+        }
+      ],
+      "languageValidation": 1
+    },
+    "nice": {
+      "t": "いい / 素敵な / 親切な",
+      "d": {
+        "s": "pleasant and enjoyable",
+        "t": "心地よい、楽しい"
+      },
+      "s": [
+        "pleasant",
+        "agreeable"
+      ],
+      "e": [
+        {
+          "s": "It was a nice day for a picnic.",
+          "t": "ピクニックには良い日だった。"
+        },
+        {
+          "s": "She has a nice smile.",
+          "t": "彼女は素敵な笑顔をしている。"
+        },
+        {
+          "s": "He was nice to me when I was sad.",
+          "t": "私が悲しかった時、彼は親切にしてくれた。"
+        }
+      ],
+      "languageValidation": 1
+    },
+    "minion": {
+      "t": "手下",
+      "d": {
+        "s": "A follower or servant, especially one who is not very important.",
+        "t": "手下、部下、しもべ"
+      },
+      "s": [
+        "servant",
+        "henchman"
+      ],
+      "e": [
+        {
+          "s": "He was a loyal minion to the king.",
+          "t": "彼は王の忠実な手下でした。"
+        },
+        {
+          "s": "The villain commanded his minions to attack.",
+          "t": "悪党は手下に攻撃を命じた。"
+        },
+        {
+          "s": "She felt like a mere minion in the large organization.",
+          "t": "彼女はその大きな組織では単なる下っ端のように感じていた。"
+        }
+      ],
+      "languageValidation": 1
+    },
+    "minions": {
+      "t": "部下 / 手下",
+      "d": {
+        "s": "A follower or subordinate, especially a petty or insignificant one.",
+        "t": "部下、手下、しもべ"
+      },
+      "s": [
+        "henchmen",
+        "servants"
+      ],
+      "e": [
+        {
+          "s": "The king ruled with the help of his loyal minions.",
+          "t": "王は忠実な部下の助けを借りて統治した。"
+        },
+        {
+          "s": "The villain commanded his minions to carry out the evil plan.",
+          "t": "悪党は悪事を実行するために手下に命令した。"
+        },
+        {
+          "s": "She felt like a mere minion in the large corporation.",
+          "t": "彼女はその大企業では単なる下っ端のように感じていた。"
+        }
+      ],
+      "languageValidation": 1
+    },
+    "fort": {
+      "t": "砦",
+      "d": {
+        "s": "A fortified building or strategic position.",
+        "t": "要塞化された建物または戦略的拠点。"
+      },
+      "s": [
+        "stronghold",
+        "citadel"
+      ],
+      "e": [
+        {
+          "s": "The soldiers defended the fort against the enemy.",
+          "t": "兵士たちは敵から砦を守った。"
+        },
+        {
+          "s": "Children built a fort out of blankets in the living room.",
+          "t": "子供たちはリビングルームで毛布で砦を作った。"
+        },
+        {
+          "s": "The ancient fort stood on a hill overlooking the valley.",
+          "t": "その古代の砦は谷を見下ろす丘の上に立っていた。"
         }
       ],
       "languageValidation": 1
