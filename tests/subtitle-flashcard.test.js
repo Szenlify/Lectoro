@@ -24,11 +24,11 @@ function app(enabled, fail = false, translated = "Nie, to kosztuje 3,50 dolara."
 
         },
         QT: {
-            translate: async (...args) => {
+            geminiExplainSentence: async (...args) => {
                 translations++;
                 requests.push(args);
                 if (fail) throw Error("Translation unavailable");
-                return { translated, detectedLang: "en" };
+                return { translation: translated, detectedLang: "en" };
             },
             saveWord: async card => saved.push(card),
         },
@@ -43,7 +43,11 @@ for (const enabled of [false, true]) {
         const state = app(enabled);
         await state.context.saveCurrentSentenceToReview();
         assert.equal(state.translations(), 1);
-        assert.deepEqual(state.requests[0], ["No, it costs $3.50.", "pl", "en"]);
+        assert.deepEqual(JSON.parse(JSON.stringify(state.requests[0])), [
+            "No, it costs $3.50.", "pl",
+            { before: ["The train left"], current: "missed it", after: [] },
+            { sourceLang: "en", translationOnly: true },
+        ]);
         assert.equal(state.saved[0].original, "No, it costs $3.50.");
         assert.equal(state.saved[0].translated, "Nie, to kosztuje 3,50 dolara.");
         assert.equal(state.saved[0].screenshot, "screenshot");

@@ -523,11 +523,12 @@
                 {
                     sourceLang,
                     knownTranslation: options.knownTranslation,
+                    translationOnly: options.translationOnly,
                 },
             );
             const parsed = await geminiRequest(prompt, {
                 temperature: 0.2,
-                maxOutputTokens: 1000,
+                maxOutputTokens: options.translationOnly ? 500 : 2000,
                 validate(result) {
                     const detected = AIPrompts.languageCode(
                         result?.source_language,
@@ -621,7 +622,7 @@
                     return (idxA !== -1 ? idxA : sentence.indexOf(a.term.trim())) -
                            (idxB !== -1 ? idxB : sentence.indexOf(b.term.trim()));
                 })
-                .slice(0, 4)
+                .slice(0, 8)
                 .map((item) => {
                     const type = String(item.type || "idiom").toLowerCase().trim();
                     const isIdiom = type === "idiom";

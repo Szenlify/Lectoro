@@ -30,9 +30,9 @@ Master new languages naturally while watching your favorite videos and reading a
 - **Consistent Subtitle Navigation:** A and Left Arrow return to the previous dialogue near its start and replay it after its midpoint across supported video players.
 - **Dual Bilingual Subtitles:** Watch YouTube and Netflix with synchronized dual-language subtitles. Consecutive short fragments are paired together for effortless reading.
 - **Word-by-Word Translation Clouds:** Press S for contextual word and phrase translations above subtitles, with automatic fallback when the primary service is unavailable. Repeated subtitles load from saved results. Use Left/Right arrows or A/D to select a word or phrase, then Z to save it or X to save an AI sentence.
-- **AI Context Explanations:** Receive in-depth breakdowns of complex sentences, idioms, and grammar structures directly in the video player or reading pane.
+- **AI Context Explanations:** Press Enter for up to eight useful words and expressions, interpreted with neighboring subtitles. Receive in-depth breakdowns of complex sentences, idioms, and grammar structures directly in the video player or reading pane.
 - **Natural Speech Pronunciation:** Listen to crystal-clear speech pronunciation tuned to your learning language.
-- **Subtitle Flashcards:** Z saves the original subtitle and punctuation with a faithful, natural translation of that exact text.
+- **Subtitle Flashcards:** Z saves the original subtitle and punctuation with a faithful, natural translation informed by up to two preceding and two following subtitles.
 - **Spaced Repetition (SRS) Flashcards:** Save words and context sentences with a single shortcut or click. Listen to either side at normal speed or 0.75×. Daily review reminders help you retain vocabulary in long-term memory.
 - **Flexible Vocabulary Export:** Export minimalist Anki cards with saved translations, original context and pronunciation, without AI examples or explanations. Export to Excel or take interactive AI-generated quizzes.
 - **Cross-Device Cloud Sync:** Optionally connect your account to keep your vocabulary, learning history, and flashcards synchronized across all your devices.
@@ -75,6 +75,7 @@ Every permission declared in `manifest.json` adheres to the Principle of Least P
 - **Personally Identifiable Information:** Only collected if the user explicitly signs in via Google OAuth (email address used solely for cross-device synchronization).
 - **User Vocabulary & Flashcards:** Stored locally in browser storage by default; synchronized to private user records only upon explicit account sign-in.
 - **Web Content:** Webpage text is processed strictly on-demand in response to user text selection or video playback. Browsing history is never stored, tracked, or sold to third parties.
+- **Subtitle AI context:** Saving a subtitle with Z and explaining it with Enter send the selected subtitle and up to two neighboring lines on each side to Google Gemini through our backend.
 - **Optional natural voices:** Text selected for cloud pronunciation is sent to Google Gemini through our backend. Generated recordings are cached locally and on Cloudflare for reuse; shared audio-cache URLs are publicly retrievable. See [Google’s privacy policy](https://policies.google.com/privacy) and [Cloudflare’s privacy policy](https://www.cloudflare.com/privacypolicy/).
 - **Advertising & Trackers:** The extension contains zero advertising, trackers, analytics beacons, or data broker integrations.
 
@@ -103,6 +104,7 @@ Every permission declared in `manifest.json` adheres to the Principle of Least P
 ## Version History
 
 - **1.0.0 (Current):**
+  - Z and Enter use up to two preceding and two following subtitles to resolve meaning; Enter covers up to eight useful terms (2026-09-25).
   - Removed the Smart AI flashcard setting. Z saves the original subtitle with punctuation and a faithful translation, without generating a replacement sentence (2026-09-25).
   - Added optional Left/Right or A/D word selection in S mode with Z/X saving and word tooltips above translation clouds; default behavior stays unchanged until navigation is used (2026-09-22).
   - Added one-time BLIK purchases for 30 days of BASIC or PRO access in the Polish interface, without a card or automatic renewal.

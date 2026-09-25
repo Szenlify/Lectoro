@@ -447,7 +447,10 @@ test("AI prompts always use native language and stay compact", () => {
     const prompts = require("../shared/ai-prompts");
     const native = prompts.explainSentence("Break a leg!", "pl");
     assert.ok(native.includes("Polish (pl)"));
-    assert.ok(native.length < 1700);
+    // Scene disambiguation and broader vocabulary coverage need a larger contract.
+    assert.ok(native.length < 2600);
+    const translationOnly = prompts.explainSentence("Break a leg!", "pl", null, { translationOnly: true });
+    assert.ok(translationOnly.length < 1300);
     const germanSource = prompts.explainSentence("Viel Erfolg!", "pl", null, { aiExplanationLanguage: "simple_target", sourceLang: "de-DE" });
     assert.ok(germanSource.includes("German (de)"));
     assert.ok(germanSource.includes('"output_language":"pl"'));

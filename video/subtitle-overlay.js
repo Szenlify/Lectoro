@@ -4769,12 +4769,16 @@
 
         try {
             showSaveToast("saving", { text: cleanedText });
+            const context = getActiveSubtitleContext(video, cleanedText);
             const screenshot = await registry.captureVideoReviewScreenshot(video);
             flashCapture();
             const settings = await SharedTranslatorService.getReadingSettings();
             const targetLang = settings.targetLang;
             // Translate the exact saved subtitle; never rewrite it into an AI example.
-            const { translated, detectedLang } = await QT.translate(cleanedText, targetLang, settings.learningLang);
+            const { translation: translated, detectedLang } = await QT.geminiExplainSentence(
+                cleanedText, targetLang, context,
+                { sourceLang: settings.learningLang, translationOnly: true },
+            );
             if (typeof translated !== "string" || !translated.trim()) {
                 throw new Error("Empty subtitle translation.");
             }

@@ -205,3 +205,38 @@ test("SharedUtils isProperNounDefinition and isLikelyEnglish correctly categoriz
     assert.equal(Utils.isLikelyEnglish("zrobić przerwę", "pl"), false);
     assert.equal(Utils.isLikelyEnglish("wahać się", "pl"), false);
 });
+
+test("Z and Enter share scene context while Z requests only the exact translation", async () => {
+    const sentence = "I think you're the biggest guys here";
+    const context = {
+        before: ["Discard this older line", "Welcome to the gym", "Look at those muscles"],
+        after: ["How much do you bench?", "We train every day", "Discard this later line"],
+    };
+    const { service, requests } = explanationService(response({
+        translation: "Myślę, że jesteście tu najwięksi.",
+    }));
+    for (const translationOnly of [true, false]) {
+        await service.explainSentence(sentence, "pl", context, { sourceLang: "en", translationOnly });
+        const { prompt, options } = requests.at(-1);
+        assert.match(prompt, /body size or muscularity, not importance/);
+        assert.match(prompt, /Welcome to the gym/);
+        assert.match(prompt, /How much do you bench/);
+        assert.doesNotMatch(prompt, /Discard this/);
+        assert.match(prompt, /Translate only the supplied sentence/);
+        assert.equal(options.maxOutputTokens, translationOnly ? 500 : 2000);
+        if (translationOnly) assert.match(prompt, /"items":\[\]/);
+    }
+    const otherScene = AIPrompts.explainSentence(sentence, "pl", { before: ["Meet our executives"] });
+    assert.notEqual(requests[1].prompt, otherScene);
+});
+
+test("Enter retains eight distinct useful terms instead of truncating at four", async () => {
+    const terms = ["resilience", "endurance", "strength", "stamina", "effort", "recovery", "balance", "agility", "discipline"];
+    const { service } = explanationService(response({
+        items: [...terms.map(term => ({ term, type: "vocabulary", meaning: "znaczenie", explanation: "" })),
+            { term: "unrelated", type: "vocabulary", meaning: "spoza zdania" }],
+    }));
+    const result = await service.explainSentence(terms.join(", "), "pl");
+    assert.equal(result.items.length, 8);
+    assert.deepEqual(Array.from(result.items, item => item.term), terms.slice(0, 8));
+});
