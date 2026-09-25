@@ -187,7 +187,7 @@
   pointer-events: auto !important;
 }
 
-/* Reset any host-page `button` styles (e.g. video.js `.video-js button`)
+/* Reset any host-page `button`, `details`, `summary` styles (e.g. video.js, reddit.com)
    that could otherwise leak into our UI once it's reparented inside a
    site's fullscreen container. ID-scoped selectors below always win. */
 #__qt_tooltip button {
@@ -195,6 +195,40 @@
   box-sizing: border-box;
   display: flex;
   cursor: pointer;
+}
+
+#__qt_tooltip details {
+  display: block;
+  box-sizing: border-box !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+#__qt_tooltip summary {
+  box-sizing: border-box !important;
+  list-style: none !important;
+  list-style-type: none !important;
+  font-weight: normal !important;
+  background: transparent !important;
+  border: none !important;
+  margin: 0 !important;
+  outline: none !important;
+}
+
+#__qt_tooltip summary::marker,
+#__qt_tooltip summary::-webkit-details-marker {
+  display: none !important;
+  content: "" !important;
+}
+
+#__qt_tooltip summary::after {
+  display: none !important;
+  content: none !important;
 }
 
 /* Tooltip inner layout */
@@ -2687,6 +2721,7 @@ body[data-lectoro-ai-active="true"]
 /* Concise dictionary details beneath the word translation. */
 #__qt_tooltip .__qt_dictionary-details {
   margin-top: 16px;
+  margin-bottom: 0 !important;
   padding-top: 14px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   font-size: 15px;
@@ -2694,26 +2729,30 @@ body[data-lectoro-ai-active="true"]
   overflow-wrap: anywhere;
 }
 #__qt_tooltip .__qt_dictionary-example {
-  padding: 9px 0;
+  padding: 10px 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  border: none !important;
   color: #e4e7ef;
 }
 #__qt_tooltip .__qt_dictionary-example + .__qt_dictionary-example {
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 #__qt_tooltip .__qt_example-translation p {
   flex: 1;
   min-width: 0;
-  margin: 0;
-  font: inherit;
-  color: inherit;
+  margin: 0 !important;
+  padding: 0 !important;
+  font: inherit !important;
+  color: inherit !important;
 }
 #__qt_tooltip .__qt_dictionary-line {
-  display: grid;
+  display: grid !important;
   grid-template-columns: minmax(0, 1fr) 24px;
   align-items: flex-start;
   gap: 6px;
-  width: 100%;
-  box-sizing: border-box;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 #__qt_tooltip .__qt_dictionary-line-text {
   flex: 1;
@@ -2725,22 +2764,41 @@ body[data-lectoro-ai-active="true"]
   min-width: 0;
 }
 #__qt_tooltip .__qt_example-reveal summary {
-  position: relative;
-  padding-inline-start: 18px;
-  cursor: pointer;
-  list-style: none;
-  border-radius: 3px;
-  text-decoration: none;
+  display: grid !important;
+  position: relative !important;
+  padding: 4px 0 4px 20px !important;
+  margin: 0 !important;
+  cursor: pointer !important;
+  list-style: none !important;
+  list-style-type: none !important;
+  font-weight: normal !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+  outline: none !important;
+  color: inherit !important;
+  text-decoration: none !important;
   transition: color 0.15s ease;
 }
 #__qt_tooltip .__qt_example-reveal {
-  box-sizing: border-box;
+  box-sizing: border-box !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+#__qt_tooltip .__qt_dictionary-example.__qt_example-reveal {
+  padding: 10px 0 !important;
 }
 #__qt_tooltip .__qt_example-reveal summary::before {
   content: "";
   position: absolute;
-  inset-inline-start: 2px;
-  top: 0.45em;
+  inset-inline-start: 3px;
+  top: 0.65em;
   width: 6px;
   height: 6px;
   border-right: 1.5px solid #aeb6c8;
@@ -2751,47 +2809,61 @@ body[data-lectoro-ai-active="true"]
 #__qt_tooltip .__qt_example-reveal[open] summary::before {
   transform: rotate(45deg);
 }
-#__qt_tooltip .__qt_example-reveal summary::-webkit-details-marker {
-  display: none;
+#__qt_tooltip .__qt_example-reveal summary::-webkit-details-marker,
+#__qt_tooltip .__qt_example-reveal summary::marker {
+  display: none !important;
+  content: "" !important;
+}
+#__qt_tooltip .__qt_example-reveal summary::after {
+  display: none !important;
+  content: none !important;
 }
 #__qt_tooltip .__qt_example-reveal[open] > summary:hover {
   color: #fff;
+}
+#__qt_tooltip .__qt_example-reveal[open] > summary {
+  margin-bottom: 0 !important;
 }
 #__qt_tooltip .__qt_example-reveal summary:focus-visible {
   outline: 2px solid #70baef;
   outline-offset: 3px;
 }
 #__qt_tooltip .__qt_example-translation {
-  display: grid;
+  display: grid !important;
   grid-template-columns: minmax(0, 1fr) 24px;
   gap: 6px;
   align-items: flex-start;
-  margin-inline-start: 4px;
-  padding-inline-start: 12px;
-  border-inline-start: 2px solid rgba(174, 182, 200, 0.2);
-  margin-top: 8px;
+  margin-inline-start: 6px;
+  padding-inline-start: 14px;
+  border-inline-start: 2px solid rgba(174, 182, 200, 0.25);
+  margin-top: 10px !important;
+  margin-bottom: 4px !important;
   color: #aeb6c8;
 }
 #__qt_tooltip .__qt_dictionary-example.__qt_dictionary-line,
 #__qt_tooltip .__qt_dictionary-example > .__qt_dictionary-line,
 #__qt_tooltip .__qt_dictionary-example > .__qt_example-translation {
-  grid-template-columns: minmax(0, 1fr) 24px 24px;
+  grid-template-columns: minmax(0, 1fr) 24px 24px !important;
 }
 #__qt_tooltip .__qt_example-translation > .__qt_speak {
   grid-column: -2;
 }
 #__qt_tooltip .__qt_dictionary-details .__qt_speak,
 #__qt_tooltip .__qt_dictionary-details .__qt_save-example {
-  box-sizing: border-box;
-  width: 24px;
-  height: 24px;
-  padding: 3px;
-  border-radius: 6px;
+  box-sizing: border-box !important;
+  width: 24px !important;
+  height: 24px !important;
+  padding: 3px !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  border: none !important;
+  margin: 0 !important;
 }
 #__qt_tooltip .__qt_dictionary-details .__qt_speak svg,
 #__qt_tooltip .__qt_dictionary-details .__qt_save-example svg {
-  width: 16px;
-  height: 16px;
+  width: 16px !important;
+  height: 16px !important;
+  transform: none !important;
 }
 #__qt_tooltip .__qt_dictionary-definition-section {
   margin-bottom: 10px;
@@ -2801,7 +2873,10 @@ body[data-lectoro-ai-active="true"]
 }
 #__qt_tooltip .__qt_dictionary-definition {
   color: #d4d9e5;
-  margin: 0;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
   line-height: 1.65;
 }
 #__qt_tooltip .__qt_dictionary-caption {
