@@ -6,6 +6,10 @@ const VOICES = Object.freeze([
     Object.freeze({ voice_id: "nova", name: "Nova", gender: "female", labels: { description: "Warm & Natural" } }),
     Object.freeze({ voice_id: "alloy", name: "Alloy", gender: "male", labels: { description: "Balanced & Clear" } }),
 ]);
+const OPENAI_VOICE_GAIN = Object.freeze({
+    nova: 1.85,
+    alloy: 1.30,
+});
 
 function normalizeLanguage(language) {
     const value = String(language || "en").trim().toLowerCase();
@@ -99,6 +103,7 @@ module.exports = {
     MODEL,
     CACHE_VERSION,
     VOICES,
+    OPENAI_VOICE_GAIN,
     normalizeLanguage,
     normalizeVoiceId,
     audioCacheKey,

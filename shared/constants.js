@@ -367,12 +367,23 @@
         const ALLOWED_OPENAI_TTS_VOICE_KEYS = Object.freeze(OPENAI_TTS_VOICES.map((v) => v.key));
         const ALLOWED_OPENAI_TTS_VOICE_IDS = Object.freeze(OPENAI_TTS_VOICES.map((v) => v.id));
 
+        /**
+         * Voice loudness compensation gain multipliers.
+         * OpenAI "nova" is naturally softer (~ -21 LUFS) compared to system/browser TTS (~ -14 LUFS).
+         * Boosting Nova by ~1.85x (+5.3 dB) and Alloy by ~1.30x (+2.3 dB) brings them to a balanced, crystal-clear level.
+         */
+        const OPENAI_VOICE_GAIN = Object.freeze({
+            nova: 1.85,
+            alloy: 1.30,
+        });
+
         // Aliases for compatibility
         const GEMINI_TTS_MODEL = OPENAI_TTS_MODEL;
         const GEMINI_TTS_CACHE_VERSION = OPENAI_TTS_CACHE_VERSION;
         const GEMINI_TTS_VOICES = OPENAI_TTS_VOICES;
         const ALLOWED_GEMINI_TTS_VOICE_KEYS = ALLOWED_OPENAI_TTS_VOICE_KEYS;
         const ALLOWED_GEMINI_TTS_VOICE_IDS = ALLOWED_OPENAI_TTS_VOICE_IDS;
+        const GEMINI_VOICE_GAIN = OPENAI_VOICE_GAIN;
 
         function normalizeTtsProviderSettings(settings = {}) {
             let ttsMode = settings.ttsMode;
@@ -464,12 +475,14 @@
             OPENAI_TTS_VOICES,
             ALLOWED_OPENAI_TTS_VOICE_KEYS,
             ALLOWED_OPENAI_TTS_VOICE_IDS,
+            OPENAI_VOICE_GAIN,
             GEMINI_TTS_MODEL,
             GEMINI_TTS_CACHE_VERSION,
             normalizeTtsProviderSettings,
             GEMINI_TTS_VOICES,
             ALLOWED_GEMINI_TTS_VOICE_KEYS,
             ALLOWED_GEMINI_TTS_VOICE_IDS,
+            GEMINI_VOICE_GAIN,
             getLanguageName,
             langTag,
             isOwnUI,

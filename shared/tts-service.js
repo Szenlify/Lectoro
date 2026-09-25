@@ -30,6 +30,8 @@
         const defaultLearning = DEFAULT_READING_SETTINGS?.learningLang || "en";
 
         let activeAudio = null;
+        let activeSourceNode = null;
+        let sharedAudioContext = null;
         let globalSpeechToken = 0;
         let providerError = null;
         let activeUtterances = [];
@@ -373,6 +375,12 @@
                 window.speechSynthesis?.cancel();
             } catch (_) {}
             activeUtterances = [];
+            if (activeSourceNode) {
+                try {
+                    activeSourceNode.stop();
+                } catch (_) {}
+                activeSourceNode = null;
+            }
             if (activeAudio) {
                 try {
                     activeAudio.pause();
@@ -450,6 +458,172 @@
             }
 
             return lastUtter;
+        }
+
+        /**
+         * Play an audio blob using Web Audio API for gain boosting + transparent dynamic limiter.
+         * Boosting Nova by ~1.85x (+5.3 dB) and Alloy by ~1.30x (+2.3 dB) compensates for OpenAI's naturally
+         * softer recording level (-21 LUFS) relative to system/browser TTS (-14 LUFS).
+         * Dynamics compressor acts as a transparent peak limiter preventing distortion or clipping.
+         * Falls back to standard HTMLAudioElement when Web Audio is unavailable.
+         */
+        async function playAudioBlob(
+            blob,
+            {
+                voiceId = "nova",
+                volume = null,
+                rate = null,
+                isCancelled = null,
+                currentToken = globalSpeechToken,
+            } = {},
+        ) {
+            if (!blob || blob.size === 0) return { type: "none", obj: null };
+            if (isCancelled?.() || currentToken !== globalSpeechToken) {
+                return { type: "none", obj: null };
+            }
+
+            const rawGain =
+                (Constants.OPENAI_VOICE_GAIN &&
+                    Constants.OPENAI_VOICE_GAIN[voiceId]) ||
+                1.0;
+            const userVolume = Number.isFinite(volume) && volume >= 0 ? volume : 1.0;
+            const targetGain = rawGain * userVolume;
+            const playbackRate = Number.isFinite(rate) && rate > 0 ? rate : 1.0;
+
+            const AudioCtx =
+                typeof window !== "undefined" &&
+                (window.AudioContext ||
+                    window.webkitAudioContext ||
+                    (typeof globalThis !== "undefined" &&
+                        (globalThis.AudioContext || globalThis.webkitAudioContext)));
+
+            // 1. Try Web Audio API for gain boosting + transparent dynamic limiter
+            if (AudioCtx) {
+                try {
+                    if (!sharedAudioContext || sharedAudioContext.state === "closed") {
+                        sharedAudioContext = new AudioCtx();
+                    }
+                    if (sharedAudioContext.state === "suspended") {
+                        await sharedAudioContext.resume();
+                    }
+
+                    const arrayBuffer = await blob.arrayBuffer();
+                    if (isCancelled?.() || currentToken !== globalSpeechToken) {
+                        return { type: "none", obj: null };
+                    }
+
+                    const audioBuffer = await sharedAudioContext.decodeAudioData(arrayBuffer);
+                    if (isCancelled?.() || currentToken !== globalSpeechToken) {
+                        return { type: "none", obj: null };
+                    }
+
+                    const ctx = sharedAudioContext;
+                    const source = ctx.createBufferSource();
+                    source.buffer = audioBuffer;
+                    source.playbackRate.value = playbackRate;
+
+                    // Dynamics compressor acts as a transparent peak limiter to prevent clipping
+                    const compressor = ctx.createDynamicsCompressor();
+                    compressor.threshold.setValueAtTime(-3, ctx.currentTime);
+                    compressor.knee.setValueAtTime(6, ctx.currentTime);
+                    compressor.ratio.setValueAtTime(12, ctx.currentTime);
+                    compressor.attack.setValueAtTime(0.003, ctx.currentTime);
+                    compressor.release.setValueAtTime(0.05, ctx.currentTime);
+
+                    const gainNode = ctx.createGain();
+                    gainNode.gain.setValueAtTime(targetGain, ctx.currentTime);
+
+                    source.connect(gainNode);
+                    gainNode.connect(compressor);
+                    compressor.connect(ctx.destination);
+
+                    activeSourceNode = source;
+
+                    const listeners = { ended: new Set(), error: new Set() };
+                    let ended = false;
+                    const finish = () => {
+                        if (!ended) {
+                            ended = true;
+                            if (activeSourceNode === source) {
+                                activeSourceNode = null;
+                            }
+                            if (activeAudio === proxyAudio) {
+                                activeAudio = null;
+                            }
+                            for (const fn of listeners.ended) {
+                                try { fn(); } catch (_) {}
+                            }
+                            if (typeof proxyAudio.onended === "function") {
+                                try { proxyAudio.onended(); } catch (_) {}
+                            }
+                        }
+                    };
+
+                    source.onended = finish;
+
+                    const proxyAudio = {
+                        _source: source,
+                        pause: () => {
+                            try { source.stop(); } catch (_) {}
+                            finish();
+                        },
+                        stop: () => {
+                            try { source.stop(); } catch (_) {}
+                            finish();
+                        },
+                        addEventListener: (event, handler) => {
+                            if (listeners[event]) listeners[event].add(handler);
+                        },
+                        removeEventListener: (event, handler) => {
+                            if (listeners[event]) listeners[event].delete(handler);
+                        },
+                        onended: null,
+                        onerror: null,
+                    };
+
+                    activeAudio = proxyAudio;
+                    source.start(0);
+                    return { type: "audio", obj: proxyAudio };
+                } catch (audioCtxError) {
+                    console.warn(
+                        "[Lectoro TTS] Web Audio API playback failed, falling back to HTMLAudioElement:",
+                        audioCtxError?.message || audioCtxError,
+                    );
+                }
+            }
+
+            // 2. Fallback to HTML Audio Element
+            if (isCancelled?.() || currentToken !== globalSpeechToken) {
+                return { type: "none", obj: null };
+            }
+
+            if (typeof Audio === "function") {
+                const url = URL.createObjectURL(blob);
+                const audio = new Audio(url);
+                audio.volume = Math.min(1.0, userVolume);
+                audio.playbackRate = playbackRate;
+                activeAudio = audio;
+                audio.addEventListener(
+                    "ended",
+                    () => {
+                        URL.revokeObjectURL(url);
+                        if (activeAudio === audio) activeAudio = null;
+                    },
+                    { once: true },
+                );
+                audio.addEventListener(
+                    "error",
+                    () => {
+                        URL.revokeObjectURL(url);
+                        if (activeAudio === audio) activeAudio = null;
+                    },
+                    { once: true },
+                );
+                await audio.play();
+                return { type: "audio", obj: audio };
+            }
+
+            return { type: "none", obj: null };
         }
 
         /**
@@ -538,26 +712,13 @@
 
                 // If audio was found in local cache or R2, play it!
                 if (audioBlob && audioBlob.size > 0) {
-                    if (isCancelled?.() || currentToken !== globalSpeechToken) {
-                        return { type: "none", obj: null };
-                    }
-                    const url = URL.createObjectURL(audioBlob);
-                    const audio = new Audio(url);
-                    audio.volume = volume !== null ? volume : settings.ttsVolume;
-                    audio.playbackRate = rate !== null ? rate : (settings.speechRate || 1);
-                    activeAudio = audio;
-                    audio.addEventListener(
-                        "ended",
-                        () => URL.revokeObjectURL(url),
-                        { once: true },
-                    );
-                    audio.addEventListener(
-                        "error",
-                        () => URL.revokeObjectURL(url),
-                        { once: true },
-                    );
-                    await audio.play();
-                    return { type: "audio", obj: audio };
+                    return playAudioBlob(audioBlob, {
+                        voiceId: targetVoiceId,
+                        volume: volume !== null ? volume : settings.ttsVolume,
+                        rate: rate !== null ? rate : (settings.speechRate || 1),
+                        isCancelled,
+                        currentToken,
+                    });
                 }
             } catch (err) {
                 console.debug("[Lectoro TTS] Hover R2 check fallback to browser voice:", err.message);
@@ -637,29 +798,13 @@
                         audioResult?.blob &&
                         (audioResult.provider === "openai" || audioResult.provider === "gemini")
                     ) {
-                        if (
-                            isCancelled?.() ||
-                            currentToken !== globalSpeechToken
-                        ) {
-                            return { type: "none", obj: null };
-                        }
-                        const url = URL.createObjectURL(audioResult.blob);
-                        const audio = new Audio(url);
-                        audio.volume = settings.ttsVolume;
-                        audio.playbackRate = playbackRate;
-                        activeAudio = audio;
-                        audio.addEventListener(
-                            "ended",
-                            () => URL.revokeObjectURL(url),
-                            { once: true },
-                        );
-                        audio.addEventListener(
-                            "error",
-                            () => URL.revokeObjectURL(url),
-                            { once: true },
-                        );
-                        await audio.play();
-                        return { type: "audio", obj: audio };
+                        return playAudioBlob(audioResult.blob, {
+                            voiceId: audioResult.voiceId || targetVoiceId,
+                            volume: settings.ttsVolume,
+                            rate: playbackRate,
+                            isCancelled,
+                            currentToken,
+                        });
                     }
                 } catch (err) {
                     console.warn(
@@ -834,6 +979,7 @@
         return Object.freeze({
             speak,
             speakBrowser,
+            playAudioBlob,
             formatSpeechMarkup,
             cancel,
             getSafetyTimeout,

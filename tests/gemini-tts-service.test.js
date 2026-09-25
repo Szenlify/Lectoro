@@ -106,3 +106,89 @@ test("cancelling during synthesis prevents late playback", async () => {
     const result = await speech;
     assert.equal(result.type, "none");
 });
+
+test("OPENAI_VOICE_GAIN defines loudness compensation for Nova (~1.85x) and Alloy (~1.30x)", () => {
+    assert.equal(Constants.OPENAI_VOICE_GAIN.nova, 1.85);
+    assert.equal(Constants.OPENAI_VOICE_GAIN.alloy, 1.30);
+});
+
+test("playAudioBlob uses Web Audio API to boost Nova by 1.85x and Alloy by 1.30x with dynamic compressor", async () => {
+    let appliedGain = null;
+    let compressorCreated = false;
+    let sourceStarted = false;
+    let sourceStopped = false;
+
+    class MockAudioContext {
+        constructor() {
+            this.state = "running";
+            this.currentTime = 0;
+            this.destination = {};
+        }
+        async resume() {}
+        async decodeAudioData() {
+            return { duration: 1 };
+        }
+        createBufferSource() {
+            return {
+                buffer: null,
+                playbackRate: { value: 1 },
+                connect() {},
+                start() { sourceStarted = true; },
+                stop() { sourceStopped = true; },
+                onended: null,
+            };
+        }
+        createGain() {
+            return {
+                gain: {
+                    setValueAtTime(val) { appliedGain = val; },
+                },
+                connect() {},
+            };
+        }
+        createDynamicsCompressor() {
+            compressorCreated = true;
+            return {
+                threshold: { setValueAtTime() {} },
+                knee: { setValueAtTime() {} },
+                ratio: { setValueAtTime() {} },
+                attack: { setValueAtTime() {} },
+                release: { setValueAtTime() {} },
+                connect() {},
+            };
+        }
+    }
+
+    const testMp3 = new Blob(["test"], { type: "audio/mpeg" });
+
+    const sandbox = {
+        LectoroConstants: Constants,
+        SharedUtils: Utils,
+        AudioContext: MockAudioContext,
+        console: { warn() {}, debug() {} },
+        Blob, AbortSignal, URL,
+        window: { speechSynthesis: { cancel() {} }, AudioContext: MockAudioContext },
+    };
+    vm.runInNewContext(fs.readFileSync(require.resolve("../shared/tts-service"), "utf8"), sandbox);
+
+    // Test with Nova (~1.85x)
+    const resNova = await sandbox.SharedTtsService.playAudioBlob(testMp3, { voiceId: "nova", volume: 1 });
+    assert.equal(resNova.type, "audio");
+    assert.equal(appliedGain, 1.85);
+    assert.equal(compressorCreated, true);
+    assert.equal(sourceStarted, true);
+
+    // Test with Alloy (~1.30x)
+    appliedGain = null;
+    compressorCreated = false;
+    sourceStarted = false;
+    const resAlloy = await sandbox.SharedTtsService.playAudioBlob(testMp3, { voiceId: "alloy", volume: 1 });
+    assert.equal(resAlloy.type, "audio");
+    assert.equal(appliedGain, 1.30);
+    assert.equal(compressorCreated, true);
+    assert.equal(sourceStarted, true);
+
+    // Test cancel stops active source
+    sandbox.SharedTtsService.cancel();
+    assert.equal(sourceStopped, true);
+});
