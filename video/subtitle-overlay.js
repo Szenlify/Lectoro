@@ -1858,14 +1858,16 @@
         if (!aiTooltipActive && !aiPaywallActive) return;
         aiTooltipActive = false;
         aiPaywallActive = false;
+        // Invalidate pending speech before any DOM cleanup can throw or start another action.
+        aiExplainSpeechToken++;
+        aiExplainSpeechPromise = null;
+        SharedTtsService.cancel();
         try {
             document.body?.removeAttribute("data-lectoro-ai-active");
         } catch (_) { }
         clearTimeout(aiAutoAdvanceTimer);
         aiAutoAdvanceTimer = null;
         aiAutoAdvanceDisabled = false;
-        aiExplainSpeechToken++;
-        aiExplainSpeechPromise = null;
         aiExplainQueue = [];
         aiExplainIndex = 0;
         aiExplainLayout = null;
@@ -1877,7 +1879,6 @@
         removeAiShimmer();
         removeSubtitleTranslationUnderOriginal();
         cleanupReading();
-        SharedTtsService.cancel();
 
         const shouldResume =
             options.resumeVideo !== undefined ? options.resumeVideo : true;
@@ -4196,7 +4197,8 @@
     }
 
     function createOverlay(layout = null) {
-        removeOverlay();
+        // Rebuilding the same panel (loader/content) is not a user dismissal.
+        removeOverlay({ preserveAiSession: true });
         translationAnchorLayout = layout;
         translationOverlay = document.createElement("div");
         translationOverlay.id = C.UI_IDS.SENTENCE_TRANSLATION;
@@ -4233,7 +4235,10 @@
         return translationOverlay;
     }
 
-    function removeOverlay() {
+    function removeOverlay({ preserveAiSession = false } = {}) {
+        if (!preserveAiSession && (aiTooltipActive || aiPaywallActive)) {
+            closeAiTooltip({ resumeVideo: false });
+        }
         if (translationOverlay) {
             translationOverlay.remove();
             translationOverlay = null;
@@ -4599,7 +4604,9 @@
         }
     }
 
-    for (const eventName of ["play", "playing", "seeked"]) {
+    window.addEventListener("pagehide", () => closeAiTooltip({ resumeVideo: false }));
+
+    for (const eventName of ["play", "playing", "seeking", "seeked", "ended"]) {
         document.addEventListener(eventName, handleVideoPlaybackStarted, true);
     }
 

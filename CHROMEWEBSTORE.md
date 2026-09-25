@@ -103,6 +103,8 @@ Every permission declared in `manifest.json` adheres to the Principle of Least P
 
 ## Version History
 
+- Closing Enter sentence analysis stops speech immediately and cancels pending narration, including playback, seek and page-exit cleanup.
+
 - Single-word subtitle fragments join the preceding nearby cue on YouTube, Netflix and native caption tracks; ASR word timing is preserved.
 
 - **1.0.0 (Current):**
