@@ -75,3 +75,52 @@ for (const translated of [null, "", "   "]) {
         assert.equal(state.toasts.at(-1).status, "error");
     });
 }
+
+test("Z reports exhausted AI credits and releases the save lock for a later retry", async () => {
+    const state = app(false);
+    state.context.QT.geminiExplainSentence = async () => {
+        throw Object.assign(new Error("Quota exhausted"), { code: "AI_LIMIT_REACHED" });
+    };
+    await state.context.saveCurrentSentenceToReview();
+    assert.equal(state.saved.length, 0);
+    assert.equal(state.toasts.at(-1).status, "ai-limit");
+    assert.equal(state.toasts.at(-1).payload.text, "credits_renew_monthly");
+    assert.equal(state.context.savingSentence, false);
+    state.context.QT.geminiExplainSentence = async () => ({ translation: "Tłumaczenie", detectedLang: "en" });
+    await state.context.saveCurrentSentenceToReview();
+    assert.equal(state.saved.length, 1);
+    assert.equal(state.toasts.at(-1).status, "success");
+});
+
+test("Z also recognizes credit errors classified by the Gemini proxy", async () => {
+    const state = app(false, true);
+    state.context.GeminiProxy = { isLimitError: () => true };
+    await state.context.saveCurrentSentenceToReview();
+    assert.equal(state.toasts.at(-1).status, "ai-limit");
+    assert.equal(state.saved.length, 0);
+});
+
+test("credit notice uses localized neutral copy in every supported language", () => {
+    const i18n = require("../shared/i18n");
+    for (const lang of i18n.SUPPORTED_LOCALES) {
+        const el = { classList: { add() {} } };
+        const context = vm.createContext({
+            SharedI18n: { getLang: () => lang, t: i18n.t },
+            PREFIX: "__qt_", subtitleTranslationLang: lang,
+            SAVE_TOAST_SAVING_MS: 1000, saveToastHideTimer: null,
+            getSaveToastEl: () => el, clearTimeout() {}, setTimeout() {},
+            requestAnimationFrame: fn => fn(), hideSaveToast() {},
+            escapeHtml: x => x, QT: { escapeHtml: x => x },
+        });
+        loadFunction(context, "video/subtitle-overlay.js", "showSaveToast");
+        const dict = i18n.getDictionary(lang);
+        assert.ok(dict.credits_limit_reached);
+        assert.ok(dict.credits_renew_monthly);
+        context.showSaveToast("ai-limit", { text: dict.credits_renew_monthly });
+        assert.ok(el.innerHTML.includes(dict.credits_limit_reached), lang);
+        assert.ok(el.innerHTML.includes(dict.credits_renew_monthly), lang);
+        assert.ok(!el.innerHTML.includes(dict.toast_could_not_save), lang);
+        assert.doesNotMatch(el.innerHTML, /⚠|error_mark/);
+        assert.equal(el.className, "__qt_ai-limit");
+    }
+});

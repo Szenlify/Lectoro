@@ -4706,6 +4706,10 @@
             `;
             if (thumb)
                 thumbHtml = `<img class="${PREFIX}save_toast_thumb" src="${QT.escapeAttr(thumb)}" alt="" />`;
+        } else if (state === "ai-limit") {
+            iconHtml = `<span class="${PREFIX}save_toast_sparkle">✦</span>`;
+            title = escapeHtml(t("credits_limit_reached"));
+            bodyHtml = textHtml;
         } else {
             iconHtml = `<div class="${PREFIX}error_mark">!</div>`;
             title = `⚠ ${escapeHtml(t("toast_could_not_save"))}`;
@@ -4811,9 +4815,11 @@
                 SAVE_TOAST_SUCCESS_MS,
             );
         } catch (err) {
-            console.error("[Lectoro] saveCurrentSentence error:", err);
-            showSaveToast("error", {
-                text: t("toast_could_not_save_sentence"),
+            const aiLimitReached = err?.code === "AI_LIMIT_REACHED" ||
+                (typeof GeminiProxy !== "undefined" && GeminiProxy?.isLimitError?.(err));
+            if (!aiLimitReached) console.error("[Lectoro] saveCurrentSentence error:", err);
+            showSaveToast(aiLimitReached ? "ai-limit" : "error", {
+                text: t(aiLimitReached ? "credits_renew_monthly" : "toast_could_not_save_sentence"),
                 duration: SAVE_TOAST_ERROR_MS,
             });
             saveResumeTimer = setTimeout(resumeAfterSave, SAVE_TOAST_ERROR_MS);

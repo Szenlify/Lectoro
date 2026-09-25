@@ -104,6 +104,7 @@ Every permission declared in `manifest.json` adheres to the Principle of Least P
 ## Version History
 
 - **1.0.0 (Current):**
+  - Saving with Z shows a gentle, localized AI credit limit notice when credits run out, instead of a generic save error.
   - Z and Enter use up to two preceding and two following subtitles to resolve meaning; Enter covers up to eight useful terms (2026-09-25).
   - Removed the Smart AI flashcard setting. Z saves the original subtitle with punctuation and a faithful translation, without generating a replacement sentence (2026-09-25).
   - Added optional Left/Right or A/D word selection in S mode with Z/X saving and word tooltips above translation clouds; default behavior stays unchanged until navigation is used (2026-09-22).
