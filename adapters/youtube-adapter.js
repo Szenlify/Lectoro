@@ -173,6 +173,7 @@
 
     function setCueIndex(cues, videoId = "") {
         if (!Array.isArray(cues) || cues.length === 0) return;
+        cues = getSubtitleService()?.mergeSingleWordCues?.(cues) || cues;
         cueIndex = cues;
         let maxEnd = -Infinity;
         cueMaxEnd = cues.map((cue) => (maxEnd = Math.max(maxEnd, cue.endTime)));

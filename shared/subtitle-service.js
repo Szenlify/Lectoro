@@ -1543,6 +1543,72 @@
             return cues;
         }
 
+        const nativeDisplayCueCache = new WeakMap();
+        function getNativeDisplayCues(track) {
+            if (!track?.cues) return [];
+            const raw = track.cues;
+            const activeSignature = Array.from(track.activeCues || [], (cue) =>
+                `${cue.startTime}:${cue.endTime}:${cue.text}`).join("\n");
+            const cached = nativeDisplayCueCache.get(track);
+            if (cached?.raw === raw && cached.length === raw.length &&
+                cached.last === raw[raw.length - 1] && cached.activeSignature === activeSignature) return cached.cues;
+            const cues = mergeSingleWordCues(Array.from(raw, (cue) => ({
+                startTime: cue.startTime, endTime: cue.endTime,
+                text: cleanCueText(cue.text, { preserveNewlines: true }), line: cue.line, position: cue.position,
+            })).sort((a, b) => a.startTime - b.startTime));
+            nativeDisplayCueCache.set(track, { raw, length: raw.length, last: raw[raw.length - 1], activeSignature, cues });
+            return cues;
+        }
+
+        // Join a short, neighboring one-word fragment for display without changing parser output.
+        function mergeSingleWordCues(cues) {
+            if (!Array.isArray(cues)) return [];
+            const result = [];
+            const segmenter = typeof Intl.Segmenter === "function"
+                ? new Intl.Segmenter(undefined, { granularity: "word" }) : null;
+            for (const cue of cues) {
+                if (!cue || typeof cue.text !== "string" || !cue.text.trim()) continue;
+                const text = cue.text.trim();
+                const previous = result[result.length - 1];
+                const words = segmenter
+                    ? Array.from(segmenter.segment(text)).filter((part) => part.isWordLike).length
+                    : text.split(/\s+/u).filter((part) => /[\p{L}\p{N}]/u.test(part)).length;
+                const gap = previous ? cue.startTime - previous.endTime : Infinity;
+                const speakerOrSound = /^(?:[-—–]\s|>>|[\[(♪♫])/u.test(text);
+                if (!previous || words !== 1 || speakerOrSound ||
+                    !Number.isFinite(gap) || gap < -0.05 || gap > 0.65 ||
+                    !Number.isFinite(cue.endTime) || cue.endTime <= cue.startTime ||
+                    cue.startTime <= previous.startTime ||
+                    cue.endTime - previous.startTime > 12 ||
+                    previous.text.length + text.length > 160) {
+                    result.push(cue);
+                    continue;
+                }
+                const combined = Object.defineProperties({}, Object.getOwnPropertyDescriptors(previous));
+                combined.text = `${previous.text.trim()} ${text}`;
+                combined.lines = [combined.text];
+                combined.endTime = Math.max(previous.endTime, cue.endTime);
+                combined.isSingleWordMerged = true;
+                if (previous.translation || cue.translation) {
+                    combined.translation = [previous.translation, cue.translation].filter(Boolean).join(" ");
+                }
+                // Keep ASR word clocks absolute; the appended cue has a different time origin.
+                const segments = [previous, cue].flatMap((part) =>
+                    (Array.isArray(part.segs) ? part.segs : [{ utf8: part.text }]).map((seg) => {
+                        const tAbsMs = Number.isFinite(seg.tAbsMs) ? seg.tAbsMs :
+                            (Number.isFinite(part.tStartMs) ? part.tStartMs : part.startTime * 1000) + (Number(seg.tOffsetMs) || 0);
+                        return { ...seg, tAbsMs, tOffsetMs: tAbsMs - previous.startTime * 1000 };
+                    }));
+                // A parser may expose non-writable metadata, so rebuild descriptors on a fresh object.
+                const descriptors = Object.getOwnPropertyDescriptors(combined);
+                descriptors.segs = { value: segments, writable: true, configurable: true, enumerable: false };
+                descriptors.tStartMs = { value: previous.startTime * 1000, writable: true, configurable: true, enumerable: false };
+                descriptors.dDurationMs = { value: (combined.endTime - previous.startTime) * 1000, writable: true, configurable: true, enumerable: false };
+                result[result.length - 1] = Object.defineProperties({}, descriptors);
+            }
+            return result;
+        }
+
         /**
          * Pairs consecutive subtitle clusters into groups of 2 (Language Reactor style).
          * Displays two clusters at a time on Netflix and YouTube, unless a cluster or combination
@@ -1939,6 +2005,8 @@
             finalizeCues,
             reconstructFullSentenceCues,
             pairTwoClusters,
+            mergeSingleWordCues,
+            getNativeDisplayCues,
             alignSlaveTrackToMaster,
             parseYouTubeJson3,
             parseWebVtt,

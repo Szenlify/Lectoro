@@ -102,13 +102,16 @@
             if (
                 !["subtitles", "captions"].includes(track.kind) ||
                 track.mode === "disabled" ||
-                !track.activeCues ||
-                track.activeCues.length === 0
+                !track.activeCues
             ) {
                 continue;
             }
 
-            const rawCues = Array.from(track.activeCues);
+            let rawCues = Array.from(track.activeCues);
+            const displayCues = globalThis.SharedSubtitleService?.getNativeDisplayCues?.(track);
+            if (displayCues?.length) {
+                rawCues = displayCues.filter((cue) => video.currentTime >= cue.startTime && video.currentTime < cue.endTime);
+            }
             if (rawCues.length === 0) continue;
 
             if (track.mode === "showing") {
@@ -137,6 +140,8 @@
                 }
             }
         }
+
+        if (targetCues.length === 1 && targetCues[0].isSingleWordMerged) lines.cue = targetCues[0];
 
         // Final heuristic for live TV / roll-up captions: if 2 lines were extracted without clear vertical ordering,
         // check if line 0 terminates a sentence with punctuation while line 1 begins or continues a sentence.
@@ -549,8 +554,9 @@
                 if (tedText) lines = [tedText];
             }
         }
-        if (!hasIndexedLines && lines.length === 0 && session.video?.textTracks) {
-            lines = getNativeCueLines(session.video);
+        if (!hasIndexedLines && session.video?.textTracks) {
+            const nativeLines = getNativeCueLines(session.video);
+            if (lines.length === 0 || nativeLines.cue?.isSingleWordMerged) lines = nativeLines;
         }
         if (!hasIndexedLines && lines.length === 0) {
             const getAllCuesFn = captionAdapter?.getAllCues || (globalThis.LectoroTedAdapter?.isPage?.() ? globalThis.LectoroTedAdapter.getAllCues : null);
@@ -936,9 +942,7 @@
                     } catch (_) {}
                 }
                 if (track.cues && track.cues.length > 0) {
-                    for (let j = 0; j < track.cues.length; j++) {
-                        cues.push(track.cues[j]);
-                    }
+                    cues.push(...(globalThis.SharedSubtitleService?.getNativeDisplayCues?.(track) || Array.from(track.cues)));
                 }
             }
         }
@@ -956,9 +960,7 @@
                             } catch (_) {}
                         }
                         if (trackObj.cues && trackObj.cues.length > 0) {
-                            for (let j = 0; j < trackObj.cues.length; j++) {
-                                cues.push(trackObj.cues[j]);
-                            }
+                            cues.push(...(globalThis.SharedSubtitleService?.getNativeDisplayCues?.(trackObj) || Array.from(trackObj.cues)));
                         }
                     }
                 }

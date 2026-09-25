@@ -472,6 +472,7 @@
                     : (cue.text ? cue.text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean) : []);
                 return { ...cue, lines };
             });
+            cueIndex = getSubtitleService()?.mergeSingleWordCues?.(cueIndex) || cueIndex;
             cueIndexKey = master.key;
             renderIndexedCue();
             return cueIndex;

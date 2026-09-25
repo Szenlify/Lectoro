@@ -103,6 +103,8 @@ Every permission declared in `manifest.json` adheres to the Principle of Least P
 
 ## Version History
 
+- Single-word subtitle fragments join the preceding nearby cue on YouTube, Netflix and native caption tracks; ASR word timing is preserved.
+
 - **1.0.0 (Current):**
   - Saving with Z shows a gentle, localized AI credit limit notice when credits run out, instead of a generic save error.
   - Z and Enter use up to two preceding and two following subtitles to resolve meaning; Enter covers up to eight useful terms (2026-09-25).

@@ -95,7 +95,7 @@
                     }
                 }
                 if (cues.length > 0) {
-                    return cues.sort((a, b) => a.startTime - b.startTime);
+                    return globalThis.SharedSubtitleService?.getNativeDisplayCues?.(track) || cues.sort((a, b) => a.startTime - b.startTime);
                 }
             }
         }
