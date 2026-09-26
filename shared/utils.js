@@ -589,8 +589,27 @@
                     .join("\n");
             },
 
+            /**
+             * Cleans text specifically for Speech Synthesis (TTS).
+             * Removes subtitle noise, bracketed audio descriptions, speaker labels,
+             * and converts arrow characters (→, ->, ⇒, etc.) into natural speech pauses (commas)
+             * so that speech engines do not speak symbol names aloud (e.g. "strzałka w prawo" or "arrow").
+             */
             cleanTextForTTS(text) {
-                return SharedUtils.cleanCardText(text);
+                if (!text) return "";
+                let s = String(text);
+                const ARROW_REGEX = /\s*(?:[-=]+>|<[-=]+|[→←↑↓↔↕⇒⇐⇔➔➜➝➞➟➠➡➢➣➤\u2190-\u21FF\u27F0-\u27FF\u2900-\u297F\u2B00-\u2BFF\u2794-\u27BF])+\s*/g;
+                s = s.replace(ARROW_REGEX, " , ");
+                s = SharedUtils.cleanCardText(s);
+                s = s
+                    .replace(/([.,!?;:])\s*,\s*/g, "$1 ")
+                    .replace(/,\s*([.,!?;:])/g, "$1 ")
+                    .replace(/,\s*,+/g, ",")
+                    .replace(/\s*,\s*/g, ", ")
+                    .replace(/\s{2,}/g, " ")
+                    .trim();
+                s = s.replace(/^[,\s;:]+/, "").replace(/[,\s;:]+$/, "").trim();
+                return s;
             },
 
             /**

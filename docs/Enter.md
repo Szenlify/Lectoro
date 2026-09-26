@@ -10,17 +10,19 @@ Funkcja korzysta ze wspólnego kontrolera wideo oraz rejestru adapterów odtwarz
 
 ### Dobór materiału do nauki
 
-Instrukcja AI obejmuje całe zdanie: najpierw pełne phrasal verbs, idiomy, wyrażenia wielowyrazowe (MWE), kolokacje, utarte formuły i lexical chunks, a następnie przydatne słowa oraz konstrukcje gramatyczne A1–C2. Krótka długość, podstawowy poziom lub dosłowne znaczenie nie wykluczają elementu. Zasady dotyczą wszystkich 11 obsługiwanych języków i ich własnych konstrukcji.
+Instrukcja AI obejmuje całe zdanie: najpierw pełne phrasal verbs, idiomy, wyrażenia wielowyrazowe (MWE), kolokacje, utarte formuły i lexical chunks, a następnie przydatne słowa oraz konstrukcje gramatyczne A1–C2. Zasady dotyczą wszystkich 11 obsługiwanych języków i ich własnych konstrukcji.
+
+Wykluczone są trywialne wtrącenia i zwroty konwersacyjne (np. `Oh, okay`, `Yeah`), a także podstawowe pojedyncze zaimki i proste formy czasowników (np. `My`, `I am`, `It is`), chyba że stanowią nierozerwalną część idiomu. Model i reguły serwisowe usuwają zbędne zagnieżdżone podfrazy (np. przy ekstrakcji `Let's keep it goin'` nie powiela się `keep it goin'`). Skróty i formy potoczne są zapisywane zwięźle jako skrót i forma bazowa (np. `goin' → going`, `wanna → want to`), bez zbędnych opisów w stylu `Nieformalne skrócenie od 'going'`.
 
 Zwroty zachowują postać z napisu, łącznie z odmianą i wtrąconymi zaimkami: `scare him off`, `called me back`, `Ruf mich an`. Model ma dobierać znaczenie do sceny, rozróżniać `take care` i `take care of` oraz interpretować `call it` bez automatycznego uznawania go za phrasal verb. Nie wolno dopowiadać brakującej części zwrotu.
 
-Znaczenie ma być jednym naturalnym odpowiednikiem w języku ojczystym, zwykle 1–6 słów. Instrukcja wyklucza kalki językowe, listy synonimów, komentarze i powtórzenia. Wyjaśnienie jest domyślnie puste. Jeśli tłumaczenie wystarcza, musi pozostać puste: np. `leave in the night` → `wyjechać w nocy` nie wymaga definicji wyjazdu nocą. Jedno proste zdanie do 12 słów jest uzasadnione tylko niezbędną nową informacją, np. o skróconej formie lub nieoczywistym użyciu. Sama kategoria idiomu czy trudnego pojęcia nie uzasadnia dopisku. Opis nie zawiera obcojęzycznych wtrąceń, cytowanych przykładów ani cudzysłowów jako formatowania. Oryginalny zwrot pozostaje w polu terminu. Są to instrukcje generowania, bez mechanicznego obcinania znaczenia odpowiedzi.
+Znaczenie ma być jednym naturalnym odpowiednikiem w języku ojczystym, zwykle 1–6 słów. Instrukcja wyklucza kalki językowe, listy synonimów, komentarze i powtórzenia. Wyjaśnienie jest domyślnie puste. Jeśli tłumaczenie wystarcza, musi pozostać puste: np. `leave in the night` → `wyjechać w nocy` nie wymaga definicji wyjazdu nocą. Jedno proste zdanie do 12 słów jest uzasadnione tylko niezbędną nową informacją o nieoczywistym użyciu. Dla skrótów podawana jest wyłącznie zwięzła forma `skrót → forma`. Opis nie zawiera obcojęzycznych wtrąceń, cytowanych przykładów ani cudzysłowów jako formatowania. Oryginalny zwrot pozostaje w polu terminu.
 
-Serwis przyjmuje typy `vocabulary`, `idiom`, `phrasal_verb`, `slang`, `contraction`, `reduced_form`, `collocation`, `fixed_phrase`, `lexical_chunk`, `mwe` i `grammar`. Formy potoczne, np. `wanna`, `gonna`, `gotta`, `lemme` i `gimme`, mają być uwzględniane w oryginalnej pisowni, także obok dłuższego zwrotu. Nie obcina już wyników do 8 pozycji. Sprawdza obecność terminu w zdaniu z normalizacją Unicode, odstępów i apostrofów; odrzuca duplikaty oraz przypadkowe fragmenty innych słów. Obsługuje również tekst japoński bez spacji. Nadal odrzuca nazwy własne i elementy bez znaczenia. Pełność i trafność semantyczna zależą od odpowiedzi modelu; testy z odpowiedziami kontrolowanymi sprawdzają kontrakt i filtrację, nie gwarantują wykrycia każdego zwrotu przez usługę AI.
+Serwis przyjmuje typy `vocabulary`, `idiom`, `phrasal_verb`, `slang`, `contraction`, `reduced_form`, `collocation`, `fixed_phrase`, `lexical_chunk`, `mwe`, `expression`, `phrase` i `grammar`. Formy potoczne, np. `wanna`, `gonna`, `gotta`, `lemme` i `gimme`, mają być uwzględniane w oryginalnej pisowni, także obok dłuższego zwrotu. Nie obcina już wyników do 8 pozycji. Sprawdza obecność terminu w zdaniu z normalizacją Unicode, odstępów i apostrofów; odrzuca duplikaty, zagnieżdżone podfrazy oraz przypadkowe fragmenty innych słów. Obsługuje również tekst japoński bez spacji. Nadal odrzuca nazwy własne i elementy bez znaczenia.
 
 ## 2. Jak wygląda interfejs
 
-Dymek jest ciemną, półprzezroczystą kartą nad napisami. Nagłówek zawiera wyrównane do prawej strzałki oraz licznik `1/N`. Pod nim znajduje się wyśrodkowana treść i przycisk głośnika. Na dole są dwie akcje: zwykły zapis (`Z`) i wygenerowanie zdania AI z zapisem (`X`). Etykiety są lokalizowane.
+Dymek jest ciemną, półprzezroczystą kartą nad napisami. W lewym górnym rogu frazy (idiomy, czasowniki złożone, wyrażenia wielowyrazowe) posiadają subtelne oznaczenie szarym tekstem bez tła (np. `FRAZA`, `CZASOWNIK ZŁOŻONY`, `IDIOM`, zlokalizowane we wszystkich językach). Pojedyncze słowa oraz karta zdania nie wyświetlają tego napisu. Po prawej stronie nagłówka znajdują się strzałki oraz licznik `1/N`. Pod nim znajduje się wyśrodkowana treść i przycisk głośnika. Na dole są dwie akcje: zwykły zapis (`Z`) i wygenerowanie zdania AI z zapisem (`X`). Etykiety są lokalizowane.
 
 Schemat poglądowy, nie zrzut ekranu:
 
@@ -34,9 +36,9 @@ Krok 1 — całe zdanie
 ╰──────────────────────────────────────────╯
                Oryginalne napisy filmu
 
-Kolejny krok — słowo lub zwrot
+Kolejny krok — fraza / zwrot
 ╭──────────────────────────────────────────╮
-│                                ◀ 2/3 ▶   │
+│ FRAZA                          ◀ 2/3 ▶   │
 │              analizowany zwrot 🔊        │
 │                 tłumaczenie              │
 │          opcjonalne wyjaśnienie użycia    │
@@ -98,9 +100,7 @@ Dopasowanie korzysta z widocznego tekstu, normalizuje Unicode oraz warianty apos
 
 ### Elementy, których aktualnie nie widać
 
-Renderer `renderAiExplainContent()` **nie tworzy wstążki etapów ani pigułek kolejki**. W kodzie pozostały ich style i listenery, lecz nie oznacza to, że są częścią obecnego widoku.
-
-Odznaki typu/CEFR oraz kredytów nie są renderowane w aktualnym nagłówku; odpowiadające im selektory CSS mają także `display: none`. Kod nadal oblicza `aiExplainCreditBadge` i przechowuje metadane analizy. Nie należy opisywać ich jako widocznych elementów karty.
+Pigułki kredytów AI nie są renderowane w nagłówku (`display: none`). Karta całego zdania oraz pojedyncze słowa słownikowe nie posiadają etykiety typu w nagłówku, natomiast frazy (idiomy, czasowniki złożone, wyrażenia wielowyrazowe) mają w lewym górnym rogu subtelny, szary tekst bez tła. Kod przechowuje metadane analizy i CEFR.
 
 ## 3. Sterowanie
 
@@ -159,7 +159,7 @@ Wspólny serwis TTS obsługuje teraz Gemini 2.5 Flash TTS z głosami Sulafat i A
 
 Dla całego zdania lektor czyta tłumaczenie w języku ojczystym. Dla słowa/zwrotu czyta najpierw termin w języku nauki, następnie po 350 ms znaczenie i wyjaśnienie w języku ojczystym. Kod zawiera dodatkową próbę przetłumaczenia tekstu rozpoznanego jako angielski mimo oczekiwanego innego języka.
 
-Cudzysłowy nie dzielą wypowiedzi i nie przełączają języka ani głosu. Dotyczy to także zapisanych wcześniej opisów z cytatami, lektora przeglądarki i syntezy premium. Każde wywołanie TTS korzysta z jawnie przekazanego języka.
+Cudzysłowy nie dzielą wypowiedzi i nie przełączają języka ani głosu. Dotyczy to także zapisanych wcześniej opisów z cytatami, lektora przeglądarki i syntezy premium. Każde wywołanie TTS korzysta z jawnie przekazanego języka. Znaki strzałek (np. `→`, `->`, `⇒`) w wyjaśnieniach skrótów są konwertowane na naturalne pauzy (przecinki), dzięki czemu lektor nie wymawia na głos nazw symboli (np. „strzałka w prawo”).
 
 Po odsłuchu kolejny krok uruchamia się po 900 ms; bez treści oznaczonej jako odczytana opóźnienie wynosi 3000 ms. Ręczna zmiana kroku wyłącza automatyczne przechodzenie w bieżącej sesji. Ostatni krok pozostaje otwarty. `aiExplainSpeechToken` unieważnia starszy odsłuch po zmianie kroku lub zamknięciu.
 

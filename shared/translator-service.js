@@ -587,6 +587,8 @@
                 "lexical_chunk",
                 "mwe",
                 "grammar",
+                "expression",
+                "phrase",
             ]);
             // Preserve word boundaries: removing punctuation/spaces used to match
             // invented terms such as "in" inside "inside" or "now here" in "nowhere".
@@ -608,7 +610,21 @@
                 }
                 return -1;
             };
-            const items = rawItems
+            const TRIVIAL_TERMS = new Set([
+                "oh, okay", "oh okay", "oh", "okay", "ok", "yes", "no", "yeah", "yep", "nope",
+                "uh", "um", "ah", "hello", "hi", "hey",
+                "i", "i am", "i'm", "my", "me", "you", "you are", "you're", "your",
+                "he", "he is", "he's", "his", "him", "she", "she is", "she's", "her",
+                "it", "it is", "it's", "its", "we", "we are", "we're", "our", "us",
+                "they", "they are", "they're", "their", "them", "this", "that",
+                "och, w porządku", "och w porządku", "w porządku", "tak", "nie", "aha", "no", "hej", "cześć",
+                "ja", "ja jestem", "jestem", "mój", "moja", "moje", "ty", "on", "ona", "ono", "my", "wy", "oni", "one",
+                "ach so", "ja", "nein", "ich", "ich bin", "mein", "du", "wir",
+                "sí", "no", "hola", "yo", "yo soy", "mi",
+                "oui", "non", "salut", "bonjour", "je", "je suis", "mon",
+                "ciao", "io", "io sono", "mio"
+            ]);
+            const candidateItems = rawItems
                 .map((item) => item && ({
                     ...item,
                     type: typeof item.type === "string" ? item.type.trim().toLowerCase() : "",
@@ -636,11 +652,38 @@
                     const normTerm = normalizeTerm(term);
                     if (!wordChar.test(normTerm) || termPosition(normTerm) === -1 || seen.has(normTerm))
                         return false;
+
+                    // Filter out ultra-basic standalone words, pronouns and conversational filler
+                    if (TRIVIAL_TERMS.has(normTerm) && item.type !== "idiom" && item.type !== "phrasal_verb") {
+                        return false;
+                    }
+
                     seen.add(normTerm);
                     return true;
                 })
                 .sort((a, b) => {
                     return termPosition(normalizeTerm(a.term)) - termPosition(normalizeTerm(b.term));
+                });
+
+            // Filter out redundant nested multi-word sub-phrases (e.g. "keep it goin'" inside "Let's keep it goin'")
+            const multiWordItems = candidateItems.filter(item => /\s/u.test(normalizeTerm(item.term)));
+            const redundantTerms = new Set();
+            for (const parent of multiWordItems) {
+                const parentNorm = normalizeTerm(parent.term);
+                for (const child of multiWordItems) {
+                    if (parent === child) continue;
+                    const childNorm = normalizeTerm(child.term);
+                    if (parentNorm !== childNorm && parentNorm.includes(childNorm)) {
+                        redundantTerms.add(childNorm);
+                    }
+                }
+            }
+
+            const items = candidateItems
+                .filter((item) => {
+                    const norm = normalizeTerm(item.term);
+                    if (redundantTerms.has(norm)) return false;
+                    return true;
                 })
                 .map((item) => {
                     const type = String(item.type || "idiom").toLowerCase().trim();
@@ -656,6 +699,20 @@
                     } else if (typeof item.badge === "string" && item.badge.trim()) {
                         badge = item.badge.trim();
                     }
+
+                    let explanation = typeof item.explanation === "string"
+                        ? item.explanation.trim()
+                        : (item.explanation?.text || "");
+
+                    // Format contractions / spoken reductions concisely: shortcut and standard form (e.g. "goin' → going")
+                    const verbosePattern = /(?:nieformalne\s+skr[oó]cenie|skr[oó]t(?:\s+nieformalny)?|skr[oó]cona\s+forma|forma\s+skr[oó]cona|informal\s+(?:shortening|contraction)|(?:shortening|contraction)(?:\s+informal)?|forme\s+abr[eé]g[eé]e|abbreviation|abréviation(?:\s+famili[eè]re|\s+informelle)?|(?:umgangssprachliche\s+)?verk[uü]rzung|abreviatura(?:\s+informal)?)\s+(?:od|of|de|von)\s*['"„”]?([a-zA-Z\u00C0-\u024F\s'-]+?)['"„”]?\.?$/i;
+                    const verboseMatch = explanation.match(verbosePattern);
+                    if (verboseMatch && verboseMatch[1]) {
+                        explanation = `${item.term} → ${verboseMatch[1].trim()}`;
+                    } else if (explanation.includes("->")) {
+                        explanation = explanation.replace("->", "→").trim();
+                    }
+
                     return {
                         term: String(item.term || "").trim(),
                         type,
@@ -663,10 +720,7 @@
                         meaning: String(
                             item.meaning || item.translation || "",
                         ).trim(),
-                        explanation:
-                            typeof item.explanation === "string"
-                                ? item.explanation.trim()
-                                : (item.explanation?.text || ""),
+                        explanation,
                         badge,
                     };
                 });

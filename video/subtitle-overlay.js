@@ -9,7 +9,7 @@
     const C = LectoroConstants;
     const { PREFIX, isOwnUI } = C;
     const SVG = C.SVG_ICONS;
-    const { cleanCardText, isRedundantSentence } = SharedUtils;
+    const { cleanCardText, cleanTextForTTS, isRedundantSentence } = SharedUtils;
     const escapeHtml = (s) =>
         typeof SharedUtils?.escapeHtml === "function"
             ? SharedUtils.escapeHtml(s)
@@ -2141,8 +2141,12 @@
         const lang = (aiExplainTargetLang || (typeof SharedI18n !== "undefined" ? SharedI18n.getLang() : null) || subtitleTranslationLang || "en").toLowerCase().slice(0, 2);
         const t = (k, p) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, lang, p) : k);
 
+        const isSentenceStage = item.type === "sentence";
+        const badgeText = !isSentenceStage && item.badge ? item.badge.trim() : "";
+
         const headerHtml = `
             <div class="${PREFIX}header">
+                ${badgeText ? `<span class="${PREFIX}ai-badge">${QT.escapeHtml(badgeText)}</span>` : `<span class="${PREFIX}ai-badge-placeholder"></span>`}
                 <div class="${PREFIX}ai-nav-group">
                     ${totalItems > 1 ? `
                     <button type="button" class="${PREFIX}ai-nav-btn ${PREFIX}ai-prev-btn" data-action="prev" ${index === 0 ? "disabled" : ""} title="${QT.escapeAttr(t("nav_previous"))}">
@@ -2155,8 +2159,6 @@
                     </button>` : ""}
                 </div>
             </div>`;
-
-        const isSentenceStage = item.type === "sentence";
         const formattedExplanation =
             !isSentenceStage && item.explanation
                 ? QT.escapeHtml(item.explanation)
@@ -2165,11 +2167,16 @@
         const speakLang =
             aiExplainTargetLang;
 
-        const speechText = isSentenceStage
+        const rawSpeechText = isSentenceStage
             ? item.meaning || ""
             : [item.term, item.meaning, item.explanation]
                 .filter(Boolean)
                 .join(". ");
+        const speechText = typeof cleanTextForTTS === "function"
+            ? cleanTextForTTS(rawSpeechText)
+            : (typeof SharedUtils?.cleanTextForTTS === "function"
+                ? SharedUtils.cleanTextForTTS(rawSpeechText)
+                : rawSpeechText);
 
         const bodyHtml = `
             <div class="${PREFIX}body">
@@ -2363,9 +2370,14 @@
                 }
                 if (isCancelled()) return;
 
-                let explanationSpeech = [item.meaning, item.explanation]
+                let rawExplanationSpeech = [item.meaning, item.explanation]
                     .filter(Boolean)
                     .join(". ");
+                let explanationSpeech = typeof cleanTextForTTS === "function"
+                    ? cleanTextForTTS(rawExplanationSpeech)
+                    : (typeof SharedUtils?.cleanTextForTTS === "function"
+                        ? SharedUtils.cleanTextForTTS(rawExplanationSpeech)
+                        : rawExplanationSpeech);
                 if (explanationSpeech) {
                     await new Promise((r) => setTimeout(r, 350));
                     if (isCancelled()) return;
@@ -2965,26 +2977,50 @@
         type,
         targetLangCode,
         cefr = "",
+        term = "",
     ) {
         const normType = String(type || "").toLowerCase().trim();
+        if (normType === "sentence") return "";
+
         const candidateStr = typeof badgeCandidate === "string" ? badgeCandidate.trim() : "";
         const rawCefr = typeof cefr === "string" && /^[A-C][1-2]$/i.test(cefr.trim())
             ? cefr.trim().toUpperCase()
             : (/^[A-C][1-2]$/i.test(candidateStr) ? candidateStr.toUpperCase() : "");
 
+        const lang = (targetLangCode || (typeof SharedI18n !== "undefined" ? SharedI18n.getLang() : null) || "en").toLowerCase().slice(0, 2);
+        const t = (k) => (typeof SharedI18n !== "undefined" ? SharedI18n.t(k, lang) : k);
+
         const isIdiom = normType === "idiom" || /^idiom/i.test(candidateStr);
+        const isPhrasal = normType === "phrasal_verb" || /^phrasal/i.test(candidateStr) || candidateStr === t("badge_phrasal");
+        const isCollocation = normType === "collocation" || /^collocation/i.test(candidateStr) || candidateStr === t("badge_collocation");
+        const isSlang = normType === "slang" || /^slang/i.test(candidateStr) || candidateStr === t("badge_slang");
+        const isExpression = normType === "expression" || normType === "fixed_phrase" || normType === "lexical_chunk" || normType === "mwe" || normType === "phrase" || /^wyrażenie|^ausdruck|^expresión|^expression|^locution|^phrase|^frase/i.test(candidateStr);
+        const hasMultipleWords = /\s+/u.test(String(term || candidateStr || "").trim());
 
+        const isPhrase = isIdiom || isPhrasal || isCollocation || isExpression || hasMultipleWords;
+
+        // Subtle badge in top-left corner marks phrases only; single words (vocabulary) get no badge.
+        if (!isPhrase) {
+            return "";
+        }
+
+        let label = "";
         if (isIdiom) {
-            return rawCefr ? `IDIOM • ${rawCefr}` : "IDIOM";
+            label = t("badge_idiom") || "Idiom";
+        } else if (isPhrasal) {
+            label = t("badge_phrasal") || "Phrasal Verb";
+        } else if (isCollocation) {
+            label = t("badge_collocation") || "Collocation";
+        } else if (isSlang) {
+            label = t("badge_slang") || "Slang";
+        } else {
+            label = t("badge_phrase") || t("badge_expression") || "Phrase";
         }
 
-        // For non-idioms: do NOT show generic category words like "Wyrażenie", "Czasownik", "Słowo", etc.
-        // Show ONLY the CEFR level if present (e.g. "B1", "B2", "C1", "C2")!
         if (rawCefr) {
-            return rawCefr;
+            return `${label} • ${rawCefr}`;
         }
-
-        return "";
+        return label;
     }
 
     function showAiPaywallOverlay(layout = aiExplainLayout, validation = null) {
@@ -3305,22 +3341,33 @@
                             }
                             return true;
                         })
-                        .map((item) => ({
-                            type: item.type || "idiom",
-                            title: item.term,
-                            term: item.term,
-                            meaning: item.meaning || "",
-                            explanation: item.explanation || "",
-                            originalText: text,
-                            sentenceTranslated: translation,
-                            cefr: item.cefr || "",
-                            badge: resolveAiBadge(
-                                item.badge,
-                                item.type,
-                                aiExplainTargetLang,
-                                item.cefr,
-                            ),
-                        }));
+                        .map((item) => {
+                            let explanation = typeof item.explanation === "string" ? item.explanation : (item.explanation?.text || "");
+                            const verbosePattern = /(?:nieformalne\s+skr[oó]cenie|skr[oó]cona\s+forma|forma\s+skr[oó]cona|skr[oó]t|informal\s+(?:shortening|contraction)|contraction|shortening|forme\s+abr[eé]g[eé]e|abbreviation|verk[uü]rzung|abreviatura)\s+(?:od|of|de|von)\s*['"„”]?([a-zA-Z\u00C0-\u024F\s'-]+?)['"„”]?\.?$/i;
+                            const verboseMatch = explanation.match(verbosePattern);
+                            if (verboseMatch && verboseMatch[1]) {
+                                explanation = `${item.term} → ${verboseMatch[1].trim()}`;
+                            } else if (explanation.includes("->")) {
+                                explanation = explanation.replace("->", "→").trim();
+                            }
+                            return {
+                                type: item.type || "idiom",
+                                title: item.term,
+                                term: item.term,
+                                meaning: item.meaning || "",
+                                explanation: explanation || "",
+                                originalText: text,
+                                sentenceTranslated: translation,
+                                cefr: item.cefr || "",
+                                badge: resolveAiBadge(
+                                    item.badge,
+                                    item.type,
+                                    aiExplainTargetLang,
+                                    item.cefr,
+                                    item.term,
+                                ),
+                            };
+                        });
                 }
             }
 

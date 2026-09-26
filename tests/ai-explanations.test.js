@@ -408,3 +408,85 @@ test("AI explanations require a short natural meaning and optional native-only n
     assert.match(enter, /If removing the note loses no necessary information, omit it/);
     assert.match(word, /explanation: "" if translation already explains the meaning/);
 });
+
+test("Enter filters out ultra-basic filler, trivial greetings and elementary pronouns", async () => {
+    const { service } = explanationService(response({
+        translation: "Och, w porządku. To mój dom i ja tu jestem.",
+        items: [
+            { term: "Oh, okay", type: "vocabulary", meaning: "Och, w porządku" },
+            { term: "My", type: "vocabulary", meaning: "mój" },
+            { term: "I am", type: "vocabulary", meaning: "ja jestem" },
+            { term: "genuine expression", type: "expression", meaning: "prawdziwe wyrażenie" },
+        ],
+    }));
+    const result = await service.explainSentence("Oh, okay. This is my house and I am here with genuine expression.", "pl");
+    assert.deepEqual(Array.from(result.items, item => item.term), ["genuine expression"]);
+});
+
+test("Enter suppresses redundant nested multi-word sub-phrases", async () => {
+    const { service } = explanationService(response({
+        translation: "Jedziemy dalej.",
+        items: [
+            { term: "Let's keep it goin'", type: "expression", meaning: "jedziemy dalej" },
+            { term: "keep it goin'", type: "expression", meaning: "jedziemy dalej" },
+            { term: "goin'", type: "contraction", meaning: "dalej", explanation: "Nieformalne skrócenie od 'going'." },
+        ],
+    }));
+    const result = await service.explainSentence("Let's keep it goin'!", "pl");
+    assert.deepEqual(Array.from(result.items, item => item.term), ["Let's keep it goin'", "goin'"]);
+    assert.equal(result.items[1].explanation, "goin' → going");
+});
+
+test("Enter formats contractions concisely as shortcut and standard form across languages", async () => {
+    const { service } = explanationService(response({
+        translation: "Test contractions",
+        items: [
+            { term: "goin'", type: "contraction", meaning: "dalej", explanation: "Nieformalne skrócenie od 'going'." },
+            { term: "hab'", type: "contraction", meaning: "mam", explanation: "Umgangssprachliche Verkürzung von 'habe'." },
+            { term: "pa'", type: "contraction", meaning: "dla", explanation: "Abreviatura informal de 'para'." },
+            { term: "wanna", type: "reduced_form", meaning: "chcieć", explanation: "wanna -> want to" },
+        ],
+    }));
+    const result = await service.explainSentence("goin' hab' pa' wanna", "pl");
+    assert.equal(result.items[0].explanation, "goin' → going");
+    assert.equal(result.items[1].explanation, "hab' → habe");
+    assert.equal(result.items[2].explanation, "pa' → para");
+    assert.equal(result.items[3].explanation, "wanna → want to");
+});
+
+test("Enter resolves subtle badges only for phrases across languages and suppresses single-word/sentence badges", () => {
+    const { loadFunction } = require("./helpers");
+    const vm = require("node:vm");
+    const SharedI18n = require("../shared/i18n");
+    const context = vm.createContext({ SharedI18n });
+    loadFunction(context, "video/subtitle-overlay.js", "resolveAiBadge");
+
+    // Single words and whole sentence get NO badge
+    assert.equal(context.resolveAiBadge("", "sentence", "pl", "B1", "Całe zdanie."), "");
+    assert.equal(context.resolveAiBadge("Wort", "vocabulary", "pl", "B2", "Erfolg"), "");
+    assert.equal(context.resolveAiBadge("Word", "vocabulary", "en", "C1", "resilience"), "");
+    assert.equal(context.resolveAiBadge("", "contraction", "pl", "A2", "goin'"), "");
+
+    // Phrases get localized labels across languages
+    // Polish
+    assert.equal(context.resolveAiBadge("Idiom", "idiom", "pl", "B1", "take a break"), "Idiom • B1");
+    assert.equal(context.resolveAiBadge("Phrasal Verb", "phrasal_verb", "pl", "", "give up"), "Czasownik złożony");
+    assert.equal(context.resolveAiBadge("Wyrażenie", "expression", "pl", "", "Let's keep it goin'"), "Fraza");
+    assert.equal(context.resolveAiBadge("Collocation", "collocation", "pl", "", "make sense"), "Kolokacja");
+
+    // English
+    assert.equal(context.resolveAiBadge("Idiom", "idiom", "en", "B1", "take a break"), "Idiom • B1");
+    assert.equal(context.resolveAiBadge("Phrasal Verb", "phrasal_verb", "en", "", "give up"), "Phrasal Verb");
+    assert.equal(context.resolveAiBadge("Expression", "expression", "en", "", "Let's keep it goin'"), "Phrase");
+
+    // German
+    assert.equal(context.resolveAiBadge("Idiom", "idiom", "de", "", "take a break"), "Redewendung");
+    assert.equal(context.resolveAiBadge("Phrasal Verb", "phrasal_verb", "de", "", "give up"), "Partikelverb");
+    assert.equal(context.resolveAiBadge("Expression", "expression", "de", "", "Let's keep it goin'"), "Phrase");
+
+    // Spanish
+    assert.equal(context.resolveAiBadge("Idiom", "idiom", "es", "", "take a break"), "Modismo");
+    assert.equal(context.resolveAiBadge("Phrasal Verb", "phrasal_verb", "es", "", "give up"), "Verbo compuesto");
+    assert.equal(context.resolveAiBadge("Expression", "expression", "es", "", "Let's keep it goin'"), "Frase");
+});
+

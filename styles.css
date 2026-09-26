@@ -1738,7 +1738,31 @@ body[data-lectoro-sub-translate-active="true"]
   text-align: center !important;
 }
 
-#__qt_sentence_translation .__qt_ai-badge,
+#__qt_sentence_translation .__qt_ai-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  font-size: var(--lectoro-ai-badge-font-size, 9px) !important;
+  font-weight: 400 !important;
+  color: rgba(255, 255, 255, 0.24) !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  letter-spacing: 0.4px !important;
+  text-transform: uppercase !important;
+  line-height: 1 !important;
+  flex-shrink: 0 !important;
+}
+
+#__qt_sentence_translation .__qt_ai-badge-placeholder {
+  display: inline-block !important;
+  visibility: hidden !important;
+  width: 1px !important;
+  height: 1px !important;
+}
+
 #__qt_sentence_translation .__qt_ai-credit-pill {
   display: none !important;
 }
@@ -1817,8 +1841,7 @@ body[data-lectoro-sub-translate-active="true"]
 #__qt_sentence_translation .__qt_header {
   display: flex !important;
   align-items: center !important;
-  justify-content: flex-end !important;
-  text-align: right !important;
+  justify-content: space-between !important;
   width: 100% !important;
   box-sizing: border-box !important;
   padding: 8px 14px 2px !important;

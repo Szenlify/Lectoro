@@ -272,3 +272,27 @@ test("when AI credits are exhausted, cached audio in local storage plays with pr
     const uncachedResult = await ctx.api.getAudioBlob("Cat", "en", { allowSynthesis: true, voiceId: "onyx" });
     assert.equal(uncachedResult.provider, "google-tts"); // Fallback provider
 });
+
+test("TTS and cleanTextForTTS strip arrow symbols (→, ->, ⇒) so speech does not voice symbols aloud", async () => {
+    const arrowCases = [
+        ["goin' → going", "goin', going"],
+        ["wanna -> want to", "wanna, want to"],
+        ["gonna => going to", "gonna, going to"],
+        ["foo ⇒ bar", "foo, bar"],
+        ["a ➔ b ➜ c", "a, b, c"],
+        ["→ target only", "target only"],
+        ["source only →", "source only"],
+        ["idziemy. goin' → going", "idziemy. goin', going"],
+    ];
+
+    for (const [input, expected] of arrowCases) {
+        assert.equal(Utils.cleanTextForTTS(input), expected);
+    }
+
+    const ctx = service();
+    await ctx.api.speakBrowser("goin' → going", "pl");
+    assert.equal(ctx.spoken.length, 1);
+    assert.equal(ctx.spoken[0].text, "goin', going");
+    assert.equal(ctx.spoken[0].text.includes("→"), false);
+});
+
