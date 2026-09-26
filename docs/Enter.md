@@ -1,12 +1,22 @@
 # Enter — analiza zdania AI w Lectoro
 
-Stan analizy: 20 września 2026. Dokument opisuje aktualny kod repozytorium. Wygląd odtworzono z renderera DOM i CSS; nie jest to wynik wizualnego testu rozszerzenia w odtwarzaczu.
+Stan analizy: 26 września 2026. Dokument opisuje aktualny kod repozytorium. Wygląd odtworzono z renderera DOM i CSS; nie jest to wynik wizualnego testu rozszerzenia w odtwarzaczu.
 
 ## 1. Przeznaczenie
 
 **Enter / Q** otwiera analizę aktualnego napisu i zatrzymuje film. Pierwszy krok pokazuje tłumaczenie całego zdania na język ojczysty, a kolejne — wybrane przez AI słowa, idiomy i zwroty wraz ze znaczeniem oraz opcjonalnym wyjaśnieniem. Treść jest odczytywana przez lektora i można ją zapisać do powtórek.
 
 Funkcja korzysta ze wspólnego kontrolera wideo oraz rejestru adapterów odtwarzaczy. Dostępność zależy od wykrycia wideo i tekstu napisów. Gdy nie ma bieżącego napisu, kod próbuje użyć ostatniego wpisu historii napisów. Bez żadnego tekstu kończy działanie.
+
+### Dobór materiału do nauki
+
+Instrukcja AI obejmuje całe zdanie: najpierw pełne phrasal verbs, idiomy, wyrażenia wielowyrazowe (MWE), kolokacje, utarte formuły i lexical chunks, a następnie przydatne słowa oraz konstrukcje gramatyczne A1–C2. Krótka długość, podstawowy poziom lub dosłowne znaczenie nie wykluczają elementu. Zasady dotyczą wszystkich 11 obsługiwanych języków i ich własnych konstrukcji.
+
+Zwroty zachowują postać z napisu, łącznie z odmianą i wtrąconymi zaimkami: `scare him off`, `called me back`, `Ruf mich an`. Model ma dobierać znaczenie do sceny, rozróżniać `take care` i `take care of` oraz interpretować `call it` bez automatycznego uznawania go za phrasal verb. Nie wolno dopowiadać brakującej części zwrotu.
+
+Znaczenie ma być jednym naturalnym odpowiednikiem w języku ojczystym, zwykle 1–6 słów. Instrukcja wyklucza kalki językowe, listy synonimów, komentarze i powtórzenia. Wyjaśnienie jest domyślnie puste. Jeśli tłumaczenie wystarcza, musi pozostać puste: np. `leave in the night` → `wyjechać w nocy` nie wymaga definicji wyjazdu nocą. Jedno proste zdanie do 12 słów jest uzasadnione tylko niezbędną nową informacją, np. o skróconej formie lub nieoczywistym użyciu. Sama kategoria idiomu czy trudnego pojęcia nie uzasadnia dopisku. Opis nie zawiera obcojęzycznych wtrąceń, cytowanych przykładów ani cudzysłowów jako formatowania. Oryginalny zwrot pozostaje w polu terminu. Są to instrukcje generowania, bez mechanicznego obcinania znaczenia odpowiedzi.
+
+Serwis przyjmuje typy `vocabulary`, `idiom`, `phrasal_verb`, `slang`, `contraction`, `reduced_form`, `collocation`, `fixed_phrase`, `lexical_chunk`, `mwe` i `grammar`. Formy potoczne, np. `wanna`, `gonna`, `gotta`, `lemme` i `gimme`, mają być uwzględniane w oryginalnej pisowni, także obok dłuższego zwrotu. Nie obcina już wyników do 8 pozycji. Sprawdza obecność terminu w zdaniu z normalizacją Unicode, odstępów i apostrofów; odrzuca duplikaty oraz przypadkowe fragmenty innych słów. Obsługuje również tekst japoński bez spacji. Nadal odrzuca nazwy własne i elementy bez znaczenia. Pełność i trafność semantyczna zależą od odpowiedzi modelu; testy z odpowiedziami kontrolowanymi sprawdzają kontrakt i filtrację, nie gwarantują wykrycia każdego zwrotu przez usługę AI.
 
 ## 2. Jak wygląda interfejs
 
@@ -42,7 +52,7 @@ Wyświetla samo tłumaczenie i głośnik. Oryginalnego zdania nie powtarza w tre
 
 ### Karta słowa lub zwrotu
 
-Wyświetla termin w kolorze turkusowym `#00ffea`, obok głośnik, poniżej jasne pogrubione znaczenie i opcjonalne wyjaśnienie. Wyjaśnienie jest formatowane przez `QT.formatSpeechMarkup`, co umożliwia obsługę cytowanych fragmentów przez mechanizm TTS.
+Wyświetla termin w kolorze turkusowym `#00ffea`, obok głośnik, poniżej jasne pogrubione znaczenie i opcjonalne wyjaśnienie. Wyjaśnienie jest zwykłym tekstem bez specjalnego formatowania cytatów, zabezpieczonym przez `QT.escapeHtml`.
 
 ### Parametry wizualne
 
@@ -135,13 +145,15 @@ sequenceDiagram
 7. Normalizuje tłumaczenie, odrzuca elementy bez terminu i definicje rozpoznane jako nazwy własne. Buduje kolejkę, której pierwszym elementem zawsze jest całe zdanie.
 8. Pokazuje pierwszy krok, aktualizuje podświetlenia i uruchamia TTS.
 
-Serwis tłumaczeń korzysta z promptu w [ai-prompts.js](../shared/ai-prompts.js), sprawdza język źródłowy i docelowy oraz wymagane tłumaczenie. Parametry żądania analizy to temperatura `0.2` i `maxOutputTokens: 1000`. Warstwę pośredniczącą obsługują [gemini-proxy.js](../shared/gemini-proxy.js), [background.js](../background.js) i backend [functions/index.js](../functions/index.js). W aktualnym kodzie backendu wskazano model `gemini-2.5-flash-lite`; nie jest to weryfikacja konfiguracji wdrożonej usługi.
+Serwis tłumaczeń korzysta z promptu w [ai-prompts.js](../shared/ai-prompts.js), sprawdza język źródłowy i docelowy oraz wymagane tłumaczenie. Parametry żądania analizy to temperatura `0.2` i `maxOutputTokens: 8192`; jest to górny limit odpowiedzi, a nie wymagana długość. Tryb samego tłumaczenia zachowuje limit 500 tokenów. Dłuższa analiza może zwiększyć czas i koszt generowania. Warstwę pośredniczącą obsługują [gemini-proxy.js](../shared/gemini-proxy.js), [background.js](../background.js) i backend [functions/index.js](../functions/index.js). W aktualnym kodzie backendu wskazano model `gemini-2.5-flash-lite`; nie jest to weryfikacja konfiguracji wdrożonej usługi.
 
 ## 5. Lektor i automatyczne przechodzenie
 
 Wspólny serwis TTS obsługuje teraz Gemini 2.5 Flash TTS z głosami Sulafat i Algieba w miejsce ElevenLabs. Wybrany tryb głosu i limity decydują o użyciu syntezy premium; dostępny pozostaje głos przeglądarki. Szczegóły migracji: [Gemini TTS](Gemini-TTS.md).
 
 Dla całego zdania lektor czyta tłumaczenie w języku ojczystym. Dla słowa/zwrotu czyta najpierw termin w języku nauki, następnie po 350 ms znaczenie i wyjaśnienie w języku ojczystym. Kod zawiera dodatkową próbę przetłumaczenia tekstu rozpoznanego jako angielski mimo oczekiwanego innego języka.
+
+Cudzysłowy nie dzielą wypowiedzi i nie przełączają języka ani głosu. Dotyczy to także zapisanych wcześniej opisów z cytatami, lektora przeglądarki i syntezy premium. Każde wywołanie TTS korzysta z jawnie przekazanego języka.
 
 Po odsłuchu kolejny krok uruchamia się po 900 ms; bez treści oznaczonej jako odczytana opóźnienie wynosi 3000 ms. Ręczna zmiana kroku wyłącza automatyczne przechodzenie w bieżącej sesji. Ostatni krok pozostaje otwarty. `aiExplainSpeechToken` unieważnia starszy odsłuch po zmianie kroku lub zamknięciu.
 

@@ -528,7 +528,7 @@
             );
             const parsed = await geminiRequest(prompt, {
                 temperature: 0.2,
-                maxOutputTokens: options.translationOnly ? 500 : 2000,
+                maxOutputTokens: options.translationOnly ? 500 : 8192,
                 validate(result) {
                     const detected = AIPrompts.languageCode(
                         result?.source_language,
@@ -579,10 +579,40 @@
                 "idiom",
                 "phrasal_verb",
                 "slang",
+                "contraction",
+                "reduced_form",
                 "vocabulary",
+                "collocation",
+                "fixed_phrase",
+                "lexical_chunk",
+                "mwe",
+                "grammar",
             ]);
-            const normSentence = sentence.toLowerCase();
+            // Preserve word boundaries: removing punctuation/spaces used to match
+            // invented terms such as "in" inside "inside" or "now here" in "nowhere".
+            const normalizeTerm = (value) => value.normalize("NFKC")
+                .toLowerCase().replace(/[’‘]/g, "'").replace(/\s+/gu, " ").trim();
+            const normSentence = normalizeTerm(sentence);
+            const wordChar = /[\p{L}\p{M}\p{N}]/u;
+            const unspacedScript = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u;
+            const joinsWord = (left, right) => wordChar.test(left) && wordChar.test(right) &&
+                !unspacedScript.test(left) && !unspacedScript.test(right);
+            const termPosition = (term) => {
+                let start = normSentence.indexOf(term);
+                while (start !== -1) {
+                    const before = Array.from(normSentence.slice(0, start)).at(-1) || "";
+                    const after = Array.from(normSentence.slice(start + term.length))[0] || "";
+                    const chars = Array.from(term);
+                    if (!joinsWord(before, chars[0]) && !joinsWord(chars.at(-1), after)) return start;
+                    start = normSentence.indexOf(term, start + 1);
+                }
+                return -1;
+            };
             const items = rawItems
+                .map((item) => item && ({
+                    ...item,
+                    type: typeof item.type === "string" ? item.type.trim().toLowerCase() : "",
+                }))
                 .filter((item) => {
                     if (
                         !item ||
@@ -603,26 +633,15 @@
                     }
 
                     const term = item.term.trim();
-                    const normTerm = term.toLowerCase();
-                    const cleanTerm = normTerm.replace(/[^\p{L}\p{N}]/gu, "");
-                    const cleanSent = normSentence.replace(/[^\p{L}\p{N}]/gu, "");
-                    const matches = sentence.includes(term) ||
-                        normSentence.includes(normTerm) ||
-                        (cleanTerm.length >= 3 && cleanSent.includes(cleanTerm));
-                    if (!matches || seen.has(normTerm))
+                    const normTerm = normalizeTerm(term);
+                    if (!wordChar.test(normTerm) || termPosition(normTerm) === -1 || seen.has(normTerm))
                         return false;
                     seen.add(normTerm);
                     return true;
                 })
                 .sort((a, b) => {
-                    const normA = a.term.trim().toLowerCase();
-                    const normB = b.term.trim().toLowerCase();
-                    const idxA = normSentence.indexOf(normA);
-                    const idxB = normSentence.indexOf(normB);
-                    return (idxA !== -1 ? idxA : sentence.indexOf(a.term.trim())) -
-                           (idxB !== -1 ? idxB : sentence.indexOf(b.term.trim()));
+                    return termPosition(normalizeTerm(a.term)) - termPosition(normalizeTerm(b.term));
                 })
-                .slice(0, 8)
                 .map((item) => {
                     const type = String(item.type || "idiom").toLowerCase().trim();
                     const isIdiom = type === "idiom";

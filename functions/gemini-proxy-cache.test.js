@@ -447,8 +447,9 @@ test("AI prompts always use native language and stay compact", () => {
     const prompts = require("../shared/ai-prompts");
     const native = prompts.explainSentence("Break a leg!", "pl");
     assert.ok(native.includes("Polish (pl)"));
-    // Scene disambiguation and broader vocabulary coverage need a larger contract.
-    assert.ok(native.length < 2600);
+    // Multilingual chunks, split forms and contextual tutor notes need a larger
+    // contract; keep it bounded while translation-only stays compact.
+    assert.ok(native.length < 5000);
     const translationOnly = prompts.explainSentence("Break a leg!", "pl", null, { translationOnly: true });
     assert.ok(translationOnly.length < 1300);
     const germanSource = prompts.explainSentence("Viel Erfolg!", "pl", null, { aiExplanationLanguage: "simple_target", sourceLang: "de-DE" });
@@ -901,6 +902,5 @@ test("SubscriptionService export quota tracking enforces 3/month on FREE and res
     assert.equal(proAnki.limit, Infinity);
     assert.equal(proAnki.remaining, Infinity);
 });
-
 
 

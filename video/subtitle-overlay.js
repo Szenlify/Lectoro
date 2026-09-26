@@ -27,7 +27,6 @@
     const WORD_HOVER_CLASS = `${PREFIX}word-hover`;
     const WORD_CLOUD_HIGHLIGHT_CLASS = `${PREFIX}word-cloud-highlight`;
     const AI_EXPLAIN_OVERLAY_CLASS = `${PREFIX}ai-explain-overlay`;
-    const TTS_QUOTE_CLASS = `${PREFIX}tts-original-quote`;
     const SAVE_TOAST_ID = C.UI_IDS.SAVE_TOAST;
 
     let quotaCountdownTimer = null;
@@ -2163,12 +2162,6 @@
         const item = aiExplainQueue[index];
         if (!item) return "";
 
-        const markupOptions = {
-            sourceLang: aiExplainSourceLang,
-            originalText: item.term || item.originalText,
-            quoteClass: TTS_QUOTE_CLASS,
-        };
-
         const totalItems = aiExplainQueue.length;
 
         const lang = (aiExplainTargetLang || (typeof SharedI18n !== "undefined" ? SharedI18n.getLang() : null) || subtitleTranslationLang || "en").toLowerCase().slice(0, 2);
@@ -2190,15 +2183,9 @@
             </div>`;
 
         const isSentenceStage = item.type === "sentence";
-        const explanationLang =
-            aiExplainTargetLang;
         const formattedExplanation =
             !isSentenceStage && item.explanation
-                ? QT.formatSpeechMarkup(
-                    item.explanation,
-                    explanationLang,
-                    markupOptions,
-                )
+                ? QT.escapeHtml(item.explanation)
                 : "";
 
         const speakLang =

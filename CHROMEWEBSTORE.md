@@ -2,7 +2,7 @@
 
 ## General Information
 
-- **Last Updated:** 2026-09-25
+- **Last Updated:** 2026-09-26
 - **Extension Name:** Lectoro AI - Language Learning & Subtitles
 - **Short Name:** Lectoro AI
 - **Current Version:** 1.0.0
@@ -30,7 +30,7 @@ Master new languages naturally while watching your favorite videos and reading a
 - **Consistent Subtitle Navigation:** A and Left Arrow return to the previous dialogue near its start and replay it after its midpoint across supported video players.
 - **Dual Bilingual Subtitles:** Watch YouTube and Netflix with synchronized dual-language subtitles. Consecutive short fragments are paired together for effortless reading.
 - **Word-by-Word Translation Clouds:** Press S for contextual word and phrase translations above subtitles, with automatic fallback when the primary service is unavailable. Repeated subtitles load from saved results. Use Left/Right arrows or A/D to select a word or phrase, then Z to save it or X to save an AI sentence.
-- **AI Context Explanations:** Press Enter for up to eight useful words and expressions, interpreted with neighboring subtitles. Receive in-depth breakdowns of complex sentences, idioms, and grammar structures directly in the video player or reading pane.
+- **AI Context Explanations:** Press Enter for useful words, phrasal verbs, idioms, collocations and everyday expressions, interpreted with neighboring subtitles across all supported learning languages. Learn short beginner phrases and reusable grammar patterns with contextual translations and concise usage notes directly in the video player or reading pane.
 - **Natural Speech Pronunciation:** Listen to crystal-clear speech pronunciation tuned to your learning language.
 - **Subtitle Flashcards:** Z saves the original subtitle and punctuation with a faithful, natural translation informed by up to two preceding and two following subtitles.
 - **Spaced Repetition (SRS) Flashcards:** Save words and context sentences with a single shortcut or click. Listen to either side at normal speed or 0.75×. Daily review reminders help you retain vocabulary in long-term memory.
@@ -108,6 +108,10 @@ Every permission declared in `manifest.json` adheres to the Principle of Least P
 - Single-word subtitle fragments join the preceding nearby cue on YouTube, Netflix and native caption tracks; ASR word timing is preserved.
 
 - **1.0.0 (Current):**
+  - AI omits explanations when the translation already conveys the meaning; notes only add essential new information about shortened forms, difficult concepts or usage (2026-09-26).
+  - Enter accepts contraction and reduced-form learning items, including wanna and gonna, and explicitly requests useful spoken forms alongside longer expressions (2026-09-26).
+  - AI meanings use a short natural equivalent with an optional essential usage note. Removed quotation-based voice/language switching and special quote highlighting; narration keeps the selected language (2026-09-26).
+  - Enter analysis includes short A1–C2 expressions, MWEs, collocations, lexical chunks and grammar patterns across supported languages. Removed eight-item truncation, preserved complete surface expressions with intervening pronouns, and improved Unicode matching and word-boundary validation (2026-09-26).
   - Saving with Z shows a gentle, localized AI credit limit notice when credits run out, instead of a generic save error.
   - Z and Enter use up to two preceding and two following subtitles to resolve meaning; Enter covers up to eight useful terms (2026-09-25).
   - Removed the Smart AI flashcard setting. Z saves the original subtitle with punctuation and a faithful translation, without generating a replacement sentence (2026-09-25).

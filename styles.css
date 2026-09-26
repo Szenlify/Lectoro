@@ -2275,13 +2275,6 @@ body[data-lectoro-sub-translate-active="true"]
   text-align: center !important;
 }
 
-#__qt_sentence_translation .__qt_tts-original-quote,
-#__qt_tooltip .__qt_tts-original-quote,
-.__qt_tts-original-quote {
-  color: #ffd000 !important;
-  font-weight: 500 !important;
-}
-
 #__qt_sentence_translation .__qt_save-footer {
   display: flex !important;
   gap: 6px !important;

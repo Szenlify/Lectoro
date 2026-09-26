@@ -21,7 +21,6 @@
         const { Utils, Constants } = deps;
         const {
             escapeHtml,
-            escapeAttr,
             ensureVoices,
             pickBestVoice: pickVoice,
         } = Utils;
@@ -39,285 +38,14 @@
         function cleanText(text) {
             return Utils.cleanTextForTTS(text);
         }
-        const BASE_DIACRITICS = Object.freeze({
-            pl: /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/,
-            de: /[äöüßÄÖÜ]/,
-            fr: /[éàèùâêîôûëïüçœæÉÀÈÙÂÊÎÔÛËÏÜÇ]/,
-            es: /[áéíóúüñ¿¡ÁÉÍÓÚÜÑ]/,
-            it: /[àèéìíîòóùúÀÈÉÌÍÎÒÓÙÚ]/,
-            pt: /[ãõáéíóúâêôçÃÕÁÉÍÓÚÂÊÔÇ]/,
-            cs: /[áčďéěíňóřšťúůýžÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ]/,
-            sk: /[áäčďdžéíĺľňóôŕšťúýžÁÄČĎDŽÉÍĹĽŇÓÔŔŠŤÚÝŽ]/,
-            tr: /[çğıöşüÇĞİÖŞÜ]/,
-            ru: /[\u0400-\u04FF]/,
-            uk: /[іїєґІЇЄҐ\u0400-\u04FF]/,
-            zh: /[\u4e00-\u9fff]/,
-            ja: /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/,
-            ko: /[\uac00-\ud7af]/,
-            ar: /[\u0600-\u06FF]/,
-        });
-
-        const TRANSLATION_INTRO_REGEX =
-            /(?:oznacza|znaczy|czyli|znaczeniu|tłumaczy|przekład|translation|translated as|meaning|means|c-à-d|bedeutet|significa|signifie)\s*:?\s*$/i;
-        const SOURCE_INTRO_REGEX =
-            /(?:zwrot|słowo|fraza|wyrażenie|termin|phrase|word|term|idiom|quote|tekst|zdanie|sentence)\s*:?\s*$/i;
-        // Quoted substrings: "...", “...”, „...”, «...» and '...' (2+ chars, word-bounded)
-        const QUOTE_REGEX_SOURCE =
-            /(["“„«]([^"”»\r\n]+)["”»]|(?:^|[\s(])'([^'\r\n]{2,})'(?=[.,!?;:\s)]|$))/g;
-
         /** ISO 639-1 base code ("en-US" → "en") */
         function baseLangCode(lang, fallback = "") {
             return (lang || fallback).split(/[-_]/)[0].toLowerCase();
         }
 
-        /**
-         * Resolve the source-language code for quote code-switching: explicit `sourceLang`
-         * wins, otherwise infer from the script of `originalText`.
-         */
-        function inferSourceCode(baseCode, sourceLang, originalText) {
-            const explicit = baseLangCode(sourceLang);
-            if (explicit || !originalText) return explicit;
-            if (/[\u0400-\u04FF]/.test(originalText)) return "ru";
-            if (/[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/.test(originalText))
-                return "ja";
-            if (/[\uac00-\ud7af]/.test(originalText)) return "ko";
-            if (/[\u0600-\u06FF]/.test(originalText)) return "ar";
-            return baseCode !== defaultLearning ? defaultLearning : "";
-        }
-
-        function isSourceLanguageQuote(
-            inner,
-            preSnippet,
-            baseCharPattern,
-            originalText,
-        ) {
-            if (!inner) return false;
-            if (baseCharPattern && baseCharPattern.test(inner)) {
-                return false;
-            }
-            if (TRANSLATION_INTRO_REGEX.test(preSnippet)) {
-                return false;
-            }
-            if (originalText) {
-                const normOrig = originalText
-                    .toLowerCase()
-                    .replace(/[^\p{L}\p{N}\s]/gu, " ");
-                const normInner = inner
-                    .toLowerCase()
-                    .replace(/[^\p{L}\p{N}\s]/gu, " ");
-                if (
-                    normOrig.includes(normInner) ||
-                    normInner.includes(normOrig)
-                ) {
-                    return true;
-                }
-                const innerWords = normInner
-                    .split(/\s+/)
-                    .filter((w) => w.length > 2);
-                const origWords = new Set(
-                    normOrig.split(/\s+/).filter((w) => w.length > 2),
-                );
-                if (
-                    innerWords.length > 0 &&
-                    innerWords.some((w) => origWords.has(w))
-                ) {
-                    return true;
-                }
-                if (SOURCE_INTRO_REGEX.test(preSnippet)) {
-                    return true;
-                }
-                return false;
-            }
-            if (SOURCE_INTRO_REGEX.test(preSnippet)) {
-                return true;
-            }
-            return true;
-        }
-
-        /**
-         * Parse text into language-tagged speech segments so foreign quotes,
-         * idioms, and inserts inside explanations are read by their authentic native voice.
-         *
-         * Example:
-         *   Base Lang: "pl" (Polish)
-         *   Source Lang: "en" (English)
-         *   Text: 'Zwrot "All right, I'll just go by myself" wyraża akceptację...'
-         *   Result:
-         *     [
-         *       { text: "Zwrot", lang: "pl" },
-         *       { text: "All right, I'll just go by myself", lang: "en" },
-         *       { text: "wyraża akceptację...", lang: "pl" }
-         *     ]
-         */
-        function parseSpeechSegments(
-            text,
-            baseLang = defaultLearning,
-            { sourceLang = null, originalText = null } = {},
-        ) {
-            const raw = String(text ?? "").trim();
-            if (!raw) return [];
-
-            const baseCode = baseLangCode(baseLang, defaultLearning);
-            const srcCode = inferSourceCode(baseCode, sourceLang, originalText);
-
-            // If source and base languages are identical (or source is unknown), no code-switching is needed
-            if (!srcCode || srcCode === baseCode) {
-                return [{ text: raw, lang: baseLang }];
-            }
-
-            const quoteRegex = new RegExp(QUOTE_REGEX_SOURCE.source, "g");
-
-            const matches = [];
-            let match;
-            while ((match = quoteRegex.exec(raw)) !== null) {
-                const fullMatch = match[0];
-                const inner = (match[2] || match[3] || "").trim();
-                if (!inner) continue;
-
-                const innerStart = match.index + fullMatch.indexOf(inner);
-                const innerEnd = innerStart + inner.length;
-
-                matches.push({
-                    start: match.index,
-                    end: match.index + fullMatch.length,
-                    innerStart,
-                    innerEnd,
-                    inner,
-                });
-            }
-
-            if (matches.length === 0) {
-                return [{ text: raw, lang: baseLang }];
-            }
-
-            const baseCharPattern = BASE_DIACRITICS[baseCode];
-
-            const segments = [];
-            let cursor = 0;
-
-            for (const m of matches) {
-                if (m.start > cursor) {
-                    const preText = raw.slice(cursor, m.start).trim();
-                    if (preText) {
-                        segments.push({ text: preText, lang: baseLang });
-                    }
-                }
-
-                const preSnippet = raw
-                    .slice(Math.max(0, m.start - 35), m.start)
-                    .trim();
-                const isSourceLang = isSourceLanguageQuote(
-                    m.inner,
-                    preSnippet,
-                    baseCharPattern,
-                    originalText,
-                );
-                const targetSegmentLang = isSourceLang
-                    ? sourceLang || defaultLearning
-                    : baseLang;
-                segments.push({ text: m.inner, lang: targetSegmentLang });
-                cursor = m.end;
-            }
-
-            if (cursor < raw.length) {
-                const postText = raw.slice(cursor).trim();
-                if (postText) {
-                    segments.push({ text: postText, lang: baseLang });
-                }
-            }
-
-            const merged = [];
-            for (const s of segments) {
-                if (!s.text.trim()) continue;
-                const last = merged[merged.length - 1];
-                if (last && baseLangCode(last.lang) === baseLangCode(s.lang)) {
-                    last.text += " " + s.text;
-                } else {
-                    merged.push({ text: s.text, lang: s.lang });
-                }
-            }
-
-            return merged.length > 0 ? merged : [{ text: raw, lang: baseLang }];
-        }
-
-        /**
-         * Formats speech markup so that any quotes read by TTS in the source/original language
-         * are wrapped in <span class="quoteClass">"..."</span> with white styling, while the rest
-         * of the explanation/translation retains its existing styling.
-         */
-        function formatSpeechMarkup(
-            text,
-            baseLang = defaultLearning,
-            {
-                sourceLang = null,
-                originalText = null,
-                quoteClass = "__qt_tts-original-quote",
-            } = {},
-        ) {
-            const raw = String(text ?? "");
-            if (!raw) return "";
-
-            const baseCode = baseLangCode(baseLang, defaultLearning);
-            const srcCode = inferSourceCode(baseCode, sourceLang, originalText);
-
-            if (!srcCode || srcCode === baseCode) {
-                return escapeHtml(raw);
-            }
-
-            const quoteRegex = new RegExp(QUOTE_REGEX_SOURCE.source, "g");
-            const baseCharPattern = BASE_DIACRITICS[baseCode];
-
-            let resultHtml = "";
-            let cursor = 0;
-            let match;
-
-            while ((match = quoteRegex.exec(raw)) !== null) {
-                const fullMatch = match[0];
-                const inner = (match[2] || match[3] || "").trim();
-                if (!inner) continue;
-
-                let quoteStart = match.index;
-                let quoteText = fullMatch;
-                const leadingChar = fullMatch[0];
-                if (
-                    leadingChar === " " ||
-                    leadingChar === "(" ||
-                    leadingChar === "\t"
-                ) {
-                    quoteStart += 1;
-                    quoteText = fullMatch.slice(1);
-                }
-
-                const quoteEnd = match.index + fullMatch.length;
-
-                if (quoteStart > cursor) {
-                    resultHtml += escapeHtml(raw.slice(cursor, quoteStart));
-                }
-
-                const preSnippet = raw
-                    .slice(Math.max(0, quoteStart - 35), quoteStart)
-                    .trim();
-                const isSourceLang = isSourceLanguageQuote(
-                    inner,
-                    preSnippet,
-                    baseCharPattern,
-                    originalText,
-                );
-
-                if (isSourceLang) {
-                    resultHtml += `<span class="${escapeAttr(quoteClass)}">${escapeHtml(quoteText)}</span>`;
-                } else {
-                    resultHtml += escapeHtml(quoteText);
-                }
-
-                cursor = quoteEnd;
-            }
-
-            if (cursor < raw.length) {
-                resultHtml += escapeHtml(raw.slice(cursor));
-            }
-
-            return resultHtml;
+        // Compatibility helper: quotes are ordinary text, never language markup.
+        function formatSpeechMarkup(text) {
+            return escapeHtml(String(text ?? ""));
         }
 
         function getSafetyTimeout(text, rate = 1) {
@@ -401,63 +129,30 @@
                 volume = null,
                 isCancelled = null,
                 voices = null,
-                sourceLang = null,
-                originalText = null,
             } = {},
         ) {
             if (!cleanedText) return null;
             if (isCancelled?.()) return null;
 
-            const segments = parseSpeechSegments(cleanedText, lang, {
-                sourceLang,
-                originalText,
-            });
-            if (!segments.length) return null;
+            // One utterance in the explicitly requested language, including quotes.
+            const utter = new SpeechSynthesisUtterance(cleanedText);
+            utter.lang = lang || defaultLearning;
+            utter.rate = rate !== null ? rate : settings.speechRate;
+            utter.volume = volume !== null ? volume : settings.ttsVolume;
+            const voice = pickVoice(settings.speechVoice, utter.lang, voices);
+            if (voice) utter.voice = voice;
 
-            const utterances = [];
-            let firstUtter = null;
-            let lastUtter = null;
-
-            for (const seg of segments) {
-                if (!seg.text.trim()) continue;
-                if (isCancelled?.()) {
-                    cancel();
-                    return null;
-                }
-
-                const utter = new SpeechSynthesisUtterance(seg.text);
-                utter.lang = seg.lang || lang || defaultLearning;
-                utter.rate = rate !== null ? rate : settings.speechRate;
-                utter.volume = volume !== null ? volume : settings.ttsVolume;
-                const voice = pickVoice(settings.speechVoice, seg.lang, voices);
-                if (voice) utter.voice = voice;
-
-                try {
-                    window.speechSynthesis?.speak(utter);
-                    if (!firstUtter) firstUtter = utter;
-                    lastUtter = utter;
-                    utterances.push(utter);
-                } catch (error) {
-                    console.warn("[Lectoro TTS] SpeechSynthesis error:", error);
-                }
+            try {
+                window.speechSynthesis?.speak(utter);
+            } catch (error) {
+                console.warn("[Lectoro TTS] SpeechSynthesis error:", error);
+                return null;
             }
-
-            if (!lastUtter) return null;
-
-            activeUtterances = utterances;
-            lastUtter.addEventListener("end", () => {
+            activeUtterances = [utter];
+            utter.addEventListener("end", () => {
                 activeUtterances = [];
             });
-
-            if (firstUtter && firstUtter !== lastUtter) {
-                firstUtter.addEventListener("error", (e) => {
-                    try {
-                        lastUtter.onerror?.(e);
-                    } catch (_) {}
-                });
-            }
-
-            return lastUtter;
+            return utter;
         }
 
         /**
@@ -638,8 +333,6 @@
                 rate = null,
                 volume = null,
                 isCancelled = null,
-                sourceLang = null,
-                originalText = null,
             } = {},
         ) {
             const cleaned = cleanText(text);
@@ -728,8 +421,6 @@
                 rate,
                 volume,
                 voices,
-                sourceLang,
-                originalText,
                 isCancelled: () =>
                     isCancelled?.() || currentToken !== globalSpeechToken,
             });
@@ -747,8 +438,6 @@
                 rate = null,
                 cacheNotBefore = 0,
                 isCancelled = null,
-                sourceLang = null,
-                originalText = null,
             } = {},
         ) {
             const cleaned = cleanText(text);
@@ -768,15 +457,8 @@
             const playbackRate = Number.isFinite(rate) && rate > 0
                 ? rate
                 : (useConfiguredRate ? settings.speechRate : 1);
-            const segments = parseSpeechSegments(cleaned, lang, {
-                sourceLang,
-                originalText,
-            });
-            const isMultilingual = segments.length > 1;
-
             const useNeuralTts =
                 !forceBrowser &&
-                !isMultilingual &&
                 (settings.ttsMode === "openai" || settings.ttsMode === "gemini") &&
                 !!settings.elVoiceId &&
                 settings.elVoiceId !== "random" &&
@@ -819,8 +501,6 @@
                 rate: playbackRate,
                 volume: settings.ttsVolume,
                 voices,
-                sourceLang,
-                originalText,
                 isCancelled: () =>
                     isCancelled?.() || currentToken !== globalSpeechToken,
             });

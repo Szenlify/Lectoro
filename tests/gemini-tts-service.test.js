@@ -11,13 +11,18 @@ function service({ stored = {}, synthesize, cdnHit = false } = {}) {
     const cache = new Map();
     const requests = [];
     const syntheses = [];
+    const spoken = [];
     const mp3 = new Blob(["test-mp3"], { type: "audio/mpeg" });
     const sandbox = {
         LectoroConstants: Constants,
-        SharedUtils: { ...Utils, ensureVoices: async () => [] },
+        SharedUtils: { ...Utils, ensureVoices: async () => [], pickBestVoice: () => null },
         SubscriptionConfig: Config,
         Blob, AbortSignal, URL, console: { warn() {} },
-        window: { speechSynthesis: { cancel() {} } },
+        window: { speechSynthesis: { cancel() {}, speak(utter) { spoken.push(utter); } } },
+        SpeechSynthesisUtterance: class {
+            constructor(text) { this.text = text; }
+            addEventListener() {}
+        },
         Audio: function () { assert.fail("cancelled requests must not start playback"); },
         chrome: { storage: { local: {
             get: async (defaults) => ({ ...defaults, ...storage }),
@@ -38,8 +43,57 @@ function service({ stored = {}, synthesize, cdnHit = false } = {}) {
         },
     };
     vm.runInNewContext(fs.readFileSync(require.resolve("../shared/tts-service"), "utf8"), sandbox);
-    return { api: sandbox.SharedTtsService, storage, cache, requests, syntheses, mp3 };
+    return { api: sandbox.SharedTtsService, storage, cache, requests, syntheses, spoken, mp3 };
 }
+
+test("quotes never split browser speech or change the requested language", async () => {
+    const examples = [
+        ['Zwrot "take care" to pożegnanie.', "pl", "en", "take care"],
+        ["Zwrot „take care” to pożegnanie.", "pl", "en", "take care"],
+        ["Zwrot ‘take care’ to pożegnanie.", "pl", "en", "take care"],
+        ["Zwrot 'take care' to pożegnanie.", "pl", "en", "take care"],
+        ["Zwrot «take care» to pożegnanie.", "pl", "en", "take care"],
+        ['The phrase "ça va" is a greeting.', "en", "fr", "ça va"],
+        ['Zwrot "ありがとう" wyraża wdzięczność.', "pl", null, "ありがとう"],
+    ];
+    for (const [text, lang, sourceLang, originalText] of examples) {
+        for (const method of ["speak", "speakBrowser"]) {
+            const ctx = service();
+            await ctx.api[method](text, lang, { forceBrowser: true, sourceLang, originalText });
+            assert.equal(ctx.spoken.length, 1, `${method}: ${text}`);
+            assert.equal(ctx.spoken[0].lang, lang);
+            assert.equal(ctx.spoken[0].text, Utils.cleanTextForTTS(text));
+        }
+    }
+});
+
+test("speech markup escapes text without special quote styling", () => {
+    const ctx = service();
+    const text = 'Zwrot "take care" <img src=x onerror=alert(1)> & reszta.';
+    assert.equal(ctx.api.formatSpeechMarkup(text, "pl", {
+        sourceLang: "en", originalText: "take care", quoteClass: "special-quote",
+    }), Utils.escapeHtml(text));
+    assert.equal(ctx.api.formatSpeechMarkup(null), "");
+});
+
+test("quotes retain premium synthesis in the requested language", async () => {
+    let finish, started;
+    const ready = new Promise(resolve => { started = resolve; });
+    const ctx = service({ synthesize: async () => {
+        started();
+        return new Promise(resolve => { finish = resolve; });
+    } });
+    const text = 'Zwrot "take care" to pożegnanie.';
+    const speech = ctx.api.speak(text, "pl", { sourceLang: "en", originalText: "take care" });
+    await ready;
+    assert.equal(ctx.syntheses.length, 1);
+    assert.equal(ctx.syntheses[0][0], Utils.cleanTextForTTS(text));
+    assert.equal(ctx.syntheses[0][3], "pl");
+    assert.equal(ctx.spoken.length, 0);
+    ctx.api.cancel();
+    finish(ctx.mp3);
+    assert.equal((await speech).type, "none");
+});
 
 test("legacy preference migrates and identical recordings are synthesized once", async () => {
     const ctx = service({ stored: { ttsMode: "elevenlabs", elVoiceId: "TX3LPaxmHKxFdv7VOQHJ" } });
