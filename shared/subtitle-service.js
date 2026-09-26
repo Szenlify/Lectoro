@@ -1155,14 +1155,14 @@
          * @param {Array<{startTime: number, endTime: number, text: string}>} cues
          * @param {number|HTMLVideoElement} videoOrTime
          * @param {string} [activeText]
-         * @param {{ maxBefore?: number, maxAfter?: number }} [options]
+         * @param {{ maxBefore?: number, maxAfter?: number, secondsBefore?: number, secondsAfter?: number }} [options]
          * @returns {{ before: string[], current: string, after: string[] }}
          */
         function getSurroundingContext(
             cues,
             videoOrTime,
             activeText = "",
-            { maxBefore = 2, maxAfter = 2 } = {},
+            { maxBefore = 2, maxAfter = 2, secondsBefore = null, secondsAfter = null } = {},
         ) {
             if (!Array.isArray(cues) || cues.length === 0) {
                 return {
@@ -1194,14 +1194,16 @@
                             .toLowerCase()
                             .replace(/\s+/g, " ")
                             .trim();
-                        const matches =
+                        const matches = cueNorm && (
                             cueNorm === normalizedTarget ||
                             cueNorm.includes(normalizedTarget) ||
-                            normalizedTarget.includes(cueNorm);
+                            normalizedTarget.includes(cueNorm));
                         if (matches) {
-                            const dist = Math.abs(
-                                (cue.startTime ?? 0) - currentTime,
-                            );
+                            const start = Number.isFinite(cue.startTime) ? cue.startTime : 0;
+                            const end = Number.isFinite(cue.endTime) ? cue.endTime : start;
+                            const dist = currentTime >= start && currentTime <= end
+                                ? 0
+                                : Math.min(Math.abs(start - currentTime), Math.abs(end - currentTime));
                             if (dist < bestDistance) {
                                 bestDistance = dist;
                                 currentIndex = i;
@@ -1217,11 +1219,11 @@
                             .toLowerCase()
                             .replace(/\s+/g, " ")
                             .trim();
-                        if (
+                        if (cueNorm && (
                             cueNorm === normalizedTarget ||
                             cueNorm.includes(normalizedTarget) ||
                             normalizedTarget.includes(cueNorm)
-                        ) {
+                        )) {
                             currentIndex = i;
                             break;
                         }
@@ -1266,17 +1268,30 @@
             const currentCueText =
                 cues[currentIndex].text || String(activeText || "").trim();
 
-            // Extract before cues (preserving chronological order)
-            const startBefore = Math.max(0, currentIndex - maxBefore);
+            const currentCue = cues[currentIndex];
+            const anchorStart = Number.isFinite(currentCue.startTime) ? currentCue.startTime : currentTime;
+            const anchorEnd = Number.isFinite(currentCue.endTime) ? currentCue.endTime : anchorStart;
+            const timedBefore = Number.isFinite(secondsBefore) && secondsBefore >= 0 && Number.isFinite(anchorStart);
+            const timedAfter = Number.isFinite(secondsAfter) && secondsAfter >= 0 && Number.isFinite(anchorEnd);
+
+            // Include whole cues intersecting the scene window, so caption breaks
+            // do not cut words or lose the beginning/end of a nearby utterance.
+            const startBefore = timedBefore ? 0 : Math.max(0, currentIndex - maxBefore);
             const beforeCues = cues
                 .slice(startBefore, currentIndex)
+                .filter((cue) => !timedBefore || (secondsBefore > 0 &&
+                    Number.isFinite(cue.startTime) && cue.startTime <= anchorStart &&
+                    (Number.isFinite(cue.endTime) ? cue.endTime : cue.startTime) >= anchorStart - secondsBefore))
                 .map((c) => c.text?.trim())
                 .filter(Boolean);
 
             // Extract after cues
-            const endAfter = Math.min(cues.length, currentIndex + 1 + maxAfter);
+            const endAfter = timedAfter ? cues.length : Math.min(cues.length, currentIndex + 1 + maxAfter);
             const afterCues = cues
                 .slice(currentIndex + 1, endAfter)
+                .filter((cue) => !timedAfter || (secondsAfter > 0 &&
+                    Number.isFinite(cue.startTime) && cue.startTime <= anchorEnd + secondsAfter &&
+                    (Number.isFinite(cue.endTime) ? cue.endTime : cue.startTime) >= anchorEnd))
                 .map((c) => c.text?.trim())
                 .filter(Boolean);
 

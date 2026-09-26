@@ -263,8 +263,8 @@ test("SharedUtils isProperNounDefinition and isLikelyEnglish correctly categoriz
 test("Z and Enter share scene context while Z requests only the exact translation", async () => {
     const sentence = "I think you're the biggest guys here";
     const context = {
-        before: ["Discard this older line", "Welcome to the gym", "Look at those muscles"],
-        after: ["How much do you bench?", "We train every day", "Discard this later line"],
+        before: ["We arrived at the gym", "Welcome to the gym", "Look at those muscles"],
+        after: ["How much do you bench?", "We train every day", "Tomorrow is leg day"],
     };
     const { service, requests } = explanationService(response({
         translation: "Myślę, że jesteście tu najwięksi.",
@@ -275,9 +275,10 @@ test("Z and Enter share scene context while Z requests only the exact translatio
         assert.match(prompt, /body size or muscularity, not importance/);
         assert.match(prompt, /Welcome to the gym/);
         assert.match(prompt, /How much do you bench/);
-        assert.doesNotMatch(prompt, /Discard this/);
+        assert.match(prompt, /We arrived at the gym/);
+        assert.match(prompt, /Tomorrow is leg day/);
         assert.match(prompt, /Translate only the supplied sentence/);
-        assert.match(prompt, /Read the two preceding and two following subtitles before translating/);
+        assert.match(prompt, /30 seconds before and 15 after/);
         assert.match(prompt, /speaker intent, referents, tone, idioms/);
         if (!translationOnly) assert.match(prompt, /first Enter card: use the scene context/);
         assert.equal(options.maxOutputTokens, translationOnly ? 500 : 8192);

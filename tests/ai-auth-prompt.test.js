@@ -94,13 +94,13 @@ test('handleAIExplain shows auth overlay when user is not signed in', async () =
     assert.equal(geminiCalled, false, 'Gemini must not be called when user is not signed in');
 });
 
-test('Enter passes two preceding and two following subtitles and opens their contextual translation first', async () => {
+test('Enter requests a 30-second/15-second scene and opens its contextual translation first', async () => {
     const noop = () => {};
     const video = { currentTime: 10 };
     const scene = {
-        before: ['We have been working all day.', 'Everyone is tired.'],
+        before: ['It is getting late.', 'We have been working all day.', 'Everyone is tired.'],
         current: "Let's call it.",
-        after: ['We can finish tomorrow.', 'See you in the morning.'],
+        after: ['We can finish tomorrow.', 'See you in the morning.', 'Good night.'],
     };
     const requests = [];
     let shown;
@@ -115,7 +115,7 @@ test('Enter passes two preceding and two following subtitles and opens their con
             getSubtitleContext(actualVideo, text, options) {
                 assert.equal(actualVideo, video);
                 assert.equal(text, scene.current);
-                assert.deepEqual({ ...options }, { maxBefore: 2, maxAfter: 2 });
+                assert.deepEqual({ ...options }, { secondsBefore: 30, secondsAfter: 15 });
                 return scene;
             },
         }),

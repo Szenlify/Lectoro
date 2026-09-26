@@ -50,7 +50,9 @@ Kolejny krok — słowo lub zwrot
 
 Wyświetla samo tłumaczenie i głośnik. Oryginalnego zdania nie powtarza w treści karty; pozostaje ono w napisach filmu. Choć obiekt kroku przechowuje `explanation`, renderer nie pokazuje wyjaśnienia na etapie `sentence`.
 
-Pierwsza karta tłumaczy bieżący napis w kontekście dwóch poprzednich i dwóch następnych wpisów napisów. AI ma najpierw odczytać ten kontekst, a potem dobrać sens, ton, intencję i odniesienia wypowiedzi, również przy podziale zdania między napisami. Sąsiednie wpisy nie są dopisywane do tłumaczenia karty. Jeśli odtwarzacz nie udostępnia wszystkich sąsiadów, analizowane są dostępne wpisy bez wymyślania brakujących informacji.
+Pierwsza karta tłumaczy bieżący napis w kontekście około 30 sekund przed początkiem i 15 sekund po końcu bieżącego wpisu. Okno zawiera pełne wpisy przecinające jego granice, w kolejności chronologicznej. AI ma najpierw odczytać wypowiedź ponad podziałami napisów, a potem dobrać sens, ton, intencję i odniesienia. Otrzymuje również pełny bieżący wpis, jeśli tłumaczony fragment jest krótszy. Sąsiednie wpisy nie są dopisywane do tłumaczenia karty. Instrukcja zabrania zakładania narkotyków lub euforii wyłącznie na podstawie `high / come down`; przy braku dowodów zachowuje niejednoznaczność.
+
+Prompt nie przycina już kontekstu do 2+2 wpisów ani każdego napisu do 300 znaków. Zachowuje najbliższe pełne wpisy, z limitem 4000 znaków JSON i 120 wpisów na każdą stronę; analogiczny limit dotyczy pełnego bieżącego napisu. Ogranicza to rozmiar żądania bez cięcia zdań w połowie. Wspólny mechanizm kontekstu jest używany także podczas zapisu przez Z. Przy braku ścieżki z czasami dostępne jest do 10 ostatnich zaobserwowanych napisów, bez wymyślania przyszłych wpisów czy ich czasów. Przy dostępnej ścieżce przerwy w dialogu nie są uzupełniane niepowiązaną historią odtwarzania.
 
 ### Karta słowa lub zwrotu
 

@@ -405,7 +405,7 @@
          */
         const SIMPLE_WORDS = Object.freeze(
             new Set([
-                "i", "am",
+                "i", "am","yeah","yea",
                 "me", "my",
                 "yes", "no", "ok", "okay", "hi",
                 "an", "oh", "um", "uh", "ah", "a", "and"

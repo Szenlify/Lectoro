@@ -2917,15 +2917,19 @@
         const registry = getPlayerRegistry();
 
         let context = { before: [], current: targetText, after: [] };
+        const track = registry?.getAllCues?.(targetVideo);
+        const hasTimedTrack = Array.isArray(track) && track.some((cue) =>
+            Number.isFinite(cue?.startTime) && typeof cue.text === "string" && cue.text.trim());
 
         if (typeof registry?.getSubtitleContext === "function") {
             context = registry.getSubtitleContext(targetVideo, targetText, {
-                maxBefore: 2,
-                maxAfter: 2,
+                secondsBefore: 30,
+                secondsAfter: 15,
             });
         }
 
         if (
+            !hasTimedTrack &&
             (!context.before || context.before.length === 0) &&
             recentSubtitlesHistory.length > 0
         ) {
@@ -2933,7 +2937,9 @@
                 (t) => t && t !== targetText,
             );
             if (hist.length > 0) {
-                context.before = hist.slice(-2);
+                // DOM-only players may expose no timed track or future cues.
+                // Use the available recent dialogue without inventing timestamps.
+                context.before = hist.slice(-10);
             }
         }
 

@@ -32,7 +32,7 @@ Master new languages naturally while watching your favorite videos and reading a
 - **Word-by-Word Translation Clouds:** Press S for contextual word and phrase translations above subtitles, with automatic fallback when the primary service is unavailable. Repeated subtitles load from saved results. Use Left/Right arrows or A/D to select a word or phrase, then Z to save it or X to save an AI sentence.
 - **AI Context Explanations:** Press Enter for useful words, phrasal verbs, idioms, collocations and everyday expressions, interpreted with neighboring subtitles across all supported learning languages. Learn short beginner phrases and reusable grammar patterns with contextual translations and concise usage notes directly in the video player or reading pane.
 - **Natural Speech Pronunciation:** Listen to crystal-clear speech pronunciation tuned to your learning language.
-- **Subtitle Flashcards:** Z saves the original subtitle and punctuation with a faithful, natural translation informed by up to two preceding and two following subtitles.
+- **Subtitle Flashcards:** Z saves the original subtitle and punctuation with a faithful, natural translation informed by available scene dialogue from about 30 seconds before and 15 seconds after the current subtitle.
 - **Spaced Repetition (SRS) Flashcards:** Save words and context sentences with a single shortcut or click. Listen to either side at normal speed or 0.75×. Daily review reminders help you retain vocabulary in long-term memory.
 - **Flexible Vocabulary Export:** Export minimalist Anki cards with saved translations, original context and pronunciation, without AI examples or explanations. Export to Excel or take interactive AI-generated quizzes.
 - **Cross-Device Cloud Sync:** Optionally connect your account to keep your vocabulary, learning history, and flashcards synchronized across all your devices.
@@ -108,6 +108,7 @@ Every permission declared in `manifest.json` adheres to the Principle of Least P
 - Single-word subtitle fragments join the preceding nearby cue on YouTube, Netflix and native caption tracks; ASR word timing is preserved.
 
 - **1.0.0 (Current):**
+  - Enter and subtitle saving now use a timed scene window of about 30 seconds before and 15 seconds after the current cue, retaining complete nearby captions and interpreting split utterances without assuming unsupported drug-related or emotional meanings (2026-09-26).
   - Enter's first card explicitly interprets the current subtitle using two preceding and two following available cues, including speaker intent, tone and contextual literal or figurative meaning (2026-09-26).
   - Enter highlights complete matching expressions across subtitle words and lines, normalizes apostrophe variants, and prevents overlapping queued expressions from changing the active selection (2026-09-26).
   - AI omits explanations when the translation already conveys the meaning; notes only add essential new information about shortened forms, difficult concepts or usage (2026-09-26).
