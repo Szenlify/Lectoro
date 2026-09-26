@@ -1631,6 +1631,89 @@
             return Object.defineProperties({}, descriptors);
         }
 
+        // Local, conservative casing: retain source names/brands and acronyms.
+        // Unknown names in an entirely uppercase source cannot be recovered reliably.
+        function normalizeCueSentenceCase(cues, language = "") {
+            if (!Array.isArray(cues)) return [];
+            const lang = String(language).toLowerCase().split("-")[0];
+            const commonWords = new Set(({
+                en: `a an the and or but so if then than because as at by for from in into of on to with without is are was were be been being am do does did have has had can could would shall should might must not no yes this that these those i you he she it we they me him her us them my your his its our their what which who whom whose when where why how here there now just also only very all some any each every both more most much many few about after before again over under up down out off back well think know see look go come get got want need say said tell take make let thanks thank please hello hi okay good today tomorrow yesterday
+                    i'm i've i'll i'd you're he's she's it's we're they're don't doesn't didn't isn't aren't wasn't weren't can't couldn't won't wouldn't shouldn't`,
+                pl: "a i ale albo lub więc bo gdy jeśli że aby czy nie tak to ten ta te tego tej tym tu tam jest są był była było być ma mam masz mamy mają miał mieć się mnie mi ci cię go jej mu nas nam ich im ja ty on ona ono my wy oni one mój moja moje twój twoja twoje nasz nasza nasze wasz wasza wasze kto co jaki jaka jakie który która które gdzie kiedy dlaczego jak już jeszcze tylko też bardzo teraz potem przed po przez do od z ze w we na nad pod u o za bez dla dobrze dziś jutro wczoraj dziękuję proszę cześć wiem myślę widzę chcę może można trzeba",
+            }[lang] || "").split(/\s+/u).filter(Boolean));
+            const acronyms = new Set("AI API CPU GPU NASA NATO UNESCO OECD WHO FBI CIA DNA RNA USA UK EU UN BBC CNN IBM USB URL HTML CSS HTTP HTTPS PDF CEO CTO CFO FAQ GPS TV WiFi PhD UE ONZ PKP PAN AGD RTV VAT PIT ZUS".split(" ").map((word) => word.toUpperCase()));
+            const abbreviation = /(?:^|[^\p{L}])(?:mr|mrs|ms|dr|prof|sr|jr|st|vs|e\.g|i\.e|np|tj|tzn|ul|al|nr|godz|mgr|inż)\.$/iu;
+            const wordPattern = /[\p{L}\p{M}]+(?:['’][\p{L}\p{M}]+)*/gu;
+            const lower = (word) => lang === "tr" || lang === "az" ? word.toLocaleLowerCase(lang) : word.toLowerCase();
+            const upper = (word) => lang === "tr" || lang === "az" ? word.toLocaleUpperCase(lang) : word.toUpperCase();
+            const canonical = new Map();
+            for (const cue of cues) {
+                for (const [word] of String(cue?.text || "").matchAll(wordPattern)) {
+                    const key = lower(word).replace(/’/gu, "'");
+                    if (word !== lower(word) && word !== upper(word) && !commonWords.has(key)) {
+                        canonical.set(key, word);
+                    }
+                }
+            }
+            let context = "";
+            let hasWords = false;
+            return cues.map((cue) => {
+                if (!cue || typeof cue.text !== "string") return cue;
+                const source = cue.text;
+                const uppercaseRanges = Array.from(source.matchAll(/[^.!?。！？]+/gu))
+                    .filter(([part]) => {
+                        const words = Array.from(part.matchAll(wordPattern), ([word]) => word);
+                        return words.some((word) => word.length > 1 && word !== lower(word)) &&
+                            words.every((word) => word === upper(word));
+                    })
+                    .map((match) => [match.index, match.index + match[0].length]);
+                const protectedRanges = Array.from(source.matchAll(/(?:https?:\/\/|www\.)\S+|[\w.+-]+@[\w.-]+\.[a-z]+|(?:\p{L}\.){2,}/giu),
+                    (match) => [match.index, match.index + match[0].length]);
+                let end = 0;
+                const text = source.replace(wordPattern, (word, offset) => {
+                    const allCaps = uppercaseRanges.some(([start, finish]) => offset >= start && offset < finish);
+                    context += source.slice(end, offset);
+                    const tail = context.trimEnd().replace(/["'”’»）)\]]+$/u, "").trimEnd();
+                    const startsSentence = !hasWords || /[!?。！？]$/u.test(tail) ||
+                        (/\.$/u.test(tail) && !abbreviation.test(tail) &&
+                            !/(?:\p{L}\.){2,}$/u.test(tail) && !/(?:^|\s)(?!I\.)\p{Lu}\.$/u.test(tail));
+                    const key = lower(word).replace(/’/gu, "'");
+                    let value = word;
+                    if (!protectedRanges.some(([start, finish]) => offset >= start && offset < finish)) {
+                        if (lang === "en" && /^i(?:['’](?:m|ve|ll|d))?$/iu.test(word)) {
+                            value = "I" + lower(word.slice(1));
+                        } else if (word !== lower(word) && canonical.has(key)) {
+                            value = canonical.get(key);
+                        } else if (word === "US" && (!allCaps || /\bthe\s+$/iu.test(context))) {
+                            value = word;
+                        } else if (acronyms.has(upper(word)) && word === upper(word)) {
+                            value = word;
+                        } else if (commonWords.has(key) || ((allCaps || word.length > 3) && word === upper(word))) {
+                            value = lower(word);
+                        }
+                        if (startsSentence && !/^\p{Ll}.*\p{Lu}/u.test(value)) {
+                            value = value.replace(/\p{L}/u, (letter) => upper(letter));
+                        }
+                    }
+                    context = (context + word).slice(-100);
+                    hasWords = true;
+                    end = offset + word.length;
+                    return value;
+                });
+                context = (context + source.slice(end) + " ").slice(-100);
+                if (text === source) return cue;
+                const descriptors = Object.getOwnPropertyDescriptors(cue);
+                descriptors.text = { value: text, writable: true, configurable: true, enumerable: true };
+                // Keep authored line breaks while retaining non-enumerable ASR clocks.
+                let offset = 0;
+                const lines = Array.isArray(cue.lines) && cue.lines.join(" ") === source && text.length === source.length
+                    ? cue.lines.map((line) => { const value = text.slice(offset, offset + line.length); offset += line.length + 1; return value; })
+                    : text.split(/\r?\n/u);
+                descriptors.lines = { value: lines, writable: true, configurable: true, enumerable: true };
+                return Object.defineProperties({}, descriptors);
+            });
+        }
+
         // YouTube: join <39 + <15 characters in either order, including the separator.
         function mergeShortCues(cues) {
             if (!Array.isArray(cues)) return [];
@@ -2072,6 +2155,7 @@
             pairTwoClusters,
             mergeSingleWordCues,
             mergeShortCues,
+            normalizeCueSentenceCase,
             getNativeDisplayCues,
             alignSlaveTrackToMaster,
             parseYouTubeJson3,

@@ -5,7 +5,7 @@ const vm = require("node:vm");
 const { load } = require("./helpers");
 const C = require("../shared/constants");
 const U = require("../shared/utils");
-const { prepare } = require("../functions/live-translation");
+const { prepare, validateEntry } = require("../functions/live-translation");
 const entry = { languageValidation: 1, t: "mały dom", d: { s: "A small home.", t: "Niewielki dom." }, s: ["cottage"],
     e: [1, 2, 3].map(n => ({ s: `Home example ${n}.`, t: `Przykład domu ${n}.` })) };
 function environment({ records = new Map(), serve = () => new Response(null, { status: 404 }), failSave = false } = {}) {
@@ -29,6 +29,40 @@ function environment({ records = new Map(), serve = () => new Response(null, { s
     load(context, "shared/local-dictionary.js");
     return { store, context, calls, records, lookup: context.LocalDictionary.lookupWords };
 }
+
+test("hover, including S-mode hover, sends intact joined words and reuses punctuation variants", async () => {
+    for (const [variants, example] of [
+        [["you're", "you’re", "YOUʼRE"], "I know you’re ready."],
+        [["we'll", "we’ll", "we‘ll"], "I think we’ll go."],
+        [["well-known", "well‐known", "well‑known"], "This is well-known."],
+    ]) {
+        const env = environment();
+        let requests = 0;
+        env.context.GeminiProxy = { liveTranslation: async (kind, word, source, target) => {
+            requests++;
+            assert.equal(word, variants[0]);
+            const job = prepare({ kind, text: word, sourceLang: source, targetLang: target }, "reader");
+            const checked = validateEntry({ ...entry, d: { s: "A common expression.", t: "Popularne wyrażenie." },
+                e: [1, 2, 3].map(() => ({ s: example, t: "Zdanie przykładowe." })) }, job.input, source, target);
+            return { [job.input]: { ...checked, languageValidation: 1 } };
+        } };
+        for (const text of variants) {
+            const tokens = env.context.DictionaryTokenizer.tokenize(text);
+            assert.equal(tokens.length, 1);
+            assert.equal(tokens[0].text, text);
+            const [details] = await env.lookup([tokens[0].clean], "pl", "en", {
+                details: true, context: example, contextWords: [text], wordIndex: 0,
+            });
+            assert.equal(details.primaryTranslation, entry.t);
+            assert.equal(details.senses[0].examples.length, 3);
+            assert.equal((await env.store.getLive("en", "pl", text, { localOnly: true })).t, entry.t);
+        }
+        assert.equal(requests, 1);
+        assert.equal(env.calls.length, 1);
+        assert.equal(new URL(env.calls[0]).pathname,
+            `/${prepare({ kind: "word", text: variants[0], sourceLang: "en", targetLang: "pl" }, "reader").key}`);
+    }
+});
 test("hover reads exactly the live file used by the server, with no catalog or Gemini request", async () => {
     const env = environment({ serve: () => new Response(JSON.stringify({ hütte: entry })) });
     env.context.GeminiProxy = { liveTranslation: async () => { throw Error("Unexpected generation"); } };

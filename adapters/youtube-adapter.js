@@ -171,8 +171,9 @@
 
     // ── Cue Indexing & Binary Search ──────────────────────────────
 
-    function setCueIndex(cues, videoId = "") {
+    function setCueIndex(cues, videoId = "", language = "") {
         if (!Array.isArray(cues) || cues.length === 0) return;
+        cues = getSubtitleService()?.normalizeCueSentenceCase?.(cues, language) || cues;
         cues = getSubtitleService()?.mergeShortCues?.(cues) || cues;
         cueIndex = cues;
         let maxEnd = -Infinity;
@@ -215,11 +216,17 @@
                 .trim();
         };
 
+        const normalizeLines = (lines) => {
+            const text = lines.join(" ");
+            return getSubtitleService()?.normalizeCueSentenceCase?.(
+                [{ text, lines }], activeTrack?.languageCode || "",
+            )?.[0]?.lines || lines;
+        };
         const lines = Array.from(container.querySelectorAll(".caption-visual-line"));
         if (lines.length > 0) {
-            return lines
+            return normalizeLines(lines
                 .map((l) => cleanFn((l.textContent || "").trim()))
-                .filter(Boolean);
+                .filter(Boolean));
         }
         const segments = Array.from(container.querySelectorAll(".ytp-caption-segment"));
         if (segments.length > 0) {
@@ -228,7 +235,7 @@
                 .join("")
                 .trim();
             const cleaned = cleanFn(raw);
-            return cleaned ? cleaned.split(/\r?\n/).map((l) => l.trim()).filter(Boolean) : [];
+            return cleaned ? normalizeLines(cleaned.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)) : [];
         }
         return [];
     }
@@ -558,7 +565,7 @@
             }
             return res;
         });
-        setCueIndex(masterCues, videoId);
+        setCueIndex(masterCues, videoId, activeTrack?.languageCode || "");
     }
 
     async function loadCaptionTrack(track, videoId = "") {

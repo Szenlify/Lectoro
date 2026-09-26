@@ -47,6 +47,12 @@
                 return String(str ?? "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
             },
 
+            // Keep internal word separators; use the same form in requests and cache keys.
+            normalizeDictionaryTerm(str) {
+                return String(str ?? "").normalize("NFKC").trim().toLowerCase()
+                    .replace(/[‘’ʼ]/gu, "'").replace(/[‐‑﹣－]/gu, "-");
+            },
+
             /**
              * Checks whether a text string contains strictly a single word
              * (ignoring surrounding punctuation, symbols, quotes, and whitespace).

@@ -28,7 +28,7 @@ Master new languages naturally while watching your favorite videos and reading a
 **Key Features:**
 - **YouTube Focus Mode:** Automatically selects available auto-generated YouTube captions and highlights spoken words, including single-word subtitles.
 - **Consistent Subtitle Navigation:** A and Left Arrow return to the previous dialogue near its start and replay it after its midpoint across supported video players.
-- **Dual Bilingual Subtitles:** Watch YouTube and Netflix with synchronized dual-language subtitles. Consecutive short fragments are paired together for effortless reading. Short YouTube captions join a nearby caption before or after them, with merged text limited to 54 characters.
+- **Dual Bilingual Subtitles:** Watch YouTube and Netflix with synchronized dual-language subtitles. Consecutive short fragments are paired together for effortless reading. Short YouTube captions join a nearby caption before or after them, with merged text limited to 54 characters. Sentence starts are capitalized, while source names and recognized abbreviations retain their spelling.
 - **Word-by-Word Translation Clouds:** Press S for contextual word and phrase translations above subtitles, with automatic fallback when the primary service is unavailable. Repeated subtitles load from saved results. Use Left/Right arrows or A/D to select a word or phrase, then Z to save it or X to save an AI sentence.
 - **AI Context Explanations:** Press Enter for useful words, phrasal verbs, idioms, collocations and everyday expressions, interpreted with neighboring subtitles across all supported learning languages. Learn short beginner phrases and reusable grammar patterns with contextual translations and concise usage notes directly in the video player or reading pane.
 - **Natural Speech Pronunciation:** Listen to crystal-clear speech pronunciation tuned to your learning language.
@@ -108,6 +108,8 @@ Every permission declared in `manifest.json` adheres to the Principle of Least P
 - Single-word subtitle fragments join the preceding nearby cue on YouTube, Netflix and native caption tracks; ASR word timing is preserved.
 
 - **1.0.0 (Current):**
+  - Fixed Gemini dictionary tooltips for contractions and hyphenated words, including hover in S mode. Straight and typographic apostrophes/hyphens now share the same dictionary lookup and saved result (2026-09-26).
+  - YouTube captions now capitalize sentence starts across caption boundaries and reduce unnecessary capitals, retaining source names, brands, recognized acronyms and English “I”. Casing is local and heuristic; unknown names in all-uppercase captions may need correction. ASR word timing is preserved (2026-09-26).
   - YouTube now joins neighboring captions by character count (under 39 plus under 15, in either order), with a 54-character merged-text limit and preserved word timing (2026-09-26).
   - Enter and subtitle saving now use a timed scene window of about 30 seconds before and 15 seconds after the current cue, retaining complete nearby captions and interpreting split utterances without assuming unsupported drug-related or emotional meanings (2026-09-26).
   - Enter's first card explicitly interprets the current subtitle using two preceding and two following available cues, including speaker intent, tone and contextual literal or figurative meaning (2026-09-26).

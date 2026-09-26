@@ -18,7 +18,7 @@ function createRuntime(phrases) {
     setTimeout,
     clearTimeout,
     AbortController,
-    SharedUtils: { isSimpleWord: () => false },
+    SharedUtils: { ...require("../shared/utils"), isSimpleWord: () => false },
     LectoroConstants: { SUPPORTED_LANGUAGES: { en: {}, pl: {}, de: {} } },
     require,
     __dirname: path.join(__dirname, '../shared'),

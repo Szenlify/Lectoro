@@ -639,7 +639,7 @@
 
         const livePending = new Map();
         function liveTranslation(kind, text, sourceLang, targetLang, words, context, options = {}) {
-            if (kind === "word") text = text.normalize("NFKC").trim().toLowerCase();
+            if (kind === "word") text = Utils.normalizeDictionaryTerm(text);
             const timeoutMs = Math.min(45000, Math.max(100, Number(options.timeoutMs) || 45000));
             const key = JSON.stringify([kind, text, sourceLang, targetLang, words, timeoutMs]);
             if (livePending.has(key)) return livePending.get(key);

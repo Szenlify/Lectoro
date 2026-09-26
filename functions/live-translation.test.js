@@ -59,6 +59,44 @@ function fixture() {
     return { deps, count, objects, records };
 }
 
+test("apostrophes and hyphens survive Gemini validation, storage and cache reuse", async () => {
+    for (const [variants, example, translation] of [
+        [["you're", "you’re", "you‘re", "YOUʼRE"], "She said 'you’re' clearly.", "jesteś"],
+        [["we'll", "we’ll", "WE＇LL"], "They know we’ll arrive soon.", "będziemy"],
+        [["well-known", "well‐known", "well‑known"], "She is a well‑known writer.", "znany"],
+        [["mother-in-law", "mother‐in‐law"], "My mother-in-law lives nearby.", "teściowa"],
+    ]) {
+        const { deps, count, objects } = fixture();
+        const generated = { t: translation, d: { s: "A common expression.", t: "Popularne wyrażenie." },
+            s: [], e: [1, 2, 3].map(() => ({ s: example, t: "Poprawne przykładowe zdanie." })) };
+        deps.generate = async (payload) => {
+            count.generated++;
+            assert.match(payload.contents[0].parts[0].text, /Valid vocabulary includes contractions/);
+            return response({ valid: true, entry: generated });
+        };
+        const canonical = variants[0];
+        const expectedKey = prepare({ ...body, text: canonical }, "u1").key;
+        for (const word of variants) {
+            assert.equal(prepare({ ...body, text: word }, "u1").key, expectedKey);
+            const result = await handleLiveTranslation({ ...body, text: word }, deps);
+            assert.equal(result.result[canonical].t, translation);
+        }
+        assert.equal(count.generated, 1, canonical);
+        assert.equal(count.reserved, 1, canonical);
+        assert.equal(count.refunded, 0, canonical);
+        assert.equal(objects.size, 1, canonical);
+    }
+});
+
+test("joined-word validation rejects missing punctuation, partial terms and other contractions", () => {
+    for (const [input, wrong] of [["we'll", "well"], ["you're", "your"], ["you're", "you'll"],
+        ["well-known", "wellknown"], ["mother-in-law", "mother"], ["well-known", "well-knownness"]]) {
+        const bad = { t: "tłumaczenie", d: { s: "A common expression.", t: "Popularne wyrażenie." }, s: [],
+            e: [1, 2, 3].map(() => ({ s: `I said ${wrong} today.`, t: "Powiedziałem to dzisiaj." })) };
+        assert.throws(() => validateEntry(bad, input, "en", "pl"), /examples do not contain/, input);
+    }
+});
+
 test("full sentence uses one AI call and does not write to R2", async () => {
     const { deps, count, objects } = fixture();
     deps.generate = async payload => {

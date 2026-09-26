@@ -170,6 +170,20 @@ test("other single-word actions read live dictionary before any sentence or Goog
     assert.deepEqual(words, [[["house"], "pl", "en"]]); assert.equal(state.calls.length, 0);
 });
 
+test("apostrophes and hyphens stay intact on the dictionary route used by hover", async () => {
+    const state = app({ user: null });
+    const seen = [];
+    state.context.LocalDictionary = { lookupWords: async ([word]) => { seen.push(word); return ["tłumaczenie"]; } };
+    for (const [input, canonical] of [["you're", "you're"], ["we’ll", "we'll"], ["we‘ll", "we'll"],
+        ["well-known", "well-known"], ["well‑known", "well-known"]]) {
+        assert.equal(state.service.dictionaryTerm(input), canonical);
+        const result = await state.service.translate(input, "pl", "en");
+        assert.equal(result.provider, "dictionary");
+        assert.equal(seen.at(-1), canonical);
+    }
+    assert.equal(state.calls.length, 0);
+});
+
 test("preferGoogle prioritizes Google Translate for multiword text even when signed in", async () => {
     const state = app();
     const result = await state.service.translate("How are you today", "pl", "en", { preferGoogle: true });
@@ -210,4 +224,3 @@ test("preferGoogle falls back to Gemini AI when Google Translate fails", async (
     assert.equal(result.translated, "Cześć z Gemini!");
     assert.equal(result.provider, "gemini");
 });
-

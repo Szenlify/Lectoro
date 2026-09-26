@@ -265,6 +265,7 @@
         let dragStartBottomPx = 0;
         let dragActive = false;
         let activePointerId = null;
+        let wasPlayingBeforeDrag = false;
 
         function startDrag(e) {
             if (e.button !== 0) return;
@@ -273,6 +274,11 @@
             }
             e.preventDefault();
             e.stopPropagation();
+
+            const registry = getPlayerRegistry();
+            const video = registry?.getVideo() || document.querySelector("video");
+            wasPlayingBeforeDrag = Boolean(video && !video.paused);
+            pauseIfPlaying(video);
 
             dragStartY = e.clientY;
             dragStartBottomPx = currentSubBottomPx;
@@ -360,6 +366,15 @@
 
             const subPosKey = C.STORAGE_KEYS?.SUBTITLE_POSITION || "subtitlePosition";
             chrome.storage.local.set({ [subPosKey]: currentSubPosition });
+
+            if (wasPlayingBeforeDrag) {
+                wasPlayingBeforeDrag = false;
+                const registry = getPlayerRegistry();
+                const video = registry?.getVideo() || document.querySelector("video");
+                if (video && video.paused) {
+                    registry?.playVideo(video);
+                }
+            }
         }
 
         handle.addEventListener("pointerdown", startDrag);
@@ -410,10 +425,8 @@
             setupVerticalDrag(subDragHandleEl, box);
         }
 
-        if (subDragHandleEl.parentElement !== box) {
-            box.insertBefore(subDragHandleEl, box.firstChild);
-        }
-        if (subDragBadgeEl && subDragBadgeEl.parentElement !== box) {
+        box.appendChild(subDragHandleEl);
+        if (subDragBadgeEl) {
             box.appendChild(subDragBadgeEl);
         }
     }
@@ -1042,6 +1055,7 @@
     }
 
     function renderCustomSubtitles(lines = [], options = {}) {
+        if (isSubDragging) return;
         const { box } = ensureCustomSubtitlesLayer();
         const registry = getPlayerRegistry();
         const video = registry?.getVideo();

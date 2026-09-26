@@ -330,7 +330,7 @@
         const transportCache = createTranslateCache();
         function dictionaryTerm(text) {
             if (/\s/u.test(String(text || "").trim())) return null;
-            const term = String(text || "").normalize("NFKC").trim()
+            const term = Utils.normalizeDictionaryTerm(text)
                 .replace(/^[^\p{L}\p{M}]+|[^\p{L}\p{M}\p{N}]+$/gu, "");
             return term.length <= 120 && /^[\p{L}\p{M}][\p{L}\p{M}\p{N}'’\-]*$/u.test(term) ? term : null;
         }

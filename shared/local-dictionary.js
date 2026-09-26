@@ -509,7 +509,7 @@
         const result = words.map(() => null);
         await Promise.all(words.map(async (raw, i) => {
             if (options.wordByWord && sourceLang === "en" && utils.isSimpleWord(raw)) return;
-            const word = raw.normalize("NFKC").trim().toLowerCase().replace(/^[^\p{L}\p{M}]+|[^\p{L}\p{M}\p{N}]+$/gu, "");
+            const word = utils.normalizeDictionaryTerm(raw).replace(/^[^\p{L}\p{M}]+|[^\p{L}\p{M}\p{N}]+$/gu, "");
             if (!word || word.length > 120 || !/^[\p{L}\p{M}][\p{L}\p{M}\p{N}'’ -]*$/u.test(word)) return;
             let entry = await root.DictionaryStore?.getLive?.(sourceLang, targetLang, word, { localOnly: options.localOnly === true });
             if (!entry && !options.localOnly && options.generateMissing !== false) {

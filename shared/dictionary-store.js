@@ -1,6 +1,7 @@
 /** Individual R2 live entries and their offline cache, owned by the service worker. */
 (function (root) {
     "use strict";
+    const utils = root.SharedUtils || (typeof module !== "undefined" && module.exports ? require("./utils") : null);
     const BASE_URL = "https://pub-ee4534784e534bd9af38ba8022bc5e1e.r2.dev/dictionaries/";
     const MAX_PACK_BYTES = 32 * 1024 * 1024;
     const MAX_CACHE_BYTES = 128 * 1024 * 1024;
@@ -217,7 +218,7 @@
         async function getLive(source, target, word, { localOnly = false } = {}) {
             const supported = root.LectoroConstants?.SUPPORTED_LANGUAGES;
             if (!supported || !Object.hasOwn(supported, source) || !Object.hasOwn(supported, target) || source === target || !validText(word, 120)) return null;
-            word = word.normalize("NFKC").trim().toLowerCase();
+            word = utils.normalizeDictionaryTerm(word);
             const key = liveKey(source, target, word);
             if (liveMemory.has(key)) return liveMemory.get(key);
             const record = await read(key);
@@ -246,7 +247,7 @@
             return task;
         }
         async function putLive(source, target, word, entry) {
-            word = word.normalize("NFKC").trim().toLowerCase();
+            word = utils.normalizeDictionaryTerm(word);
             validateLive(entry);
             if (entry.languageValidation !== 1) throw new Error("Dictionary entry has not passed language verification");
             rememberLive(liveKey(source, target, word), entry);
@@ -417,7 +418,7 @@
                 let wordsCount = 0;
 
                 for (const [rawWord, entry] of Object.entries(packData.entries)) {
-                    const word = rawWord.normalize("NFKC").trim().toLowerCase();
+                    const word = utils.normalizeDictionaryTerm(rawWord);
                     try {
                         validateLive(entry);
                         if (entry.languageValidation === 1) {

@@ -5,7 +5,7 @@ const { loadFunction, deferred } = require("./helpers");
 
 function client(fetch, timers = {}) {
     const context = vm.createContext({
-        livePending: new Map(), getToken: async () => "token", setCachedUsage: async () => {},
+        Utils: require("../shared/utils"), livePending: new Map(), getToken: async () => "token", setCachedUsage: async () => {},
         PROXY_URL: "https://example.test/proxy", fetch, AbortController, setTimeout, clearTimeout,
         ...timers,
     });
@@ -43,6 +43,22 @@ test("proxy normalizes case before deduplicating and sending word requests", asy
     assert.equal(calls, 1);
 });
 
+test("proxy uses one intact canonical term for apostrophe and hyphen variants", async () => {
+    for (const [canonical, variants] of [["we'll", ["we’ll", "WEʼLL", "we'll"]],
+        ["well-known", ["well‐known", "well‑known", "WELL-KNOWN"]]]) {
+        let calls = 0;
+        const run = client(async (_, options) => {
+            calls++;
+            assert.equal(JSON.parse(options.body).text, canonical);
+            return { ok: true, json: async () => ({ result: { [canonical]: { t: "tłumaczenie" } } }) };
+        });
+        const first = run(variants[0]);
+        for (const variant of variants.slice(1)) assert.equal(run(variant), first);
+        assert.equal((await first)[canonical].t, "tłumaczenie");
+        assert.equal(calls, 1);
+    }
+});
+
 test("the timeout covers response body reading and returns a useful error", async () => {
     let expire, cleared = false;
     const reading = deferred();
@@ -72,7 +88,7 @@ test("server error codes survive and a generic 503 is not mislabeled as quota ex
 test("subtitle requests use their short deadline and include the original token boundaries", async () => {
     let duration, sent;
     const context = vm.createContext({
-        livePending: new Map(), getToken: async () => "token", setCachedUsage: async () => {},
+        Utils: require("../shared/utils"), livePending: new Map(), getToken: async () => "token", setCachedUsage: async () => {},
         PROXY_URL: "https://example.test/proxy", AbortController,
         setTimeout: (fn, ms) => { duration = ms; return setTimeout(fn, ms); }, clearTimeout,
         fetch: async (_, options) => {
