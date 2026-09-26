@@ -1,7 +1,1 @@
-Zapytanie do Gemini AI (explainSentence): Rozszerzenie wysyła bieżący napis wraz z kontekstem poprzednich i kolejnych dialogów.
-Karta analizy 1/N nad napisami:
-Krok 1 (całe zdanie): Pokazuje tłumaczenie całego zdania na język ojczysty, a lektor AI automatycznie czyta je na głos.
-Kroki 2..N (trudne słowa i idiomy): Gemini wybiera najciekawsze i najtrudniejsze zwroty z tego zdania. Na ekranie w napisach dany zwrot podświetla się na turkusowo-fioletowo, a karta pokazuje jego znaczenie w tym konkretnym kontekście oraz wyjaśnienie gramatyczne/leksykalne.
-
-
-zrob to bardziej do nauki zeby przedstawialo wieksza wartosc do uczenia sie i dostosowalo sie jakos bo potrzebny uzytkownikow roztlumaczenia sa inne jak to zrobic kazdy szuka innych slow ktorych nie zna
+Dodaj opcje dla kazdego uzytkownika osobno zeby w toltip dodac przycisk obok Zapisz Z Zdanie AI X dodaj przycisk Znam Y i kazdy uzytkownik buduje wlasna baze slow ktore zna i one nie sa tlumaczone w "S" ani w "Enter" jesli bedzie duza baza to poporstu nie sa pokazywane zeby nie obciazac kosztami AI oraz w settings liczy ilosc znanych slow 
