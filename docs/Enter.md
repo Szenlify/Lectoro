@@ -157,9 +157,12 @@ Serwis tłumaczeń korzysta z promptu w [ai-prompts.js](../shared/ai-prompts.js)
 
 Wspólny serwis TTS obsługuje teraz Gemini 2.5 Flash TTS z głosami Sulafat i Algieba w miejsce ElevenLabs. Wybrany tryb głosu i limity decydują o użyciu syntezy premium; dostępny pozostaje głos przeglądarki. Szczegóły migracji: [Gemini TTS](Gemini-TTS.md).
 
-Dla całego zdania lektor czyta tłumaczenie w języku ojczystym. Dla słowa/zwrotu czyta najpierw termin w języku nauki, następnie po 350 ms znaczenie i wyjaśnienie w języku ojczystym. Kod zawiera dodatkową próbę przetłumaczenia tekstu rozpoznanego jako angielski mimo oczekiwanego innego języka.
+Dla całego zdania lektor czyta tłumaczenie w języku ojczystym. Dla słowa/zwrotu bez strzałki czyta najpierw termin w języku nauki, następnie po 350 ms znaczenie i wyjaśnienie w języku ojczystym. Dla elementów zawierających strzałkę (np. skróty i redukcje mówione: `goin'`, znaczenie: `dalej`, objaśnienie: `goin' → going`), lektor odczytuje pełną 3-etapową sekwencję:
+1. **Słowo / zdanie (termin)** w języku nauki (`learning language`, np. „goin'”).
+2. **Tłumaczenie** po 350 ms w języku ojczystym (`native language`, np. „dalej”).
+3. **Objaśnienie ze strzałką** po kolejnych 350 ms w języku nauki (`learning language`, np. „goin', going”).
 
-Cudzysłowy nie dzielą wypowiedzi i nie przełączają języka ani głosu. Dotyczy to także zapisanych wcześniej opisów z cytatami, lektora przeglądarki i syntezy premium. Każde wywołanie TTS korzysta z jawnie przekazanego języka. Znaki strzałek (np. `→`, `->`, `⇒`) w wyjaśnieniach skrótów są konwertowane na naturalne pauzy (przecinki), dzięki czemu lektor nie wymawia na głos nazw symboli (np. „strzałka w prawo”).
+Cudzysłowy nie dzielą wypowiedzi i nie przełączają języka ani głosu. Dotyczy to także zapisanych wcześniej opisów z cytatami, lektora przeglądarki i syntezy premium. Każde wywołanie TTS korzysta z jawnie przekazanego języka. Znaki strzałek (np. `→`, `->`, `⇒`) w wyjaśnieniach skrótów są konwertowane na naturalne pauzy (przecinki), dzięki czemu lektor nie wymawia na głos nazw symboli (np. „strzałka w prawo”). Przycisk głośnika w tooltipie uwzględnia pełny tekst (`słowo. tłumaczenie. objaśnienie`).
 
 Po odsłuchu kolejny krok uruchamia się po 900 ms; bez treści oznaczonej jako odczytana opóźnienie wynosi 3000 ms. Ręczna zmiana kroku wyłącza automatyczne przechodzenie w bieżącej sesji. Ostatni krok pozostaje otwarty. `aiExplainSpeechToken` unieważnia starszy odsłuch po zmianie kroku lub zamknięciu.
 

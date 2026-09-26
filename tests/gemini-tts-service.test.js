@@ -294,5 +294,14 @@ test("TTS and cleanTextForTTS strip arrow symbols (→, ->, ⇒) so speech does 
     assert.equal(ctx.spoken.length, 1);
     assert.equal(ctx.spoken[0].text, "goin', going");
     assert.equal(ctx.spoken[0].text.includes("→"), false);
+    // Verified: arrow text switches from native language "pl" to learning language "en"
+    assert.equal(ctx.spoken[0].lang, "en");
+
+    // Verified: custom learning language from storage or options is honored
+    const ctxDe = service({ stored: { learningLang: "de" } });
+    await ctxDe.api.speakBrowser("hab' → habe", "pl");
+    assert.equal(ctxDe.spoken.length, 1);
+    assert.equal(ctxDe.spoken[0].text, "hab', habe");
+    assert.equal(ctxDe.spoken[0].lang, "de");
 });
 

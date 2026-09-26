@@ -9,7 +9,11 @@
     const C = LectoroConstants;
     const { PREFIX, isOwnUI } = C;
     const SVG = C.SVG_ICONS;
-    const { cleanCardText, cleanTextForTTS, isRedundantSentence } = SharedUtils;
+    const { cleanCardText, cleanTextForTTS, hasArrow, isRedundantSentence } = SharedUtils;
+    const hasArrowSymbol = (text) =>
+        typeof hasArrow === "function"
+            ? hasArrow(text)
+            : /(?:[-=]+>|<[-=]+|[→←↑↓↔↕⇒⇐⇔➔➜➝➞➟➠➡➢➣➤\u2190-\u21FF\u27F0-\u27FF\u2900-\u297F\u2B00-\u2BFF\u2794-\u27BF])/.test(String(text || ""));
     const escapeHtml = (s) =>
         typeof SharedUtils?.escapeHtml === "function"
             ? SharedUtils.escapeHtml(s)
@@ -726,7 +730,11 @@
                     e.stopPropagation();
                     if (aiSubTranslationText) {
                         aiSubTranslationEl?.classList.add(`${PREFIX}speaking`);
-                        QT.speak(aiSubTranslationText, subtitleTranslationLang, {
+                        const langToUse = hasArrowSymbol(aiSubTranslationText)
+                            ? (aiExplainSourceLang || "en")
+                            : subtitleTranslationLang;
+                        QT.speak(aiSubTranslationText, langToUse, {
+                            sourceLang: aiExplainSourceLang,
                             isCancelled: () => !eTranslateActive,
                         }).catch((error) => console.warn("[Lectoro] Subtitle speech failed:", error)).finally(() => {
                             aiSubTranslationEl?.classList.remove(`${PREFIX}speaking`);
@@ -2164,14 +2172,21 @@
                 ? QT.escapeHtml(item.explanation)
                 : "";
 
-        const speakLang =
-            aiExplainTargetLang;
+        const isArrowItem =
+            hasArrowSymbol(item.explanation) ||
+            hasArrowSymbol(item.meaning) ||
+            hasArrowSymbol(item.term);
+
+        const speakLang = isArrowItem
+            ? (aiExplainSourceLang || "en")
+            : aiExplainTargetLang;
 
         const rawSpeechText = isSentenceStage
-            ? item.meaning || ""
+            ? (item.meaning || "")
             : [item.term, item.meaning, item.explanation]
                 .filter(Boolean)
                 .join(". ");
+
         const speechText = typeof cleanTextForTTS === "function"
             ? cleanTextForTTS(rawSpeechText)
             : (typeof SharedUtils?.cleanTextForTTS === "function"
@@ -2334,7 +2349,19 @@
 
         try {
             let speechPlayed = false;
-            if (item.type === "sentence") {
+            const checkArrow = (text) => {
+                if (!text) return false;
+                if (typeof hasArrowSymbol === "function") return hasArrowSymbol(text);
+                if (typeof SharedUtils?.hasArrow === "function") return SharedUtils.hasArrow(text);
+                return /(?:[-=]+>|<[-=]+|[→←↑↓↔↕⇒⇐⇔➔➜➝➞➟➠➡➢➣➤\u2190-\u21FF\u27F0-\u27FF\u2900-\u297F\u2B00-\u2BFF\u2794-\u27BF])/.test(String(text || ""));
+            };
+
+            const isArrowItem =
+                checkArrow(item.explanation) ||
+                checkArrow(item.meaning) ||
+                checkArrow(item.term);
+
+            if (item.type === "sentence" && !isArrowItem) {
                 let sentenceSpeech = item.meaning;
                 let sentenceLang = aiExplainTargetLang;
 
@@ -2353,6 +2380,81 @@
 
                 if (sentenceSpeech) {
                     await speakUntilFinished(sentenceSpeech, sentenceLang, {
+                        sourceLang: aiExplainSourceLang,
+                        originalText: item.term,
+                        isCancelled,
+                    });
+                    speechPlayed = true;
+                }
+            } else if (isArrowItem) {
+                // 1. Słowo / zdanie (w języku nauki)
+                if (item.term) {
+                    await speakUntilFinished(item.term, aiExplainSourceLang, {
+                        sourceLang: aiExplainSourceLang,
+                        originalText: item.term,
+                        isCancelled,
+                    });
+                    speechPlayed = true;
+                }
+                if (isCancelled()) return;
+
+                // 2. Potem tłumaczenie (w języku ojczystym)
+                let rawMeaning = (!checkArrow(item.meaning) && item.meaning !== item.term)
+                    ? (item.meaning || "")
+                    : "";
+                let meaningSpeech = typeof cleanTextForTTS === "function"
+                    ? cleanTextForTTS(rawMeaning)
+                    : (typeof SharedUtils?.cleanTextForTTS === "function"
+                        ? SharedUtils.cleanTextForTTS(rawMeaning)
+                        : rawMeaning);
+
+                if (meaningSpeech) {
+                    await new Promise((r) => setTimeout(r, 350));
+                    if (isCancelled()) return;
+
+                    let meaningLang = aiExplainTargetLang;
+                    if (typeof SharedUtils?.isLikelyEnglish === "function" && SharedUtils.isLikelyEnglish(meaningSpeech, meaningLang)) {
+                        if (typeof SharedTranslatorService?.translate === "function") {
+                            try {
+                                const tr = await SharedTranslatorService.translate(meaningSpeech, meaningLang, "en");
+                                const trText = tr?.translated || (typeof tr === "string" ? tr : "");
+                                if (trText && trText.trim()) {
+                                    meaningSpeech = trText.trim();
+                                }
+                            } catch (_) {}
+                        }
+                        if (SharedUtils.isLikelyEnglish(meaningSpeech, meaningLang)) {
+                            meaningLang = aiExplainSourceLang || "en";
+                        }
+                    }
+
+                    await speakUntilFinished(meaningSpeech, meaningLang, {
+                        sourceLang: aiExplainSourceLang,
+                        originalText: item.term,
+                        isCancelled,
+                    });
+                    speechPlayed = true;
+                }
+                if (isCancelled()) return;
+
+                // 3. I później to ze strzałką (w języku nauki)
+                const arrowRaw = checkArrow(item.explanation)
+                    ? item.explanation
+                    : (checkArrow(item.meaning)
+                        ? item.meaning
+                        : (checkArrow(item.term) ? item.term : ""));
+
+                const arrowSpeech = typeof cleanTextForTTS === "function"
+                    ? cleanTextForTTS(arrowRaw)
+                    : (typeof SharedUtils?.cleanTextForTTS === "function"
+                        ? SharedUtils.cleanTextForTTS(arrowRaw)
+                        : arrowRaw);
+
+                if (arrowSpeech) {
+                    await new Promise((r) => setTimeout(r, 350));
+                    if (isCancelled()) return;
+
+                    await speakUntilFinished(arrowSpeech, aiExplainSourceLang || "en", {
                         sourceLang: aiExplainSourceLang,
                         originalText: item.term,
                         isCancelled,
@@ -3835,7 +3937,11 @@
                     if (modeRevision !== subtitleModeRevision) return;
                     const textToSpeak = translation?.translatedText || translation?.translated;
                     if (textToSpeak && typeof textToSpeak === "string" && textToSpeak.trim()) {
-                        await QT.speak(textToSpeak.trim(), targetLang, {
+                        const langToUse = hasArrowSymbol(textToSpeak)
+                            ? (learningLang || "en")
+                            : targetLang;
+                        await QT.speak(textToSpeak.trim(), langToUse, {
+                            sourceLang: learningLang,
                             isCancelled: () => modeRevision !== subtitleModeRevision,
                         });
                     }
@@ -4562,7 +4668,11 @@
         if (options.speakTranslated) {
             translationOverlay?.classList.add(`${PREFIX}speaking`);
             try {
-                await QT.speak(translation.translatedText, translation.targetLang, {
+                const langToUse = hasArrowSymbol(translation.translatedText)
+                    ? (aiExplainSourceLang || "en")
+                    : translation.targetLang;
+                await QT.speak(translation.translatedText, langToUse, {
+                    sourceLang: aiExplainSourceLang,
                     isCancelled: () => modeRevision !== subtitleModeRevision,
                 });
             } catch (error) {

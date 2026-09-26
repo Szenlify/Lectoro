@@ -613,6 +613,14 @@
             },
 
             /**
+             * Checks if a text string contains arrow characters (→, ->, ⇒, etc.).
+             */
+            hasArrow(text) {
+                if (!text || typeof text !== "string") return false;
+                return /(?:[-=]+>|<[-=]+|[→←↑↓↔↕⇒⇐⇔➔➜➝➞➟➠➡➢➣➤\u2190-\u21FF\u27F0-\u27FF\u2900-\u297F\u2B00-\u2BFF\u2794-\u27BF])/.test(text);
+            },
+
+            /**
              * Highlights a word within a sentence using the given CSS class.
              */
             highlightWordInSentence(sentence, word, cssClass) {

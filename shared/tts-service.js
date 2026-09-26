@@ -38,6 +38,12 @@
         function cleanText(text) {
             return Utils.cleanTextForTTS(text);
         }
+        function hasArrowSymbol(text) {
+            if (typeof Utils?.hasArrow === "function") {
+                return Utils.hasArrow(text);
+            }
+            return /(?:[-=]+>|<[-=]+|[→←↑↓↔↕⇒⇐⇔➔➜➝➞➟➠➡➢➣➤\u2190-\u21FF\u27F0-\u27FF\u2900-\u297F\u2B00-\u2BFF\u2794-\u27BF])/.test(String(text || ""));
+        }
         /** ISO 639-1 base code ("en-US" → "en") */
         function baseLangCode(lang, fallback = "") {
             return (lang || fallback).split(/[-_]/)[0].toLowerCase();
@@ -65,6 +71,7 @@
             }
             const data = await chrome.storage.local.get({
                 ...DEFAULT_TTS_SETTINGS,
+                learningLang: DEFAULT_READING_SETTINGS?.learningLang || "en",
             });
             const migrated = Constants.normalizeTtsProviderSettings(data);
             if (data.ttsMode !== migrated.ttsMode || data.elVoiceId !== migrated.elVoiceId) {
@@ -77,6 +84,7 @@
                     : DEFAULT_TTS_SETTINGS.ttsVolume;
             return {
                 ttsMode: data.ttsMode || DEFAULT_TTS_SETTINGS.ttsMode,
+                learningLang: data.learningLang || DEFAULT_READING_SETTINGS?.learningLang || "en",
                 speechVoice:
                     data.speechVoice || DEFAULT_TTS_SETTINGS.speechVoice,
                 speechRate: Math.max(
@@ -332,9 +340,11 @@
             {
                 rate = null,
                 volume = null,
+                sourceLang = null,
                 isCancelled = null,
             } = {},
         ) {
+            const isArrow = hasArrowSymbol(text);
             const cleaned = cleanText(text);
             if (!cleaned) return null;
 
@@ -348,10 +358,14 @@
             if (isCancelled?.() || currentToken !== globalSpeechToken)
                 return null;
 
+            const effectiveLang = isArrow
+                ? (sourceLang || settings.learningLang || defaultLearning)
+                : (lang || defaultLearning);
+
             // Check if audio exists in local AudioCache or Cloudflare R2
             try {
                 const targetVoiceId = settings.elVoiceId || "nova";
-                const cacheKey = await Utils.getGeminiAudioCacheKey(targetVoiceId, cleaned, lang);
+                const cacheKey = await Utils.getGeminiAudioCacheKey(targetVoiceId, cleaned, effectiveLang);
 
                 // 1. Check local AudioCache (IndexedDB) - free, instant
                 let audioBlob = typeof AudioCache !== "undefined"
@@ -360,7 +374,7 @@
 
                 // 2. If not in local cache, check Cloudflare R2 CDN
                 if (!audioBlob) {
-                    const r2Url = await Utils.getR2AudioUrl(targetVoiceId, cleaned, lang);
+                    const r2Url = await Utils.getR2AudioUrl(targetVoiceId, cleaned, effectiveLang);
                     let inR2 = false;
                     try {
                         const headRes = await fetch(r2Url, {
@@ -417,7 +431,7 @@
                 console.debug("[Lectoro TTS] Hover R2 check fallback to browser voice:", err.message);
             }
 
-            return speakBrowserDirect(cleaned, lang, settings, {
+            return speakBrowserDirect(cleaned, effectiveLang, settings, {
                 rate,
                 volume,
                 voices,
@@ -436,10 +450,12 @@
                 forceBrowser = false,
                 useConfiguredRate = true,
                 rate = null,
+                sourceLang = null,
                 cacheNotBefore = 0,
                 isCancelled = null,
             } = {},
         ) {
+            const isArrow = hasArrowSymbol(text);
             const cleaned = cleanText(text);
             if (!cleaned) return { type: "none", obj: null };
 
@@ -453,6 +469,10 @@
             if (isCancelled?.() || currentToken !== globalSpeechToken) {
                 return { type: "none", obj: null };
             }
+
+            const effectiveLang = isArrow
+                ? (sourceLang || settings.learningLang || defaultLearning)
+                : (lang || defaultLearning);
 
             const playbackRate = Number.isFinite(rate) && rate > 0
                 ? rate
@@ -468,10 +488,11 @@
             if (useNeuralTts) {
                 try {
                     const targetVoiceId = settings.elVoiceId;
-                    const audioResult = await getAudioBlob(cleaned, lang, {
+                    const audioResult = await getAudioBlob(cleaned, effectiveLang, {
                         forceBrowser: false,
                         voiceId: targetVoiceId,
                         context: "review",
+                        sourceLang: effectiveLang,
                         cacheNotBefore,
                         allowSynthesis: true,
                     });
@@ -497,7 +518,7 @@
             }
 
             // Fallback or default to Browser Speech
-            const utter = speakBrowserDirect(cleaned, lang, settings, {
+            const utter = speakBrowserDirect(cleaned, effectiveLang, settings, {
                 rate: playbackRate,
                 volume: settings.ttsVolume,
                 voices,
@@ -538,19 +559,24 @@
                 forceBrowser = false,
                 voiceId = null,
                 context = "review",
+                sourceLang = null,
                 cacheNotBefore = 0,
                 allowSynthesis = false,
                 allowFallback = true,
             } = {},
         ) {
+            const isArrow = hasArrowSymbol(text);
             const cleaned = cleanText(text);
             if (!cleaned) return null;
 
             const settings = await getTtsSettings();
+            const effectiveLang = isArrow
+                ? (sourceLang || settings.learningLang || defaultLearning)
+                : (lang || defaultLearning);
             const preferredVoiceId = Constants.normalizeTtsProviderSettings({
                 ...settings, elVoiceId: voiceId || settings.elVoiceId,
             }).elVoiceId;
-            const cacheKey = await Utils.getGeminiAudioCacheKey(preferredVoiceId, cleaned, lang);
+            const cacheKey = await Utils.getGeminiAudioCacheKey(preferredVoiceId, cleaned, effectiveLang);
 
             // Only the requested model, voice, language and exact text may satisfy this request.
             // Legacy ElevenLabs blobs remain in storage, but are not presented as Gemini audio.

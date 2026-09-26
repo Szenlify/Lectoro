@@ -490,3 +490,95 @@ test("Enter resolves subtle badges only for phrases across languages and suppres
     assert.equal(context.resolveAiBadge("Expression", "expression", "es", "", "Let's keep it goin'"), "Frase");
 });
 
+test("Enter speak button and narration switch to learning language when explanation contains an arrow (→)", () => {
+    const { loadFunction } = require("./helpers");
+    const vm = require("node:vm");
+    const SharedUtils = require("../shared/utils");
+
+    assert.equal(SharedUtils.hasArrow("goin' → going"), true);
+    assert.equal(SharedUtils.hasArrow("plain phrase"), false);
+
+    const context = vm.createContext({
+        PREFIX: "__qt_",
+        SVG: { SPEAKER: "<svg></svg>" },
+        QT: { escapeHtml: s => s, escapeAttr: s => s, buildSaveFooterHtml: () => "" },
+        SharedI18n: { t: k => k },
+        SharedUtils,
+        cleanTextForTTS: SharedUtils.cleanTextForTTS,
+        hasArrow: SharedUtils.hasArrow,
+        hasArrowSymbol: SharedUtils.hasArrow,
+        aiExplainSourceLang: "en",
+        aiExplainTargetLang: "pl",
+        aiExplainQueue: [],
+        aiSavedIndices: new Set(),
+        aiAiSavedIndices: new Set(),
+    });
+    loadFunction(context, "video/subtitle-overlay.js", "renderAiExplainContent");
+    const render = context.renderAiExplainContent;
+
+    // Normal word/phrase without arrow uses native language "pl"
+    context.aiExplainQueue = [{ term: "take care", meaning: "uważaj na siebie", type: "expression" }];
+    const normalHtml = render(0);
+    assert.match(normalHtml, /data-lang="pl"/);
+
+    // Contraction with arrow uses learning language "en" and includes term, meaning, explanation
+    context.aiExplainQueue = [{ term: "goin'", meaning: "dalej", explanation: "goin' → going", type: "contraction" }];
+    const arrowHtml = render(0);
+    assert.match(arrowHtml, /data-lang="en"/);
+    assert.match(arrowHtml, /data-text="goin'\. dalej\. goin', going"/);
+});
+
+test("Enter speakAiExplainItem narrates 3-step sequence (term in learningLang, meaning in targetLang, arrow in learningLang)", async () => {
+    const { loadFunction } = require("./helpers");
+    const vm = require("node:vm");
+    const SharedUtils = require("../shared/utils");
+
+    const spoken = [];
+    const context = vm.createContext({
+        PREFIX: "__qt_",
+        aiTooltipActive: true,
+        aiExplainSpeechToken: 1,
+        aiExplainSourceLang: "en",
+        aiExplainTargetLang: "pl",
+        aiAutoAdvanceDisabled: true,
+        aiExplainIndex: 0,
+        aiExplainQueue: [],
+        clearTimeout: () => {},
+        setTimeout: (fn, ms) => setTimeout(fn, ms),
+        SharedI18n: { t: k => k },
+        SharedUtils,
+        cleanTextForTTS: SharedUtils.cleanTextForTTS,
+        hasArrowSymbol: SharedUtils.hasArrow,
+        speakUntilFinished: async (text, lang, opts) => {
+            if (!opts?.isCancelled?.()) {
+                spoken.push({ text, lang });
+            }
+        },
+        translationOverlay: { querySelector: () => null },
+    });
+
+    loadFunction(context, "video/subtitle-overlay.js", "speakAiExplainItem");
+
+    const item = {
+        term: "goin'",
+        meaning: "dalej",
+        explanation: "goin' → going",
+        type: "contraction",
+    };
+
+    await context.speakAiExplainItem(item, 1);
+
+    assert.equal(spoken.length, 3);
+    // 1. Słowo / zdanie (term) in learning language
+    assert.equal(spoken[0].text, "goin'");
+    assert.equal(spoken[0].lang, "en");
+    // 2. Potem tłumaczenie (meaning) in native language
+    assert.equal(spoken[1].text, "dalej");
+    assert.equal(spoken[1].lang, "pl");
+    // 3. I później to ze strzałką (explanation without raw arrow symbol) in learning language
+    assert.equal(spoken[2].text, "goin', going");
+    assert.equal(spoken[2].lang, "en");
+});
+
+
+
