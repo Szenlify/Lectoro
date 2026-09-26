@@ -90,6 +90,8 @@ Po uruchomieniu pojawia się kompaktowy loader z `✨` i lokalizowanym komunikat
 
 Aktualny termin otrzymuje klasę `__qt_ai-sub-active` i turkusowo-fioletowe wyróżnienie. Pozostałe dopasowane elementy kolejki mają fioletowe podświetlenie (`__qt_ai-sub-queued` / `__qt_ai-sub-upcoming`). Wielowyrazowe zwroty mogą być grupowane przez `__qt_ai-sub-wrap`. Kliknięcie dopasowanego elementu napisów pozwala przejść do jego kroku. Nie każde słowo musi mieć odpowiednik w kolejce.
 
+Dopasowanie korzysta z widocznego tekstu, normalizuje Unicode oraz warianty apostrofów i wymaga całego zwrotu. `won't ya` dopasowuje oba słowa w `Won’t ya`, także przy podziale napisów na wiersze. Nie stosuje zastępczego podświetlenia pojedynczego składnika, prefiksów ani podobnych form czasownika. Aktywny zwrot ma pierwszeństwo; nachodzące na niego elementy kolejki nie otrzymują osobnego podświetlenia. Czyszczenie zaznaczeń usuwa również ich stare przypisania kliknięć.
+
 ### Elementy, których aktualnie nie widać
 
 Renderer `renderAiExplainContent()` **nie tworzy wstążki etapów ani pigułek kolejki**. W kodzie pozostały ich style i listenery, lecz nie oznacza to, że są częścią obecnego widoku.

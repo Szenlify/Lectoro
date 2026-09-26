@@ -1913,6 +1913,7 @@
                     C.UI_CLASSES.AI_SUB_UPCOMING,
                     C.UI_CLASSES.AI_SUB_QUEUED,
                 );
+                el.removeAttribute("data-ai-index");
             });
             const ribbonPills = document.querySelectorAll(
                 `.${PREFIX}pill-highlight`,
@@ -1925,84 +1926,38 @@
 
     function normalizeWordForMatching(w) {
         return String(w || "")
+            .normalize("NFKC")
             .toLowerCase()
-            .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "")
+            .replace(/[’‘ʼ]/gu, "'")
+            .replace(/^[^\p{L}\p{M}\p{N}]+|[^\p{L}\p{M}\p{N}]+$/gu, "")
             .trim();
     }
 
     function findMatchingSpanRange(spans, term) {
-        if (!term || !spans || !spans.length) return null;
-        const cleanTerm = normalizeWordForMatching(term);
-        if (!cleanTerm) return null;
-
-        const termWords = String(term)
-            .split(/\s+/)
-            .map(normalizeWordForMatching)
-            .filter(Boolean);
+        if (!term || !spans?.length) return null;
+        const words = (text) => {
+            const tokenize = globalThis.DictionaryTokenizer?.tokenize;
+            const parts = tokenize
+                ? tokenize(String(text || "")).filter((token) => token.type === "word").map((token) => token.text)
+                : String(text || "").split(/\s+/u);
+            return parts.map(normalizeWordForMatching).filter(Boolean);
+        };
+        const termWords = words(term);
         if (!termWords.length) return null;
-
-        // 1. Direct match: check if a single span already contains the entire phrase/term
-        for (let i = 0; i < spans.length; i++) {
-            const span = spans[i];
-            const sw = normalizeWordForMatching(
-                span.dataset?.clean || span.textContent,
-            );
-            if (
-                sw === cleanTerm ||
-                (sw.length >= cleanTerm.length && sw.includes(cleanTerm))
-            ) {
-                return { startIndex: i, count: 1 };
-            }
-        }
-
-        const spanWords = spans.map((s) =>
-            normalizeWordForMatching(s.dataset?.clean || s.textContent),
-        );
-
-        // 2. Sliding window for multi-word phrase across consecutive spans
-        const stemmer = globalThis.SharedPhraseDetector?.stemVerb;
-        for (let i = 0; i <= spanWords.length - termWords.length; i++) {
-            let match = true;
-            for (let j = 0; j < termWords.length; j++) {
-                const sw = spanWords[i + j];
-                const tw = termWords[j];
-                if (!sw || !tw) {
-                    match = false;
-                    break;
+        // Use visible text, not dictionary lookup forms that may differ from it.
+        const spanWords = spans.map((span) => words(span.textContent || span.dataset?.clean));
+        for (let start = 0; start < spans.length; start++) {
+            let matched = 0;
+            for (let end = start; end < spans.length; end++) {
+                const currentWords = spanWords[end];
+                if (!currentWords.length || currentWords.some((word, offset) => word !== termWords[matched + offset])) break;
+                matched += currentWords.length;
+                if (matched === termWords.length) {
+                    return { startIndex: start, count: end - start + 1 };
                 }
-                if (sw === tw) continue;
-                // Stem / prefix comparison for verb inflections and plurals
-                const swStem = stemmer ? stemmer(sw) : sw;
-                const twStem = stemmer ? stemmer(tw) : tw;
-                if (
-                    swStem &&
-                    twStem &&
-                    (swStem === twStem ||
-                        swStem.startsWith(twStem) ||
-                        twStem.startsWith(swStem))
-                ) {
-                    continue;
-                }
-                match = false;
-                break;
-            }
-            if (match) {
-                return { startIndex: i, count: termWords.length };
             }
         }
-
-        // 3. Fallback: single word or token substring match
-        for (let i = 0; i < spans.length; i++) {
-            const sw = spanWords[i];
-            if (
-                sw &&
-                (termWords.includes(sw) ||
-                    (sw.length > 3 && cleanTerm.includes(sw)))
-            ) {
-                return { startIndex: i, count: 1 };
-            }
-        }
-
+        // Never highlight just one component, a prefix or a related inflection.
         return null;
     }
 
@@ -2083,13 +2038,15 @@
         return wrappers;
     }
 
-    function highlightSpansForTerm(spans, term, cssClass, aiIndex) {
+    function highlightSpansForTerm(spans, term, cssClass, aiIndex, occupied = new Set()) {
         const range = findMatchingSpanRange(spans, term);
         if (!range) return;
         const matchingSpans = spans.slice(
             range.startIndex,
             range.startIndex + range.count,
         );
+        if (matchingSpans.some((span) => occupied.has(span))) return;
+        matchingSpans.forEach((span) => occupied.add(span));
         wrapMatchedSpans(matchingSpans, cssClass, aiIndex);
     }
 
@@ -2127,8 +2084,21 @@
 
         const currentItem = aiExplainQueue[aiExplainIndex];
         const isSentenceTranslation = currentItem?.type === "sentence";
+        const occupied = new Set();
 
-        // 1. Highlight all upcoming & queued breakdown terms in soft violet with their queue index
+        // Reserve the active phrase first. Queued phrases must not extend or
+        // overwrite its wrapper when their word ranges overlap.
+        if (!isSentenceTranslation && currentItem?.term) {
+            highlightSpansForTerm(
+                spans,
+                currentItem.term,
+                C.UI_CLASSES.AI_SUB_ACTIVE,
+                aiExplainIndex,
+                occupied,
+            );
+        }
+
+        // Highlight only disjoint queued phrases in soft violet.
         for (let i = 0; i < aiExplainQueue.length; i++) {
             if (i === aiExplainIndex) continue;
             const queuedItem = aiExplainQueue[i];
@@ -2140,21 +2110,11 @@
                     queuedItem.term,
                     C.UI_CLASSES.AI_SUB_QUEUED,
                     i,
+                    occupied,
                 );
             }
         }
 
-        // 2. Highlight currently discussed term (active neon cyan/gradient)
-        // When translating the full sentence, do not highlight the entire sentence in cyan.
-        // Only upcoming breakdown items are highlighted in soft violet.
-        if (!isSentenceTranslation && currentItem?.term) {
-            highlightSpansForTerm(
-                spans,
-                currentItem.term,
-                C.UI_CLASSES.AI_SUB_ACTIVE,
-                aiExplainIndex,
-            );
-        }
     }
 
     function renderAiExplainContent(index) {
