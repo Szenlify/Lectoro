@@ -1599,29 +1599,79 @@
                     result.push(cue);
                     continue;
                 }
-                const combined = Object.defineProperties({}, Object.getOwnPropertyDescriptors(previous));
-                combined.text = `${previous.text.trim()} ${text}`;
-                combined.lines = [combined.text];
-                combined.endTime = Math.max(previous.endTime, cue.endTime);
+                const combined = combineDisplayCues(previous, cue);
                 combined.isSingleWordMerged = true;
-                if (previous.translation || cue.translation) {
-                    combined.translation = [previous.translation, cue.translation].filter(Boolean).join(" ");
-                }
-                // Keep ASR word clocks absolute; the appended cue has a different time origin.
-                const segments = [previous, cue].flatMap((part) =>
-                    (Array.isArray(part.segs) ? part.segs : [{ utf8: part.text }]).map((seg) => {
-                        const tAbsMs = Number.isFinite(seg.tAbsMs) ? seg.tAbsMs :
-                            (Number.isFinite(part.tStartMs) ? part.tStartMs : part.startTime * 1000) + (Number(seg.tOffsetMs) || 0);
-                        return { ...seg, tAbsMs, tOffsetMs: tAbsMs - previous.startTime * 1000 };
-                    }));
-                // A parser may expose non-writable metadata, so rebuild descriptors on a fresh object.
-                const descriptors = Object.getOwnPropertyDescriptors(combined);
-                descriptors.segs = { value: segments, writable: true, configurable: true, enumerable: false };
-                descriptors.tStartMs = { value: previous.startTime * 1000, writable: true, configurable: true, enumerable: false };
-                descriptors.dDurationMs = { value: (combined.endTime - previous.startTime) * 1000, writable: true, configurable: true, enumerable: false };
-                result[result.length - 1] = Object.defineProperties({}, descriptors);
+                result[result.length - 1] = combined;
             }
             return result;
+        }
+
+        // Share timing/translation handling with native and Netflix fragment merging.
+        function combineDisplayCues(previous, cue) {
+            const text = cue.text.trim();
+            const combined = Object.defineProperties({}, Object.getOwnPropertyDescriptors(previous));
+            combined.text = `${previous.text.trim()} ${text}`;
+            combined.lines = [combined.text];
+            combined.endTime = Math.max(previous.endTime, cue.endTime);
+            if (previous.translation || cue.translation) {
+                combined.translation = [previous.translation, cue.translation].filter(Boolean).join(" ");
+            }
+            // Keep ASR word clocks absolute; the appended cue has a different time origin.
+            const segments = [previous, cue].flatMap((part) =>
+                (Array.isArray(part.segs) ? part.segs : [{ utf8: part.text }]).map((seg) => {
+                    const tAbsMs = Number.isFinite(seg.tAbsMs) ? seg.tAbsMs :
+                        (Number.isFinite(part.tStartMs) ? part.tStartMs : part.startTime * 1000) + (Number(seg.tOffsetMs) || 0);
+                    return { ...seg, tAbsMs, tOffsetMs: tAbsMs - previous.startTime * 1000 };
+                }));
+            // A parser may expose non-writable metadata, so rebuild descriptors on a fresh object.
+            const descriptors = Object.getOwnPropertyDescriptors(combined);
+            descriptors.segs = { value: segments, writable: true, configurable: true, enumerable: false };
+            descriptors.tStartMs = { value: previous.startTime * 1000, writable: true, configurable: true, enumerable: false };
+            descriptors.dDurationMs = { value: (combined.endTime - previous.startTime) * 1000, writable: true, configurable: true, enumerable: false };
+            return Object.defineProperties({}, descriptors);
+        }
+
+        // YouTube: join <39 + <15 characters in either order, including the separator.
+        function mergeShortCues(cues) {
+            if (!Array.isArray(cues)) return [];
+            const validCues = cues.filter((cue) =>
+                cue && typeof cue.text === "string" && cue.text.trim());
+            const speakerOrSound = /^(?:[-—–]\s|>>|[\[(♪♫])/u;
+            const canMerge = (previous, next) => {
+                const left = previous.text.trim();
+                const right = next.text.trim();
+                const leftLength = Array.from(left).length;
+                const rightLength = Array.from(right).length;
+                const gap = next.startTime - previous.endTime;
+                return ((leftLength < 39 && rightLength < 15) ||
+                    (leftLength < 15 && rightLength < 39)) &&
+                    leftLength + 1 + rightLength <= 54 &&
+                    !speakerOrSound.test(left) && !speakerOrSound.test(right) &&
+                    Number.isFinite(previous.startTime) && Number.isFinite(previous.endTime) &&
+                    previous.endTime > previous.startTime &&
+                    Number.isFinite(next.startTime) && Number.isFinite(next.endTime) &&
+                    next.endTime > next.startTime && next.startTime > previous.startTime &&
+                    gap >= -0.05 && gap <= 0.65 && next.endTime - previous.startTime <= 12;
+            };
+            const mergePass = (input, backwards) => {
+                const result = [];
+                for (let i = backwards ? input.length - 1 : 0;
+                    backwards ? i >= 0 : i < input.length; i += backwards ? -1 : 1) {
+                    const cue = input[i];
+                    const neighbor = result[result.length - 1];
+                    const previous = backwards ? cue : neighbor;
+                    const next = backwards ? neighbor : cue;
+                    if (neighbor && canMerge(previous, next)) {
+                        const combined = combineDisplayCues(previous, next);
+                        combined.isShortCueMerged = true;
+                        result[result.length - 1] = combined;
+                    } else {
+                        result.push(cue);
+                    }
+                }
+                return backwards ? result.reverse() : result;
+            };
+            return mergePass(mergePass(validCues, false), true);
         }
 
         /**
@@ -2021,6 +2071,7 @@
             reconstructFullSentenceCues,
             pairTwoClusters,
             mergeSingleWordCues,
+            mergeShortCues,
             getNativeDisplayCues,
             alignSlaveTrackToMaster,
             parseYouTubeJson3,
