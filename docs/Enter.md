@@ -50,6 +50,8 @@ Kolejny krok — słowo lub zwrot
 
 Wyświetla samo tłumaczenie i głośnik. Oryginalnego zdania nie powtarza w treści karty; pozostaje ono w napisach filmu. Choć obiekt kroku przechowuje `explanation`, renderer nie pokazuje wyjaśnienia na etapie `sentence`.
 
+Pierwsza karta tłumaczy bieżący napis w kontekście dwóch poprzednich i dwóch następnych wpisów napisów. AI ma najpierw odczytać ten kontekst, a potem dobrać sens, ton, intencję i odniesienia wypowiedzi, również przy podziale zdania między napisami. Sąsiednie wpisy nie są dopisywane do tłumaczenia karty. Jeśli odtwarzacz nie udostępnia wszystkich sąsiadów, analizowane są dostępne wpisy bez wymyślania brakujących informacji.
+
 ### Karta słowa lub zwrotu
 
 Wyświetla termin w kolorze turkusowym `#00ffea`, obok głośnik, poniżej jasne pogrubione znaczenie i opcjonalne wyjaśnienie. Wyjaśnienie jest zwykłym tekstem bez specjalnego formatowania cytatów, zabezpieczonym przez `QT.escapeHtml`.

@@ -93,3 +93,61 @@ test('handleAIExplain shows auth overlay when user is not signed in', async () =
     assert.equal(authOverlayShown, true, 'showAiAuthOverlay must be called when user is not signed in');
     assert.equal(geminiCalled, false, 'Gemini must not be called when user is not signed in');
 });
+
+test('Enter passes two preceding and two following subtitles and opens their contextual translation first', async () => {
+    const noop = () => {};
+    const video = { currentTime: 10 };
+    const scene = {
+        before: ['We have been working all day.', 'Everyone is tired.'],
+        current: "Let's call it.",
+        after: ['We can finish tomorrow.', 'See you in the morning.'],
+    };
+    const requests = [];
+    let shown;
+    const context = vm.createContext({
+        activeText: scene.current, recentSubtitlesHistory: [],
+        aiExplainRequestId: 0, aiTooltipActive: false, aiExplainQueue: [],
+        trackedVideo: video, eTranslateActive: false, wordCloudActive: false,
+        aiSavedIndices: new Set(), aiAiSavedIndices: new Set(),
+        document: { body: { setAttribute: noop } },
+        getPlayerRegistry: () => ({
+            getVideo: () => video,
+            getSubtitleContext(actualVideo, text, options) {
+                assert.equal(actualVideo, video);
+                assert.equal(text, scene.current);
+                assert.deepEqual({ ...options }, { maxBefore: 2, maxAfter: 2 });
+                return scene;
+            },
+        }),
+        cleanupReading: noop, closeSubTooltip: noop, removeSubtitleTranslationUnderOriginal: noop,
+        pauseIfPlaying: noop, captureSubtitleLayout: () => ({ rect: {} }), showAiShimmer: noop,
+        GeminiProxy: { getCachedUsage: async () => ({ plan: 'pro' }) },
+        SharedTranslatorService: { getLearningLang: async () => 'en' },
+        SharedUtils: { isProperNounDefinition: () => false },
+        SharedI18n: { t: () => 'Zdanie' },
+        resolveAiBadge: () => '',
+        showAiExplainItem: index => { shown = index; },
+        QT: {
+            hideTooltip: noop, getTargetLang: async () => 'pl',
+            geminiExplainSentence: async (...args) => {
+                requests.push(args);
+                return {
+                    translation: 'Skończmy na dziś.', explanation: '',
+                    items: [{ term: 'call it', type: 'lexical_chunk', meaning: 'skończyć', explanation: '' }],
+                };
+            },
+        },
+    });
+    loadFunction(context, 'video/subtitle-overlay.js', 'getActiveSubtitleContext');
+    loadFunction(context, 'video/subtitle-overlay.js', 'handleAIExplain');
+    await context.handleAIExplain(video);
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0][0], scene.current);
+    assert.equal(requests[0][2], scene);
+    assert.deepEqual({ ...requests[0][3] }, { sourceLang: 'en' });
+    assert.equal(shown, 0);
+    assert.equal(context.aiExplainQueue[0].type, 'sentence');
+    assert.equal(context.aiExplainQueue[0].term, scene.current);
+    assert.equal(context.aiExplainQueue[0].meaning, 'Skończmy na dziś.');
+    assert.equal(context.aiExplainQueue[1].term, 'call it');
+});

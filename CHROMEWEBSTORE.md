@@ -108,6 +108,7 @@ Every permission declared in `manifest.json` adheres to the Principle of Least P
 - Single-word subtitle fragments join the preceding nearby cue on YouTube, Netflix and native caption tracks; ASR word timing is preserved.
 
 - **1.0.0 (Current):**
+  - Enter's first card explicitly interprets the current subtitle using two preceding and two following available cues, including speaker intent, tone and contextual literal or figurative meaning (2026-09-26).
   - Enter highlights complete matching expressions across subtitle words and lines, normalizes apostrophe variants, and prevents overlapping queued expressions from changing the active selection (2026-09-26).
   - AI omits explanations when the translation already conveys the meaning; notes only add essential new information about shortened forms, difficult concepts or usage (2026-09-26).
   - Enter accepts contraction and reduced-form learning items, including wanna and gonna, and explicitly requests useful spoken forms alongside longer expressions (2026-09-26).

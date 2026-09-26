@@ -277,6 +277,9 @@ test("Z and Enter share scene context while Z requests only the exact translatio
         assert.match(prompt, /How much do you bench/);
         assert.doesNotMatch(prompt, /Discard this/);
         assert.match(prompt, /Translate only the supplied sentence/);
+        assert.match(prompt, /Read the two preceding and two following subtitles before translating/);
+        assert.match(prompt, /speaker intent, referents, tone, idioms/);
+        if (!translationOnly) assert.match(prompt, /first Enter card: use the scene context/);
         assert.equal(options.maxOutputTokens, translationOnly ? 500 : 8192);
         if (translationOnly) assert.match(prompt, /"items":\[\]/);
     }
