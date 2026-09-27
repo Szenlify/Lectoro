@@ -478,16 +478,16 @@
         activeReadingUtterance = null;
         isReading = false;
 
-        clearSentenceHighlight();
-        setReadButtonState(false);
-        if (hideToolbar) hideIcon();
-
         try {
-            window.speechSynthesis.cancel();
+            SharedTtsService.cancel();
             lastSpeechCancelAt = Date.now();
         } catch (error) {
             console.warn("[Lectoro] Could not cancel speech:", error);
         }
+
+        clearSentenceHighlight();
+        setReadButtonState(false);
+        if (hideToolbar) hideIcon();
     }
     globalThis.cleanupReading = cleanupReading;
 

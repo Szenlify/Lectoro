@@ -118,6 +118,7 @@
     let subtitleModeRevision = 0;
     let subtitleModeStarting = false;
     let subtitleResumeRevision = 0;
+    let subTooltipRequestId = 0;
     let subtitleUiTrackingFrame = null;
 
     let translationOverlay = null;
@@ -140,6 +141,7 @@
 
     /** Pause `video` through the platform adapter when it is currently playing. */
     function pauseIfPlaying(video) {
+        subtitleResumeRevision += 1;
         if (video && !video.paused) getPlayerRegistry()?.pauseVideo(video);
     }
 
@@ -1373,7 +1375,9 @@
     // ── Word Tooltip (Hover & Click) ──────────────────────────────
 
     function closeSubTooltip(options = {}) {
+        subTooltipRequestId += 1;
         if (!isSubHovering && !subClickLocked) return;
+        SharedTtsService.cancel();
         const shouldResumeVideo =
             options.resumeVideo !== undefined
                 ? options.resumeVideo
@@ -1445,6 +1449,9 @@
         rect,
         { speak = false } = {},
     ) {
+        const requestId = ++subTooltipRequestId;
+        const isCancelled = () => requestId !== subTooltipRequestId ||
+            !isSubHovering || lastHoveredSubWord !== wordSpan;
         const placement = "top";
         QT.showLoading(rect, placement);
         ensureSubtitleUiTracking();
@@ -1461,7 +1468,7 @@
                 } : {}),
             });
             let translated = dictionary?.translated || dictionary?.primaryTranslation;
-            if (!isSubHovering || lastHoveredSubWord !== wordSpan) return;
+            if (isCancelled()) return;
             if (!translated) {
                 try {
                     const fallback = await SharedTranslatorService.translate(text, targetLang, srcLang);
@@ -1470,7 +1477,7 @@
                     }
                 } catch (_) {}
             }
-            if (!isSubHovering || lastHoveredSubWord !== wordSpan) return;
+            if (isCancelled()) return;
             if (!translated) {
                 QT.showTooltip(`<div class="${PREFIX}body">${QT.escapeHtml(SharedI18n.t("ui_no_dictionary_entry_yet"))}</div>`, rect, placement);
                 return;
@@ -1484,13 +1491,19 @@
             });
             QT.showTooltip(html, rect, placement);
             QT.attachTooltipHandlers();
-            if (speak) QT.speak(text, srcLang);
+            if (speak) {
+                const definition = dictionary?.senses?.[0]?.definition?.trim();
+                const speechText = definition ? `${text}. ${definition}` : text;
+                await QT.speak(speechText, srcLang, {
+                    isCancelled,
+                });
+            }
         } catch (err) {
-            if (isSubHovering && (speak || lastHoveredSubWord === wordSpan)) {
+            if (!isCancelled()) {
                 try {
                     const { targetLang, learningLang: srcLang } = await SharedTranslatorService.getReadingSettings();
                     const fallback = await SharedTranslatorService.translate(text, targetLang, srcLang);
-                    if (fallback?.translated && isSubHovering && lastHoveredSubWord === wordSpan) {
+                    if (fallback?.translated && !isCancelled()) {
                         const html = QT.buildTooltipHtml({
                             srcLang,
                             targetLang,
@@ -1500,10 +1513,13 @@
                         });
                         QT.showTooltip(html, rect, placement);
                         QT.attachTooltipHandlers();
-                        if (speak) QT.speak(text, srcLang);
+                        if (speak) await QT.speak(text, srcLang, {
+                            isCancelled,
+                        });
                         return;
                     }
                 } catch (_) {}
+                if (isCancelled()) return;
                 const errText = SharedI18n.errorMessage(err, "ui_translation_unavailable");
                 QT.showTooltip(
                     `<div class="${PREFIX}error">⚠ ${QT.escapeHtml(errText)}</div>`,
@@ -1527,12 +1543,15 @@
 
         isSubHovering = true;
         subTooltipAnchor = wordSpan;
+        if (wordCloudActive) wordCloudSelectedSpan = wordSpan;
         pauseIfPlaying(video);
 
         const text = getSpanWord(wordSpan);
         if (!text) return;
 
-        await showWordTooltip(wordSpan, text, wordSpan.getBoundingClientRect());
+        await showWordTooltip(wordSpan, text, wordSpan.getBoundingClientRect(), {
+            speak: wordCloudActive,
+        });
     }
 
     document.addEventListener("focusin", (event) => {
@@ -1564,7 +1583,6 @@
             if (
                 (typeof isReading !== "undefined" && isReading) ||
                 eTranslateActive ||
-                wordCloudActive ||
                 aiTooltipActive
             ) {
                 if (isSubHovering && !subClickLocked) closeSubTooltip();
@@ -4672,11 +4690,25 @@
         }
     }
 
-    function restoreOriginal() {
-        clearTimeout(quotaCountdownTimer);
-        quotaCountdownTimer = null;
+    /** Invalidate queued narration before touching the DOM or resuming playback. */
+    function stopVideoSpeech() {
         subtitleModeRevision += 1;
         subtitleModeStarting = false;
+        subTooltipRequestId += 1;
+        if (aiTooltipActive || aiPaywallActive) aiExplainRequestId += 1;
+        aiExplainSpeechToken += 1;
+        aiExplainSpeechPromise = null;
+        clearTimeout(aiAutoAdvanceTimer);
+        aiAutoAdvanceTimer = null;
+        SharedTtsService.cancel();
+        cleanupReading();
+        QT.hideTooltip();
+    }
+
+    function restoreOriginal() {
+        stopVideoSpeech();
+        clearTimeout(quotaCountdownTimer);
+        quotaCountdownTimer = null;
         try {
             document.body?.removeAttribute("data-lectoro-sub-translate-active");
         } catch (_) { }
@@ -4685,9 +4717,7 @@
         globalThis.LectoroNetflixAdapter?.setOriginalSubtitlesHidden?.(false);
         eTranslateActive = false;
         wordCloudActive = false;
-        cleanupReading();
         removeSubtitleTranslationUnderOriginal();
-        SharedTtsService.cancel();
 
         if (customSubBoxEl && activeLines.length > 0) {
             customSubBoxEl.style.setProperty("opacity", "1", "important");
@@ -4705,7 +4735,8 @@
 
     // Auto-dismiss overlays and tooltips when video resumes playing or seeks
     function handleVideoPlaybackStarted(e) {
-        if (e.target?.tagName !== "VIDEO") return;
+        if (e.type !== "pagehide" && e.target?.tagName !== "VIDEO") return;
+        stopVideoSpeech();
         if (isSentenceOverlayOpen()) {
             restoreOriginal();
         }
@@ -4717,7 +4748,7 @@
         }
     }
 
-    window.addEventListener("pagehide", () => closeAiTooltip({ resumeVideo: false }));
+    window.addEventListener("pagehide", handleVideoPlaybackStarted);
 
     for (const eventName of ["play", "playing", "seeking", "seeked", "ended"]) {
         document.addEventListener(eventName, handleVideoPlaybackStarted, true);
@@ -4739,6 +4770,7 @@
     );
 
     function resumeVideoAfterSubtitleClose(preferredVideo) {
+        stopVideoSpeech();
         const resumeRevision = ++subtitleResumeRevision;
         const tryResume = () => {
             if (resumeRevision !== subtitleResumeRevision) return;
@@ -4746,6 +4778,7 @@
                 ? preferredVideo
                 : getPlayerRegistry()?.getVideo();
             if (!video || video.ended || !video.paused) return;
+            stopVideoSpeech();
             getPlayerRegistry()?.playVideo(video);
         };
 

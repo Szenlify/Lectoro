@@ -31,7 +31,7 @@ Master new languages naturally while watching your favorite videos and reading a
 - **Dual Bilingual Subtitles:** Watch YouTube and Netflix with synchronized dual-language subtitles. Consecutive short fragments are paired together for effortless reading. Short YouTube captions join a nearby caption before or after them, with merged text limited to 54 characters. Sentence starts are capitalized, while source names and recognized abbreviations retain their spelling.
 - **Word-by-Word Translation Clouds:** Press S for contextual word and phrase translations above subtitles, with automatic fallback when the primary service is unavailable. Repeated subtitles load from saved results. Use Left/Right arrows or A/D to select a word or phrase, then Z to save it or X to save an AI sentence.
 - **AI Context Explanations:** Press Enter for useful words, phrasal verbs, idioms, collocations and everyday expressions, interpreted with neighboring subtitles across all supported learning languages. Learn short beginner phrases and reusable grammar patterns with contextual translations and concise usage notes directly in the video player or reading pane.
-- **Natural Speech Pronunciation:** Listen to crystal-clear speech pronunciation tuned to your learning language.
+- **Natural Speech Pronunciation:** Listen to crystal-clear speech pronunciation tuned to your learning language. In S mode, hover over a subtitle word to hear it followed by its dictionary definition.
 - **Subtitle Flashcards:** Z saves the original subtitle and punctuation with a faithful, natural translation informed by available scene dialogue from about 30 seconds before and 15 seconds after the current subtitle.
 - **Spaced Repetition (SRS) Flashcards:** Save words and context sentences with a single shortcut or click. Listen to either side at normal speed or 0.75×. Daily review reminders help you retain vocabulary in long-term memory.
 - **Flexible Vocabulary Export:** Export minimalist Anki cards with saved translations, original context and pronunciation, without AI examples or explanations. Export to Excel or take interactive AI-generated quizzes.
@@ -108,6 +108,8 @@ Every permission declared in `manifest.json` adheres to the Principle of Least P
 - Single-word subtitle fragments join the preceding nearby cue on YouTube, Netflix and native caption tracks; ASR word timing is preserved.
 
 - **1.0.0 (Current):**
+  - Closing subtitle reading stops TTS before playback resumes. Resuming or seeking video and leaving the page also cancel queued speech, including audio still loading (2026-09-27).
+  - S-mode subtitle hover reads the original word followed immediately by its available dictionary definition in the learning language (2026-09-27).
   - Added a custom subtitle text color and Regular/Semibold/Bold font weights in Settings, with saved preferences and immediate updates during playback (2026-09-27).
   - YouTube captions reload automatically for each film after navigation, including autoplay and reused players, without requiring a seek. Previous-film responses cannot replace the new captions (2026-09-27).
   - Fixed YouTube Focus timing through caption cleaning and short-caption merging. Word highlights retain source timestamps and pauses; no estimated word timing is used (2026-09-27).

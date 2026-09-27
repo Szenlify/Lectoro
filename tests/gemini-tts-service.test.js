@@ -43,7 +43,7 @@ function service({ stored = {}, synthesize, cdnHit = false } = {}) {
         },
     };
     vm.runInNewContext(fs.readFileSync(require.resolve("../shared/tts-service"), "utf8"), sandbox);
-    return { api: sandbox.SharedTtsService, storage, cache, requests, syntheses, spoken, mp3 };
+    return { api: sandbox.SharedTtsService, storage, cache, requests, syntheses, spoken, mp3, sandbox };
 }
 
 test("quotes never split browser speech or change the requested language", async () => {
@@ -159,6 +159,46 @@ test("cancelling during synthesis prevents late playback", async () => {
     finish(ctx.mp3);
     const result = await speech;
     assert.equal(result.type, "none");
+});
+
+for (const cached of [true, false]) {
+    test(`closing during hover audio lookup blocks late ${cached ? "recording" : "browser fallback"}`, async () => {
+        const { deferred } = require("./helpers");
+        const pending = deferred();
+        const started = deferred();
+        const ctx = service();
+        ctx.sandbox.AudioCache.get = async () => {
+            started.resolve();
+            return pending.promise;
+        };
+        const speech = ctx.api.speakBrowser("Hello", "en");
+        await started.promise;
+        ctx.api.cancel();
+        pending.resolve(cached ? ctx.mp3 : null);
+        const result = await speech;
+        assert.ok(!result || result.type === "none");
+        assert.equal(ctx.spoken.length, 0);
+    });
+}
+
+test("cancel pauses an HTML audio recording even while play is still pending", async () => {
+    const { deferred } = require("./helpers");
+    const pending = deferred();
+    let audio;
+    const ctx = service();
+    ctx.sandbox.Audio = class {
+        constructor() { audio = this; this.paused = true; }
+        addEventListener() {}
+        play() { this.paused = false; return pending.promise; }
+        pause() { this.paused = true; }
+    };
+    const playback = ctx.api.playAudioBlob(ctx.mp3);
+    assert.equal(audio.paused, false);
+    ctx.api.cancel();
+    assert.equal(audio.paused, true);
+    pending.resolve();
+    await playback;
+    assert.equal(audio.paused, true);
 });
 
 test("OPENAI_VOICE_GAIN defines loudness compensation for Nova (~1.85x) and Onyx (~1.30x)", () => {
@@ -304,4 +344,3 @@ test("TTS and cleanTextForTTS strip arrow symbols (→, ->, ⇒) so speech does 
     assert.equal(ctxDe.spoken[0].text, "hab', habe");
     assert.equal(ctxDe.spoken[0].lang, "de");
 });
-

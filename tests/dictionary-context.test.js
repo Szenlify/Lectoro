@@ -162,7 +162,7 @@ test('subtitle hover passes the exact word occurrence and ignores stale async re
   const waiting=new Promise(r=>{resolve=r;});
   const context=vm.createContext({ SharedI18n: require("../shared/i18n"),
     PREFIX:'__qt_',SVG:C.SVG_ICONS, activeWordSpans:[first,second], activeText:'like like',
-    isSubHovering:true,lastHoveredSubWord:second,
+    isSubHovering:true,lastHoveredSubWord:second,subTooltipRequestId:0,
     ensureSubtitleUiTracking(){},
     QT:{showLoading(){},showTooltip(html){rendered=html;},buildTooltipHtml(data){return data;},attachTooltipHandlers(){},escapeHtml:U.escapeHtml},
     SharedTranslatorService:{getReadingSettings:async()=>({targetLang:'pl',learningLang:'en'}),
@@ -225,5 +225,4 @@ test('buildTooltipHtml displays full translation with lexical alternatives on ho
   assert.ok(html.includes('mój / moja / moje</span>'));
   assert.ok(html.includes('data-translated="mój / moja / moje"'));
 });
-
 

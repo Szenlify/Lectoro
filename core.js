@@ -233,13 +233,13 @@
     }
 
     function hideTooltip() {
+        stopTooltipSpeech();
         if (!tooltipEl) return;
         if (tooltipShowFrame !== null) {
             cancelAnimationFrame(tooltipShowFrame);
             tooltipShowFrame = null;
         }
         clearTimeout(tooltipHideTimer);
-        stopTooltipSpeech();
         tooltipEl.classList.remove("visible");
         tooltipEl.classList.remove(`${PREFIX}is-loading`);
         tooltipHideTimer = setTimeout(() => {
