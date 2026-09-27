@@ -12,19 +12,20 @@
         <div class="header-icon">
             <img src="/icons/icon48.png" height="32" width="32" alt="Lectoro">
         </div>
-        <h1><span>Lectoro <span style="color: rgb(0, 232, 193);">AI</span> - <span data-i18n="header_title">Language Learning</span></span></h1>
+        <h1><span>Lectoro <span style="color: rgb(0, 232, 193);">AI</span> - <span data-i18n="header_title">Language
+                    Learning</span></span></h1>
     </div>
 
     <!-- Tabs -->
     <div class="tabs">
-        <button class="tab active" data-tab="settings"><span class="tab-icon">⚙️</span><span
-                class="tab-label" data-i18n="tab_settings">Settings</span></button>
-        <button class="tab" data-tab="help"><span class="tab-icon">🚨</span><span
-                class="tab-label" data-i18n="tab_guide">Guide</span></button>
-        <button class="tab" data-tab="words"><span class="tab-icon">📚</span><span
-                class="tab-label" data-i18n="tab_words">Words</span></button>
-        <button class="tab" data-tab="review" id="tabReview"><span class="tab-icon">🧠</span><span
-                class="tab-label" data-i18n="tab_review">Review</span></button>
+        <button class="tab active" data-tab="settings"><span class="tab-icon">⚙️</span><span class="tab-label"
+                data-i18n="tab_settings">Settings</span></button>
+        <button class="tab" data-tab="help"><span class="tab-icon">🚨</span><span class="tab-label"
+                data-i18n="tab_guide">Guide</span></button>
+        <button class="tab" data-tab="words"><span class="tab-icon">📚</span><span class="tab-label"
+                data-i18n="tab_words">Words</span></button>
+        <button class="tab" data-tab="review" id="tabReview"><span class="tab-icon">🧠</span><span class="tab-label"
+                data-i18n="tab_review">Review</span></button>
     </div>
 
     <!-- Settings Tab -->
@@ -92,7 +93,8 @@
                                 <span class="usage-meter-icon usage-meter-icon-ai" aria-hidden="true">✦</span>
                                 <div>
                                     <div class="ai-usage-title" data-i18n="ai_explanations">AI Explanations</div>
-                                    <div class="usage-meter-note" id="aiUsageTitle" data-i18n="checking_limit">Checking limit...</div>
+                                    <div class="usage-meter-note" id="aiUsageTitle" data-i18n="checking_limit">Checking
+                                        limit...</div>
                                 </div>
                             </div>
                             <div class="ai-usage-value" id="aiUsageValue">— / —</div>
@@ -108,15 +110,18 @@
                             <div class="usage-meter-name">
                                 <span class="usage-meter-icon usage-meter-icon-voice" aria-hidden="true">E</span>
                                 <div>
-                                    <div class="ai-usage-title" data-i18n="gemini_voices">Gemini TTS Natural Voices</div>
-                                    <div class="usage-meter-note" id="geminiTtsUsageTitle" data-i18n="checking_usage">Checking usage...
+                                    <div class="ai-usage-title" data-i18n="gemini_voices">Gemini TTS Natural Voices
+                                    </div>
+                                    <div class="usage-meter-note" id="geminiTtsUsageTitle" data-i18n="checking_usage">
+                                        Checking usage...
                                     </div>
                                 </div>
                             </div>
                             <div class="ai-usage-value" id="geminiTtsUsageValue">—</div>
                         </div>
                         <div class="ai-usage-track" role="progressbar" aria-label="Gemini TTS Character Usage"
-                            aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="geminiTtsUsageTrack" data-i18n-aria="ui_gemini_tts_character_usage">
+                            aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="geminiTtsUsageTrack"
+                            data-i18n-aria="ui_gemini_tts_character_usage">
                             <div class="ai-usage-fill is-loading" id="geminiTtsUsageFill"></div>
                         </div>
                     </div>
@@ -138,7 +143,8 @@
                         <div class="section-title">
                             <span data-i18n="subscription_plans">Subscription plans</span>
                         </div>
-                        <p class="section-subtitle-desc" data-i18n="subscription_subtitle">Unlock natural voices and enhanced AI learning</p>
+                        <p class="section-subtitle-desc" data-i18n="subscription_subtitle">Unlock natural voices and
+                            enhanced AI learning</p>
                     </div>
 
                 </div>
@@ -150,8 +156,9 @@
                     </div>
                 </div>
                 <div class="subscription-carousel" id="subscriptionCarousel">
-                    <button type="button" class="carousel-arrow-prev is-hidden" id="carouselPrev" aria-label="Scroll plans"
-                        data-i18n-aria="scroll_plans" data-i18n-title="scroll_plans" title="Scroll plans">
+                    <button type="button" class="carousel-arrow-prev is-hidden" id="carouselPrev"
+                        aria-label="Scroll plans" data-i18n-aria="scroll_plans" data-i18n-title="scroll_plans"
+                        title="Scroll plans">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                             stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="15 18 9 12 15 6" />
@@ -190,20 +197,28 @@
                     <div class="glass-card sub-style-card">
                         <!-- Live preview banner -->
                         <div class="sub-style-preview-banner" id="subStylePreviewBanner">
-                            <span class="subtitle-style-preview" id="subStylePreview" aria-hidden="true">Custom Subtitles</span>
+                            <span class="subtitle-style-preview" id="subStylePreview" aria-hidden="true">Custom
+                                Subtitles</span>
                         </div>
 
                         <!-- Font Size -->
                         <div class="sub-style-row">
                             <span class="sub-style-label" data-i18n="subtitle_font_size">Font size</span>
-                            <div class="font-size-button-group sub-style-controls" id="subFontSizeGroup" role="group" data-i18n-aria-label="subtitle_font_size" aria-label="Subtitle font size">
-                                <button type="button" class="font-size-btn" data-size="small" data-i18n-title="font_size_small" data-i18n-aria-label="font_size_small" title="Small" aria-label="Small">
+                            <div class="font-size-button-group sub-style-controls" id="subFontSizeGroup" role="group"
+                                data-i18n-aria-label="subtitle_font_size" aria-label="Subtitle font size">
+                                <button type="button" class="font-size-btn" data-size="small"
+                                    data-i18n-title="font_size_small" data-i18n-aria-label="font_size_small"
+                                    title="Small" aria-label="Small">
                                     <span class="font-size-icon-small" aria-hidden="true">A</span>
                                 </button>
-                                <button type="button" class="font-size-btn active" data-size="medium" data-i18n-title="font_size_medium" data-i18n-aria-label="font_size_medium" title="Medium" aria-label="Medium">
+                                <button type="button" class="font-size-btn active" data-size="medium"
+                                    data-i18n-title="font_size_medium" data-i18n-aria-label="font_size_medium"
+                                    title="Medium" aria-label="Medium">
                                     <span class="font-size-icon-medium" aria-hidden="true">A</span>
                                 </button>
-                                <button type="button" class="font-size-btn" data-size="large" data-i18n-title="font_size_large" data-i18n-aria-label="font_size_large" title="Large" aria-label="Large">
+                                <button type="button" class="font-size-btn" data-size="large"
+                                    data-i18n-title="font_size_large" data-i18n-aria-label="font_size_large"
+                                    title="Large" aria-label="Large">
                                     <span class="font-size-icon-large" aria-hidden="true">A</span>
                                 </button>
                             </div>
@@ -215,7 +230,8 @@
                         <div class="sub-style-row">
                             <label class="sub-style-label" for="subColorPicker" data-i18n="subtitle_color">Color</label>
                             <div class="sub-style-controls sub-color-controls">
-                                <input type="color" id="subColorPicker" name="subtitleColor" value="#ffffff" aria-describedby="subColorValue">
+                                <input type="color" id="subColorPicker" name="subtitleColor" value="#ffffff"
+                                    aria-describedby="subColorValue">
                                 <output id="subColorValue" for="subColorPicker">#FFFFFF</output>
                             </div>
                         </div>
@@ -224,11 +240,20 @@
 
                         <!-- Font Weight -->
                         <div class="sub-style-row">
-                            <span class="sub-style-label" id="subFontWeightLabel" data-i18n="subtitle_font_weight">Weight</span>
-                            <div class="font-size-button-group sub-style-controls" id="subFontWeightGroup" role="group" aria-labelledby="subFontWeightLabel">
-                                <button type="button" class="font-size-btn font-weight-btn" data-weight="400" aria-pressed="false" data-i18n-title="font_weight_regular" data-i18n-aria="font_weight_regular" title="Regular" aria-label="Regular">A</button>
-                                <button type="button" class="font-size-btn font-weight-btn active" data-weight="600" aria-pressed="true" data-i18n-title="font_weight_semibold" data-i18n-aria="font_weight_semibold" title="Semibold" aria-label="Semibold">A</button>
-                                <button type="button" class="font-size-btn font-weight-btn" data-weight="700" aria-pressed="false" data-i18n-title="font_weight_bold" data-i18n-aria="font_weight_bold" title="Bold" aria-label="Bold">A</button>
+                            <span class="sub-style-label" id="subFontWeightLabel"
+                                data-i18n="subtitle_font_weight">Weight</span>
+                            <div class="font-size-button-group sub-style-controls" id="subFontWeightGroup" role="group"
+                                aria-labelledby="subFontWeightLabel">
+                                <button type="button" class="font-size-btn font-weight-btn" data-weight="400"
+                                    aria-pressed="false" data-i18n-title="font_weight_regular"
+                                    data-i18n-aria="font_weight_regular" title="Regular" aria-label="Regular">A</button>
+                                <button type="button" class="font-size-btn font-weight-btn active" data-weight="600"
+                                    aria-pressed="true" data-i18n-title="font_weight_semibold"
+                                    data-i18n-aria="font_weight_semibold" title="Semibold"
+                                    aria-label="Semibold">A</button>
+                                <button type="button" class="font-size-btn font-weight-btn" data-weight="700"
+                                    aria-pressed="false" data-i18n-title="font_weight_bold"
+                                    data-i18n-aria="font_weight_bold" title="Bold" aria-label="Bold">A</button>
                             </div>
                         </div>
 
@@ -236,7 +261,8 @@
 
                         <!-- Background Opacity -->
                         <div class="sub-style-row">
-                            <label class="sub-style-label" for="subBgRange" data-i18n="subtitle_bg_opacity">Background</label>
+                            <label class="sub-style-label" for="subBgRange"
+                                data-i18n="subtitle_bg_opacity">Background</label>
                             <div class="sub-style-controls slider-row">
                                 <input type="range" id="subBgRange" min="0" max="100" step="5" value="0">
                                 <span class="slider-value" id="subBgValue">0%</span>
@@ -247,29 +273,50 @@
 
                 <div class="setting-group" id="youtubeFocusModeGroup">
                     <div class="glass-card">
-                        <div class="toggle-row">
-                            <div>
-                                <div class="toggle-label" data-i18n="youtube_focus_mode">YouTube Focus Mode</div>
+                        <div class="toggle-row focus-mode-toggle-row">
+                            <div class="focus-title-group">
+                                <span class="focus-yt-badge" aria-hidden="true">
+                                    <svg width="18" height="13" viewBox="0 0 20 14" fill="none">
+                                        <path d="M19.3 2.16C19.07 1.32 18.41 0.66 17.57 0.43 16.05 0 10 0 10 0S3.95 0 2.43 0.43C1.59 0.66 0.93 1.32 0.7 2.16 0.27 3.73 0.27 7 0.27 7s0 3.27 0.43 4.84c0.23 0.84 0.89 1.5 1.73 1.73C3.95 14 10 14 10 14s6.05 0 7.57-0.43c0.84-0.23 1.5-0.89 1.73-1.73 0.43-1.57 0.43-4.84 0.43-4.84s0-3.27-0.43-4.84z" fill="#FF0000"/>
+                                        <polygon points="8,10 13.5,7 8,4" fill="#FFFFFF"/>
+                                    </svg>
+                                </span>
+                                <div class="toggle-label focus-toggle-label" data-i18n="youtube_focus_mode">YouTube Focus Mode</div>
                             </div>
                             <label class="toggle-switch">
-                                <input type="checkbox" id="ytFocusModeToggle" aria-label="YouTube Focus Mode" aria-describedby="ytFocusModeNotice" data-i18n-aria="youtube_focus_mode">
+                                <input type="checkbox" id="ytFocusModeToggle" aria-label="YouTube Focus Mode"
+                                    data-i18n-aria="youtube_focus_mode">
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
-                        <div class="toggle-desc focus-mode-notice" id="ytFocusModeNotice" data-i18n="youtube_focus_mode_desc">Turn on YouTube captions (CC) and select an auto-generated caption track.</div>
                         <div class="focus-color-wrap" id="ytFocusColorWrap" style="display: none;">
                             <div class="focus-color-header">
                                 <span class="focus-color-label" data-i18n="youtube_focus_color">Highlight Color</span>
                             </div>
                             <div class="focus-color-palette" id="ytFocusColorPalette">
-                                <button type="button" class="color-swatch" data-color="#6366f1" style="--swatch-color: #6366f1;" title="Indigo" aria-label="Indigo" data-i18n-title="ui_indigo" data-i18n-aria="ui_indigo"></button>
-                                <button type="button" class="color-swatch" data-color="#0ea5e9" style="--swatch-color: #0ea5e9;" title="Sky Blue" aria-label="Sky Blue" data-i18n-title="ui_sky_blue" data-i18n-aria="ui_sky_blue"></button>
-                                <button type="button" class="color-swatch" data-color="#10b981" style="--swatch-color: #10b981;" title="Emerald" aria-label="Emerald" data-i18n-title="ui_emerald" data-i18n-aria="ui_emerald"></button>
-                                <button type="button" class="color-swatch" data-color="#f59e0b" style="--swatch-color: #f59e0b;" title="Amber" aria-label="Amber" data-i18n-title="ui_amber" data-i18n-aria="ui_amber"></button>
-                                <button type="button" class="color-swatch" data-color="#f43f5e" style="--swatch-color: #f43f5e;" title="Rose" aria-label="Rose" data-i18n-title="ui_rose" data-i18n-aria="ui_rose"></button>
-                                <button type="button" class="color-swatch" data-color="#a855f7" style="--swatch-color: #a855f7;" title="Violet" aria-label="Violet" data-i18n-title="ui_violet" data-i18n-aria="ui_violet"></button>
-                                <label class="color-picker-label" id="ytFocusColorPickerLabel" title="Custom color" data-i18n-title="ui_custom_color">
-                                    <input type="color" id="ytFocusColorPicker" class="color-picker-native" value="#6366f1" aria-label="Custom color picker" data-i18n-aria="ui_custom_color_picker">
+                                <button type="button" class="color-swatch" data-color="#6366f1"
+                                    style="--swatch-color: #6366f1;" title="Indigo" aria-label="Indigo"
+                                    data-i18n-title="ui_indigo" data-i18n-aria="ui_indigo"></button>
+                                <button type="button" class="color-swatch" data-color="#0ea5e9"
+                                    style="--swatch-color: #0ea5e9;" title="Sky Blue" aria-label="Sky Blue"
+                                    data-i18n-title="ui_sky_blue" data-i18n-aria="ui_sky_blue"></button>
+                                <button type="button" class="color-swatch" data-color="#10b981"
+                                    style="--swatch-color: #10b981;" title="Emerald" aria-label="Emerald"
+                                    data-i18n-title="ui_emerald" data-i18n-aria="ui_emerald"></button>
+                                <button type="button" class="color-swatch" data-color="#f59e0b"
+                                    style="--swatch-color: #f59e0b;" title="Amber" aria-label="Amber"
+                                    data-i18n-title="ui_amber" data-i18n-aria="ui_amber"></button>
+                                <button type="button" class="color-swatch" data-color="#f43f5e"
+                                    style="--swatch-color: #f43f5e;" title="Rose" aria-label="Rose"
+                                    data-i18n-title="ui_rose" data-i18n-aria="ui_rose"></button>
+                                <button type="button" class="color-swatch" data-color="#a855f7"
+                                    style="--swatch-color: #a855f7;" title="Violet" aria-label="Violet"
+                                    data-i18n-title="ui_violet" data-i18n-aria="ui_violet"></button>
+                                <label class="color-picker-label" id="ytFocusColorPickerLabel" title="Custom color"
+                                    data-i18n-title="ui_custom_color">
+                                    <input type="color" id="ytFocusColorPicker" class="color-picker-native"
+                                        value="#6366f1" aria-label="Custom color picker"
+                                        data-i18n-aria="ui_custom_color_picker">
                                     <span class="color-picker-icon">🎨</span>
                                 </label>
                             </div>
@@ -289,7 +336,8 @@
                             <span class="section-title-icon">🔊</span>
                             <span data-i18n="speech_voice_title">Speech & Voice</span>
                         </div>
-                        <p class="section-subtitle-desc" data-i18n="speech_voice_desc">Google voice follows your learning language. Adjust speech
+                        <p class="section-subtitle-desc" data-i18n="speech_voice_desc">Google voice follows your
+                            learning language. Adjust speech
                             speed and playback volume.</p>
                     </div>
                 </div>
@@ -335,8 +383,7 @@
                     <button class="filter-btn" data-filter="new" data-i18n="filter_unsynced">🆕 Unsynced</button>
                 </div>
                 <!-- Search -->
-                <input type="text" id="wordSearch" class="word-search"
-                    data-i18n-placeholder="search_placeholder"
+                <input type="text" id="wordSearch" class="word-search" data-i18n-placeholder="search_placeholder"
                     placeholder="Search word, translation, or sentence...">
                 <div class="stats" id="stats"></div>
 
@@ -362,8 +409,7 @@
                                 <option value="random" data-i18n="quiz_source_random">Random</option>
                             </select>
                             <button type="button" class="export-btn export-quiz" id="exportQuiz"
-                                title="Generate interactive AI quiz"
-                                data-i18n-title="quiz_ai_title">
+                                title="Generate interactive AI quiz" data-i18n-title="quiz_ai_title">
                                 <span class="quiz-btn-label" data-i18n="quiz_ai_btn">✨ AI Quiz</span>
                                 <span class="quiz-free-badge" id="quizFreeBadge" style="display:none;"
                                     title="Free quizzes" data-i18n-title="ui_free_quizzes">0/3</span>
@@ -373,24 +419,21 @@
                         <!-- Right: Anki, Excel, Delete -->
                         <div class="export-compact-actions">
                             <button type="button" class="export-btn export-anki" id="exportAnki"
-                                title="Export to Anki deck (.zip)"
-                                data-i18n-title="export_anki_title">
+                                title="Export to Anki deck (.zip)" data-i18n-title="export_anki_title">
                                 <span class="export-btn-label" data-i18n="export_anki">📋 Anki</span>
                                 <span class="quiz-free-badge export-free-badge" id="ankiFreeBadge" style="display:none;"
                                     title="Free Anki exports" data-i18n-title="ui_free_anki_exports">0/3</span>
                             </button>
                             <button type="button" class="export-btn export-csv" id="exportCsv"
-                                title="Export to Excel (.csv)"
-                                data-i18n-title="export_csv_title">
+                                title="Export to Excel (.csv)" data-i18n-title="export_csv_title">
                                 <span class="export-btn-label" data-i18n="export_excel">📊 Excel</span>
                                 <span class="quiz-free-badge export-free-badge" id="excelFreeBadge"
-                                    style="display:none;" title="Free Excel exports" data-i18n-title="ui_free_excel_exports">0/3</span>
+                                    style="display:none;" title="Free Excel exports"
+                                    data-i18n-title="ui_free_excel_exports">0/3</span>
                             </button>
                             <button type="button" class="export-btn export-clear" id="clearAll"
-                                title="Delete visible words"
-                                data-i18n-title="export_clear_title"
-                                aria-label="Delete visible words"
-                                data-i18n-aria="export_clear_title">
+                                title="Delete visible words" data-i18n-title="export_clear_title"
+                                aria-label="Delete visible words" data-i18n-aria="export_clear_title">
                                 🗑
                             </button>
                         </div>
@@ -410,8 +453,7 @@
                     <span class="review-title" data-i18n="review_daily_title">Daily Review</span>
                     <span class="review-count" id="reviewCount"></span>
                     <button class="review-dir-btn" id="reviewDirBtn" title="Change review direction"
-                        data-i18n-title="review_dir_title">EN <span
-                            class="dir-arrow">→</span> PL</button>
+                        data-i18n-title="review_dir_title">EN <span class="dir-arrow">→</span> PL</button>
                     <div class="review-voice-picker" id="reviewVoicePicker">
                         <button class="review-voice-btn" id="reviewVoiceBtn" type="button" aria-expanded="false"
                             aria-controls="reviewVoiceMenu" title="Choose review voice"
@@ -428,10 +470,12 @@
                             <div class="review-voice-menu-head">
                                 <div>
                                     <strong data-i18n="review_voice_natural_title">Review voice</strong>
-                                    <span data-i18n="review_voice_natural_desc">Listen and memorize more naturally</span>
+                                    <span data-i18n="review_voice_natural_desc">Listen and memorize more
+                                        naturally</span>
                                 </div>
                                 <button type="button" class="review-voice-close" id="reviewVoiceClose"
-                                    aria-label="Close" data-i18n-aria="close_label" data-i18n-title="close_label" title="Close">×</button>
+                                    aria-label="Close" data-i18n-aria="close_label" data-i18n-title="close_label"
+                                    title="Close">×</button>
                             </div>
                             <button type="button" class="review-voice-system" id="reviewBrowserVoiceOption">
                                 <span class="review-voice-avatar system">🔊</span>
@@ -456,40 +500,40 @@
                 <div class="review-audio-status" id="reviewAudioStatus" role="status" aria-live="polite" hidden></div>
 
 
-<!-- Web & Mobile Reviews Banner -->
+                <!-- Web & Mobile Reviews Banner -->
                 <div class="review-web-banner" id="reviewWebBanner">
                     <div class="review-web-banner-left">
                         <div class="review-web-banner-icon-area">
-                            <img src="icons/icon48.png" alt="Lectoro" class="review-web-banner-logo" width="20" height="20">
+                            <img src="icons/icon48.png" alt="Lectoro" class="review-web-banner-logo" width="20"
+                                height="20">
                         </div>
                         <div class="review-web-banner-content">
                             <div class="review-web-banner-head">
-                                <span class="review-web-banner-title" data-i18n="review_web_banner_title">Powtórki na mobile i website</span>
+                                <span class="review-web-banner-title" data-i18n="review_web_banner_title">Powtórki na
+                                    mobile i website</span>
                             </div>
-                            <div class="review-web-banner-desc" data-i18n="review_web_banner_desc">Ćwicz słówka w drodze na telefonie i w przeglądarce</div>
+                            <div class="review-web-banner-desc" data-i18n="review_web_banner_desc">Ćwicz słówka w drodze
+                                na telefonie i w przeglądarce</div>
                         </div>
                     </div>
                     <div class="review-web-banner-actions">
                         <button type="button" class="review-web-banner-btn" id="reviewWebBannerBtn"
-                            title="Otwórz powtórki na mobile i website"
-                            data-i18n-title="review_web_banner_btn_title">
+                            title="Otwórz powtórki na mobile i website" data-i18n-title="review_web_banner_btn_title">
                             <span data-i18n="review_web_banner_btn">Otwórz</span>
-                            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor"
+                                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
                                 <polyline points="15 3 21 3 21 9"></polyline>
                                 <line x1="10" y1="14" x2="21" y2="3"></line>
                             </svg>
                         </button>
-                        <button type="button" class="review-web-banner-close" id="reviewWebBannerClose"
-                            title="Close"
-                            aria-label="Close"
-                            data-i18n-title="close_label"
-                            data-i18n-aria="close_label">×</button>
+                        <button type="button" class="review-web-banner-close" id="reviewWebBannerClose" title="Close"
+                            aria-label="Close" data-i18n-title="close_label" data-i18n-aria="close_label">×</button>
                     </div>
                 </div>
                 <div class="review-card" id="reviewCard"></div>
 
-                
+
             </div>
         </div>
     </template>
@@ -508,8 +552,10 @@
                         <span class="help-section-title" data-i18n="guide_watching_videos">Watching Videos</span>
                     </div>
                     <div class="glass-card help-card">
-                        <p class="help-lead" data-i18n="guide_video_desc">Works on video platforms with captions including
-                            youtube.com, netflix.com, ted.com and many more. Turn on closed captions (CC), then click any subtitle to see translations, or use hotkeys:
+                        <p class="help-lead" data-i18n="guide_video_desc">Works on video platforms with captions
+                            including
+                            youtube.com, netflix.com, ted.com and many more. Turn on closed captions (CC), then click
+                            any subtitle to see translations, or use hotkeys:
                         </p>
 
                         <div class="shortcut-group">
@@ -527,7 +573,8 @@
                             <div class="shortcut-row">
                                 <div class="key-combo"><span class="key">D</span><span class="key-or">/</span><span
                                         class="key">→</span></div>
-                                <span class="shortcut-desc" data-i18n="guide_next_sub">Next subtitle / fast forward</span>
+                                <span class="shortcut-desc" data-i18n="guide_next_sub">Next subtitle / fast
+                                    forward</span>
                             </div>
                             <div class="shortcut-row">
                                 <div class="key-combo"><span class="key">[</span><span class="key-or">/</span><span
@@ -542,16 +589,19 @@
                                 <div class="key-combo"><span class="key">S</span><span class="key-or">/</span><span
                                         class="key">↓</span>
                                 </div>
-                                <span class="shortcut-desc" data-i18n="guide_translate_tts">Translate & read current subtitle aloud</span>
+                                <span class="shortcut-desc" data-i18n="guide_translate_tts">Translate & read current
+                                    subtitle aloud</span>
                             </div>
                             <div class="shortcut-row">
                                 <div class="key-combo"><span class="key">Z</span></div>
-                                <span class="shortcut-desc" data-i18n="guide_save_sentence">Save current sentence for review</span>
+                                <span class="shortcut-desc" data-i18n="guide_save_sentence">Save current sentence for
+                                    review</span>
                             </div>
                             <div class="shortcut-row">
                                 <div class="key-combo"><span class="key">Q</span><span class="key-or">/</span><span
                                         class="key">Enter</span></div>
-                                <span class="shortcut-desc" data-i18n="guide_ai_explain">AI sentence explanation ✨</span>
+                                <span class="shortcut-desc" data-i18n="guide_ai_explain">AI sentence explanation
+                                    ✨</span>
                             </div>
                         </div>
                     </div>
@@ -567,15 +617,18 @@
                         <div class="help-steps">
                             <div class="help-step">
                                 <span class="step-num">1</span>
-                                <span class="step-text" data-i18n="guide_step_1">Select any word or drag across a sentence on any webpage.</span>
+                                <span class="step-text" data-i18n="guide_step_1">Select any word or drag across a
+                                    sentence on any webpage.</span>
                             </div>
                             <div class="help-step">
                                 <span class="step-num">2</span>
-                                <span class="step-text" data-i18n="guide_step_2">Click the translation icon that appears next to your selection.</span>
+                                <span class="step-text" data-i18n="guide_step_2">Click the translation icon that appears
+                                    next to your selection.</span>
                             </div>
                             <div class="help-step">
                                 <span class="step-num">3</span>
-                                <span class="step-text" data-i18n="guide_step_3">Done! View translation, listen via TTS, and practice in Words.</span>
+                                <span class="step-text" data-i18n="guide_step_3">Done! View translation, listen via TTS,
+                                    and practice in Words.</span>
                             </div>
                         </div>
                     </div>
@@ -592,12 +645,16 @@
                             where you can export to Anki, Excel, or generate interactive AI quizzes.</p>
                         <div class="help-tip">
                             <span class="help-tip-icon">💡</span>
-                            <span data-i18n="guide_tip">The Review tab offers daily spaced repetition sessions to help you
+                            <span data-i18n="guide_tip">The Review tab offers daily spaced repetition sessions to help
+                                you
                                 remember vocabulary long-term.</span>
                         </div>
                         <div class="help-tip" style="margin-top: 8px;">
                             <span class="help-tip-icon">📱</span>
-                            <span><span data-i18n="guide_mobile_reviews">Powtórki możesz robić również na telefonie i na komputerze na</span> <a href="https://lectoroai.vercel.app/dashboard/reviews" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:underline;">lectoroai.vercel.app</a>.</span>
+                            <span><span data-i18n="guide_mobile_reviews">Powtórki możesz robić również na telefonie i na
+                                    komputerze na</span> <a href="https://lectoroai.vercel.app/dashboard/reviews"
+                                    target="_blank" rel="noopener noreferrer"
+                                    style="color:var(--accent);text-decoration:underline;">lectoroai.vercel.app</a>.</span>
                         </div>
                     </div>
                 </div>
@@ -609,16 +666,13 @@
     <footer class="popup-footer"
         style="padding: 10px 16px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 10px; color: #94a3b8; text-align: center;">
         <div><a href="https://lectoroai.vercel.app/privacy" target="_blank" rel="noopener noreferrer"
-                id="footerPrivacyLink"
-                data-i18n="footer_privacy"
-                data-i18n-href="privacy"
+                id="footerPrivacyLink" data-i18n="footer_privacy" data-i18n-href="privacy"
                 style="color: #38bdf8; text-decoration: none;">Privacy Policy</a> &bull; <a
-                href="https://lectoroai.vercel.app/terms" target="_blank" rel="noopener noreferrer"
-                id="footerTermsLink"
-                data-i18n="footer_terms"
-                data-i18n-href="terms"
-                style="color: #38bdf8; text-decoration: none;">Terms</a></div>
-        <div style="margin-top: 4px; font-size: 10px; color: #64748b;" data-i18n="footer_seller">Subscription seller is Lectoro, not Google LLC.
+                href="https://lectoroai.vercel.app/terms" target="_blank" rel="noopener noreferrer" id="footerTermsLink"
+                data-i18n="footer_terms" data-i18n-href="terms" style="color: #38bdf8; text-decoration: none;">Terms</a>
+        </div>
+        <div style="margin-top: 4px; font-size: 10px; color: #64748b;" data-i18n="footer_seller">Subscription seller is
+            Lectoro, not Google LLC.
         </div>
     </footer>
     <script src="shared/constants.js"></script>

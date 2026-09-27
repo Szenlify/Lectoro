@@ -765,22 +765,45 @@ body::before {
     line-height: 1.6;
 }
 
-.toggle-desc.focus-mode-notice {
-    color: #fbbf24;
-    background: rgba(251, 191, 36, 0.06);
-    border: 1px solid rgba(251, 191, 36, 0.16);
-    border-radius: 8px;
-    padding: 10px 12px;
-    font-weight: 500;
-    line-height: 1.5;
-}
-
 #youtubeFocusModeGroup .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     gap: 16px;
 }
 
-#youtubeFocusModeGroup .toggle-row > div {
+.focus-title-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     min-width: 0;
+}
+
+.focus-yt-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: rgba(255, 0, 0, 0.1);
+    border: 1px solid rgba(255, 0, 0, 0.24);
+    box-shadow: 0 2px 6px rgba(255, 0, 0, 0.12);
+    flex-shrink: 0;
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s ease, box-shadow 0.2s ease;
+}
+
+#youtubeFocusModeGroup .glass-card:hover .focus-yt-badge {
+    transform: scale(1.06);
+    background: rgba(255, 0, 0, 0.15);
+    box-shadow: 0 2px 10px rgba(255, 0, 0, 0.22);
+}
+
+.focus-toggle-label {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
 }
 
 #youtubeFocusModeGroup .toggle-switch {
@@ -4434,7 +4457,7 @@ html[data-lectoro-ai-limit-reached] #exportQuiz {
 }
 
 #subColorPicker {
-    width: 36px;
+    width: 32px;
     height: 32px;
     padding: 2px;
     border: 1px solid var(--glass-border);

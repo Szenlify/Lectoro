@@ -23,11 +23,9 @@ test("YouTube Focus Mode: i18n translations exist for all 11 supported languages
     const supportedLangs = ["en", "pl", "de", "es", "fr", "it", "ja", "ko", "nl", "cs", "pt"];
     for (const lang of supportedLangs) {
         const title = SharedI18n.t("youtube_focus_mode", lang);
-        const desc = SharedI18n.t("youtube_focus_mode_desc", lang);
         const color = SharedI18n.t("youtube_focus_color", lang);
 
         assert.ok(title && title !== "youtube_focus_mode", `Missing youtube_focus_mode for ${lang}`);
-        assert.ok(desc && desc !== "youtube_focus_mode_desc", `Missing youtube_focus_mode_desc for ${lang}`);
         assert.ok(color && color !== "youtube_focus_color", `Missing youtube_focus_color for ${lang}`);
     }
 });
