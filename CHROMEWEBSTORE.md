@@ -108,6 +108,7 @@ Every permission declared in `manifest.json` adheres to the Principle of Least P
 - Single-word subtitle fragments join the preceding nearby cue on YouTube, Netflix and native caption tracks; ASR word timing is preserved.
 
 - **1.0.0 (Current):**
+  - Added a custom subtitle text color and Regular/Semibold/Bold font weights in Settings, with saved preferences and immediate updates during playback (2026-09-27).
   - YouTube captions reload automatically for each film after navigation, including autoplay and reused players, without requiring a seek. Previous-film responses cannot replace the new captions (2026-09-27).
   - Fixed YouTube Focus timing through caption cleaning and short-caption merging. Word highlights retain source timestamps and pauses; no estimated word timing is used (2026-09-27).
   - Fixed Gemini dictionary tooltips for contractions and hyphenated words, including hover in S mode. Straight and typographic apostrophes/hyphens now share the same dictionary lookup and saved result (2026-09-26).

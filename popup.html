@@ -187,28 +187,60 @@
 
 
                 <div class="setting-group">
-                    <label data-i18n="subtitle_font_size">Subtitle font size</label>
-                    <div class="glass-card">
-                        <div class="font-size-button-group" id="subFontSizeGroup" role="group" data-i18n-aria-label="subtitle_font_size" aria-label="Subtitle font size">
-                            <button type="button" class="font-size-btn" data-size="small" data-i18n-title="font_size_small" data-i18n-aria-label="font_size_small" title="Small" aria-label="Small">
-                                <span class="font-size-icon-small" aria-hidden="true">A</span>
-                            </button>
-                            <button type="button" class="font-size-btn active" data-size="medium" data-i18n-title="font_size_medium" data-i18n-aria-label="font_size_medium" title="Medium" aria-label="Medium">
-                                <span class="font-size-icon-medium" aria-hidden="true">A</span>
-                            </button>
-                            <button type="button" class="font-size-btn" data-size="large" data-i18n-title="font_size_large" data-i18n-aria-label="font_size_large" title="Large" aria-label="Large">
-                                <span class="font-size-icon-large" aria-hidden="true">A</span>
-                            </button>
+                    <div class="glass-card sub-style-card">
+                        <!-- Live preview banner -->
+                        <div class="sub-style-preview-banner" id="subStylePreviewBanner">
+                            <span class="subtitle-style-preview" id="subStylePreview" aria-hidden="true">Custom Subtitles</span>
                         </div>
-                    </div>
-                </div>
 
-                <div class="setting-group">
-                    <label for="subBgRange" data-i18n="subtitle_bg_opacity">Subtitle background opacity</label>
-                    <div class="glass-card">
-                        <div class="slider-row">
-                            <input type="range" id="subBgRange" min="0" max="100" step="5" value="0">
-                            <span class="slider-value" id="subBgValue">0%</span>
+                        <!-- Font Size -->
+                        <div class="sub-style-row">
+                            <span class="sub-style-label" data-i18n="subtitle_font_size">Font size</span>
+                            <div class="font-size-button-group sub-style-controls" id="subFontSizeGroup" role="group" data-i18n-aria-label="subtitle_font_size" aria-label="Subtitle font size">
+                                <button type="button" class="font-size-btn" data-size="small" data-i18n-title="font_size_small" data-i18n-aria-label="font_size_small" title="Small" aria-label="Small">
+                                    <span class="font-size-icon-small" aria-hidden="true">A</span>
+                                </button>
+                                <button type="button" class="font-size-btn active" data-size="medium" data-i18n-title="font_size_medium" data-i18n-aria-label="font_size_medium" title="Medium" aria-label="Medium">
+                                    <span class="font-size-icon-medium" aria-hidden="true">A</span>
+                                </button>
+                                <button type="button" class="font-size-btn" data-size="large" data-i18n-title="font_size_large" data-i18n-aria-label="font_size_large" title="Large" aria-label="Large">
+                                    <span class="font-size-icon-large" aria-hidden="true">A</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="sub-style-divider"></div>
+
+                        <!-- Color -->
+                        <div class="sub-style-row">
+                            <label class="sub-style-label" for="subColorPicker" data-i18n="subtitle_color">Color</label>
+                            <div class="sub-style-controls sub-color-controls">
+                                <input type="color" id="subColorPicker" name="subtitleColor" value="#ffffff" aria-describedby="subColorValue">
+                                <output id="subColorValue" for="subColorPicker">#FFFFFF</output>
+                            </div>
+                        </div>
+
+                        <div class="sub-style-divider"></div>
+
+                        <!-- Font Weight -->
+                        <div class="sub-style-row">
+                            <span class="sub-style-label" id="subFontWeightLabel" data-i18n="subtitle_font_weight">Weight</span>
+                            <div class="font-size-button-group sub-style-controls" id="subFontWeightGroup" role="group" aria-labelledby="subFontWeightLabel">
+                                <button type="button" class="font-size-btn font-weight-btn" data-weight="400" aria-pressed="false" data-i18n-title="font_weight_regular" data-i18n-aria="font_weight_regular" title="Regular" aria-label="Regular">A</button>
+                                <button type="button" class="font-size-btn font-weight-btn active" data-weight="600" aria-pressed="true" data-i18n-title="font_weight_semibold" data-i18n-aria="font_weight_semibold" title="Semibold" aria-label="Semibold">A</button>
+                                <button type="button" class="font-size-btn font-weight-btn" data-weight="700" aria-pressed="false" data-i18n-title="font_weight_bold" data-i18n-aria="font_weight_bold" title="Bold" aria-label="Bold">A</button>
+                            </div>
+                        </div>
+
+                        <div class="sub-style-divider"></div>
+
+                        <!-- Background Opacity -->
+                        <div class="sub-style-row">
+                            <label class="sub-style-label" for="subBgRange" data-i18n="subtitle_bg_opacity">Background</label>
+                            <div class="sub-style-controls slider-row">
+                                <input type="range" id="subBgRange" min="0" max="100" step="5" value="0">
+                                <span class="slider-value" id="subBgValue">0%</span>
+                            </div>
                         </div>
                     </div>
                 </div>

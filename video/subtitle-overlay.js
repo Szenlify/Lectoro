@@ -58,6 +58,8 @@
     let currentSubPosition = C.DEFAULT_SUBTITLE_SETTINGS.POSITION;
     let currentSubBgOpacity = C.DEFAULT_SUBTITLE_SETTINGS.BG_OPACITY;
     let currentSubFontSize = C.DEFAULT_SUBTITLE_SETTINGS.FONT_SIZE || "medium";
+    let currentSubColor = C.DEFAULT_SUBTITLE_SETTINGS.COLOR;
+    let currentSubFontWeight = C.DEFAULT_SUBTITLE_SETTINGS.FONT_WEIGHT;
     let currentSubBottomPx = 0;
     let aiSubTranslationEl = null;
     let aiSubTranslationText = "";
@@ -244,6 +246,8 @@
 
     function applySubtitleStyles(layer) {
         if (!layer) return;
+        layer.style.setProperty("--lectoro-sub-color", currentSubColor);
+        layer.style.setProperty("--lectoro-sub-font-weight", String(currentSubFontWeight));
         const opacity =
             typeof currentSubBgOpacity === "number" &&
                 !isNaN(currentSubBgOpacity)
@@ -793,7 +797,7 @@
                 measureCtx = measureCanvas.getContext("2d");
             }
             if (measureCtx) {
-                measureCtx.font = `600 ${fontSizePx}px "Netflix Sans Variable", "Netflix Sans", "Helvetica Neue", "Segoe UI", Roboto, sans-serif`;
+                measureCtx.font = `${currentSubFontWeight} ${fontSizePx}px "Netflix Sans Variable", "Netflix Sans", "Helvetica Neue", "Segoe UI", Roboto, sans-serif`;
                 return measureCtx.measureText(text).width;
             }
         } catch (_) { }
@@ -1251,6 +1255,8 @@
     const subPosKey = C.STORAGE_KEYS.SUBTITLE_POSITION;
     const subBgKey = C.STORAGE_KEYS.SUBTITLE_BG_OPACITY;
     const subFontSizeKey = C.STORAGE_KEYS.SUBTITLE_FONT_SIZE;
+    const subColorKey = C.STORAGE_KEYS.SUBTITLE_COLOR;
+    const subFontWeightKey = C.STORAGE_KEYS.SUBTITLE_FONT_WEIGHT;
     const ytFocusModeKey = C.STORAGE_KEYS.YOUTUBE_FOCUS_MODE || "youtubeFocusMode";
     const ytFocusColorKey = C.STORAGE_KEYS.YOUTUBE_FOCUS_COLOR || "youtubeFocusColor";
 
@@ -1259,6 +1265,8 @@
             [subPosKey]: C.DEFAULT_SUBTITLE_SETTINGS.POSITION,
             [subBgKey]: C.DEFAULT_SUBTITLE_SETTINGS.BG_OPACITY,
             [subFontSizeKey]: C.DEFAULT_SUBTITLE_SETTINGS.FONT_SIZE,
+            [subColorKey]: C.DEFAULT_SUBTITLE_SETTINGS.COLOR,
+            [subFontWeightKey]: C.DEFAULT_SUBTITLE_SETTINGS.FONT_WEIGHT,
             [ytFocusModeKey]: false,
             [ytFocusColorKey]: C.DEFAULT_READING_SETTINGS?.youtubeFocusColor || "#6366f1",
         },
@@ -1272,6 +1280,8 @@
             if (data && data[subFontSizeKey]) {
                 currentSubFontSize = data[subFontSizeKey];
             }
+            currentSubColor = C.normalizeSubtitleColor(data?.[subColorKey]);
+            currentSubFontWeight = C.normalizeSubtitleFontWeight(data?.[subFontWeightKey]);
             if (data && typeof data[ytFocusModeKey] === "boolean") {
                 youtubeFocusModeActive = data[ytFocusModeKey];
             }
@@ -1311,6 +1321,15 @@
                 typeof changes[subFontSizeKey].newValue === "number")
         ) {
             currentSubFontSize = changes[subFontSizeKey].newValue;
+            shouldSync = true;
+        }
+        if (changes[subColorKey]) {
+            currentSubColor = C.normalizeSubtitleColor(changes[subColorKey].newValue);
+            if (customSubLayerEl) applySubtitleStyles(customSubLayerEl);
+        }
+        if (changes[subFontWeightKey]) {
+            currentSubFontWeight = C.normalizeSubtitleFontWeight(changes[subFontWeightKey].newValue);
+            if (customSubLayerEl) applySubtitleStyles(customSubLayerEl);
             shouldSync = true;
         }
         if (changes[ytFocusModeKey]) {

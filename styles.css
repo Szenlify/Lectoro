@@ -676,7 +676,7 @@ video::cue {
   animation: none !important;
   isolation: isolate !important;
   contain: layout style !important;
-  color: #ffffff !important;
+  color: var(--lectoro-sub-color, #ffffff) !important;
   font-family:
     "Netflix Sans Variable",
     "Netflix Sans",
@@ -688,7 +688,7 @@ video::cue {
     Arial,
     sans-serif !important;
   font-style: normal !important;
-  font-weight: 600 !important;
+  font-weight: var(--lectoro-sub-font-weight, 600) !important;
   font-variant: normal !important;
   text-transform: none !important;
   text-rendering: geometricPrecision !important;
@@ -939,9 +939,9 @@ video::cue {
   text-wrap: balance !important;
   hyphens: none !important;
   flex: 0 1 auto !important;
-  color: #ffffff !important;
+  color: var(--lectoro-sub-color, #ffffff) !important;
   font-size: var(--lectoro-sub-font-size, 26px) !important;
-  font-weight: 600 !important;
+  font-weight: var(--lectoro-sub-font-weight, 600) !important;
   line-height: 1.36 !important;
   letter-spacing: 0.012em !important;
 }

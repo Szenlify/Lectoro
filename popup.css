@@ -4312,3 +4312,151 @@ html[data-lectoro-ai-limit-reached] #exportQuiz {
     background: rgba(233, 79, 150, 0.15);
 }
 
+
+/* Subtitle appearance controls share the size selector's layout. */
+.font-size-btn:focus-visible,
+#subColorPicker:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+}
+.font-weight-btn { font-size: 22px; }
+.font-weight-btn[data-weight="400"] { font-weight: 400; }
+.font-weight-btn[data-weight="600"] { font-weight: 600; }
+.font-weight-btn[data-weight="700"] { font-weight: 700; }
+
+/* ── Unified Subtitle Style Card ─────────────────────────────────── */
+.sub-style-card {
+    padding: 0 !important;
+    overflow: hidden;
+}
+
+.sub-style-preview-banner {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    position: relative;
+    min-height: 110px;
+    padding: 22px 26px 18px;
+    background:
+
+        url('icons/subtitle-preview-bg.jpg') center / cover no-repeat;
+    border-bottom: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    user-select: none;
+    overflow: hidden;
+}
+
+.sub-style-preview-banner::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 120% 80% at 50% 100%, rgba(99, 102, 241, 0.08) 0%, transparent 60%);
+    pointer-events: none;
+}
+
+.subtitle-style-preview {
+    position: relative;
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 1.25;
+    color: #ffffff;
+    letter-spacing: 0.02em;
+    padding: 4px 14px;
+    border-radius: 6px;
+    --sub-text-bg: transparent;
+    background: var(--sub-text-bg);
+  text-shadow:
+    -0.06em -0.06em 0 #000,
+    0.06em -0.06em 0 #000,
+    -0.06em 0.06em 0 #000,
+    0.06em 0.06em 0 #000,
+    -0.06em 0px 0 #000,
+    0.06em 0px 0 #000,
+    0px -0.06em 0 #000,
+    0px 0.06em 0 #000,
+    0 0.12em 0.3em rgba(0, 0, 0, 0.95) !important;
+    transition: color 0.2s, font-weight 0.2s, font-size 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.15s;
+}
+
+.sub-style-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 26px;
+    transition: background 0.15s;
+}
+
+.sub-style-row:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.sub-style-label {
+    /* Override default .settings label styles inside the unified card */
+    display: inline !important;
+    font-size: 11px !important;
+    color: var(--text-secondary) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+    font-weight: 600 !important;
+    margin-bottom: 0 !important;
+    min-width: 90px;
+    flex-shrink: 0;
+    white-space: nowrap;
+    transition: color 0.15s;
+}
+
+.sub-style-row:hover .sub-style-label {
+    color: var(--text-primary) !important;
+}
+
+.sub-style-controls {
+    flex: 1;
+    min-width: 0;
+}
+
+.sub-style-controls.font-size-button-group {
+    gap: 6px;
+    justify-content: flex-end;
+}
+
+.sub-style-divider {
+    height: 1px;
+    background: var(--glass-border);
+    margin: 0 26px;
+}
+
+/* Color row inside unified card */
+.sub-color-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+#subColorPicker {
+    width: 36px;
+    height: 32px;
+    padding: 2px;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    background: var(--glass-hover);
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+#subColorPicker:hover {
+    border-color: rgba(129, 140, 248, 0.4);
+}
+
+#subColorValue {
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted);
+    font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+    letter-spacing: 0.5px;
+}
+
+/* Slider inside unified card */
+.sub-style-row .slider-row {
+    gap: 12px;
+}

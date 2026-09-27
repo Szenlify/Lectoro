@@ -131,6 +131,8 @@
             SUBTITLE_POSITION: "subtitlePosition",
             SUBTITLE_BG_OPACITY: "subtitleBgOpacity",
             SUBTITLE_FONT_SIZE: "subtitleFontSize",
+            SUBTITLE_COLOR: "subtitleColor",
+            SUBTITLE_FONT_WEIGHT: "subtitleFontWeight",
             REVIEW_DIRECTION: "reviewDirection",
             FIREBASE_AUTH: "firebaseAuth",
             LAST_FIREBASE_SYNC: "lastFirebaseSync",
@@ -152,7 +154,19 @@
             POSITION: 14,
             BG_OPACITY: 0,
             FONT_SIZE: "medium",
+            COLOR: "#ffffff",
+            FONT_WEIGHT: 600,
         });
+
+        function normalizeSubtitleColor(value) {
+            return typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value)
+                ? value.toLowerCase() : DEFAULT_SUBTITLE_SETTINGS.COLOR;
+        }
+
+        function normalizeSubtitleFontWeight(value) {
+            const weight = Number(value);
+            return [400, 600, 700].includes(weight) ? weight : DEFAULT_SUBTITLE_SETTINGS.FONT_WEIGHT;
+        }
 
         const SUBTITLE_FONT_SIZE_FACTORS = Object.freeze({
             small: 0.016,
@@ -462,6 +476,8 @@ const SIMPLE_WORDS = Object.freeze(
             STORAGE_KEYS,
             DEFAULT_SUBTITLE_SETTINGS,
             SUBTITLE_FONT_SIZE_FACTORS,
+            normalizeSubtitleColor,
+            normalizeSubtitleFontWeight,
             DEFAULT_TTS_SETTINGS,
             DEFAULT_READING_SETTINGS,
             ENDPOINTS,

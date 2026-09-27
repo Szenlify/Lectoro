@@ -79,6 +79,8 @@ whenPopupReady((data) => {
     const defaultSubFontSize = LectoroConstants.DEFAULT_SUBTITLE_SETTINGS.FONT_SIZE || "medium";
     const subFontSize = data.subtitleFontSize || defaultSubFontSize;
     updateSubFontSizeButtons(subFontSize);
+    updateSubColorControl(data.subtitleColor);
+    updateSubFontWeightButtons(data.subtitleFontWeight);
     const ytFocusModeToggle = document.getElementById("ytFocusModeToggle");
     const ytFocusColorWrap = document.getElementById("ytFocusColorWrap");
     const ytFocusColorPicker = document.getElementById("ytFocusColorPicker");
@@ -222,6 +224,17 @@ const subFontSizeStorageKey = LectoroConstants.STORAGE_KEYS.SUBTITLE_FONT_SIZE |
 
 bindPercentageSlider(subBgRange, subBgValue, subBgStorageKey, 0);
 
+// Update preview text bg when opacity slider changes (only behind text, not whole banner)
+function updatePreviewBannerBg(opacity) {
+    const preview = document.getElementById("subStylePreview");
+    if (!preview) return;
+    const pct = parseInt(opacity, 10) || 0;
+    preview.style.setProperty("--sub-text-bg", pct > 0 ? `rgba(0, 0, 0, ${pct / 100})` : "transparent");
+}
+if (subBgRange) {
+    subBgRange.addEventListener("input", () => updatePreviewBannerBg(subBgRange.value));
+}
+
 function updateSubFontSizeButtons(activeSize) {
     if (!subFontSizeGroup) return;
     const size = activeSize || LectoroConstants.DEFAULT_SUBTITLE_SETTINGS.FONT_SIZE || "medium";
@@ -231,6 +244,10 @@ function updateSubFontSizeButtons(activeSize) {
         btn.classList.toggle("active", isMatch);
         btn.setAttribute("aria-pressed", isMatch ? "true" : "false");
     });
+    // Update live preview font size
+    const previewSizeMap = { small: "22px", medium: "28px", large: "36px" };
+    const preview = document.getElementById("subStylePreview");
+    if (preview) preview.style.fontSize = previewSizeMap[size] || "28px";
 }
 
 if (subFontSizeGroup) {
@@ -248,6 +265,44 @@ if (subFontSizeGroup) {
         chrome.storage.local.set({ [subFontSizeStorageKey]: selectedSize }, flashSaved);
     });
 }
+
+const subColorStorageKey = LectoroConstants.STORAGE_KEYS.SUBTITLE_COLOR;
+const subFontWeightStorageKey = LectoroConstants.STORAGE_KEYS.SUBTITLE_FONT_WEIGHT;
+
+function updateSubColorControl(value) {
+    const color = LectoroConstants.normalizeSubtitleColor(value);
+    if (subColorPicker) subColorPicker.value = color;
+    if (subColorValue) subColorValue.textContent = color.toUpperCase();
+    const preview = document.getElementById("subStylePreview");
+    if (preview) preview.style.color = color;
+}
+
+function updateSubFontWeightButtons(value) {
+    const weight = LectoroConstants.normalizeSubtitleFontWeight(value);
+    subFontWeightGroup?.querySelectorAll(".font-weight-btn").forEach(btn => {
+        const selected = Number(btn.dataset.weight) === weight;
+        btn.classList.toggle("active", selected);
+        btn.setAttribute("aria-pressed", String(selected));
+    });
+    const preview = document.getElementById("subStylePreview");
+    if (preview) preview.style.fontWeight = String(weight);
+}
+
+subColorPicker?.addEventListener("input", () => {
+    const color = LectoroConstants.normalizeSubtitleColor(subColorPicker.value);
+    updateSubColorControl(color);
+    popupState[subColorStorageKey] = color;
+    chrome.storage.local.set({ [subColorStorageKey]: color }, flashSaved);
+});
+
+subFontWeightGroup?.addEventListener("click", event => {
+    const button = event.target.closest(".font-weight-btn");
+    if (!button) return;
+    const weight = LectoroConstants.normalizeSubtitleFontWeight(button.dataset.weight);
+    updateSubFontWeightButtons(weight);
+    popupState[subFontWeightStorageKey] = weight;
+    chrome.storage.local.set({ [subFontWeightStorageKey]: weight }, flashSaved);
+});
 
 // ── Subscription & AI Usage ──────────────────────────────────────
 function renderSubscriptionPlans(subscription, signedIn = true) {
@@ -944,6 +999,8 @@ chrome.storage.onChanged.addListener((changes, area) => {
             const val = changes[subFontSizeStorageKey].newValue || LectoroConstants.DEFAULT_SUBTITLE_SETTINGS.FONT_SIZE || "medium";
             updateSubFontSizeButtons(val);
         }
+        if (changes[subColorStorageKey]) updateSubColorControl(changes[subColorStorageKey].newValue);
+        if (changes[subFontWeightStorageKey]) updateSubFontWeightButtons(changes[subFontWeightStorageKey].newValue);
         if (changes.youtubeFocusMode) {
             const toggle = document.getElementById("ytFocusModeToggle");
             const wrap = document.getElementById("ytFocusColorWrap");

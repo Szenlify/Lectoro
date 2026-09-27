@@ -14,6 +14,8 @@ const POPUP_INIT_KEYS = Object.freeze({
     subtitlePosition: LectoroConstants.DEFAULT_SUBTITLE_SETTINGS.POSITION,
     subtitleBgOpacity: LectoroConstants.DEFAULT_SUBTITLE_SETTINGS.BG_OPACITY,
     subtitleFontSize: LectoroConstants.DEFAULT_SUBTITLE_SETTINGS.FONT_SIZE,
+    subtitleColor: LectoroConstants.DEFAULT_SUBTITLE_SETTINGS.COLOR,
+    subtitleFontWeight: LectoroConstants.DEFAULT_SUBTITLE_SETTINGS.FONT_WEIGHT,
 });
 
 let popupState = { ...POPUP_INIT_KEYS };
@@ -183,6 +185,9 @@ const volumeValue = document.getElementById("volumeValue");
 const subBgRange = document.getElementById("subBgRange");
 const subBgValue = document.getElementById("subBgValue");
 const subFontSizeGroup = document.getElementById("subFontSizeGroup");
+const subColorPicker = document.getElementById("subColorPicker");
+const subColorValue = document.getElementById("subColorValue");
+const subFontWeightGroup = document.getElementById("subFontWeightGroup");
 
 // ── Review badge from the initial storage batch (without loading the tab) ──
 function updateInitialReviewBadge(words = []) {
