@@ -233,3 +233,26 @@ test('malformed ASR keeps all visible words and falls back with a notice; valid 
     assert.deepEqual(notices, ['unavailable', 'available']);
     assert.equal(h.overlay.getFocusSliderElement().style.opacity, '1');
 });
+
+test('Focus follows JSON3 milliseconds after merging and seeking, including silence between source cues', () => {
+    const h = harness();
+    const S = require('../shared/subtitle-service');
+    h.context.SharedSubtitleService = S;
+    h.preferences({ [C.STORAGE_KEYS.YOUTUBE_FOCUS_MODE]: true });
+    const cues = S.mergeShortCues(S.normalizeCueSentenceCase(S.parseYouTubeJson3({ events: [
+        { tStartMs: 1000, dDurationMs: 1000, segs: [{ utf8: 'look' }, { utf8: ' here', tOffsetMs: 325 }] },
+        { tStartMs: 2400, dDurationMs: 700, segs: [{ utf8: 'now' }] },
+    ] }, { preserveTiming: true, preserveCueBoundaries: true }), 'en'));
+    assert.equal(cues.length, 1);
+    h.overlay.renderCustomSubtitles(cues[0].lines, { cue: cues[0], isAsr: true });
+    for (const [ms, expected] of [
+        [999, null], [1000, 'Look'], [1324, 'Look'], [1325, 'here'],
+        [1999, 'here'], [2000, null], [2200, null], [2399, null],
+        [2400, 'now'], [3099, 'now'], [3100, null], [1325, 'here'],
+    ]) {
+        h.overlay.updateFocusTiming(ms);
+        const focused = h.overlay.getCustomSubtitleElements().find(span => span.classList.contains('__qt_word-focused'));
+        assert.equal(focused?.textContent ?? null, expected, `source clock at ${ms} ms`);
+        assert.equal(h.overlay.getFocusSliderElement().style.opacity, expected ? '1' : '0');
+    }
+});

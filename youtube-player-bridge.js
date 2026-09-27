@@ -52,34 +52,25 @@
 
   function getYouTubePlayer() {
     return (
-      interceptedPlayerInstance ||
       document.getElementById("movie_player") ||
-      document.querySelector(".html5-video-player")
+      document.querySelector(".html5-video-player") ||
+      interceptedPlayerInstance
     );
   }
 
   function getCurrentVideoId() {
+    // The URL changes before the reused player updates getVideoData().
+    // The requested film owns this session, never the previous player data.
     try {
-      const player = getYouTubePlayer();
-      const playerVideoId = player?.getVideoData?.()?.video_id;
+      const v = new URLSearchParams(window.location.search).get("v");
+      if (v) return v;
+      const match = window.location.pathname.match(/\/(?:shorts|embed)\/([a-zA-Z0-9_-]+)/);
+      if (match) return match[1];
+    } catch (_) {}
+    try {
+      const playerVideoId = getYouTubePlayer()?.getVideoData?.()?.video_id;
       if (playerVideoId) return playerVideoId;
     } catch (_) {}
-
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const v = params.get("v");
-      if (v) return v;
-    } catch (_) {}
-
-    const shortsMatch = window.location.pathname.match(
-      /\/shorts\/([a-zA-Z0-9_-]+)/
-    );
-    if (shortsMatch) return shortsMatch[1];
-
-    const embedMatch = window.location.pathname.match(
-      /\/embed\/([a-zA-Z0-9_-]+)/
-    );
-    if (embedMatch) return embedMatch[1];
 
     try {
       return (
@@ -95,14 +86,15 @@
 
   function extractCaptionTracks() {
     const player = getYouTubePlayer();
+    const targetVideoId = getCurrentVideoId();
+    const tracksFromResponse = response => response?.videoDetails?.videoId === targetVideoId
+      ? response?.captions?.playerCaptionsTracklistRenderer?.captionTracks : null;
     let tracks = [];
 
     // 1. From Player getPlayerResponse()
     try {
       const playerResponse = player?.getPlayerResponse?.();
-      const captionTracks =
-        playerResponse?.captions?.playerCaptionsTracklistRenderer
-          ?.captionTracks;
+      const captionTracks = tracksFromResponse(playerResponse);
       if (Array.isArray(captionTracks) && captionTracks.length > 0) {
         tracks = captionTracks;
       }
@@ -112,9 +104,7 @@
     if (tracks.length === 0) {
       try {
         const initResponse = window.ytInitialPlayerResponse;
-        const captionTracks =
-          initResponse?.captions?.playerCaptionsTracklistRenderer
-            ?.captionTracks;
+        const captionTracks = tracksFromResponse(initResponse);
         if (Array.isArray(captionTracks) && captionTracks.length > 0) {
           tracks = captionTracks;
         }
@@ -124,9 +114,7 @@
     // 3. From window.ytplayer.config
     if (tracks.length === 0) {
       try {
-        const configTracks =
-          window.ytplayer?.config?.args?.raw_player_response?.captions
-            ?.playerCaptionsTracklistRenderer?.captionTracks;
+        const configTracks = tracksFromResponse(window.ytplayer?.config?.args?.raw_player_response);
         if (Array.isArray(configTracks) && configTracks.length > 0) {
           tracks = configTracks;
         }
@@ -137,7 +125,7 @@
     if (tracks.length === 0) {
       try {
         const optTracks = player?.getOption?.("captions", "tracklist");
-        if (Array.isArray(optTracks) && optTracks.length > 0) {
+        if (player?.getVideoData?.()?.video_id === targetVideoId && Array.isArray(optTracks) && optTracks.length > 0) {
           const videoId = getCurrentVideoId();
           tracks = optTracks.map((t) => ({
             baseUrl: `https://www.youtube.com/api/timedtext?v=${videoId}&lang=${t.languageCode || "en"}${t.vssId ? `&vss_id=${encodeURIComponent(t.vssId)}` : ""}`,
@@ -155,7 +143,13 @@
     }
 
     // Normalize track objects
-    return tracks.map((t) => {
+    return tracks.filter(track => {
+      if (!track.baseUrl) return true;
+      try {
+        const videoId = new URL(track.baseUrl, window.location.href).searchParams.get("v");
+        return !videoId || videoId === targetVideoId;
+      } catch (_) { return false; }
+    }).map((t) => {
       const name =
         typeof t.name === "string"
           ? t.name
@@ -231,6 +225,13 @@
     return false;
   }
 
+  function areCaptionTracksReady(videoId, tracks) {
+    if (tracks.length) return true;
+    try {
+      return getYouTubePlayer()?.getPlayerResponse?.()?.videoDetails?.videoId === videoId;
+    } catch (_) { return false; }
+  }
+
   function notifyTracksAvailable() {
     const videoId = getCurrentVideoId();
     const tracks = extractCaptionTracks();
@@ -240,7 +241,7 @@
 
     window.dispatchEvent(
       new CustomEvent(TRACKS_EVENT, {
-        detail: {videoId, tracks, activeTrack, isCcActive, isShorts},
+        detail: {videoId, tracks, activeTrack, isCcActive, isShorts, tracksReady: areCaptionTracksReady(videoId, tracks)},
       })
     );
   }
@@ -409,7 +410,7 @@
 
     window.dispatchEvent(
       new CustomEvent(TRACK_RESPONSE_EVENT, {
-        detail: {requestId, videoId, tracks, activeTrack, isCcActive, isShorts},
+        detail: {requestId, videoId, tracks, activeTrack, isCcActive, isShorts, tracksReady: areCaptionTracksReady(videoId, tracks)},
       })
     );
   });
@@ -494,12 +495,12 @@
 
   function onYouTubeNavigation() {
     checkVideoChange();
+    // The ID may already have changed at navigate-start, while the metadata
+    // only becomes usable at navigate-finish/page-data-updated.
+    notifyTracksAvailable();
     setTimeout(observeCcButton, 400);
   }
 
-  window.addEventListener("yt-navigate-start", onYouTubeNavigation, {
-    passive: true,
-  });
   window.addEventListener("yt-navigate-finish", onYouTubeNavigation, {
     passive: true,
   });

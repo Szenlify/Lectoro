@@ -302,17 +302,17 @@ test("YouTube Focus Mode: Subtitle overlay sliding highlighter and timestamp val
             isAsr: true,
         });
 
-        // Focus mode must NOT activate for captions without timestamps
+        // Never estimate missing word clocks from the cue duration.
         SubtitleOverlay.updateFocusTiming(3200);
-        assert.strictEqual(slider.style.opacity, "0", "Focus mode should not be active for captions without timestamps");
+        assert.strictEqual(slider.style.opacity, "0", "Missing word timestamps must not be interpolated");
 
-        // Manual tracks must not become ASR merely because JSON3 has timings.
+        // Manual tracks can use Focus too; their layout still follows the manual track.
         SubtitleOverlay.renderCustomSubtitles(sampleCueWithTimings.lines, {
             cue: sampleCueWithTimings, isAsr: false,
         });
         SubtitleOverlay.updateFocusTiming(600);
-        assert.strictEqual(slider.style.opacity, "0");
-        // Changing only the track type must invalidate the rendering cache.
+        assert.strictEqual(slider.style.opacity, "1");
+        // Switching track types keeps the focus highlight available.
         SubtitleOverlay.renderCustomSubtitles(sampleCueWithTimings.lines, {
             cue: sampleCueWithTimings, isAsr: true,
         });
@@ -322,7 +322,7 @@ test("YouTube Focus Mode: Subtitle overlay sliding highlighter and timestamp val
             cue: sampleCueWithTimings, isAsr: false,
         });
         SubtitleOverlay.updateFocusTiming(600);
-        assert.strictEqual(slider.style.opacity, "0");
+        assert.strictEqual(slider.style.opacity, "1");
 
         for (const segs of [[{ utf8: "Hello!", tOffsetMs: 0 }], [{ utf8: "Hello!" }], undefined]) {
             const singleWordCue = { startTime: 6, endTime: 7, segs };

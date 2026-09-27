@@ -821,33 +821,17 @@
             : (cue.tStartMs != null && cue.dDurationMs != null ? Number(cue.tStartMs) + Number(cue.dDurationMs) : null);
 
         const rawSegs = cue.segs.filter((s) => s && typeof s.utf8 === "string" && /\S/.test(s.utf8));
-        if (rawSegs.length === 0) return [];
-
-        const segments = [];
-        for (let i = 0; i < rawSegs.length; i++) {
-            const seg = rawSegs[i];
-            const startMs = seg.tAbsMs != null
-                ? Number(seg.tAbsMs)
-                : (defaultBaseMs + (Number(seg.tOffsetMs) || 0));
-
-            segments.push({
-                text: seg.utf8.trim(),
-                startMs,
-                endMs: null,
-            });
-        }
-
-        for (let i = 0; i < segments.length; i++) {
-            const current = segments[i];
-            const next = segments[i + 1];
-            if (next && typeof next.startMs === "number" && next.startMs > current.startMs) {
-                current.endMs = next.startMs;
-            } else if (cueEndMs && cueEndMs > current.startMs) {
-                current.endMs = cueEndMs;
-            } else {
-                current.endMs = current.startMs + 500;
-            }
-        }
+        const starts = rawSegs.map(seg => seg.tAbsMs != null
+            ? Number(seg.tAbsMs) : defaultBaseMs + Number(seg.tOffsetMs ?? 0));
+        const segments = rawSegs.map((seg, index) => {
+            // Preserve the original cue end after display-only cue merging.
+            // Equal timestamps are source anchors, not missing word clocks.
+            const nextStart = starts.slice(index + 1).find(time => time > starts[index]);
+            const sourceEnd = Number.isFinite(seg.tEndMs) ? seg.tEndMs : cueEndMs;
+            const endMs = nextStart == null ? sourceEnd : Math.min(nextStart, sourceEnd);
+            const text = globalThis.SharedSubtitleService?.cleanCueText?.(seg.utf8) ?? seg.utf8.trim();
+            return { text, startMs: starts[index], endMs };
+        });
         return segments;
     }
 
@@ -870,8 +854,9 @@
             const clean = normalize(segment.text);
             if (!clean) continue;
             if (!Number.isFinite(segment.startMs) || !Number.isFinite(segment.endMs) ||
-                segment.endMs <= segment.startMs ||
-                (ranges.length && segment.startMs < ranges.at(-1).endMs)) return [];
+                (segment.endMs <= segment.startMs && segment.startMs < cueEnd) ||
+                (ranges.length && segment.startMs < ranges.at(-1).endMs &&
+                    !(segment.startMs === ranges.at(-1).startMs && segment.endMs === ranges.at(-1).endMs))) return [];
             ranges.push({ ...segment, start: text.length, end: text.length + clean.length });
             text += clean;
         }
@@ -886,32 +871,18 @@
             if (!first || !last) return [];
             const startMs = Math.max(cueStart, first.startMs);
             const endMs = Math.min(cueEnd, last.endMs);
-            if (endMs <= startMs) return [];
-            result.push({ span: spans[index], startMs, endMs });
+            // A rolling window can still contain words belonging to a later
+            // window. They must not invalidate the words active in this cue.
+            if (endMs > startMs) result.push({ span: spans[index], startMs, endMs });
             offset = end;
         }
         return result;
     }
 
-    function cueHasWordTimestamps(cue) {
-        if (!cue || !Array.isArray(cue.segs) || cue.segs.length === 0) {
-            return false;
-        }
-        let timedWordsCount = 0;
-        let lastOffset = -1;
-        for (let i = 0; i < cue.segs.length; i++) {
-            const seg = cue.segs[i];
-            if (seg && typeof seg.utf8 === "string" && /\S/.test(seg.utf8)) {
-                const offset = seg.tOffsetMs != null
-                    ? Number(seg.tOffsetMs)
-                    : (seg.tAbsMs != null ? Number(seg.tAbsMs) : null);
-                if (Number.isFinite(offset) && offset !== lastOffset) {
-                    timedWordsCount++;
-                    lastOffset = offset;
-                }
-            }
-        }
-        return timedWordsCount >= 2;
+    function buildFocusTimings(spans, cue) {
+        // Punctuation has no spoken-word clock and must not disable the cue.
+        const words = spans.filter(span => /[\p{L}\p{M}\p{N}]/u.test(span.textContent || ""));
+        return mapSpansToTimings(words, extractSegmentTimings(cue), cue);
     }
 
     function hexToRgba(hex, alpha = 1) {
@@ -1068,7 +1039,9 @@
 
         activeSubtitleInput = { lines, options };
         const rawCleanLines = (Array.isArray(lines) ? lines : [lines])
-            .map((l) => (typeof l === "string" ? cleanCardText(l) : ""))
+            .map((l) => (typeof l === "string"
+                ? (isYouTubeHost() ? (globalThis.SharedSubtitleService?.cleanCueText?.(l) ?? cleanCardText(l)) : cleanCardText(l))
+                : ""))
             .filter(Boolean);
 
         if (rawCleanLines.length === 0) {
@@ -1105,12 +1078,10 @@
             ? [rawCleanLines.join(" ")] : rawCleanLines;
         const newText = displayLines.join(" ").replace(/\s+/g, " ").trim();
         const cue = options.cue || lines.cue || null;
-        const isAsr = options.isAsr === true;
         let shouldEnableFocusMode = Boolean(
-            youtubeFocusModeActive && isYouTubeHost() && isAsr &&
-            (cueHasWordTimestamps(cue) ||
-                (/^\S+$/u.test(newText) && Number.isFinite(cue?.startTime) &&
-                    Number.isFinite(cue?.endTime) && cue.endTime > cue.startTime))
+            youtubeFocusModeActive && isYouTubeHost() &&
+            Number.isFinite(cue?.startTime) && Number.isFinite(cue?.endTime) &&
+            cue.endTime > cue.startTime
         );
 
         if (newText === activeText && activeLines.length > 0 && activeUnifiedCue === cue &&
@@ -1194,8 +1165,8 @@
         updateCustomSubtitlePosition();
 
         if (shouldEnableFocusMode) {
-            activeWordTimings = mapSpansToTimings(activeWordSpans, extractSegmentTimings(cue), cue);
-            shouldEnableFocusMode = activeWordTimings.length === activeWordSpans.length;
+            activeWordTimings = buildFocusTimings(activeWordSpans, cue);
+            shouldEnableFocusMode = activeWordTimings.length > 0;
         }
         if (youtubeFocusModeActive && isYouTubeHost() && cue && !shouldEnableFocusMode) {
             globalThis.LectoroYouTubeAdapter?.reportFocusUnavailable?.();

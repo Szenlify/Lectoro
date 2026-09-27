@@ -17,7 +17,9 @@
 
         function cleanCueText(rawText, { preserveNewlines = false } = {}) {
             if (!rawText) return "";
-            let text = String(rawText);
+            let text = String(rawText)
+                .replace(/&(?:nbsp|#0*160|#x0*a0);/gi, " ")
+                .replace(/[\u200B\u2060\uFEFF]/g, "");
 
             // Decode basic HTML entities for angle brackets if present
             text = text
@@ -794,7 +796,7 @@
             }
             if (!data || !Array.isArray(data.events)) return [];
 
-            repairEmptyTranslatedEvents(data.events);
+            if (!options.preserveCueBoundaries) repairEmptyTranslatedEvents(data.events);
 
             if (options.preserveTiming) {
                 const cues = [];
@@ -852,6 +854,27 @@
                         if (next.startTime > current.startTime) {
                             if (next.startTime < current.endTime) {
                                 current.endTime = next.startTime;
+                                if (options.preserveCueBoundaries) {
+                                    // Rolling JSON3 windows can include the next cue's words.
+                                    // Remove only a duplicated suffix whose explicit word
+                                    // clocks place it in the next window, never by length alone.
+                                    const boundaryMs = next.startTime * 1000;
+                                    const futureIndex = current.segs.findIndex(seg =>
+                                        Number.isFinite(seg.tAbsMs) && seg.tAbsMs >= boundaryMs && cleanCueText(seg.utf8));
+                                    if (futureIndex > 0) {
+                                        const future = current.segs.slice(futureIndex);
+                                        const futureText = cleanCueText(future.map(seg => seg.utf8 || "").join(""));
+                                        const nextText = cleanCueText(next.text);
+                                        if (futureText && future.every(seg => seg.tAbsMs >= boundaryMs) &&
+                                            (nextText === futureText || nextText.startsWith(futureText + " "))) {
+                                            current.segs = current.segs.slice(0, futureIndex);
+                                            const retained = cleanCueText(current.segs.map(seg => seg.utf8 || "").join(""), { preserveNewlines: true });
+                                            current.lines = retained.split(/\r?\n/).filter(Boolean);
+                                            current.text = current.lines.join(" ");
+                                            current.dDurationMs = Math.round((current.endTime - current.startTime) * 1000);
+                                        }
+                                    }
+                                }
                             }
                             break;
                         }
@@ -1621,7 +1644,8 @@
                 (Array.isArray(part.segs) ? part.segs : [{ utf8: part.text }]).map((seg) => {
                     const tAbsMs = Number.isFinite(seg.tAbsMs) ? seg.tAbsMs :
                         (Number.isFinite(part.tStartMs) ? part.tStartMs : part.startTime * 1000) + (Number(seg.tOffsetMs) || 0);
-                    return { ...seg, tAbsMs, tOffsetMs: tAbsMs - previous.startTime * 1000 };
+                    const tEndMs = Math.min(Number.isFinite(seg.tEndMs) ? seg.tEndMs : Infinity, part.endTime * 1000);
+                    return { ...seg, tAbsMs, tEndMs, tOffsetMs: tAbsMs - previous.startTime * 1000 };
                 }));
             // A parser may expose non-writable metadata, so rebuild descriptors on a fresh object.
             const descriptors = Object.getOwnPropertyDescriptors(combined);
@@ -1729,6 +1753,9 @@
                 return ((leftLength < 39 && rightLength < 15) ||
                     (leftLength < 15 && rightLength < 39)) &&
                     leftLength + 1 + rightLength <= 54 &&
+                    // A complete utterance such as "God!" must stay on its own
+                    // clock; a short length is not evidence of a sentence fragment.
+                    !/[.!?。！？…]["'»”’)\]]*$/u.test(left) &&
                     !speakerOrSound.test(left) && !speakerOrSound.test(right) &&
                     Number.isFinite(previous.startTime) && Number.isFinite(previous.endTime) &&
                     previous.endTime > previous.startTime &&

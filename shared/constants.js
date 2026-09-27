@@ -403,14 +403,28 @@
          * Simple functional words (pronouns, auxiliary verbs, articles, prepositions)
          * Single Source of Truth shared across subtitle overlay and word cloud filters.
          */
-        const SIMPLE_WORDS = Object.freeze(
-            new Set([
-                "i", "am","yeah","yea",
-                "me", "my",
-                "yes", "no", "ok", "okay", "hi",
-                "an", "oh", "um", "uh", "ah", "a", "and"
-            ]),
-        );
+const SIMPLE_WORDS = Object.freeze(
+    new Set([
+        // Wykrzykniki i podstawowe zwroty
+        "a", "ah", "bye", "ha", "hello", "hi", "hey", "hm", "hmm", "no", 
+        "oh", "ok", "okay", "pls", "please", "thanks", "thank", "uh", 
+        "um", "wow", "yea", "yeah", "yes",
+
+        // Zaimki
+        "he", "her", "him", "his", "i", "it", "its", "me", "my", "she", 
+        "they", "them", "their", "we", "you", "your",
+
+        // Przyimki i spójniki
+        "and", "an", "at", "but", "by", "for", "from", "in", "of", "on", 
+        "or", "so", "to", "with",
+
+        // Czasowniki podstawowe (to be, to do, to have, itp.)
+        "am", "are", "be", "can", "do", "go", "has", "have", "is", 
+
+        // Pytajniki i wskazujące
+        "how", "that", "this", "what", "who", "why"
+    ])
+);
 
         /**
          * Common English stopwords and functional words for Cloze deletion keyword extraction (SSOT)

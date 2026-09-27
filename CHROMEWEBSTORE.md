@@ -2,7 +2,7 @@
 
 ## General Information
 
-- **Last Updated:** 2026-09-26
+- **Last Updated:** 2026-09-27
 - **Extension Name:** Lectoro AI - Language Learning & Subtitles
 - **Short Name:** Lectoro AI
 - **Current Version:** 1.0.0
@@ -108,6 +108,8 @@ Every permission declared in `manifest.json` adheres to the Principle of Least P
 - Single-word subtitle fragments join the preceding nearby cue on YouTube, Netflix and native caption tracks; ASR word timing is preserved.
 
 - **1.0.0 (Current):**
+  - YouTube captions reload automatically for each film after navigation, including autoplay and reused players, without requiring a seek. Previous-film responses cannot replace the new captions (2026-09-27).
+  - Fixed YouTube Focus timing through caption cleaning and short-caption merging. Word highlights retain source timestamps and pauses; no estimated word timing is used (2026-09-27).
   - Fixed Gemini dictionary tooltips for contractions and hyphenated words, including hover in S mode. Straight and typographic apostrophes/hyphens now share the same dictionary lookup and saved result (2026-09-26).
   - YouTube captions now capitalize sentence starts across caption boundaries and reduce unnecessary capitals, retaining source names, brands, recognized acronyms and English “I”. Casing is local and heuristic; unknown names in all-uppercase captions may need correction. ASR word timing is preserved (2026-09-26).
   - YouTube now joins neighboring captions by character count (under 39 plus under 15, in either order), with a 54-character merged-text limit and preserved word timing (2026-09-26).

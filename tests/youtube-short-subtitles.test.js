@@ -9,7 +9,7 @@ const timed = (texts) => texts.map((text, index) => cue(text, index, index + 1))
 test("YouTube joins short multiword captions before or after a longer caption", () => {
     for (const texts of [
         ["We will see you", "over here!"],
-        ["over here!", "We will see you"],
+        ["over here", "We will see you"],
         ["こんにちは", "これは長い文章です。"],
     ]) {
         const input = timed(texts);
