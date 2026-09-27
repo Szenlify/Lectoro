@@ -15,6 +15,9 @@
 
     const STRINGS = {
         en: {
+            youtube_captions_load_failed: "Could not load the full caption track. Lectoro will use captions available in the player. If captions do not return, turn YouTube CC off and on.",
+            youtube_captions_unavailable: "This video has no available caption track. Choose another caption language or another video.",
+            youtube_focus_unavailable: "Word timings are unavailable for these captions. Showing ordinary captions instead of Focus Mode.",
             ui_sentence_saved_to_review: "Sentence saved to review",
             ui_drag_to_reposition_subtitles_vertically: "Drag to reposition subtitles vertically",
             ui_translating_sentence: "Translating sentence...",
@@ -412,6 +415,9 @@
             ai_auth_perk3: "Unlimited word saving and smart SRS reviews",
         },
         pl: {
+            youtube_captions_load_failed: "Nie udało się pobrać pełnej ścieżki napisów. Lectoro skorzysta z napisów dostępnych w odtwarzaczu. Jeśli napisy nie wrócą, wyłącz i włącz CC na YouTube.",
+            youtube_captions_unavailable: "Ten film nie ma dostępnej ścieżki napisów. Wybierz inny język napisów lub inny film.",
+            youtube_focus_unavailable: "Te napisy nie mają dostępnych czasów słów. Wyświetlam zwykłe napisy zamiast trybu skupienia.",
             ui_sentence_saved_to_review: "Zdanie zapisane do powtórek",
             ui_drag_to_reposition_subtitles_vertically: "Przeciągnij, aby zmienić położenie napisów w pionie",
             ui_translating_sentence: "Tłumaczenie zdania...",
@@ -810,6 +816,9 @@
             ai_auth_perk3: "Nielimitowany zapis słówek i inteligentne powtórki SRS",
         },
         de: {
+            youtube_captions_load_failed: "Die vollständige Untertitelspur konnte nicht geladen werden. Lectoro nutzt die Untertitel des Players. Falls sie nicht zurückkehren, schalte YouTube CC aus und wieder ein.",
+            youtube_captions_unavailable: "Für dieses Video ist keine Untertitelspur verfügbar. Wähle eine andere Untertitelsprache oder ein anderes Video.",
+            youtube_focus_unavailable: "Für diese Untertitel fehlen Wortzeitangaben. Normale Untertitel werden statt des Fokusmodus angezeigt.",
             blik_pay: "Bezahlen Sie mit BLIK",
             blik_pay_lead: "Bezahlen Sie mit",
             blik_extend: "Verlängern",
@@ -1185,6 +1194,9 @@
             ai_auth_perk3: "Unbegrenztes Speichern von Wörtern und intelligente SRS-Wiederholungen",
         },
         es: {
+            youtube_captions_load_failed: "No se pudo cargar la pista completa. Lectoro usará los subtítulos del reproductor. Si no vuelven, desactiva y activa CC en YouTube.",
+            youtube_captions_unavailable: "Este vídeo no tiene una pista de subtítulos disponible. Elige otro idioma de subtítulos u otro vídeo.",
+            youtube_focus_unavailable: "Estos subtítulos no tienen tiempos por palabra disponibles. Se mostrarán subtítulos normales en lugar del modo de enfoque.",
             blik_pay: "Paga con BLIK",
             blik_pay_lead: "Paga con",
             blik_extend: "Extender",
@@ -1560,6 +1572,9 @@
             ai_auth_perk3: "Guardado ilimitado de palabras y repasos inteligentes SRS",
         },
         fr: {
+            youtube_captions_load_failed: "Impossible de charger la piste complète. Lectoro utilisera les sous-titres du lecteur. S’ils ne reviennent pas, désactivez puis réactivez CC sur YouTube.",
+            youtube_captions_unavailable: "Aucune piste de sous-titres n’est disponible pour cette vidéo. Choisissez une autre langue de sous-titres ou une autre vidéo.",
+            youtube_focus_unavailable: "Le minutage des mots est indisponible. Les sous-titres ordinaires remplacent le mode concentration.",
             blik_pay: "Payez avec BLIK",
             blik_pay_lead: "Payer avec",
             blik_extend: "Prolonger",
@@ -1935,6 +1950,9 @@
             ai_auth_perk3: "Sauvegarde illimitée de mots et révisions intelligentes SRS",
         },
         it: {
+            youtube_captions_load_failed: "Impossibile caricare la traccia completa. Lectoro userà i sottotitoli del lettore. Se non tornano, disattiva e riattiva CC su YouTube.",
+            youtube_captions_unavailable: "Questo video non ha una traccia di sottotitoli disponibile. Scegli un’altra lingua dei sottotitoli o un altro video.",
+            youtube_focus_unavailable: "I tempi delle parole non sono disponibili. Verranno mostrati sottotitoli normali al posto della modalità concentrazione.",
             blik_pay: "Paga con BLIK",
             blik_pay_lead: "Paga con",
             blik_extend: "Estendi",
@@ -2310,6 +2328,9 @@
             ai_auth_perk3: "Salvataggio illimitato di parole e ripassi intelligenti SRS",
         },
         ja: {
+            youtube_captions_load_failed: "字幕トラック全体を読み込めませんでした。プレーヤーの字幕を使用します。字幕が戻らない場合は、YouTube の CC をオフにしてからオンにしてください。",
+            youtube_captions_unavailable: "この動画には利用できる字幕トラックがありません。別の字幕言語または別の動画を選んでください。",
+            youtube_focus_unavailable: "単語ごとの時間情報がないため、集中モードではなく通常の字幕を表示します。",
             blik_pay: "BLIKで支払う",
             blik_pay_lead: "で支払う",
             blik_extend: "延長する",
@@ -2685,6 +2706,9 @@
             ai_auth_perk3: "単語の無制限保存とスマートなSRS復習",
         },
         ko: {
+            youtube_captions_load_failed: "전체 자막 트랙을 불러오지 못했습니다. 플레이어의 자막을 사용합니다. 자막이 다시 표시되지 않으면 YouTube CC를 껐다 켜세요.",
+            youtube_captions_unavailable: "이 동영상에는 사용 가능한 자막 트랙이 없습니다. 다른 자막 언어나 동영상을 선택하세요.",
+            youtube_focus_unavailable: "단어별 시간 정보가 없어 집중 모드 대신 일반 자막을 표시합니다.",
             blik_pay: "BLIK로 결제",
             blik_pay_lead: "다음으로 결제",
             blik_extend: "연장",
@@ -3060,6 +3084,9 @@
             ai_auth_perk3: "무제한 단어 저장 및 스마트 SRS 복습",
         },
         nl: {
+            youtube_captions_load_failed: "Het volledige ondertitelspoor kon niet worden geladen. Lectoro gebruikt de ondertitels van de speler. Komen ze niet terug, zet YouTube CC dan uit en weer aan.",
+            youtube_captions_unavailable: "Deze video heeft geen beschikbaar ondertitelspoor. Kies een andere ondertiteltaal of video.",
+            youtube_focus_unavailable: "Woordtiming is niet beschikbaar voor deze ondertitels. Gewone ondertitels worden getoond in plaats van de focusmodus.",
             blik_pay: "Betaal met BLIK",
             blik_pay_lead: "Betaal met",
             blik_extend: "Verlengen",
@@ -3435,6 +3462,9 @@
             ai_auth_perk3: "Onbeperkt woorden opslaan en slimme SRS-herhalingen",
         },
         cs: {
+            youtube_captions_load_failed: "Nepodařilo se načíst celou stopu titulků. Lectoro použije titulky přehrávače. Pokud se nevrátí, vypněte a zapněte CC na YouTube.",
+            youtube_captions_unavailable: "Toto video nemá dostupnou stopu titulků. Zvolte jiný jazyk titulků nebo jiné video.",
+            youtube_focus_unavailable: "Pro tyto titulky nejsou dostupné časy slov. Místo režimu soustředění se zobrazí běžné titulky.",
             blik_pay: "Plaťte pomocí BLIK",
             blik_pay_lead: "Platit pomocí",
             blik_extend: "Prodloužit",
@@ -3810,6 +3840,9 @@
             ai_auth_perk3: "Neomezené ukládání slovíček a chytré SRS opakování",
         },
         pt: {
+            youtube_captions_load_failed: "Não foi possível carregar a faixa completa. O Lectoro usará as legendas do leitor. Se não voltarem, desative e reative CC no YouTube.",
+            youtube_captions_unavailable: "Este vídeo não tem uma faixa de legendas disponível. Escolha outro idioma de legendas ou outro vídeo.",
+            youtube_focus_unavailable: "Os tempos das palavras não estão disponíveis. Serão apresentadas legendas normais em vez do modo de foco.",
             blik_pay: "Pague com BLIK",
             blik_pay_lead: "Pague com",
             blik_extend: "Estender",

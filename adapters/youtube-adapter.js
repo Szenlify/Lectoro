@@ -33,9 +33,75 @@
     const pendingFetches = new Set();
     let playbackRafId = null;
     let boundVideo = null;
+    let boundVideoCleanup = null;
     let trackRequestSeq = 0;
     let isCcActive = false;
     let youtubeFocusModeActive = false;
+
+    let captionStatusEl = null;
+    let captionStatusKey = "";
+    let captionStatusVideo = "";
+    const dismissedCaptionStatuses = new Set();
+
+    function clearCaptionStatus(reset = false) {
+        captionStatusEl?.remove();
+        captionStatusEl = null;
+        captionStatusKey = "";
+        if (reset) dismissedCaptionStatuses.clear();
+    }
+
+    function showCaptionStatus(key) {
+        if (!isPage() || !checkIsCcActive(boundVideo)) return;
+        const videoId = getVideoIdFromUrl();
+        if (captionStatusVideo !== videoId) {
+            clearCaptionStatus(true);
+            captionStatusVideo = videoId;
+        }
+        if (dismissedCaptionStatuses.has(key)) return;
+        const parent = document.fullscreenElement ||
+            boundVideo?.closest?.("#movie_player, .html5-video-player") ||
+            document.getElementById("movie_player");
+        if (!parent) return;
+        if (captionStatusKey === key && captionStatusEl) {
+            if (captionStatusEl.parentElement !== parent) parent.appendChild(captionStatusEl);
+            return;
+        }
+        clearCaptionStatus();
+        const notice = document.createElement("div");
+        notice.className = "__qt_youtube-caption-status";
+        const message = document.createElement("div");
+        message.setAttribute("role", "status");
+        message.setAttribute("aria-live", "polite");
+        message.textContent = SharedI18n.t(key);
+        const close = document.createElement("button");
+        close.type = "button";
+        close.textContent = "×";
+        close.setAttribute("aria-label", SharedI18n.t("video_toast_close"));
+        close.addEventListener("click", event => {
+            event.stopPropagation();
+            dismissedCaptionStatuses.add(key);
+            clearCaptionStatus();
+        });
+        notice.appendChild(message);
+        notice.appendChild(close);
+        parent.appendChild(notice);
+        captionStatusEl = notice;
+        captionStatusKey = key;
+    }
+
+    function reportFocusUnavailable() {
+        // A fetch error gives the more useful recovery action; don't overwrite it.
+        if (captionStatusKey === "youtube_captions_load_failed") return;
+        showCaptionStatus("youtube_focus_unavailable");
+    }
+
+    function reportFocusAvailable() {
+        if (captionStatusKey === "youtube_focus_unavailable") clearCaptionStatus();
+    }
+
+    document.addEventListener("fullscreenchange", () => {
+        if (captionStatusKey) showCaptionStatus(captionStatusKey);
+    });
 
     const ytFocusKey =
         globalThis.LectoroConstants?.STORAGE_KEYS?.YOUTUBE_FOCUS_MODE ||
@@ -61,6 +127,7 @@
                 const newVal = Boolean(changes[ytFocusKey].newValue);
                 if (newVal !== youtubeFocusModeActive) {
                     youtubeFocusModeActive = newVal;
+                    if (!newVal && captionStatusKey === "youtube_focus_unavailable") clearCaptionStatus();
                     applyFocusTrackPreference();
                 }
             }
@@ -315,7 +382,7 @@
         stopPlaybackLoop();
 
         function step() {
-            if (!video.paused && !video.ended) {
+            if (video.isConnected && video === boundVideo && !video.paused && !video.ended) {
                 syncActiveCue(video);
                 globalThis.LectoroSubtitleOverlay?.updateFocusTiming?.(video.currentTime * 1000);
                 playbackRafId = requestAnimationFrame(step);
@@ -336,7 +403,19 @@
 
     function bindVideoEvents(video) {
         if (!video || boundVideo === video || isPreviewVideo(video)) return;
+        unbindVideoEvents();
         boundVideo = video;
+        const listeners = [];
+        const listen = (event, handler) => {
+            const guardedHandler = () => {
+                if (video === boundVideo && video.isConnected) handler();
+            };
+            video.addEventListener(event, guardedHandler);
+            listeners.push([event, guardedHandler]);
+        };
+        boundVideoCleanup = () => {
+            for (const [event, handler] of listeners) video.removeEventListener(event, handler);
+        };
 
         const clearSubtitlesOnLoad = () => {
             currentDisplayedText = "";
@@ -346,36 +425,45 @@
             }
         };
 
-        video.addEventListener("loadstart", clearSubtitlesOnLoad);
-        video.addEventListener("emptied", clearSubtitlesOnLoad);
-        video.addEventListener("loadeddata", () => {
+        listen("loadstart", clearSubtitlesOnLoad);
+        listen("emptied", clearSubtitlesOnLoad);
+        listen("loadeddata", () => {
             syncActiveCue(video);
             globalThis.LectoroSubtitleOverlay?.updateFocusTiming?.(video.currentTime * 1000);
         });
-        video.addEventListener("canplay", () => {
+        listen("canplay", () => {
             syncActiveCue(video);
             globalThis.LectoroSubtitleOverlay?.updateFocusTiming?.(video.currentTime * 1000);
         });
 
-        video.addEventListener("play", () => {
+        listen("play", () => {
             if (cueIndex.length === 0 && checkIsCcActive(video)) {
                 requestTracklistFromBridge();
             }
             startPlaybackLoop(video);
         });
-        video.addEventListener("pause", () => {
+        listen("pause", () => {
             stopPlaybackLoop();
             syncActiveCue(video);
             globalThis.LectoroSubtitleOverlay?.updateFocusTiming?.(video.currentTime * 1000);
         });
-        video.addEventListener("timeupdate", () => {
+        listen("timeupdate", () => {
             syncActiveCue(video);
             globalThis.LectoroSubtitleOverlay?.updateFocusTiming?.(video.currentTime * 1000);
         });
-        video.addEventListener("seeked", () => {
+        listen("seeked", () => {
             syncActiveCue(video);
             globalThis.LectoroSubtitleOverlay?.updateFocusTiming?.(video.currentTime * 1000);
         });
+        syncActiveCue(video);
+        if (!video.paused && !video.ended) startPlaybackLoop(video);
+    }
+
+    function unbindVideoEvents() {
+        stopPlaybackLoop();
+        boundVideoCleanup?.();
+        boundVideoCleanup = null;
+        boundVideo = null;
     }
 
     // ── Track Selection & Multi-Format Timedtext Fetching ─────────
@@ -396,6 +484,8 @@
                          t.vssId?.toLowerCase()?.includes(`.${lang}`)),
                 );
                 if (prefAsr) return prefAsr;
+                // Focus must not silently switch away from the chosen language.
+                return tracks.find(t => t.languageCode?.toLowerCase() === lang) || null;
             }
 
             // 2. English ASR track
@@ -565,6 +655,7 @@
             }
             return res;
         });
+        clearCaptionStatus();
         setCueIndex(masterCues, videoId, activeTrack?.languageCode || "");
     }
 
@@ -583,10 +674,15 @@
             const candidateUrls = ["json3", "vtt", "srv3", ""].map((fmt) => buildTimedTextUrl(track.baseUrl, { fmt }));
             const cues = await fetchCueCandidates(candidateUrls, generation, videoId);
             if (!isCurrentRequest(generation, videoId)) return;
-            if (!cues.length) return;
+            if (!cues.length) {
+                showCaptionStatus("youtube_captions_load_failed");
+                return;
+            }
             processCaptionTrack(cues, videoId || currentVideoId, generation);
         } catch (error) {
-            // Caption loading error
+            if (isCurrentRequest(generation, videoId)) {
+                showCaptionStatus("youtube_captions_load_failed");
+            }
         } finally {
             if (generation === captionGeneration) pendingTrackKey = "";
         }
@@ -598,6 +694,9 @@
         const videoId = getVideoIdFromUrl();
         const timer = setTimeout(() => {
             window.removeEventListener(TRACK_RESPONSE_EVENT, onResponse);
+            if (isCurrentRequest(generation, videoId) && !cueIndex.length) {
+                showCaptionStatus("youtube_captions_load_failed");
+            }
         }, 3000);
 
         function onResponse(event) {
@@ -628,8 +727,10 @@
                 ? detail.isCcActive
                 : checkIsCcActive());
         isCcActive = ccState;
+        if (!ccState) clearCaptionStatus();
 
         if (Array.isArray(tracks) && tracks.length === 0) {
+            if (ccState) showCaptionStatus("youtube_captions_unavailable");
             invalidateCaptionRequest();
             cueIndex = [];
             activeTrack = null;
@@ -684,6 +785,7 @@
         if (active !== isCcActive) {
             isCcActive = active;
             if (!active) {
+                clearCaptionStatus();
                 invalidateCaptionRequest();
                 currentDisplayedText = "";
                 currentDisplayedCue = null;
@@ -756,6 +858,7 @@
     window.addEventListener(NAV_EVENT, (event) => {
         const newVideoId = event?.detail?.videoId || getVideoIdFromUrl();
         if (newVideoId !== currentVideoId) {
+            clearCaptionStatus(true);
             invalidateCaptionRequest();
             currentDisplayedCue = null;
             currentVideoId = newVideoId;
@@ -773,14 +876,14 @@
     });
 
     window.addEventListener("yt-navigate-start", () => {
+        clearCaptionStatus(true);
         invalidateCaptionRequest();
         currentDisplayedCue = null;
         currentDisplayedText = "";
         cueIndex = [];
         activeTrack = null;
         availableTracks = [];
-        boundVideo = null;
-        stopPlaybackLoop();
+        unbindVideoEvents();
         if (globalThis.LectoroSubtitleOverlay?.renderCustomSubtitles) {
             globalThis.LectoroSubtitleOverlay.renderCustomSubtitles([]);
         }
@@ -932,6 +1035,8 @@
         loadCaptionTrack,
         selectBestCaptionTrack,
         isFocusModeEnabled,
+        reportFocusUnavailable,
+        reportFocusAvailable,
     };
 
     globalThis.LectoroYouTubeAdapter = YouTubeAdapter;

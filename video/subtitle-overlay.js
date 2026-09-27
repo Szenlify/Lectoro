@@ -64,6 +64,7 @@
     let subtitleTranslationLang = C.DEFAULT_READING_SETTINGS.targetLang;
     let activeLines = [];
     let activeSubtitleInput = { lines: [], options: {} };
+    let subtitleSettingsReady = false;
     let activeText = "";
     let activeSubtitleStartTime = null;
     let activeWordSpans = [];
@@ -73,6 +74,7 @@
     let youtubeFocusColor = C.DEFAULT_READING_SETTINGS?.youtubeFocusColor || "#6366f1";
     let focusSliderEl = null;
     let trackedVideo = null;
+    let trackedContainer = null;
     let activeAiVideo = null;
     let videoResizeObserver = null;
     let layoutRafId = null;
@@ -412,7 +414,7 @@
 
     function ensureDragHandle(box) {
         if (!box) return;
-        if (!subDragHandleEl || !subDragHandleEl.isConnected) {
+        if (!subDragHandleEl) {
             subDragHandleEl = document.createElement("div");
             subDragHandleEl.className = C.UI_CLASSES.SUB_HANDLE;
             subDragHandleEl.title = SharedI18n.t("ui_drag_to_reposition_subtitles_vertically");
@@ -429,8 +431,8 @@
             setupVerticalDrag(subDragHandleEl, box);
         }
 
-        box.appendChild(subDragHandleEl);
-        if (subDragBadgeEl) {
+        if (subDragHandleEl.parentElement !== box) box.appendChild(subDragHandleEl);
+        if (subDragBadgeEl && subDragBadgeEl.parentElement !== box) {
             box.appendChild(subDragBadgeEl);
         }
     }
@@ -443,7 +445,7 @@
 
         const platform = getPlatformName();
 
-        if (customSubLayerEl && customSubLayerEl.isConnected) {
+        if (customSubLayerEl) {
             customSubLayerEl.id = C.UI_IDS.CUSTOM_SUBTITLES_LAYER;
             customSubLayerEl.classList.add(C.UI_CLASSES.SUBTITLES_LAYER);
             customSubLayerEl.classList.add(C.UI_CLASSES.CUSTOM_SUBTITLES_LAYER);
@@ -468,9 +470,6 @@
             }
             if (document.body) {
                 document.body.setAttribute("data-lectoro-platform", platform);
-            }
-            if (customSubLayerEl) {
-                customSubLayerEl.style.removeProperty("display");
             }
             ensureDragHandle(customSubBoxEl);
             return { layer: customSubLayerEl, box: customSubBoxEl };
@@ -503,144 +502,153 @@
         if (layoutRafId !== null) return;
         layoutRafId = requestAnimationFrame(() => {
             layoutRafId = null;
-            if (isSubDragging) return;
-            const { layer, box } = ensureCustomSubtitlesLayer();
-            const registry = getPlayerRegistry();
-            const video = registry?.getVideo();
-
-            if (
-                !video ||
-                !video.isConnected ||
-                registry?.isPreviewOrThumbnailVideo?.(video)
-            ) {
-                layer.style.setProperty("display", "none", "important");
-                return;
-            }
-
-            const playerEl = findPlayerContainer(video);
-            const targetContainer = playerEl || video.parentElement;
-
-            if (trackedVideo !== video) {
-                if (videoResizeObserver && trackedVideo) {
-                    try {
-                        videoResizeObserver.unobserve(trackedVideo);
-                    } catch (_) { }
-                }
-                trackedVideo = video;
-                if (typeof ResizeObserver !== "undefined") {
-                    if (!videoResizeObserver) {
-                        videoResizeObserver = new ResizeObserver(() =>
-                            syncCustomSubtitlePosition(),
-                        );
-                    }
-                    videoResizeObserver.observe(video);
-                    if (targetContainer && targetContainer !== video) {
-                        videoResizeObserver.observe(targetContainer);
-                    }
-                }
-            }
-
-            // Ensure layer is attached inside targetContainer or fullscreen element
-            const expectedParent =
-                document.fullscreenElement || targetContainer || document.body;
-            if (layer.parentElement !== expectedParent) {
-                expectedParent.appendChild(layer);
-            }
-
-            // Ensure parent container is positioned so absolute layer stays locked inside
-            if (
-                expectedParent !== document.body &&
-                expectedParent !== document.documentElement
-            ) {
-                const computedPos =
-                    window.getComputedStyle(expectedParent).position;
-                if (computedPos === "static") {
-                    expectedParent.style.position = "relative";
-                }
-            }
-
-            const videoRect = video.getBoundingClientRect();
-            const playerRect = targetContainer
-                ? targetContainer.getBoundingClientRect()
-                : videoRect;
-            const actualWidth =
-                playerRect.width ||
-                videoRect.width ||
-                video.offsetWidth ||
-                window.innerWidth;
-            const actualHeight =
-                playerRect.height ||
-                videoRect.height ||
-                video.offsetHeight ||
-                window.innerHeight;
-
-            if (actualWidth <= 0 || actualHeight <= 0) {
-                layer.style.setProperty("display", "none", "important");
-                return;
-            }
-
-            layer.style.setProperty("display", "flex", "important");
-            layer.style.position = "absolute";
-            layer.style.inset = "0px";
-            layer.style.width = "100%";
-            layer.style.height = "100%";
-            layer.style.pointerEvents = "none";
-            layer.style.overflow = "hidden";
-
-            // Proportional uniform font sizing across all video platforms
-            const fontFactor = getSubtitleFontSizeFactor(currentSubFontSize);
-            const fontSizePx = Math.max(
-                20,
-                Math.min(57, Math.round(actualWidth * fontFactor + 4)),
-            );
-            layer.style.setProperty(
-                "--lectoro-sub-font-size",
-                `${fontSizePx}px`,
-            );
-
-            applySubtitleStyles(layer);
-            ensureDragHandle(box);
-
-            // Bottom offset inside video player
-            const isNetflix = isNetflixPage();
-            const posPercent =
-                typeof currentSubPosition === "number" &&
-                    !isNaN(currentSubPosition)
-                    ? Math.max(0, Math.min(100, currentSubPosition))
-                    : 14;
-
-            const boxHeight = box.offsetHeight || 60;
-            const maxBottomPx = Math.max(0, actualHeight - boxHeight - 12);
-            let baseBottomPx;
-
-            if (posPercent === 0) {
-                baseBottomPx = 0;
-            } else if (posPercent === 14) {
-                baseBottomPx = isNetflix
-                    ? Math.max(76, Math.round(actualHeight * 0.13))
-                    : Math.max(18, Math.round(actualHeight * 0.138));
-            } else {
-                baseBottomPx = Math.min(
-                    maxBottomPx,
-                    Math.max(0, Math.round(actualHeight * (posPercent / 100))),
-                );
-            }
-
-            currentSubBottomPx = baseBottomPx;
-            layer.style.setProperty(
-                "--lectoro-sub-bottom",
-                `${baseBottomPx}px`,
-            );
-            box.style.marginBottom = `${baseBottomPx}px`;
-
-            if (focusSliderEl && lastFocusedSpan) {
-                syncFocusSliderPosition();
-            }
-
-            if (aiSubTranslationEl && aiSubTranslationText) {
-                adjustSubtitlePositionForTranslation();
-            }
+            updateCustomSubtitlePosition();
         });
+    }
+
+    // Cue replacement and geometry must finish in the same paint. Resize/scroll
+    // events still use the coalesced scheduler above.
+    function updateCustomSubtitlePosition() {
+        if (layoutRafId !== null) {
+            cancelAnimationFrame(layoutRafId);
+            layoutRafId = null;
+        }
+        if (isSubDragging) return;
+        const { layer, box } = ensureCustomSubtitlesLayer();
+        const registry = getPlayerRegistry();
+        const video = registry?.getVideo();
+
+        if (
+            !video ||
+            !video.isConnected ||
+            registry?.isPreviewOrThumbnailVideo?.(video)
+        ) {
+            layer.style.setProperty("display", "none", "important");
+            return;
+        }
+
+        const playerEl = findPlayerContainer(video);
+        const targetContainer = playerEl || video.parentElement;
+
+        if (trackedVideo !== video || trackedContainer !== targetContainer) {
+            if (videoResizeObserver && trackedVideo) {
+                try {
+                    videoResizeObserver.disconnect();
+                } catch (_) { }
+            }
+            trackedVideo = video;
+            trackedContainer = targetContainer;
+            if (typeof ResizeObserver !== "undefined") {
+                if (!videoResizeObserver) {
+                    videoResizeObserver = new ResizeObserver(() =>
+                        syncCustomSubtitlePosition(),
+                    );
+                }
+                videoResizeObserver.observe(video);
+                if (targetContainer && targetContainer !== video) {
+                    videoResizeObserver.observe(targetContainer);
+                }
+            }
+        }
+
+        // Ensure layer is attached inside targetContainer or fullscreen element
+        const expectedParent =
+            document.fullscreenElement || targetContainer || document.body;
+        if (layer.parentElement !== expectedParent) {
+            expectedParent.appendChild(layer);
+        }
+
+        // Ensure parent container is positioned so absolute layer stays locked inside
+        if (
+            expectedParent !== document.body &&
+            expectedParent !== document.documentElement
+        ) {
+            const computedPos =
+                window.getComputedStyle(expectedParent).position;
+            if (computedPos === "static") {
+                expectedParent.style.position = "relative";
+            }
+        }
+
+        const videoRect = video.getBoundingClientRect();
+        const playerRect = targetContainer
+            ? targetContainer.getBoundingClientRect()
+            : videoRect;
+        const actualWidth =
+            playerRect.width ||
+            videoRect.width ||
+            video.offsetWidth || 0;
+        const actualHeight =
+            playerRect.height ||
+            videoRect.height ||
+            video.offsetHeight || 0;
+
+        if (actualWidth <= 0 || actualHeight <= 0) {
+            layer.style.setProperty("display", "none", "important");
+            return;
+        }
+
+        layer.style.setProperty("display", "flex", "important");
+        layer.style.position = "absolute";
+        layer.style.inset = "0px";
+        layer.style.width = "100%";
+        layer.style.height = "100%";
+        layer.style.pointerEvents = "none";
+        layer.style.overflow = "hidden";
+
+        // Proportional uniform font sizing across all video platforms
+        const fontFactor = getSubtitleFontSizeFactor(currentSubFontSize);
+        const fontSizePx = Math.max(
+            20,
+            Math.min(57, Math.round(actualWidth * fontFactor + 4)),
+        );
+        layer.style.setProperty(
+            "--lectoro-sub-font-size",
+            `${fontSizePx}px`,
+        );
+
+        applySubtitleStyles(layer);
+        ensureDragHandle(box);
+
+        // Bottom offset inside video player
+        const isNetflix = isNetflixPage();
+        const posPercent =
+            typeof currentSubPosition === "number" &&
+                !isNaN(currentSubPosition)
+                ? Math.max(0, Math.min(100, currentSubPosition))
+                : 14;
+
+        const boxHeight = box.offsetHeight || 60;
+        const maxBottomPx = Math.max(0, actualHeight - boxHeight - 12);
+        let baseBottomPx;
+
+        if (posPercent === 0) {
+            baseBottomPx = 0;
+        } else if (posPercent === 14) {
+            baseBottomPx = isNetflix
+                ? Math.max(76, Math.round(actualHeight * 0.13))
+                : Math.max(18, Math.round(actualHeight * 0.138));
+        } else {
+            baseBottomPx = Math.min(
+                maxBottomPx,
+                Math.max(0, Math.round(actualHeight * (posPercent / 100))),
+            );
+        }
+
+        currentSubBottomPx = baseBottomPx;
+        layer.style.setProperty(
+            "--lectoro-sub-bottom",
+            `${baseBottomPx}px`,
+        );
+        box.style.marginBottom = `${baseBottomPx}px`;
+
+        if (focusSliderEl && lastFocusedSpan) {
+            syncFocusSliderPosition();
+        }
+
+        if (aiSubTranslationEl && aiSubTranslationText) {
+            adjustSubtitlePositionForTranslation();
+        }
     }
 
     function adjustSubtitlePositionForTranslation() {
@@ -845,64 +853,42 @@
 
     function mapSpansToTimings(spans, segments, cue) {
         if (!Array.isArray(spans) || spans.length === 0) return [];
-        if (!segments || segments.length === 0) {
-            if (cue && cue.startTime != null && cue.endTime != null) {
-                const cueStart = cue.startTime * 1000;
-                const cueEnd = cue.endTime * 1000;
-                const duration = Math.max(cueEnd - cueStart, 200);
-                const step = duration / spans.length;
-                return spans.map((span, idx) => ({
-                    span,
-                    startMs: cueStart + idx * step,
-                    endMs: cueStart + (idx + 1) * step,
-                }));
-            }
-            return [];
+        const cueStart = cue?.startTime * 1000;
+        const cueEnd = cue?.endTime * 1000;
+        if (!Number.isFinite(cueStart) || !Number.isFinite(cueEnd) || cueEnd <= cueStart) return [];
+        if (!segments?.length) {
+            return spans.length === 1 ? [{ span: spans[0], startMs: cueStart, endMs: cueEnd }] : [];
         }
 
-        if (spans.length === segments.length) {
-            return spans.map((span, idx) => ({
-                span,
-                startMs: segments[idx].startMs,
-                endMs: segments[idx].endMs,
-            }));
+        // Match complete text ranges, never substrings (e.g. "I" inside "like")
+        // or invented 400 ms slots. A timestamp for a whole phrase is not a
+        // word clock: keep ordinary captions when exact alignment is impossible.
+        const normalize = text => String(text || "").normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{M}\p{N}]/gu, "");
+        const ranges = [];
+        let text = "";
+        for (const segment of segments) {
+            const clean = normalize(segment.text);
+            if (!clean) continue;
+            if (!Number.isFinite(segment.startMs) || !Number.isFinite(segment.endMs) ||
+                segment.endMs <= segment.startMs ||
+                (ranges.length && segment.startMs < ranges.at(-1).endMs)) return [];
+            ranges.push({ ...segment, start: text.length, end: text.length + clean.length });
+            text += clean;
         }
-
+        const words = spans.map(span => normalize(span.textContent));
+        if (words.some(word => !word) || words.join("") !== text) return [];
+        let offset = 0;
         const result = [];
-        let segIdx = 0;
-        for (let i = 0; i < spans.length; i++) {
-            const span = spans[i];
-            const spanClean = (span.dataset?.clean || span.textContent || "").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
-
-            let foundIdx = -1;
-            for (let j = segIdx; j < segments.length; j++) {
-                const segClean = segments[j].text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
-                if (spanClean && (segClean.includes(spanClean) || spanClean.includes(segClean))) {
-                    foundIdx = j;
-                    break;
-                }
-            }
-
-            if (foundIdx !== -1) {
-                result.push({
-                    span,
-                    startMs: segments[foundIdx].startMs,
-                    endMs: segments[foundIdx].endMs,
-                });
-                segIdx = foundIdx + 1;
-            } else if (segIdx < segments.length) {
-                result.push({
-                    span,
-                    startMs: segments[segIdx].startMs,
-                    endMs: segments[segIdx].endMs,
-                });
-                segIdx++;
-            } else {
-                const last = result[result.length - 1];
-                const startMs = last ? last.endMs : (cue?.startTime ? cue.startTime * 1000 : 0);
-                const endMs = startMs + 400;
-                result.push({ span, startMs, endMs });
-            }
+        for (let index = 0; index < spans.length; index++) {
+            const end = offset + words[index].length;
+            const first = ranges.find(range => range.start === offset);
+            const last = ranges.find(range => range.end === end);
+            if (!first || !last) return [];
+            const startMs = Math.max(cueStart, first.startMs);
+            const endMs = Math.min(cueEnd, last.endMs);
+            if (endMs <= startMs) return [];
+            result.push({ span: spans[index], startMs, endMs });
+            offset = end;
         }
         return result;
     }
@@ -955,7 +941,7 @@
 
     function ensureFocusSlider(box) {
         if (!box) return null;
-        if (!focusSliderEl || !focusSliderEl.isConnected) {
+        if (!focusSliderEl) {
             focusSliderEl = document.createElement("div");
             focusSliderEl.className = "__qt_focus_slider";
         }
@@ -1015,6 +1001,7 @@
 
         const targetSpan = matchedItem ? matchedItem.span : null;
         if (targetSpan !== lastFocusedSpan) {
+            const previousRect = lastFocusedSpan?.getBoundingClientRect?.();
             if (lastFocusedSpan) {
                 lastFocusedSpan.classList?.remove("__qt_word-focused");
             }
@@ -1034,7 +1021,8 @@
                     const height = Math.max(12, Math.round(spanRect.height + paddingY * 2));
 
                     const isFirstActivation = !focusSliderEl.classList?.contains("is-active") || focusSliderEl.style.opacity === "0";
-                    if (isFirstActivation) {
+                    const changesLine = previousRect && Math.abs(previousRect.top - spanRect.top) > spanRect.height / 2;
+                    if (isFirstActivation || changesLine) {
                         focusSliderEl.style.setProperty("transition", "none", "important");
                         focusSliderEl.style.transform = `translate3d(${left}px, ${top}px, 0)`;
                         focusSliderEl.style.width = `${width}px`;
@@ -1063,7 +1051,8 @@
     }
 
     function renderCustomSubtitles(lines = [], options = {}) {
-        if (isSubDragging) return;
+        activeSubtitleInput = { lines, options };
+        if (isSubDragging || !subtitleSettingsReady) return;
         const { box } = ensureCustomSubtitlesLayer();
         const registry = getPlayerRegistry();
         const video = registry?.getVideo();
@@ -1110,11 +1099,14 @@
             return;
         }
 
-        const displayLines = rawCleanLines;
+        // ASR source breaks are often rolling fragments. Let the bounded
+        // YouTube column balance them without changing word nodes or timestamps.
+        const displayLines = isYouTubeHost() && options.isAsr === true
+            ? [rawCleanLines.join(" ")] : rawCleanLines;
         const newText = displayLines.join(" ").replace(/\s+/g, " ").trim();
         const cue = options.cue || lines.cue || null;
         const isAsr = options.isAsr === true;
-        const shouldEnableFocusMode = Boolean(
+        let shouldEnableFocusMode = Boolean(
             youtubeFocusModeActive && isYouTubeHost() && isAsr &&
             (cueHasWordTimestamps(cue) ||
                 (/^\S+$/u.test(newText) && Number.isFinite(cue?.startTime) &&
@@ -1123,8 +1115,9 @@
 
         if (newText === activeText && activeLines.length > 0 && activeUnifiedCue === cue &&
             Boolean(box.classList?.contains("is-focus-mode")) === shouldEnableFocusMode) {
-            if (displayLines.length === activeLines.length) {
-                syncCustomSubtitlePosition();
+            if (displayLines.length === activeLines.length &&
+                displayLines.every((line, index) => line === activeLines[index])) {
+                updateCustomSubtitlePosition();
                 return;
             }
         }
@@ -1195,7 +1188,21 @@
             box.appendChild(lineEl);
         }
 
+        // The drag controls participate in flex layout. Never restore them a
+        // frame later: that moves every new cue upward by the handle height.
+        ensureDragHandle(box);
+        updateCustomSubtitlePosition();
+
         if (shouldEnableFocusMode) {
+            activeWordTimings = mapSpansToTimings(activeWordSpans, extractSegmentTimings(cue), cue);
+            shouldEnableFocusMode = activeWordTimings.length === activeWordSpans.length;
+        }
+        if (youtubeFocusModeActive && isYouTubeHost() && cue && !shouldEnableFocusMode) {
+            globalThis.LectoroYouTubeAdapter?.reportFocusUnavailable?.();
+        }
+
+        if (shouldEnableFocusMode) {
+            globalThis.LectoroYouTubeAdapter?.reportFocusAvailable?.();
             box.classList?.add("is-focus-mode");
             ensureFocusSlider(box);
             if (focusSliderEl) {
@@ -1203,8 +1210,6 @@
                 focusSliderEl.style.opacity = "0";
             }
             lastFocusedSpan = null;
-            const segments = extractSegmentTimings(cue);
-            activeWordTimings = mapSpansToTimings(activeWordSpans, segments, cue);
 
             if (focusSliderEl && activeWordSpans.length > 0) {
                 const firstSpan = activeWordSpans[0];
@@ -1245,7 +1250,6 @@
 
         box.style.setProperty("opacity", "1", "important");
         box.style.setProperty("pointer-events", "auto", "important");
-        syncCustomSubtitlePosition();
         if (aiTooltipActive) {
             updateSubtitleVideoHighlights();
         }
@@ -1258,12 +1262,8 @@
     window.addEventListener("scroll", syncCustomSubtitlePosition, {
         passive: true,
     });
-    document.addEventListener("fullscreenchange", () =>
-        setTimeout(syncCustomSubtitlePosition, 50),
-    );
-    document.addEventListener("webkitfullscreenchange", () =>
-        setTimeout(syncCustomSubtitlePosition, 50),
-    );
+    document.addEventListener("fullscreenchange", syncCustomSubtitlePosition);
+    document.addEventListener("webkitfullscreenchange", syncCustomSubtitlePosition);
     document.addEventListener(
         "play",
         (e) => {
@@ -1308,10 +1308,9 @@
                 youtubeFocusColor = data[ytFocusColorKey];
                 applyFocusColorStyles();
             }
-            if (customSubLayerEl) {
-                applySubtitleStyles(customSubLayerEl);
-                syncCustomSubtitlePosition();
-            }
+            subtitleSettingsReady = true;
+            // Replay only the latest cue received while preferences were loading.
+            renderCustomSubtitles(activeSubtitleInput.lines, activeSubtitleInput.options);
         },
     );
 

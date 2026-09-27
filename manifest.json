@@ -84,6 +84,12 @@
             "css": [
                 "styles.css"
             ],
+            "run_at": "document_start"
+        },
+        {
+            "matches": [
+                "*://*/*"
+            ],
             "js": [
                 "shared/constants.js",
                 "shared/i18n.js",

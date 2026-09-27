@@ -671,7 +671,9 @@ video::cue {
   align-items: flex-end !important;
   justify-content: center !important;
   overflow: hidden !important;
-  transition: opacity 0.15s ease !important;
+  /* Cue visibility must change immediately, including short authored gaps. */
+  transition: none !important;
+  animation: none !important;
   isolation: isolate !important;
   contain: layout style !important;
   color: #ffffff !important;
@@ -735,9 +737,62 @@ video::cue {
   text-transform: none !important;
   white-space: normal !important;
   gap: 6px !important;
-  transition:
-    transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 0.15s ease !important;
+  transition: none !important;
+  animation: none !important;
+}
+
+/* YouTube: a compact reading column for manual captions and ASR alike.
+   Font-relative width stays readable in theater/fullscreen and with size settings.
+   Native wrapping remains the fallback when balancing is unavailable. */
+#__qt_custom_subtitles_layer[data-platform="youtube"] .__qt_subtitles-box {
+  font-size: var(--lectoro-sub-font-size, 26px) !important;
+  width: max-content !important;
+  max-width: min(86%, 36ch) !important;
+}
+
+#__qt_custom_subtitles_layer[data-platform="youtube"] .__qt_sub-line {
+  max-width: 100% !important;
+  text-wrap: balance !important;
+  overflow-wrap: anywhere !important;
+  line-height: 1.32 !important;
+  letter-spacing: 0 !important;
+}
+
+.__qt_youtube-caption-status {
+  position: absolute !important;
+  top: 16px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 2147483646 !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 12px !important;
+  width: max-content !important;
+  max-width: min(88%, 480px) !important;
+  box-sizing: border-box !important;
+  padding: 12px 16px !important;
+  border: 1px solid #64748b !important;
+  border-radius: 8px !important;
+  background: #0f172a !important;
+  color: #fff !important;
+  font: 500 14px/1.5 system-ui, sans-serif !important;
+  text-align: start !important;
+  pointer-events: auto !important;
+}
+
+.__qt_youtube-caption-status button {
+  flex: 0 0 auto !important;
+  padding: 0 6px !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: inherit !important;
+  font: 22px/1.2 system-ui, sans-serif !important;
+  cursor: pointer !important;
+}
+
+.__qt_youtube-caption-status button:focus-visible {
+  outline: 2px solid #fff !important;
+  outline-offset: 2px !important;
 }
 
 /* Active vertical drag state on subtitle box */
@@ -856,6 +911,8 @@ video::cue {
 
 .__qt_sub-line,
 .__qt_custom-sub-line {
+  animation: none !important;
+  transition: none !important;
   display: block !important;
   box-sizing: border-box !important;
   width: auto !important;
@@ -1085,8 +1142,8 @@ body[data-lectoro-sub-translate-active="true"]
     0 0 14px var(--lectoro-focus-glow, rgba(99, 102, 241, 0.4)),
     inset 0 0 0 1px var(--lectoro-focus-border, rgba(255, 255, 255, 0.25)) !important;
   opacity: 0;
-  transition: opacity 0.16s ease !important;
-  will-change: transform, width, height, opacity !important;
+  transition: none !important;
+  will-change: transform, width, height !important;
 }
 
 #__qt_custom_subtitles_layer .__qt_focus_slider.is-active {
@@ -1094,8 +1151,7 @@ body[data-lectoro-sub-translate-active="true"]
   transition:
     transform 0.22s cubic-bezier(0.2, 0, 0, 1),
     width 0.22s cubic-bezier(0.2, 0, 0, 1),
-    height 0.22s cubic-bezier(0.2, 0, 0, 1),
-    opacity 0.16s ease !important;
+    height 0.22s cubic-bezier(0.2, 0, 0, 1) !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -2959,4 +3015,10 @@ body[data-lectoro-ai-active="true"]
 }
 #__qt_tooltip .__qt_example-status:empty {
   display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #__qt_custom_subtitles_layer[data-platform="youtube"] .__qt_focus_slider.is-active {
+    transition: none !important;
+  }
 }
